@@ -148,20 +148,25 @@ function shouldUseAsFamilyRepresentative(candidate, current) {
   return obtainedTime(candidate) < obtainedTime(current)
 }
 
+export function getPokemonEvolutionFamilyKey(pokemon) {
+  const dexSpeciesId = normalizedDexId(pokemon)
+  const familySpeciesIds = dexSpeciesId
+    ? getEvolutionSpeciesIds(dexSpeciesId)
+      .map(Number)
+      .filter(Number.isFinite)
+      .sort((left, right) => left - right)
+    : []
+
+  return familySpeciesIds.length > 0
+    ? familySpeciesIds.join(':')
+    : `capture:${pokemon.captureId}`
+}
+
 export function getTrainingRosterPokemon(collection = []) {
   const familyRepresentatives = new Map()
 
   for (const pokemon of Array.isArray(collection) ? collection : []) {
-    const dexSpeciesId = normalizedDexId(pokemon)
-    const familySpeciesIds = dexSpeciesId
-      ? getEvolutionSpeciesIds(dexSpeciesId)
-        .map(Number)
-        .filter(Number.isFinite)
-        .sort((left, right) => left - right)
-      : []
-    const familyKey = familySpeciesIds.length > 0
-      ? familySpeciesIds.join(':')
-      : `capture:${pokemon.captureId}`
+    const familyKey = getPokemonEvolutionFamilyKey(pokemon)
     const currentRepresentative = familyRepresentatives.get(familyKey)
 
     if (!currentRepresentative || shouldUseAsFamilyRepresentative(pokemon, currentRepresentative)) {

@@ -23,7 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
-import { getShinyOdds } from './data/pokemonPool'
+import { getPokemonEvolutionFamilyKey, getShinyOdds } from './data/pokemonPool'
 import {
   BATTLE_ITEMS,
   SHOP_CATEGORIES,
@@ -77,12 +77,16 @@ function fallbackImageHandler(fallback) {
 
 function BoxScreen({
   pokemon,
+  teams = [],
+  activeTeamId,
   teamIds,
   inventory = {},
   onBack,
+  backLabel = '로비',
   onEquipItem,
   onSetTeraType,
   onSetDynamaxMode,
+  onSelectTeam,
   onToggleTeam,
   onAutoTeam,
   onConfirmTeam,
@@ -105,6 +109,7 @@ function BoxScreen({
     [pokemon],
   )
   const shinyCount = pokemon.filter((entry) => entry.shinyObtained).length
+  const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamPokemon = teamIds
     .map((captureId) => pokemon.find((entry) => entry.captureId === captureId))
     .filter(Boolean)
@@ -136,6 +141,11 @@ function BoxScreen({
   const selectedPokemon = collectionByDexId.get(selectedDexId) ?? null
   const selectedTeamIndex = selectedPokemon ? teamIds.indexOf(selectedPokemon.captureId) : -1
   const selectedIsInTeam = selectedTeamIndex !== -1
+  const selectedFamilyConflict = selectedPokemon && !selectedIsInTeam
+    ? teamPokemon.find((entry) => (
+      getPokemonEvolutionFamilyKey(entry) === getPokemonEvolutionFamilyKey(selectedPokemon)
+    ))
+    : null
   const selectedHeldItem = selectedPokemon ? ITEM_BY_ID.get(selectedPokemon.heldItemId) ?? null : null
   const selectedTeraType = selectedPokemon?.teraType ?? selectedProfile?.types[0] ?? '노말'
   const selectedDynamaxMode = selectedPokemon?.dynamaxMode ?? 'dynamax'
@@ -254,9 +264,9 @@ function BoxScreen({
   return (
     <main className="pc-screen pokedex-screen">
       <header className="pc-header">
-        <button className="screen-back-button" type="button" aria-label="로비로 돌아가기" onClick={onBack}>
+        <button className="screen-back-button" type="button" aria-label={`${backLabel} 화면으로 돌아가기`} onClick={onBack}>
           <ArrowLeft size={19} />
-          <span>로비</span>
+          <span>{backLabel}</span>
         </button>
 
         <div className="pc-title">
@@ -276,10 +286,26 @@ function BoxScreen({
         <aside className="pc-party-panel" aria-label="배틀 팀">
           <div className="pc-party-heading">
             <div>
-              <span>BATTLE PARTY</span>
-              <h2>팀 1</h2>
+              <span>BATTLE PARTY · SAVED SLOT</span>
+              <h2>{activeTeam?.name ?? '팀 1'}</h2>
             </div>
             <strong>{teamPokemon.length}/6</strong>
+          </div>
+
+          <div className="pc-team-presets" aria-label="저장된 팀 선택">
+            {teams.map((team, index) => (
+              <button
+                className={team.id === activeTeam?.id ? 'selected' : ''}
+                type="button"
+                aria-label={`${team.name}, ${team.pokemonIds.length}마리`}
+                aria-pressed={team.id === activeTeam?.id}
+                key={team.id}
+                onClick={() => onSelectTeam(team.id)}
+              >
+                <strong>{index + 1}</strong>
+                <small>{team.pokemonIds.length}/6</small>
+              </button>
+            ))}
           </div>
 
           <div className="pc-party-list">
@@ -551,7 +577,13 @@ function BoxScreen({
                   onClick={() => onToggleTeam(selectedPokemon.captureId)}
                 >
                   {selectedIsInTeam ? <X size={16} /> : <Plus size={16} />}
-                  {selectedIsInTeam ? `팀 ${selectedTeamIndex + 1}번에서 빼기` : teamPokemon.length >= PARTY_SIZE ? '팀이 가득 찼습니다' : '팀에 추가'}
+                  {selectedIsInTeam
+                    ? `팀 ${selectedTeamIndex + 1}번에서 빼기`
+                    : selectedFamilyConflict
+                      ? `${selectedFamilyConflict.name}과 같은 진화 계열`
+                      : teamPokemon.length >= PARTY_SIZE
+                        ? '팀이 가득 찼습니다'
+                        : '팀에 추가'}
                 </button>
               </>
             ) : selectedProfile ? (

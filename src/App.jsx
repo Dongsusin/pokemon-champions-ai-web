@@ -13,12 +13,15 @@ import {
   VolumeX,
   Zap,
 } from 'lucide-react'
+import BattleSelectScreen from './BattleSelectScreen'
 import BoxScreen from './BoxScreen'
 import HatchScreen from './HatchScreen'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
 import {
   createPokemonDraw,
+  getPokemonEvolutionFamilyKey,
+  getTrainingRosterPokemon,
   mergePokemonDraws,
   migratePokemonCollection,
 } from './data/pokemonPool'
@@ -35,9 +38,15 @@ import {
   attemptItemPurchase,
   normalizeItemInventory,
 } from './data/shopData'
+import {
+  BATTLE_TEAM_SIZE,
+  normalizeSavedTeamState,
+  sanitizeSavedTeams,
+} from './data/teamData'
 
 const BOX_STORAGE_KEY = 'champions-dex-v2'
 const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
+const TEAMS_STORAGE_KEY = 'champions-teams-v1'
 const TEAM_STORAGE_KEY = 'champions-team-v2'
 const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
@@ -61,13 +70,13 @@ function loadStoredBox() {
   return migratePokemonCollection(storedPokemon)
 }
 
-function loadStoredTeam(collection) {
+function loadLegacyTeamIds(collection) {
   const hasCurrentTeam = window.localStorage.getItem(TEAM_STORAGE_KEY) !== null
   const storedTeam = hasCurrentTeam
     ? loadStoredArray(TEAM_STORAGE_KEY)
     : loadStoredArray(LEGACY_TEAM_STORAGE_KEY)
 
-  if (hasCurrentTeam) return storedTeam.slice(0, 6)
+  if (hasCurrentTeam) return storedTeam.slice(0, BATTLE_TEAM_SIZE)
 
   const legacyPokemon = loadStoredArray(LEGACY_BOX_STORAGE_KEY)
   const legacySpeciesByCaptureId = new Map(
@@ -79,7 +88,47 @@ function loadStoredTeam(collection) {
     if (availableIds.has(captureId)) return captureId
     const speciesId = legacySpeciesByCaptureId.get(captureId)
     return speciesId ? `dex-${speciesId}` : null
-  }).filter((captureId) => captureId && availableIds.has(captureId)))].slice(0, 6)
+  }).filter((captureId) => captureId && availableIds.has(captureId)))].slice(0, BATTLE_TEAM_SIZE)
+}
+
+function loadStoredTeamState(collection) {
+  const availableCaptureIds = collection.map((pokemon) => pokemon.captureId)
+
+  try {
+    const storedValue = window.localStorage.getItem(TEAMS_STORAGE_KEY)
+    const storedState = storedValue ? JSON.parse(storedValue) : null
+    const hasStoredTeams = Array.isArray(storedState?.teams) && storedState.teams.length > 0
+    const legacyTeamIds = hasStoredTeams ? [] : loadLegacyTeamIds(collection)
+    const normalizedState = normalizeSavedTeamState(storedState, availableCaptureIds, legacyTeamIds)
+    return {
+      ...normalizedState,
+      teams: removeEvolutionFamilyDuplicates(normalizedState.teams, collection),
+    }
+  } catch {
+    const normalizedState = normalizeSavedTeamState(null, availableCaptureIds, loadLegacyTeamIds(collection))
+    return {
+      ...normalizedState,
+      teams: removeEvolutionFamilyDuplicates(normalizedState.teams, collection),
+    }
+  }
+}
+
+function removeEvolutionFamilyDuplicates(teams, collection) {
+  const pokemonByCaptureId = new Map(collection.map((pokemon) => [pokemon.captureId, pokemon]))
+
+  return teams.map((team) => {
+    const familyKeys = new Set()
+    const pokemonIds = team.pokemonIds.filter((captureId) => {
+      const pokemon = pokemonByCaptureId.get(captureId)
+      if (!pokemon) return false
+      const familyKey = getPokemonEvolutionFamilyKey(pokemon)
+      if (familyKeys.has(familyKey)) return false
+      familyKeys.add(familyKey)
+      return true
+    })
+
+    return pokemonIds.length === team.pokemonIds.length ? team : { ...team, pokemonIds }
+  })
 }
 
 function loadStoredVp() {
@@ -138,6 +187,8 @@ const modes = [
 function App() {
   const initialCollection = useRef(null)
   if (initialCollection.current === null) initialCollection.current = loadStoredBox()
+  const initialTeamState = useRef(null)
+  if (initialTeamState.current === null) initialTeamState.current = loadStoredTeamState(initialCollection.current)
   const vpBalance = useRef(null)
   if (vpBalance.current === null) vpBalance.current = loadStoredVp()
   const storedItemInventory = useRef(null)
@@ -145,14 +196,18 @@ function App() {
 
   const [screen, setScreen] = useState('lobby')
   const [selectedMode, setSelectedMode] = useState('start')
+  const [boxReturnScreen, setBoxReturnScreen] = useState('lobby')
   const [drawResults, setDrawResults] = useState([])
   const [boxPokemon, setBoxPokemon] = useState(initialCollection.current)
-  const [teamIds, setTeamIds] = useState(() => loadStoredTeam(initialCollection.current))
+  const [teams, setTeams] = useState(initialTeamState.current.teams)
+  const [activeTeamId, setActiveTeamId] = useState(initialTeamState.current.activeTeamId)
   const [vp, setVp] = useState(vpBalance.current)
   const [itemInventory, setItemInventory] = useState(storedItemInventory.current)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notice, setNotice] = useState('')
   const noticeTimer = useRef(null)
+  const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
+  const teamIds = activeTeam?.pokemonIds ?? []
 
   useEffect(() => {
     return () => window.clearTimeout(noticeTimer.current)
@@ -166,9 +221,14 @@ function App() {
 
   useEffect(() => {
     try {
+      window.localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify({
+        version: 1,
+        activeTeamId: activeTeam?.id,
+        teams,
+      }))
       window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(teamIds))
     } catch {}
-  }, [teamIds])
+  }, [activeTeam?.id, teamIds, teams])
 
   useEffect(() => {
     try {
@@ -183,13 +243,17 @@ function App() {
   }, [itemInventory])
 
   useEffect(() => {
-    const availableIds = new Set(boxPokemon.map((pokemon) => pokemon.captureId))
-    setTeamIds((currentIds) => {
-      const validIds = currentIds.filter((captureId) => availableIds.has(captureId)).slice(0, 6)
-      const isUnchanged = validIds.length === currentIds.length
-        && validIds.every((captureId, index) => captureId === currentIds[index])
+    const availableCaptureIds = boxPokemon.map((pokemon) => pokemon.captureId)
+    setTeams((currentTeams) => {
+      const sanitizedTeams = sanitizeSavedTeams(currentTeams, availableCaptureIds)
+      const nextTeams = removeEvolutionFamilyDuplicates(sanitizedTeams, boxPokemon)
+      const isUnchanged = nextTeams.every((team, teamIndex) => (
+        team.name === currentTeams[teamIndex]?.name
+        && team.pokemonIds.length === currentTeams[teamIndex]?.pokemonIds.length
+        && team.pokemonIds.every((captureId, index) => captureId === currentTeams[teamIndex].pokemonIds[index])
+      ))
 
-      return isUnchanged ? currentIds : validIds
+      return isUnchanged ? currentTeams : nextTeams
     })
   }, [boxPokemon])
 
@@ -220,6 +284,11 @@ function App() {
   const selectMode = (mode) => {
     setSelectedMode(mode.id)
 
+    if (mode.id === 'start') {
+      setScreen('battle-select')
+      return
+    }
+
     if (mode.id === 'hatch') {
       enterHatchScreen()
       return
@@ -231,6 +300,7 @@ function App() {
     }
 
     if (mode.id === 'collection') {
+      setBoxReturnScreen('lobby')
       setScreen('box')
       return
     }
@@ -240,7 +310,6 @@ function App() {
       return
     }
 
-    showNotice(`${mode.title} 모드를 선택했습니다.`)
   }
 
   const resetDraw = () => {
@@ -252,12 +321,37 @@ function App() {
   }
 
   const openBox = () => {
+    setBoxReturnScreen('lobby')
     setScreen('box')
+  }
+
+  const openBoxFromBattleSelect = () => {
+    setBoxReturnScreen('battle-select')
+    setScreen('box')
+  }
+
+  const returnFromBox = () => {
+    setScreen(boxReturnScreen)
   }
 
   const openShop = () => {
     setSelectedMode('shop')
     setScreen('shop')
+  }
+
+  const selectSavedTeam = (teamId) => {
+    if (!teams.some((team) => team.id === teamId)) return
+    setActiveTeamId(teamId)
+  }
+
+  const startBattleMode = (battleMode) => {
+    if (teamIds.length !== BATTLE_TEAM_SIZE) {
+      showNotice(`배틀에 참가하려면 ${activeTeam?.name ?? '선택한 팀'}에 포켓몬 6마리를 편성해주세요.`)
+      return
+    }
+
+    const battleModeName = battleMode === 'league' ? '8인 리그전' : '128강 토너먼트'
+    showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 준비를 완료했습니다.`)
   }
 
   const purchaseBattleItem = (itemId) => {
@@ -350,30 +444,48 @@ function App() {
   const toggleTeamPokemon = (captureId) => {
     const targetPokemon = boxPokemon.find((pokemon) => pokemon.captureId === captureId)
 
-    if (!targetPokemon) return
+    if (!targetPokemon || !activeTeam) return
 
     if (teamIds.includes(captureId)) {
-      setTeamIds((currentIds) => currentIds.filter((id) => id !== captureId))
-      showNotice(`${targetPokemon.name}을(를) 팀에서 뺐습니다.`)
+      setTeams((currentTeams) => currentTeams.map((team) => (
+        team.id === activeTeam.id
+          ? { ...team, pokemonIds: team.pokemonIds.filter((id) => id !== captureId) }
+          : team
+      )))
+      showNotice(`${targetPokemon.name}을(를) ${activeTeam.name}에서 뺐습니다.`)
       return
     }
 
-    if (teamIds.length >= 6) {
+    const targetFamilyKey = getPokemonEvolutionFamilyKey(targetPokemon)
+    const sameFamilyPokemon = teamIds
+      .map((teamCaptureId) => boxPokemon.find((pokemon) => pokemon.captureId === teamCaptureId))
+      .find((pokemon) => pokemon && getPokemonEvolutionFamilyKey(pokemon) === targetFamilyKey)
+
+    if (sameFamilyPokemon) {
+      showNotice(`${sameFamilyPokemon.name}과(와) 같은 진화 계열은 한 팀에 함께 편성할 수 없습니다.`)
+      return
+    }
+
+    if (teamIds.length >= BATTLE_TEAM_SIZE) {
       showNotice('배틀 팀은 최대 6마리까지 편성할 수 있습니다.')
       return
     }
 
-    setTeamIds((currentIds) => [...currentIds, captureId])
-    showNotice(`${targetPokemon.name}을(를) 팀에 추가했습니다.`)
+    setTeams((currentTeams) => currentTeams.map((team) => (
+      team.id === activeTeam.id
+        ? { ...team, pokemonIds: [...team.pokemonIds, captureId] }
+        : team
+    )))
+    showNotice(`${targetPokemon.name}을(를) ${activeTeam.name}에 추가했습니다.`)
   }
 
   const confirmTeam = () => {
     if (teamIds.length === 0) {
-      showNotice('박스에서 팀에 넣을 포켓몬을 선택해주세요.')
+      showNotice(`${activeTeam?.name ?? '선택한 팀'}에 넣을 포켓몬을 선택해주세요.`)
       return
     }
 
-    showNotice(`${teamIds.length}마리 배틀 팀을 저장했습니다.`)
+    showNotice(`${activeTeam.name}을(를) ${teamIds.length}마리 구성으로 저장했습니다.`)
   }
 
   const autoBuildTeam = () => {
@@ -382,9 +494,15 @@ function App() {
       return
     }
 
-    const nextTeamIds = boxPokemon.slice(0, 6).map((pokemon) => pokemon.captureId)
-    setTeamIds(nextTeamIds)
-    showNotice(`${nextTeamIds.length}마리로 팀을 자동 편성했습니다.`)
+    const nextTeamIds = getTrainingRosterPokemon(boxPokemon)
+      .slice(0, BATTLE_TEAM_SIZE)
+      .map((pokemon) => pokemon.captureId)
+    setTeams((currentTeams) => currentTeams.map((team) => (
+      team.id === activeTeam?.id
+        ? { ...team, pokemonIds: nextTeamIds }
+        : team
+    )))
+    showNotice(`${activeTeam?.name ?? '선택한 팀'}을(를) ${nextTeamIds.length}마리로 자동 편성했습니다.`)
   }
 
   const saveTraining = (pokemon) => {
@@ -404,7 +522,7 @@ function App() {
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -503,6 +621,16 @@ function App() {
 
         </section>
       </main>
+      ) : screen === 'battle-select' ? (
+        <BattleSelectScreen
+          pokemon={boxPokemon}
+          teams={teams}
+          activeTeamId={activeTeam?.id}
+          onBack={returnToLobby}
+          onOpenBox={openBoxFromBattleSelect}
+          onSelectTeam={selectSavedTeam}
+          onStartMode={startBattleMode}
+        />
       ) : screen === 'hatch' ? (
         <HatchScreen
           results={drawResults}
@@ -527,12 +655,16 @@ function App() {
       ) : (
         <BoxScreen
           pokemon={boxPokemon}
+          teams={teams}
+          activeTeamId={activeTeam?.id}
           teamIds={teamIds}
           inventory={itemInventory}
-          onBack={returnToLobby}
+          onBack={returnFromBox}
+          backLabel={boxReturnScreen === 'battle-select' ? '배틀 선택' : '로비'}
           onEquipItem={equipBattleItem}
           onSetTeraType={setPokemonTeraType}
           onSetDynamaxMode={setPokemonDynamaxMode}
+          onSelectTeam={selectSavedTeam}
           onToggleTeam={toggleTeamPokemon}
           onAutoTeam={autoBuildTeam}
           onConfirmTeam={confirmTeam}
