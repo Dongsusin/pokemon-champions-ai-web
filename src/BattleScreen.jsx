@@ -23,7 +23,11 @@ import {
   getBattleSummary,
   getTypeEffectiveness,
 } from './data/battleEngine'
-import { getMoveAnimationProfile } from './data/moveAnimationData'
+import {
+  getMoveAnimationProfile,
+  getMovePixelAnimationPlan,
+  MOVE_PIXEL_FX_ASSETS,
+} from './data/moveAnimationData'
 import { typeClassName } from './data/trainingData'
 
 function fallbackImageHandler(fallback) {
@@ -142,63 +146,71 @@ function BattleTurnPlayback({ cue, turn }) {
 
 function MoveAnimation({ cue }) {
   const profile = getMoveAnimationProfile(cue)
-  const particles = Array.from({ length: profile.particleCount }, (_, particleIndex) => {
-    const shiftedSeed = profile.seed >>> (particleIndex % 16)
-    return {
-      index: particleIndex,
-      angle: ((360 / profile.particleCount) * particleIndex + profile.rotation) % 360,
-      delay: -((particleIndex % 6) * 47),
-      distance: 24 + (shiftedSeed % profile.spread),
-      size: 4 + (shiftedSeed % 7),
-      x: 8 + ((shiftedSeed + particleIndex * 37) % 84),
-      y: 8 + ((shiftedSeed + particleIndex * 23) % 62),
-    }
-  })
+  const plan = getMovePixelAnimationPlan(profile)
+  const sprites = Array.from({ length: plan.copies }, (_, spriteIndex) => ({
+    index: spriteIndex,
+    asset: spriteIndex % 3 === 2 ? plan.secondaryAsset : plan.primaryAsset,
+    delay: spriteIndex * plan.stagger,
+    lane: ((profile.seed >>> (spriteIndex % 12)) + spriteIndex * 17) % 5,
+    spin: ((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 53) % 360,
+  }))
   const targetSelf = profile.targetSelf || cue.targetSideId === cue.sideId
   const style = {
     '--move-primary': profile.primary,
     '--move-secondary': profile.secondary,
     '--move-highlight': profile.highlight,
-    '--move-rotation': `${profile.rotation}deg`,
-    '--move-spread': `${profile.spread}px`,
     '--move-duration': `${profile.duration}ms`,
+    '--move-scale': plan.scale,
+    '--move-impact-scale': plan.impactScale,
+    '--move-arc': `${plan.arc}deg`,
   }
 
   return (
     <div
-      className={`battle-move-animation side-${cue.sideId} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
+      className={`battle-pixel-move-animation side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
       style={style}
       data-move-id={profile.moveId}
       aria-hidden="true"
     >
-      <span className="move-animation-screen" />
-      <span className="move-animation-source"><i /><b /></span>
-      <span className="move-animation-path">
-        <i className="move-animation-projectile" />
-        <i className="move-animation-trail" />
-        <i className="move-animation-beam" />
+      <span className="pixel-move-screen" />
+      {plan.fieldAsset && <img className="pixel-move-field" src={plan.fieldAsset} alt="" draggable="false" />}
+
+      <span className="pixel-move-source">
+        <img src={plan.primaryAsset} alt="" draggable="false" />
+        <img src={plan.secondaryAsset} alt="" draggable="false" />
+        <i />
       </span>
-      <span className="move-animation-target">
-        <i className="move-animation-symbol symbol-a" />
-        <i className="move-animation-symbol symbol-b" />
-        <i className="move-animation-symbol symbol-c" />
-      </span>
-      <span className="move-animation-particles">
-        {particles.map((particle) => (
-          <i
-            key={`${profile.moveId}-${particle.index}`}
+
+      <span className="pixel-move-trajectory">
+        {sprites.map((sprite) => (
+          <img
+            key={`${profile.moveId}-${sprite.index}`}
+            src={sprite.asset}
+            alt=""
+            draggable="false"
             style={{
-              '--particle-angle': `${particle.angle}deg`,
-              '--particle-delay': `${particle.delay}ms`,
-              '--particle-distance': `${particle.distance}px`,
-              '--particle-size': `${particle.size}px`,
-              '--particle-x': `${particle.x}%`,
-              '--particle-y': `${particle.y}%`,
+              '--sprite-index': sprite.index,
+              '--sprite-delay': `${sprite.delay}ms`,
+              '--sprite-lane': sprite.lane,
+              '--sprite-spin': `${sprite.spin}deg`,
             }}
           />
         ))}
       </span>
-      <strong className="move-animation-name">{cue.moveName}</strong>
+
+      <span className="pixel-move-beam"><i /><b /></span>
+      <span className="pixel-move-impact">
+        {plan.impactAssets.map((asset, assetIndex) => (
+          <img
+            key={`${asset}-${assetIndex}`}
+            src={asset}
+            alt=""
+            draggable="false"
+            style={{ '--impact-index': assetIndex }}
+          />
+        ))}
+      </span>
+      <strong className="pixel-move-name">{cue.moveName}</strong>
     </div>
   )
 }
@@ -551,6 +563,14 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
   const summary = useMemo(() => getBattleSummary(battle), [battle])
+
+  useEffect(() => {
+    MOVE_PIXEL_FX_ASSETS.forEach((asset) => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = asset
+    })
+  }, [])
 
   useEffect(() => {
     const animationFrame = requestAnimationFrame(() => {

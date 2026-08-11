@@ -220,17 +220,261 @@ const ARCHETYPE_MOTION = {
 }
 
 const ARCHETYPE_DURATION = {
-  aerial: 900,
-  barrage: 920,
-  beam: 900,
-  dance: 900,
-  eruption: 920,
-  explosion: 940,
-  lightning: 860,
-  meteor: 920,
-  quake: 900,
-  storm: 920,
-  wave: 900,
+  aerial: 1420,
+  barrage: 1540,
+  beam: 1640,
+  bite: 1460,
+  dance: 1500,
+  dash: 1380,
+  drain: 1580,
+  eruption: 1720,
+  explosion: 1680,
+  lightning: 1560,
+  meteor: 1660,
+  punch: 1420,
+  quake: 1640,
+  slash: 1420,
+  storm: 1700,
+  stream: 1580,
+  wave: 1660,
+}
+
+const MOVE_PIXEL_FX_FILES = [
+  'alpha.png',
+  'angry.png',
+  'blackwisp.png',
+  'bluefireball.png',
+  'bone.png',
+  'bottombite.png',
+  'caltrop.png',
+  'electroball.png',
+  'energyball.png',
+  'feather.png',
+  'fireball.png',
+  'fist.png',
+  'fist1.png',
+  'flareball.png',
+  'foot.png',
+  'gear.png',
+  'heart.png',
+  'hitmarker.png',
+  'iceball.png',
+  'icicle.png',
+  'impact.png',
+  'leaf1.png',
+  'leaf2.png',
+  'leftchop.png',
+  'leftclaw.png',
+  'leftslash.png',
+  'lightning.png',
+  'mistball.png',
+  'moon.png',
+  'mudwisp.png',
+  'petal.png',
+  'poisoncaltrop.png',
+  'poisonwisp.png',
+  'rainbow.png',
+  'rightchop.png',
+  'rightclaw.png',
+  'rightslash.png',
+  'rock1.png',
+  'rock2.png',
+  'rock3.png',
+  'rocks.png',
+  'shadowball.png',
+  'shell.png',
+  'shine.png',
+  'sound.png',
+  'stare.png',
+  'sword.png',
+  'topbite.png',
+  'waterwisp.png',
+  'web.png',
+  'wisp.png',
+  'weather-electricterrain.png',
+  'weather-grassyterrain.png',
+  'weather-gravity.png',
+  'weather-hail.png',
+  'weather-magicroom.png',
+  'weather-mistyterrain.png',
+  'weather-psychicterrain.png',
+  'weather-raindance.jpg',
+  'weather-sandstorm.png',
+  'weather-strongwind.png',
+  'weather-sunnyday.jpg',
+  'weather-trickroom.png',
+  'weather-wonderroom.png',
+]
+
+const fxAsset = (fileName) => `/assets/move-fx/${fileName}`
+
+export const MOVE_PIXEL_FX_ASSETS = MOVE_PIXEL_FX_FILES.map(fxAsset)
+
+const TYPE_PIXEL_ASSETS = {
+  노말: 'impact.png',
+  불꽃: 'fireball.png',
+  물: 'waterwisp.png',
+  전기: 'electroball.png',
+  풀: 'energyball.png',
+  얼음: 'iceball.png',
+  격투: 'fist.png',
+  독: 'poisonwisp.png',
+  땅: 'mudwisp.png',
+  비행: 'feather.png',
+  에스퍼: 'mistball.png',
+  벌레: 'leaf2.png',
+  바위: 'rock2.png',
+  고스트: 'shadowball.png',
+  드래곤: 'alpha.png',
+  악: 'blackwisp.png',
+  강철: 'gear.png',
+  페어리: 'shine.png',
+  스텔라: 'rainbow.png',
+}
+
+const MOTIF_PIXEL_ASSETS = {
+  aura: 'mistball.png',
+  blade: 'leftslash.png',
+  bolt: 'lightning.png',
+  bubble: 'waterwisp.png',
+  burst: 'flareball.png',
+  crack: 'rocks.png',
+  cross: 'leftslash.png',
+  dragon: 'alpha.png',
+  drop: 'poisonwisp.png',
+  energy: 'alpha.png',
+  fang: 'topbite.png',
+  feather: 'feather.png',
+  field: 'shine.png',
+  fist: 'fist.png',
+  flame: 'fireball.png',
+  ghost: 'shadowball.png',
+  heal: 'shine.png',
+  ice: 'iceball.png',
+  impact: 'impact.png',
+  leaf: 'leaf1.png',
+  meteor: 'rock3.png',
+  moon: 'moon.png',
+  mote: 'wisp.png',
+  petal: 'petal.png',
+  psychic: 'mistball.png',
+  rain: 'waterwisp.png',
+  ring: 'sound.png',
+  rock: 'rock2.png',
+  sand: 'mudwisp.png',
+  screen: 'alpha.png',
+  seed: 'energyball.png',
+  shard: 'icicle.png',
+  shield: 'alpha.png',
+  snow: 'icicle.png',
+  sparkle: 'shine.png',
+  speed: 'impact.png',
+  spike: 'caltrop.png',
+  spiral: 'rainbow.png',
+  steel: 'gear.png',
+  sun: 'flareball.png',
+  sword: 'sword.png',
+  toxic: 'poisonwisp.png',
+  vine: 'leaf2.png',
+  water: 'waterwisp.png',
+  web: 'web.png',
+  wind: 'feather.png',
+}
+
+const ARCHETYPE_PIXEL_MODES = {
+  aerial: 'dash',
+  ailment: 'status',
+  barrage: 'melee',
+  barrier: 'self',
+  beam: 'beam',
+  bite: 'bite',
+  blast: 'projectile',
+  boost: 'self',
+  crystal: 'projectile',
+  dance: 'self',
+  dash: 'dash',
+  drain: 'drain',
+  eruption: 'eruption',
+  explosion: 'burst',
+  hazard: 'hazard',
+  kick: 'melee',
+  leaves: 'stream',
+  lightning: 'lightning',
+  meteor: 'rain',
+  orb: 'projectile',
+  prism: 'rings',
+  psychic: 'rings',
+  pulse: 'projectile',
+  punch: 'melee',
+  quake: 'ground',
+  restore: 'self',
+  seed: 'projectile',
+  slash: 'slash',
+  sleep: 'self',
+  sludge: 'projectile',
+  sound: 'rings',
+  spectral: 'projectile',
+  spin: 'dash',
+  storm: 'rain',
+  stream: 'stream',
+  strike: 'melee',
+  terrain: 'field',
+  vanish: 'vanish',
+  wave: 'wave',
+  weather: 'field',
+  web: 'hazard',
+  whip: 'stream',
+}
+
+function fieldAssetForMove(profile) {
+  if (profile.moveId.includes('electricterrain')) return 'weather-electricterrain.png'
+  if (profile.moveId.includes('grassyterrain')) return 'weather-grassyterrain.png'
+  if (profile.moveId.includes('mistyterrain')) return 'weather-mistyterrain.png'
+  if (profile.moveId.includes('psychicterrain')) return 'weather-psychicterrain.png'
+  if (profile.moveId.includes('trickroom')) return 'weather-trickroom.png'
+  if (profile.moveId.includes('magicroom')) return 'weather-magicroom.png'
+  if (profile.moveId.includes('wonderroom')) return 'weather-wonderroom.png'
+  if (profile.moveId.includes('gravity')) return 'weather-gravity.png'
+  if (/rain|water/.test(profile.moveId)) return 'weather-raindance.jpg'
+  if (/sand/.test(profile.moveId)) return 'weather-sandstorm.png'
+  if (/hail|snow|chilly/.test(profile.moveId)) return 'weather-hail.png'
+  if (/wind/.test(profile.moveId)) return 'weather-strongwind.png'
+  if (/sun|day/.test(profile.moveId)) return 'weather-sunnyday.jpg'
+  return null
+}
+
+function impactAssetsForMode(mode, profile) {
+  if (mode === 'bite') return ['topbite.png', 'bottombite.png']
+  if (mode === 'slash') return ['leftslash.png', 'rightslash.png', 'leftclaw.png']
+  if (mode === 'lightning') return ['lightning.png', 'electroball.png']
+  if (mode === 'melee') return [profile.archetype === 'kick' ? 'foot.png' : 'fist1.png', 'hitmarker.png']
+  if (mode === 'ground') return ['rocks.png', 'rock1.png', 'rock2.png', 'rock3.png']
+  if (mode === 'hazard') return [profile.archetype === 'web' ? 'web.png' : profile.type === '독' ? 'poisoncaltrop.png' : 'caltrop.png']
+  if (mode === 'rings') return [profile.motif === 'moon' ? 'moon.png' : 'rainbow.png', 'shine.png']
+  if (mode === 'self') return [profile.motif === 'sword' ? 'sword.png' : profile.moveId === 'rest' ? 'wisp.png' : 'shine.png']
+  if (mode === 'wave') return ['waterwisp.png', 'impact.png']
+  if (mode === 'burst' || mode === 'eruption') return ['flareball.png', 'fireball.png', 'impact.png']
+  return ['impact.png', 'shine.png']
+}
+
+export function getMovePixelAnimationPlan(profile) {
+  const mode = ARCHETYPE_PIXEL_MODES[profile.archetype] ?? 'projectile'
+  const primaryFile = MOTIF_PIXEL_ASSETS[profile.motif] ?? TYPE_PIXEL_ASSETS[profile.type] ?? 'impact.png'
+  const secondaryFile = TYPE_PIXEL_ASSETS[profile.type] ?? 'shine.png'
+  const fieldFile = fieldAssetForMove(profile)
+
+  return {
+    mode,
+    primaryAsset: fxAsset(primaryFile),
+    secondaryAsset: fxAsset(secondaryFile),
+    impactAssets: impactAssetsForMode(mode, profile).map(fxAsset),
+    fieldAsset: fieldFile ? fxAsset(fieldFile) : null,
+    copies: mode === 'stream' || mode === 'rain' ? 7 + (profile.seed % 4) : mode === 'projectile' ? 2 + (profile.seed % 3) : 4,
+    scale: 0.84 + (profile.seed % 29) / 100,
+    impactScale: 1 + ((profile.seed >>> 5) % 36) / 100,
+    arc: (profile.seed % 31) - 15,
+    stagger: 58 + (profile.seed % 43),
+  }
 }
 
 export function getMoveAnimationProfile(move = {}) {
@@ -246,8 +490,8 @@ export function getMoveAnimationProfile(move = {}) {
   const theme = TYPE_THEMES[type] ?? TYPE_THEMES.노말
   const power = Math.max(0, Number(move.movePower ?? move.power) || 0)
   const intensity = power >= 120 ? 3 : power >= 75 ? 2 : 1
-  const baseDuration = ARCHETYPE_DURATION[inferred.archetype] ?? (category === 'status' ? 840 : 820)
-  const duration = baseDuration + (seed % 81) - 40
+  const baseDuration = ARCHETYPE_DURATION[inferred.archetype] ?? (category === 'status' ? 1460 : 1480)
+  const duration = baseDuration + (seed % 121) - 60
   const moveTarget = move.moveTarget ?? move.target
   const targetSelf = ['self', 'allySide', 'allyTeam', 'allies', 'adjacentAllyOrSelf'].includes(moveTarget)
     || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(inferred.archetype)
@@ -258,6 +502,7 @@ export function getMoveAnimationProfile(move = {}) {
     moveId,
     archetype: inferred.archetype,
     motif: inferred.motif,
+    type,
     screen: inferred.screen ?? 'none',
     motion: inferred.motion ?? ARCHETYPE_MOTION[inferred.archetype] ?? (category === 'physical' ? 'lunge' : 'cast'),
     primary: theme[0],
