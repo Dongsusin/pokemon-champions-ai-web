@@ -1,0 +1,316 @@
+import {
+  ArrowLeft,
+  ChevronRight,
+  CircleDot,
+  Crown,
+  Medal,
+  Shield,
+  Sparkles,
+  Swords,
+  Trophy,
+  UsersRound,
+} from 'lucide-react'
+import TrainerSprite from './TrainerSprite'
+import {
+  PLAYER_PARTICIPANT_ID,
+  getCompetitionParticipant,
+  getCompetitionRoundLabel,
+  getCurrentCompetitionMatch,
+  getParticipantProgressState,
+  getSortedLeagueStandings,
+} from './data/competitionData'
+import { getTrainerTeam } from './data/trainerTeams'
+import { getSpeciesProfile } from './data/trainingData'
+
+function pokemonIconSources(slot) {
+  const profile = getSpeciesProfile(slot.speciesId)
+  return {
+    primary: slot.icon ?? profile?.icon ?? profile?.iconFallback,
+    fallback: slot.iconFallback ?? profile?.iconFallback,
+  }
+}
+
+function fallbackImageHandler(fallback) {
+  return (event) => {
+    if (!fallback || event.currentTarget.dataset.fallbackApplied) return
+    event.currentTarget.dataset.fallbackApplied = 'true'
+    event.currentTarget.src = fallback
+  }
+}
+
+function ParticipantCard({ participant, state, isOpponent = false, compact = false }) {
+  return (
+    <article
+      className={`competition-participant-card state-${state}${isOpponent ? ' current-opponent' : ''}${compact ? ' compact' : ''}`}
+      title={`${participant.name} · ${participant.tier} TIER`}
+    >
+      <TrainerSprite trainer={participant} isPlayer={participant.isPlayer} />
+      <span>
+        <small>{participant.isPlayer ? 'PLAYER' : `${participant.tier} TIER`}</small>
+        <strong>{participant.name}</strong>
+      </span>
+      {participant.isPlayer && <Shield size={13} />}
+      {isOpponent && <Swords size={13} />}
+    </article>
+  )
+}
+
+function MatchTrainer({ participant, side, team }) {
+  return (
+    <article className={`competition-match-trainer side-${side}`}>
+      <span className="competition-match-trainer-tier">
+        {participant.isPlayer ? 'YOUR TEAM' : `${participant.tier} TIER · TEAM ${participant.teamNumber}`}
+      </span>
+      <TrainerSprite
+        trainer={participant}
+        isPlayer={participant.isPlayer}
+        className="competition-match-trainer-sprite"
+      />
+      <div>
+        <small>{participant.isPlayer ? participant.teamName : participant.region.toUpperCase()}</small>
+        <h2>{participant.name}</h2>
+      </div>
+      <div className="competition-match-party" aria-label={`${participant.name} 포켓몬 팀`}>
+        {team.map((pokemon, index) => (
+          <span key={`${participant.id}-${pokemon.captureId ?? pokemon.speciesId}-${index}`}>
+            <img
+              src={pokemonIconSources(pokemon).primary}
+              alt={pokemon.name}
+              draggable="false"
+              onError={fallbackImageHandler(pokemonIconSources(pokemon).fallback)}
+            />
+          </span>
+        ))}
+      </div>
+    </article>
+  )
+}
+
+function TournamentOverview({ competition, currentMatch }) {
+  const opponentId = currentMatch?.opponent?.id
+  const activeCount = competition.activeParticipantIds.length
+  const lastRound = competition.roundHistory.at(-1)
+
+  return (
+    <section className="competition-roster-panel">
+      <header>
+        <div>
+          <span>TOURNAMENT ENTRANTS</span>
+          <h2>128강 참가 트레이너</h2>
+        </div>
+        <div className="competition-roster-summary">
+          <strong>{activeCount}</strong>
+          <span>현재 생존</span>
+        </div>
+      </header>
+
+      <div className="competition-participant-grid tournament-grid">
+        {competition.participants.map((participant) => (
+          <ParticipantCard
+            key={participant.id}
+            participant={participant}
+            state={getParticipantProgressState(competition, participant.id)}
+            isOpponent={participant.id === opponentId}
+            compact
+          />
+        ))}
+      </div>
+
+      {lastRound && (
+        <footer className="competition-last-results">
+          <span><CircleDot size={13} /> {lastRound.label} 결과</span>
+          <div>
+            {lastRound.matches.slice(0, 8).map((match) => (
+              <span key={`${lastRound.round}-${match.firstId}-${match.secondId}`}>
+                <b>{getCompetitionParticipant(competition, match.winnerId)?.name}</b>
+                <em>{match.winnerRemaining}마리 잔존</em>
+              </span>
+            ))}
+          </div>
+        </footer>
+      )}
+    </section>
+  )
+}
+
+function LeagueOverview({ competition, currentMatch }) {
+  const standings = getSortedLeagueStandings(competition)
+  const currentPairings = competition.schedule[competition.round] ?? []
+
+  return (
+    <section className="competition-league-workspace">
+      <div className="competition-league-participants">
+        <header>
+          <div>
+            <span>LEAGUE MEMBERS</span>
+            <h2>8인 참가 명단</h2>
+          </div>
+          <UsersRound size={24} />
+        </header>
+        <div>
+          {competition.participants.map((participant) => (
+            <ParticipantCard
+              key={participant.id}
+              participant={participant}
+              state="active"
+              isOpponent={participant.id === currentMatch?.opponent?.id}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="competition-standings-panel">
+        <header>
+          <div>
+            <span>LEAGUE TABLE</span>
+            <h2>현재 순위</h2>
+          </div>
+          <Medal size={23} />
+        </header>
+        <div className="competition-standings-table">
+          <div className="competition-standing-row heading">
+            <span>순위</span><span>트레이너</span><span>승</span><span>패</span><span>득실</span><span>PTS</span>
+          </div>
+          {standings.map((standing, index) => {
+            const participant = getCompetitionParticipant(competition, standing.participantId)
+            return (
+              <div
+                className={`competition-standing-row${participant.isPlayer ? ' player' : ''}`}
+                key={standing.participantId}
+              >
+                <strong>{index + 1}</strong>
+                <span>{participant.name}</span>
+                <b>{standing.wins}</b>
+                <b>{standing.losses}</b>
+                <em>{standing.differential > 0 ? '+' : ''}{standing.differential}</em>
+                <strong>{standing.points}</strong>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="competition-fixtures-panel">
+        <header>
+          <span>CURRENT FIXTURES</span>
+          <h2>{getCompetitionRoundLabel(competition)} 대진</h2>
+        </header>
+        <div>
+          {currentPairings.map(([firstId, secondId]) => {
+            const first = getCompetitionParticipant(competition, firstId)
+            const second = getCompetitionParticipant(competition, secondId)
+            const isPlayerPair = [firstId, secondId].includes(PLAYER_PARTICIPANT_ID)
+            return (
+              <article className={isPlayerPair ? 'player-match' : ''} key={`${firstId}-${secondId}`}>
+                <span>{first.name}</span>
+                <b>VS</b>
+                <span>{second.name}</span>
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
+  const currentMatch = getCurrentCompetitionMatch(competition)
+  const player = getCompetitionParticipant(competition, PLAYER_PARTICIPANT_ID)
+  const opponent = currentMatch?.opponent
+  const opponentTeam = opponent ? getTrainerTeam(opponent.name, opponent.teamNumber) : null
+  const isTournament = competition.mode === 'tournament'
+  const ModeIcon = isTournament ? Trophy : UsersRound
+  const roundLabel = getCompetitionRoundLabel(competition)
+  const standings = competition.mode === 'league' ? getSortedLeagueStandings(competition) : []
+  const playerRank = standings.findIndex((standing) => standing.participantId === PLAYER_PARTICIPANT_ID) + 1
+  const champion = competition.championId
+    ? getCompetitionParticipant(competition, competition.championId)
+    : null
+  const isFinished = competition.status !== 'active'
+
+  return (
+    <main className="competition-screen">
+      <header className="competition-header">
+        <button className="screen-back-button" type="button" onClick={onBack}>
+          <ArrowLeft size={19} />
+          <span>모드 선택</span>
+        </button>
+        <div className="competition-title-lockup">
+          <span className={`competition-mode-emblem mode-${competition.mode}`}><ModeIcon size={25} /></span>
+          <div>
+            <span>{isTournament ? 'CHAMPIONS KNOCKOUT' : 'CHAMPIONS LEAGUE'}</span>
+            <h1>{isTournament ? '128강 토너먼트' : '8인 리그전'}</h1>
+          </div>
+        </div>
+        <div className="competition-round-chip">
+          <small>{isFinished ? 'COMPETITION RESULT' : 'CURRENT ROUND'}</small>
+          <strong>{isFinished ? '대회 종료' : roundLabel}</strong>
+        </div>
+      </header>
+
+      {!isFinished && currentMatch && (
+        <section className="competition-current-match-panel">
+          <div className="competition-match-kicker">
+            <span><Swords size={15} /> NEXT PLAYER BATTLE</span>
+            <strong>{roundLabel}</strong>
+          </div>
+          <div className="competition-matchup-stage">
+            <MatchTrainer participant={player} side="player" team={competition.playerTeam} />
+            <div className="competition-versus-mark">
+              <small>MATCH</small>
+              <strong>VS</strong>
+              <span>6 vs 6 SINGLE</span>
+            </div>
+            <MatchTrainer participant={opponent} side="opponent" team={opponentTeam.pokemon} />
+          </div>
+          <footer>
+            <span>
+              <Sparkles size={15} />
+              AI 대전은 기술 선택과 교대를 직접 진행합니다.
+            </span>
+            <button type="button" onClick={onStartBattle}>
+              <Swords size={18} />
+              {roundLabel} 배틀 시작
+              <ChevronRight size={18} />
+            </button>
+          </footer>
+        </section>
+      )}
+
+      {isFinished && (
+        <section className={`competition-result-panel result-${competition.status}`}>
+          <span className="competition-result-crown">
+            {competition.status === 'complete' && competition.championId === PLAYER_PARTICIPANT_ID
+              ? <Crown size={42} />
+              : <Trophy size={42} />}
+          </span>
+          <div>
+            <small>{competition.status === 'eliminated' ? 'CHALLENGE OVER' : 'COMPETITION COMPLETE'}</small>
+            <h2>
+              {competition.status === 'eliminated'
+                ? `${competition.roundHistory.at(-1)?.label ?? '토너먼트'}에서 탈락했습니다`
+                : champion?.id === PLAYER_PARTICIPANT_ID
+                  ? 'PLAYER_01 우승!'
+                  : `${champion?.name ?? 'AI 트레이너'} 우승`}
+            </h2>
+            <p>
+              {competition.mode === 'league'
+                ? `최종 순위 ${playerRank || '-'}위 · ${standings.find((entry) => entry.participantId === PLAYER_PARTICIPANT_ID)?.wins ?? 0}승`
+                : `총 ${competition.roundHistory.length}라운드에 참가했습니다.`}
+            </p>
+          </div>
+          <button type="button" onClick={onRestart}>다른 대회 선택</button>
+        </section>
+      )}
+
+      {isTournament ? (
+        <TournamentOverview competition={competition} currentMatch={currentMatch} />
+      ) : (
+        <LeagueOverview competition={competition} currentMatch={currentMatch} />
+      )}
+    </main>
+  )
+}
+
+export default CompetitionScreen

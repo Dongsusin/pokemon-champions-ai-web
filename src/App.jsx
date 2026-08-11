@@ -14,7 +14,9 @@ import {
   Zap,
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
+import BattleScreen from './BattleScreen'
 import BoxScreen from './BoxScreen'
+import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
@@ -43,6 +45,13 @@ import {
   normalizeSavedTeamState,
   sanitizeSavedTeams,
 } from './data/teamData'
+import {
+  createCompetition,
+  getCompetitionOpponentTeam,
+  getCompetitionRoundLabel,
+  getCurrentCompetitionMatch,
+  resolveCompetitionMatch,
+} from './data/competitionData'
 
 const BOX_STORAGE_KEY = 'champions-dex-v2'
 const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
@@ -205,6 +214,8 @@ function App() {
   const [itemInventory, setItemInventory] = useState(storedItemInventory.current)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notice, setNotice] = useState('')
+  const [competition, setCompetition] = useState(null)
+  const [battleMatch, setBattleMatch] = useState(null)
   const noticeTimer = useRef(null)
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
@@ -350,8 +361,64 @@ function App() {
       return
     }
 
+    const activeTeamPokemon = teamIds
+      .map((captureId) => boxPokemon.find((pokemon) => pokemon.captureId === captureId))
+      .filter(Boolean)
+    const nextCompetition = createCompetition(
+      battleMode,
+      activeTeamPokemon,
+      activeTeam.name,
+    )
     const battleModeName = battleMode === 'league' ? '8인 리그전' : '128강 토너먼트'
-    showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 준비를 완료했습니다.`)
+
+    setCompetition(nextCompetition)
+    setBattleMatch(null)
+    setScreen('competition')
+    showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 등록을 완료했습니다.`)
+  }
+
+  const startCompetitionBattle = () => {
+    const currentMatch = getCurrentCompetitionMatch(competition)
+    const opponentTeam = getCompetitionOpponentTeam(competition)
+
+    if (!currentMatch?.opponent || !opponentTeam) {
+      showNotice('진행할 대진을 찾을 수 없습니다.')
+      return
+    }
+
+    setBattleMatch({
+      opponent: currentMatch.opponent,
+      opponentTeam,
+      competitionLabel: `${competition.mode === 'league' ? '8인 리그전' : '128강 토너먼트'} · ${getCompetitionRoundLabel(competition)}`,
+    })
+    setScreen('battle')
+  }
+
+  const finishCompetitionBattle = (battleSummary) => {
+    const playerWon = battleSummary.winner === 'player'
+    const reward = playerWon ? (competition.mode === 'league' ? 100 : 150) : 0
+    const nextCompetition = resolveCompetitionMatch(
+      competition,
+      playerWon,
+      battleSummary,
+    )
+
+    if (reward > 0) {
+      const nextVp = vpBalance.current + reward
+      vpBalance.current = nextVp
+      setVp(nextVp)
+      showNotice(`배틀 승리 보상으로 ${reward} VP를 획득했습니다.`)
+    }
+
+    setCompetition(nextCompetition)
+    setBattleMatch(null)
+    setScreen('competition')
+  }
+
+  const leaveCompetition = () => {
+    setCompetition(null)
+    setBattleMatch(null)
+    setScreen('battle-select')
   }
 
   const purchaseBattleItem = (itemId) => {
@@ -522,7 +589,7 @@ function App() {
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${screen === 'battle' ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -630,6 +697,21 @@ function App() {
           onOpenBox={openBoxFromBattleSelect}
           onSelectTeam={selectSavedTeam}
           onStartMode={startBattleMode}
+        />
+      ) : screen === 'competition' && competition ? (
+        <CompetitionScreen
+          competition={competition}
+          onBack={leaveCompetition}
+          onRestart={leaveCompetition}
+          onStartBattle={startCompetitionBattle}
+        />
+      ) : screen === 'battle' && competition && battleMatch ? (
+        <BattleScreen
+          competitionLabel={battleMatch.competitionLabel}
+          playerPokemon={competition.playerTeam}
+          opponent={battleMatch.opponent}
+          opponentTeam={battleMatch.opponentTeam}
+          onComplete={finishCompetitionBattle}
         />
       ) : screen === 'hatch' ? (
         <HatchScreen
