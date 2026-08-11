@@ -23,6 +23,7 @@ import {
   getBattleSummary,
   getTypeEffectiveness,
 } from './data/battleEngine'
+import { getMoveAnimationProfile } from './data/moveAnimationData'
 import { typeClassName } from './data/trainingData'
 
 function fallbackImageHandler(fallback) {
@@ -82,6 +83,7 @@ const TURN_STEP_DURATIONS = {
 }
 
 function turnStepDuration(step) {
+  if (step?.phase === 'attack' && step.moveId) return getMoveAnimationProfile(step).duration
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
 }
 
@@ -107,7 +109,11 @@ function BattleTurnPlayback({ cue, turn }) {
     : effectivenessPresentation(cue.effectiveness)
 
   return (
-    <section className={`battle-turn-playback phase-${cue?.phase ?? 'waiting'} side-${cue?.sideId ?? 'neutral'}`} aria-live="assertive">
+    <section
+      className={`battle-turn-playback phase-${cue?.phase ?? 'waiting'} side-${cue?.sideId ?? 'neutral'}`}
+      style={{ '--turn-step-duration': `${turnStepDuration(cue)}ms` }}
+      aria-live="assertive"
+    >
       <span className="battle-turn-playback-emblem">
         {cue?.phase?.includes('switch') ? <ArrowLeftRight size={27} /> : cue?.phase === 'gimmick' ? <Sparkles size={27} /> : <Swords size={27} />}
       </span>
@@ -131,6 +137,69 @@ function BattleTurnPlayback({ cue, turn }) {
       )}
       <span className="battle-turn-progress" aria-hidden="true"><i /></span>
     </section>
+  )
+}
+
+function MoveAnimation({ cue }) {
+  const profile = getMoveAnimationProfile(cue)
+  const particles = Array.from({ length: profile.particleCount }, (_, particleIndex) => {
+    const shiftedSeed = profile.seed >>> (particleIndex % 16)
+    return {
+      index: particleIndex,
+      angle: ((360 / profile.particleCount) * particleIndex + profile.rotation) % 360,
+      delay: -((particleIndex % 6) * 47),
+      distance: 24 + (shiftedSeed % profile.spread),
+      size: 4 + (shiftedSeed % 7),
+      x: 8 + ((shiftedSeed + particleIndex * 37) % 84),
+      y: 8 + ((shiftedSeed + particleIndex * 23) % 62),
+    }
+  })
+  const targetSelf = profile.targetSelf || cue.targetSideId === cue.sideId
+  const style = {
+    '--move-primary': profile.primary,
+    '--move-secondary': profile.secondary,
+    '--move-highlight': profile.highlight,
+    '--move-rotation': `${profile.rotation}deg`,
+    '--move-spread': `${profile.spread}px`,
+    '--move-duration': `${profile.duration}ms`,
+  }
+
+  return (
+    <div
+      className={`battle-move-animation side-${cue.sideId} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
+      style={style}
+      data-move-id={profile.moveId}
+      aria-hidden="true"
+    >
+      <span className="move-animation-screen" />
+      <span className="move-animation-source"><i /><b /></span>
+      <span className="move-animation-path">
+        <i className="move-animation-projectile" />
+        <i className="move-animation-trail" />
+        <i className="move-animation-beam" />
+      </span>
+      <span className="move-animation-target">
+        <i className="move-animation-symbol symbol-a" />
+        <i className="move-animation-symbol symbol-b" />
+        <i className="move-animation-symbol symbol-c" />
+      </span>
+      <span className="move-animation-particles">
+        {particles.map((particle) => (
+          <i
+            key={`${profile.moveId}-${particle.index}`}
+            style={{
+              '--particle-angle': `${particle.angle}deg`,
+              '--particle-delay': `${particle.delay}ms`,
+              '--particle-distance': `${particle.distance}px`,
+              '--particle-size': `${particle.size}px`,
+              '--particle-x': `${particle.x}%`,
+              '--particle-y': `${particle.y}%`,
+            }}
+          />
+        ))}
+      </span>
+      <strong className="move-animation-name">{cue.moveName}</strong>
+    </div>
   )
 }
 
@@ -166,14 +235,7 @@ function BattleArenaEffects({ cue }) {
       )}
 
       {showMoveEffect && (
-        <div
-          className={`battle-move-fx side-${cue.sideId} category-${cue.moveCategory ?? 'special'} type-${typeClassName(cue.moveType)}`}
-          key={`move-${cue.id}`}
-        >
-          <span className="battle-move-fx-core" />
-          <i className="battle-move-fx-trail" />
-          <b>{cue.moveName}</b>
-        </div>
+        <MoveAnimation cue={cue} key={`move-${cue.id}`} />
       )}
 
       {showImpact && (
@@ -197,7 +259,13 @@ function battleStageClassName(sideId, pokemon, cue) {
   if (!cue) return classes.join(' ')
 
   if (cue.sideId === sideId && cue.phase === 'attack') {
-    classes.push('is-attacking', `attack-${cue.moveCategory ?? 'special'}`)
+    const profile = getMoveAnimationProfile(cue)
+    classes.push(
+      'is-attacking',
+      `attack-${cue.moveCategory ?? 'special'}`,
+      `move-motion-${profile.motion}`,
+      `move-archetype-${profile.archetype}`,
+    )
   }
   if (cue.sideId === sideId && cue.phase === 'gimmick') classes.push('is-gimmicking')
   if (cue.sideId === sideId && cue.phase === 'switch-out') classes.push('is-switching-out')

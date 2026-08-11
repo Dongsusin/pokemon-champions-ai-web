@@ -672,9 +672,14 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     targetSideId: move.target === 'self' ? sideId : targetSide.id,
     actorName: attacker.name,
     targetName: move.target === 'self' ? attacker.name : defender.name,
+    moveId: move.id,
     moveName: move.name,
     moveType: move.type,
     moveCategory,
+    movePower: Number(move.power) || 0,
+    moveTarget: move.target,
+    moveFlags: [...(move.flags ?? [])],
+    moveDescription: move.description ?? '',
     message: `${attacker.name}의 ${move.name}!`,
   }
   pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
