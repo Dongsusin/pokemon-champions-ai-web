@@ -10610,7 +10610,7 @@
   min-width: 0;
   min-height: 0;
   padding: 9px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(166, 205, 255, 0.2);
   border-radius: 16px;
   background: linear-gradient(145deg, rgba(22, 31, 78, 0.92), rgba(38, 34, 91, 0.88));
@@ -10778,11 +10778,25 @@
   min-height: 0;
 }
 
+.battle-move-option {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.battle-move-option.tooltip-open,
+.battle-move-option:focus-within {
+  z-index: 80;
+}
+
 .battle-move-button {
   --move-type-color: #828aa1;
+  position: relative;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 58px 52px;
+  grid-template-columns: 52px minmax(0, 1fr) 52px 44px 58px;
   align-items: center;
+  width: 100%;
+  height: 100%;
   min-width: 0;
   padding: 0 10px 0 0;
   overflow: hidden;
@@ -10794,6 +10808,29 @@
   box-shadow: 0 8px 17px rgba(0, 0, 0, 0.16), inset 0 1px #fff;
   cursor: pointer;
   transition: transform 150ms ease, filter 150ms ease;
+}
+
+.battle-move-button.effectiveness-quad {
+  border-color: rgba(255, 119, 220, 0.92);
+  box-shadow: 0 0 22px rgba(255, 73, 194, 0.34), inset 0 1px #fff;
+}
+
+.battle-move-button.effectiveness-super {
+  border-color: rgba(255, 150, 85, 0.9);
+  box-shadow: 0 0 17px rgba(255, 102, 55, 0.24), inset 0 1px #fff;
+}
+
+.battle-move-button.effectiveness-resisted,
+.battle-move-button.effectiveness-quarter {
+  border-color: rgba(101, 170, 255, 0.72);
+  background: linear-gradient(145deg, #eef4ff, #cbd9ee);
+}
+
+.battle-move-button.effectiveness-immune {
+  border-color: rgba(115, 127, 151, 0.62);
+  background:
+    repeating-linear-gradient(135deg, rgba(67, 76, 99, 0.08) 0 8px, transparent 8px 16px),
+    linear-gradient(145deg, #e3e7ef, #bcc4d3);
 }
 
 .battle-move-button:disabled {
@@ -10859,6 +10896,147 @@
 .battle-move-pp strong,
 .battle-move-power strong {
   font-size: 11px;
+}
+
+.battle-move-effectiveness {
+  display: grid;
+  min-width: 50px;
+  min-height: 38px;
+  align-content: center;
+  justify-items: center;
+  padding: 3px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  color: #fff;
+  line-height: 1;
+  background: #71809a;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.battle-move-effectiveness small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.battle-move-effectiveness strong {
+  margin-top: 3px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle-move-effectiveness.effectiveness-quad {
+  background: linear-gradient(145deg, #ef4ebc, #8f38bd);
+  box-shadow: 0 0 17px rgba(255, 69, 203, 0.58), inset 0 1px rgba(255, 255, 255, 0.28);
+  animation: battle-effectiveness-pulse 1.6s ease-in-out infinite;
+}
+
+.battle-move-effectiveness.effectiveness-super {
+  background: linear-gradient(145deg, #f06445, #c83c4f);
+  box-shadow: 0 0 13px rgba(255, 83, 47, 0.46), inset 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.battle-move-effectiveness.effectiveness-resisted {
+  background: linear-gradient(145deg, #4a96d9, #3962b2);
+}
+
+.battle-move-effectiveness.effectiveness-quarter {
+  background: linear-gradient(145deg, #655db6, #3f468e);
+  box-shadow: 0 0 11px rgba(93, 124, 255, 0.3), inset 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.battle-move-effectiveness.effectiveness-immune {
+  background: repeating-linear-gradient(135deg, #4d5669 0 6px, #343b4b 6px 12px);
+}
+
+.battle-move-effectiveness.effectiveness-status {
+  background: linear-gradient(145deg, #7a718d, #565b72);
+}
+
+@keyframes battle-effectiveness-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.16); }
+}
+
+.battle-move-option .battle-move-tooltip {
+  top: auto;
+  bottom: calc(100% + 9px);
+  left: 0;
+  right: auto;
+  width: min(320px, 100%);
+  text-align: left;
+  transform: translateY(8px) scale(0.98);
+  transform-origin: left bottom;
+}
+
+.battle-move-option:nth-child(even) .battle-move-tooltip {
+  right: 0;
+  left: auto;
+  transform-origin: right bottom;
+}
+
+.battle-move-option .battle-move-tooltip.is-visible {
+  transform: translateY(0) scale(1);
+}
+
+.battle-move-tooltip .battle-tooltip-meta {
+  flex-wrap: wrap;
+}
+
+.battle-move-tooltip .battle-tooltip-meta > span {
+  flex: 1 1 48px;
+}
+
+.battle-tooltip-matchup {
+  --effectiveness-color: #71809a;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 10px;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--effectiveness-color) 52%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--effectiveness-color) 18%, rgba(11, 15, 39, 0.88));
+}
+
+.battle-tooltip-matchup.effectiveness-quad { --effectiveness-color: #ef4ebc; }
+.battle-tooltip-matchup.effectiveness-super { --effectiveness-color: #f06445; }
+.battle-tooltip-matchup.effectiveness-resisted { --effectiveness-color: #4a96d9; }
+.battle-tooltip-matchup.effectiveness-quarter { --effectiveness-color: #655db6; }
+.battle-tooltip-matchup.effectiveness-immune { --effectiveness-color: #687184; }
+.battle-tooltip-matchup.effectiveness-status { --effectiveness-color: #81768e; }
+
+.battle-tooltip-matchup small {
+  overflow: hidden;
+  color: #b9c7df;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-tooltip-matchup > span {
+  color: #e9effa;
+  font-size: 8px;
+}
+
+.battle-tooltip-matchup > strong {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  color: #fff;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px var(--effectiveness-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-move-effectiveness.effectiveness-quad {
+    animation: none;
+  }
 }
 
 .battle-party-menu > header > div {
@@ -11440,7 +11618,7 @@
   }
 
   .battle-move-button {
-    grid-template-columns: 48px minmax(0, 1fr) 52px;
+    grid-template-columns: 44px minmax(0, 1fr) 46px 52px;
   }
 
   .battle-move-power {
@@ -11604,6 +11782,21 @@
 
   .battle-command-buttons > button > svg:last-child {
     display: none;
+  }
+
+  .battle-move-button {
+    grid-template-columns: 38px minmax(48px, 1fr) 42px 46px;
+    padding-right: 4px;
+  }
+
+  .battle-move-effectiveness {
+    min-width: 42px;
+    min-height: 34px;
+    padding: 2px 3px;
+  }
+
+  .battle-move-effectiveness strong {
+    font-size: 11px;
   }
 
   .battle-dialogue-box span {

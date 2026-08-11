@@ -20,6 +20,7 @@ import {
   getActivePokemon,
   getAvailableBattleMechanics,
   getBattleSummary,
+  getTypeEffectiveness,
   playBattleTurn,
 } from './data/battleEngine'
 import { typeClassName } from './data/trainingData'
@@ -41,6 +42,28 @@ function hpTone(pokemon) {
   if (ratio <= 0.2) return 'critical'
   if (ratio <= 0.5) return 'warning'
   return 'healthy'
+}
+
+function effectivenessPresentation(multiplier) {
+  if (multiplier === null) {
+    return { value: '—', label: '직접 피해 없음', tone: 'status' }
+  }
+  if (multiplier === 0) {
+    return { value: 'X0', label: '효과 없음', tone: 'immune' }
+  }
+  if (multiplier >= 4) {
+    return { value: `X${multiplier}`, label: '4배 약점', tone: 'quad' }
+  }
+  if (multiplier > 1) {
+    return { value: `X${multiplier}`, label: '효과 굉장', tone: 'super' }
+  }
+  if (multiplier <= 0.25) {
+    return { value: `X${multiplier}`, label: '강한 내성', tone: 'quarter' }
+  }
+  if (multiplier < 1) {
+    return { value: `X${multiplier}`, label: '효과 별로', tone: 'resisted' }
+  }
+  return { value: 'X1', label: '보통 효과', tone: 'neutral' }
 }
 
 function PartyIndicators({ side }) {
@@ -132,8 +155,39 @@ function PokemonPartyMenu({ battle, forced, onSelect, onBack }) {
   )
 }
 
+function BattleMoveTooltip({ id, move, opponent, presentation, visible }) {
+  const accuracy = move.accuracyLabel ?? move.accuracy ?? '—'
+
+  return (
+    <span
+      className={`battle-tooltip battle-move-tooltip type-accent-${typeClassName(move.type)} effectiveness-${presentation.tone}${visible ? ' is-visible' : ''}`}
+      id={id}
+      role="tooltip"
+      aria-hidden={!visible}
+    >
+      <span className="battle-tooltip-eyebrow">{move.type}타입 · {move.category}</span>
+      <strong>{move.name}</strong>
+      <span className="battle-tooltip-description">{move.description || '등록된 기술 설명이 없습니다.'}</span>
+      <span className="battle-tooltip-meta">
+        <span><small>위력</small><b>{move.power || '—'}</b></span>
+        <span><small>명중</small><b>{accuracy}</b></span>
+        <span><small>PP</small><b>{move.currentPp}/{move.maxPp}</b></span>
+        <span><small>상성</small><b>{presentation.value}</b></span>
+      </span>
+      <span className={`battle-tooltip-matchup effectiveness-${presentation.tone}`}>
+        <small>VS {opponent.name}</small>
+        <strong>{presentation.value}</strong>
+        <span>{presentation.label}</span>
+      </span>
+      <em>기술 정보</em>
+    </span>
+  )
+}
+
 function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack }) {
+  const [activeTooltipIndex, setActiveTooltipIndex] = useState(null)
   const pokemon = getActivePokemon(battle, 'player')
+  const opponent = getActivePokemon(battle, 'opponent')
   const mechanics = getAvailableBattleMechanics(battle, 'player')
 
   return (
@@ -156,30 +210,63 @@ function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack }) {
         </div>
       </header>
       <div className="battle-move-grid">
-        {pokemon.moves.map((move, moveIndex) => (
-          <button
-            className={`battle-move-button type-${typeClassName(move.type)}`}
-            type="button"
-            disabled={move.currentPp <= 0}
-            title={move.description}
-            key={`${pokemon.battleId}-${move.id}-${moveIndex}`}
-            onClick={() => onMove(moveIndex)}
-          >
-            <span className="battle-move-type">{move.type}</span>
-            <span className="battle-move-name">
-              <strong>{move.name}</strong>
-              <small>{move.category}</small>
-            </span>
-            <span className="battle-move-pp">
-              <small>PP</small>
-              <strong>{move.currentPp}/{move.maxPp}</strong>
-            </span>
-            <span className="battle-move-power">
-              <small>위력</small>
-              <strong>{move.power || '—'}</strong>
-            </span>
-          </button>
-        ))}
+        {pokemon.moves.map((move, moveIndex) => {
+          const isDamagingMove = Number(move.power) > 0 && move.category !== '변화'
+          const multiplier = isDamagingMove
+            ? getTypeEffectiveness(move.type, opponent.types)
+            : null
+          const presentation = effectivenessPresentation(multiplier)
+          const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
+          const isTooltipVisible = activeTooltipIndex === moveIndex
+
+          return (
+            <div
+              className={`battle-move-option effectiveness-${presentation.tone}${isTooltipVisible ? ' tooltip-open' : ''}`}
+              key={`${pokemon.battleId}-${move.id}-${moveIndex}`}
+              onMouseEnter={() => setActiveTooltipIndex(moveIndex)}
+              onMouseLeave={() => setActiveTooltipIndex((currentIndex) => (
+                currentIndex === moveIndex ? null : currentIndex
+              ))}
+            >
+              <button
+                className={`battle-move-button type-${typeClassName(move.type)} effectiveness-${presentation.tone}`}
+                type="button"
+                disabled={move.currentPp <= 0}
+                aria-describedby={tooltipId}
+                onFocus={() => setActiveTooltipIndex(moveIndex)}
+                onBlur={() => setActiveTooltipIndex((currentIndex) => (
+                  currentIndex === moveIndex ? null : currentIndex
+                ))}
+                onClick={() => onMove(moveIndex)}
+              >
+                <span className="battle-move-type">{move.type}</span>
+                <span className="battle-move-name">
+                  <strong>{move.name}</strong>
+                  <small>{move.category}</small>
+                </span>
+                <span className="battle-move-pp">
+                  <small>PP</small>
+                  <strong>{move.currentPp}/{move.maxPp}</strong>
+                </span>
+                <span className="battle-move-power">
+                  <small>위력</small>
+                  <strong>{move.power || '—'}</strong>
+                </span>
+                <span className={`battle-move-effectiveness effectiveness-${presentation.tone}`}>
+                  <small>상성</small>
+                  <strong>{presentation.value}</strong>
+                </span>
+              </button>
+              <BattleMoveTooltip
+                id={tooltipId}
+                move={move}
+                opponent={opponent}
+                presentation={presentation}
+                visible={isTooltipVisible}
+              />
+            </div>
+          )
+        })}
       </div>
     </section>
   )
