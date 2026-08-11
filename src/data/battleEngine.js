@@ -236,6 +236,19 @@ function cloneBattle(state) {
   }
 }
 
+function pushTimelineStep(timeline, state, step) {
+  if (!timeline) return
+  timeline.push({
+    id: `${state.turn}-${timeline.length}-${step.phase}`,
+    ...step,
+    state: cloneBattle(state),
+  })
+}
+
+function latestLogMessage(state, fallback) {
+  return state.log[state.log.length - 1]?.message ?? fallback
+}
+
 function getSide(state, sideId) {
   return sideId === 'player' ? state.player : state.opponent
 }
@@ -611,19 +624,61 @@ function activateMechanic(state, sideId, mechanicId) {
   return mechanicId === 'dynamax' ? 1.3 : 1
 }
 
-function executeMove(state, sideId, action, random) {
+function executeMove(state, sideId, action, random, timeline = null, actionOrder = 0) {
   const side = getSide(state, sideId)
   const targetSide = getOtherSide(state, sideId)
   const attacker = side.team[side.activeIndex]
   const defender = targetSide.team[targetSide.activeIndex]
   const move = attacker.moves[action.moveIndex]
+  const moveCategory = move?.categoryId
+    ?? (move?.category === '물리' ? 'physical' : move?.category === '변화' ? 'status' : 'special')
 
   if (!move || move.currentPp <= 0 || attacker.fainted || defender.fainted) return
-  if (!canPokemonAct(state, attacker, random)) return
+  if (!canPokemonAct(state, attacker, random)) {
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      actionOrder,
+      sideId,
+      targetSideId: sideId,
+      actorName: attacker.name,
+      moveName: move.name,
+      moveType: move.type,
+      moveCategory,
+      message: latestLogMessage(state, `${attacker.name}은(는) 움직일 수 없다!`),
+    })
+    return
+  }
 
+  const mechanicWasUsed = action.gimmick ? side.usedMechanics[action.gimmick] : false
   const powerMultiplier = activateMechanic(state, sideId, action.gimmick)
+  if (action.gimmick && !mechanicWasUsed && side.usedMechanics[action.gimmick]) {
+    pushTimelineStep(timeline, state, {
+      phase: 'gimmick',
+      actionOrder,
+      sideId,
+      targetSideId: sideId,
+      actorName: attacker.name,
+      mechanicId: action.gimmick,
+      message: latestLogMessage(state, `${attacker.name}의 배틀 기믹이 발동했다!`),
+    })
+  }
+
   move.currentPp = Math.max(0, move.currentPp - 1)
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
+
+  const moveStep = {
+    actionOrder,
+    sideId,
+    targetSideId: move.target === 'self' ? sideId : targetSide.id,
+    actorName: attacker.name,
+    targetName: move.target === 'self' ? attacker.name : defender.name,
+    moveName: move.name,
+    moveType: move.type,
+    moveCategory,
+    message: `${attacker.name}의 ${move.name}!`,
+  }
+  pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
+  pushTimelineStep(timeline, state, { phase: 'attack', ...moveStep })
 
   const accuracy = move.accuracy == null ? 100 : Number(move.accuracy)
   const hustleAccuracy = attacker.ability === '의욕' && (move.categoryId === 'physical' || move.category === '물리')
@@ -632,6 +687,12 @@ function executeMove(state, sideId, action, random) {
 
   if (random() * 100 >= accuracy * hustleAccuracy) {
     appendLog(state, `${attacker.name}의 공격은 빗나갔다!`, 'muted')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'miss',
+      message: latestLogMessage(state, '공격은 빗나갔다!'),
+    })
     return
   }
 
@@ -639,9 +700,20 @@ function executeMove(state, sideId, action, random) {
   if (isStatusMove) {
     if (move.target !== 'self' && defender.protected) {
       appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
+      pushTimelineStep(timeline, state, {
+        phase: 'resolve',
+        ...moveStep,
+        result: 'blocked',
+        message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
+      })
       return
     }
     applyStatusMove(state, attacker, defender, move, random)
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      ...moveStep,
+      message: latestLogMessage(state, `${move.name}의 효과가 발동했다!`),
+    })
     return
   }
 
@@ -649,6 +721,12 @@ function executeMove(state, sideId, action, random) {
 
   if (defender.protected) {
     appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'blocked',
+      message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
+    })
     return
   }
 
@@ -656,6 +734,13 @@ function executeMove(state, sideId, action, random) {
   if (immunity) {
     appendLog(state, `${defender.name}의 ${immunity}! 공격을 무효화했다.`, 'ability')
     if (['저수', '축전'].includes(immunity)) healPokemon(state, defender, defender.maxHp / 4, immunity)
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'immune',
+      effectiveness: 0,
+      message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
+    })
     return
   }
 
@@ -706,6 +791,17 @@ function executeMove(state, sideId, action, random) {
   }
 
   if (defender.hp > 0) secondaryStatusFromDescription(state, attacker, defender, move, random)
+
+  pushTimelineStep(timeline, state, {
+    phase: 'impact',
+    ...moveStep,
+    damage,
+    effectiveness: result.effectiveness,
+    critical: result.critical,
+    message: damage > 0
+      ? `${defender.name}에게 ${damage}의 데미지!`
+      : `${defender.name}에게는 효과가 없는 것 같다…`,
+  })
 }
 
 function endDynamax(state, pokemon) {
@@ -728,11 +824,23 @@ function activateEntryAbility(state, sideId) {
   }
 }
 
-function performSwitch(state, sideId, targetIndex, isAutomatic = false) {
+function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline = null, actionOrder = null) {
   const side = getSide(state, sideId)
   const current = side.team[side.activeIndex]
   const target = side.team[targetIndex]
   if (!target || target.fainted || target.hp <= 0 || targetIndex === side.activeIndex) return false
+
+  pushTimelineStep(timeline, state, {
+    phase: 'switch-out',
+    actionOrder,
+    sideId,
+    targetSideId: sideId,
+    actorName: current.name,
+    targetName: target.name,
+    message: sideId === 'player'
+      ? `${current.name}, 돌아와!`
+      : `${side.name}은(는) ${current.name}을(를) 불러들였다!`,
+  })
 
   if (current.dynamaxActive) endDynamax(state, current)
   current.statStages = Object.fromEntries(Object.keys(current.statStages).map((key) => [key, 0]))
@@ -749,12 +857,23 @@ function performSwitch(state, sideId, targetIndex, isAutomatic = false) {
   )
   activateEntryAbility(state, sideId)
   state.lastEvent = { kind: 'switch', sideId, nonce: state.eventNonce += 1 }
+  pushTimelineStep(timeline, state, {
+    phase: 'switch',
+    actionOrder,
+    sideId,
+    targetSideId: sideId,
+    actorName: target.name,
+    message: latestLogMessage(state, `${target.name}이(가) 배틀에 나왔다!`),
+  })
   return true
 }
 
-function residualEffects(state, sideId) {
+function residualEffects(state, sideId, timeline = null) {
   const pokemon = getActivePokemon(state, sideId)
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
+  const previousHp = pokemon.hp
+  const previousMaxHp = pokemon.maxHp
+  const previousLogLength = state.log.length
 
   let damage = 0
   if (pokemon.status?.id === 'burn') damage = Math.max(1, Math.floor(pokemon.maxHp / 16))
@@ -789,14 +908,37 @@ function residualEffects(state, sideId) {
     pokemon.dynamaxTurns -= 1
     if (pokemon.dynamaxTurns <= 0) endDynamax(state, pokemon)
   }
+
+  if (state.log.length > previousLogLength || pokemon.hp !== previousHp || pokemon.maxHp !== previousMaxHp) {
+    pushTimelineStep(timeline, state, {
+      phase: 'residual',
+      sideId,
+      targetSideId: sideId,
+      actorName: pokemon.name,
+      damage: Math.max(0, previousHp - pokemon.hp),
+      message: latestLogMessage(state, `${pokemon.name}에게 턴 종료 효과가 적용되었다.`),
+    })
+  }
 }
 
-function settleFaints(state) {
+function settleFaints(state, timeline = null) {
+  const faintedPokemon = []
   ;['player', 'opponent'].forEach((sideId) => {
     const pokemon = getActivePokemon(state, sideId)
     if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return
     pokemon.fainted = true
     appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
+    faintedPokemon.push({ sideId, name: pokemon.name })
+  })
+
+  faintedPokemon.forEach(({ sideId, name }) => {
+    pushTimelineStep(timeline, state, {
+      phase: 'faint',
+      sideId: sideId === 'player' ? 'opponent' : 'player',
+      targetSideId: sideId,
+      actorName: name,
+      message: `${name}은(는) 쓰러졌다!`,
+    })
   })
 
   const playerRemaining = remainingCount(state.player)
@@ -810,18 +952,31 @@ function settleFaints(state) {
       state.winner === 'player' ? `${state.opponent.name}과의 승부에서 이겼다!` : `${state.opponent.name}에게 패배했다…`,
       state.winner === 'player' ? 'victory' : 'defeat',
     )
+    pushTimelineStep(timeline, state, {
+      phase: 'result',
+      sideId: state.winner,
+      message: latestLogMessage(state, '배틀이 끝났다!'),
+    })
     return
   }
 
   const opponentActive = getActivePokemon(state, 'opponent')
   if (opponentActive.fainted) {
     const nextIndex = availableIndexes(state.opponent)[0]
-    performSwitch(state, 'opponent', nextIndex, true)
+    performSwitch(state, 'opponent', nextIndex, true, timeline)
   }
 
   const playerActive = getActivePokemon(state, 'player')
   state.awaitingPlayerSwitch = playerActive.fainted
-  if (state.awaitingPlayerSwitch) appendLog(state, '다음 포켓몬을 선택해 주세요.', 'prompt')
+  if (state.awaitingPlayerSwitch) {
+    appendLog(state, '다음 포켓몬을 선택해 주세요.', 'prompt')
+    pushTimelineStep(timeline, state, {
+      phase: 'prompt',
+      sideId: 'player',
+      targetSideId: 'player',
+      message: '다음 포켓몬을 선택해 주세요.',
+    })
+  }
 }
 
 function actionPriority(state, sideId, action) {
@@ -918,9 +1073,13 @@ export function createBattle({ playerPokemon, opponent, opponentTeam }) {
   return state
 }
 
-export function playBattleTurn(state, playerAction, random = Math.random) {
-  if (!state || state.winner || state.awaitingPlayerSwitch) return state
+function resolveBattleTurn(state, playerAction, random, captureTimeline) {
+  if (!state || state.winner || state.awaitingPlayerSwitch) {
+    return { state, timeline: [] }
+  }
+
   const nextState = cloneBattle(state)
+  const timeline = captureTimeline ? [] : null
   nextState.lastEvent = null
   getActivePokemon(nextState, 'player').protected = false
   getActivePokemon(nextState, 'opponent').protected = false
@@ -929,20 +1088,31 @@ export function playBattleTurn(state, playerAction, random = Math.random) {
   const opponentAction = chooseAiAction(nextState, random)
   const actions = orderedActions(nextState, playerAction, opponentAction, random)
 
-  for (const { sideId, action } of actions) {
+  for (const [actionOrder, { sideId, action }] of actions.entries()) {
     if (nextState.winner) break
     const actor = getActivePokemon(nextState, sideId)
     if (!actor || actor.fainted || actor.hp <= 0) continue
 
-    if (action.type === 'switch') performSwitch(nextState, sideId, action.targetIndex)
-    else executeMove(nextState, sideId, action, random)
+    if (action.type === 'switch') {
+      performSwitch(nextState, sideId, action.targetIndex, false, timeline, actionOrder)
+    } else {
+      executeMove(nextState, sideId, action, random, timeline, actionOrder)
+    }
   }
 
-  residualEffects(nextState, 'player')
-  residualEffects(nextState, 'opponent')
-  settleFaints(nextState)
+  residualEffects(nextState, 'player', timeline)
+  residualEffects(nextState, 'opponent', timeline)
+  settleFaints(nextState, timeline)
   nextState.turn += 1
-  return nextState
+  return { state: nextState, timeline: timeline ?? [] }
+}
+
+export function createBattleTurnTimeline(state, playerAction, random = Math.random) {
+  return resolveBattleTurn(state, playerAction, random, true)
+}
+
+export function playBattleTurn(state, playerAction, random = Math.random) {
+  return resolveBattleTurn(state, playerAction, random, false).state
 }
 
 export function forcePlayerSwitch(state, targetIndex) {

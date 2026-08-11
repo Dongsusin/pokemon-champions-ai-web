@@ -16,12 +16,12 @@ import PokemonSprite from './PokemonSprite'
 import TrainerSprite from './TrainerSprite'
 import {
   createBattle,
+  createBattleTurnTimeline,
   forcePlayerSwitch,
   getActivePokemon,
   getAvailableBattleMechanics,
   getBattleSummary,
   getTypeEffectiveness,
-  playBattleTurn,
 } from './data/battleEngine'
 import { typeClassName } from './data/trainingData'
 
@@ -64,6 +64,150 @@ function effectivenessPresentation(multiplier) {
     return { value: `X${multiplier}`, label: '효과 별로', tone: 'resisted' }
   }
   return { value: 'X1', label: '보통 효과', tone: 'neutral' }
+}
+
+const TURN_STEP_DURATIONS = {
+  gimmick: 950,
+  announce: 680,
+  attack: 760,
+  impact: 820,
+  resolve: 760,
+  status: 780,
+  'switch-out': 620,
+  switch: 820,
+  residual: 720,
+  faint: 880,
+  prompt: 520,
+  result: 780,
+}
+
+function turnStepDuration(step) {
+  return TURN_STEP_DURATIONS[step?.phase] ?? 700
+}
+
+function turnPhaseLabel(cue) {
+  if (!cue) return 'TURN PROCESSING'
+  if (cue.phase === 'gimmick') return 'BATTLE GIMMICK'
+  if (cue.phase === 'announce') return cue.actionOrder === 0 ? 'FIRST ACTION' : 'SECOND ACTION'
+  if (cue.phase === 'attack') return 'MOVE IN MOTION'
+  if (cue.phase === 'impact') return 'DAMAGE'
+  if (cue.phase === 'resolve') return 'MOVE RESULT'
+  if (cue.phase === 'status') return 'STATUS EFFECT'
+  if (cue.phase === 'switch-out' || cue.phase === 'switch') return 'POKÉMON SWITCH'
+  if (cue.phase === 'residual') return 'END OF TURN'
+  if (cue.phase === 'faint') return 'KNOCK OUT'
+  if (cue.phase === 'prompt') return 'CHOOSE NEXT'
+  if (cue.phase === 'result') return 'BATTLE RESULT'
+  return 'TURN PROCESSING'
+}
+
+function BattleTurnPlayback({ cue, turn }) {
+  const presentation = cue?.effectiveness == null
+    ? null
+    : effectivenessPresentation(cue.effectiveness)
+
+  return (
+    <section className={`battle-turn-playback phase-${cue?.phase ?? 'waiting'} side-${cue?.sideId ?? 'neutral'}`} aria-live="assertive">
+      <span className="battle-turn-playback-emblem">
+        {cue?.phase?.includes('switch') ? <ArrowLeftRight size={27} /> : cue?.phase === 'gimmick' ? <Sparkles size={27} /> : <Swords size={27} />}
+      </span>
+      <div>
+        <small>TURN {turn} · {turnPhaseLabel(cue)}</small>
+        <strong>{cue?.message ?? '행동 순서를 결정하고 있습니다.'}</strong>
+        {cue?.moveName && (
+          <span className="battle-turn-move-meta">
+            <b className={`type-${typeClassName(cue.moveType)}`}>{cue.moveType}</b>
+            <em>{cue.moveName}</em>
+            {cue.actionOrder != null && <i>{cue.actionOrder === 0 ? '선공' : '후공'}</i>}
+          </span>
+        )}
+      </div>
+      {cue?.damage > 0 && <b className="battle-turn-damage-readout">-{cue.damage}</b>}
+      {presentation && (
+        <span className={`battle-turn-effectiveness effectiveness-${presentation.tone}`}>
+          <strong>{presentation.value}</strong>
+          <small>{presentation.label}</small>
+        </span>
+      )}
+      <span className="battle-turn-progress" aria-hidden="true"><i /></span>
+    </section>
+  )
+}
+
+function BattleArenaEffects({ cue }) {
+  if (!cue) return null
+  const presentation = cue.effectiveness == null
+    ? null
+    : effectivenessPresentation(cue.effectiveness)
+  const showMoveEffect = cue.phase === 'attack' && cue.moveName
+  const showImpact = cue.phase === 'impact' || cue.phase === 'resolve'
+  const impactReadout = cue.damage > 0
+    ? `-${cue.damage}`
+    : cue.result === 'miss'
+      ? 'MISS'
+      : cue.result === 'blocked'
+        ? 'BLOCK'
+        : presentation?.value ?? 'X0'
+  const impactLabel = cue.critical
+    ? `급소 · ${presentation?.label ?? '큰 데미지'}`
+    : presentation?.label ?? cue.message
+
+  return (
+    <>
+      <div className={`battle-turn-banner phase-${cue.phase} side-${cue.sideId ?? 'neutral'}`} key={`banner-${cue.id}`}>
+        <small>{turnPhaseLabel(cue)}</small>
+        <strong>{cue.message}</strong>
+      </div>
+
+      {cue.phase === 'gimmick' && (
+        <div className={`battle-gimmick-aura side-${cue.sideId} mechanic-${cue.mechanicId}`} key={`gimmick-${cue.id}`}>
+          <i /><span /><b>{cue.actorName}</b>
+        </div>
+      )}
+
+      {showMoveEffect && (
+        <div
+          className={`battle-move-fx side-${cue.sideId} category-${cue.moveCategory ?? 'special'} type-${typeClassName(cue.moveType)}`}
+          key={`move-${cue.id}`}
+        >
+          <span className="battle-move-fx-core" />
+          <i className="battle-move-fx-trail" />
+          <b>{cue.moveName}</b>
+        </div>
+      )}
+
+      {showImpact && (
+        <div
+          className={`battle-impact-feedback target-${cue.targetSideId}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
+          key={`impact-${cue.id}`}
+        >
+          <span className="battle-impact-burst" />
+          <strong>{impactReadout}</strong>
+          <small>{impactLabel}</small>
+        </div>
+      )}
+    </>
+  )
+}
+
+function battleStageClassName(sideId, pokemon, cue) {
+  const classes = ['battle-pokemon-stage', sideId]
+  if (pokemon.dynamaxActive) classes.push('is-dynamax')
+  if (pokemon.fainted) classes.push('is-fainted')
+  if (!cue) return classes.join(' ')
+
+  if (cue.sideId === sideId && cue.phase === 'attack') {
+    classes.push('is-attacking', `attack-${cue.moveCategory ?? 'special'}`)
+  }
+  if (cue.sideId === sideId && cue.phase === 'gimmick') classes.push('is-gimmicking')
+  if (cue.sideId === sideId && cue.phase === 'switch-out') classes.push('is-switching-out')
+  if (cue.sideId === sideId && cue.phase === 'switch') classes.push('is-switching-in')
+  if (cue.targetSideId === sideId && cue.phase === 'impact') classes.push('is-hit')
+  if (cue.targetSideId === sideId && cue.phase === 'resolve' && cue.result !== 'miss') classes.push('is-guarding')
+  if (cue.targetSideId === sideId && cue.phase === 'status') classes.push('is-status-pulse')
+  if (cue.targetSideId === sideId && cue.phase === 'residual') classes.push('is-residual-hit')
+  if (cue.targetSideId === sideId && cue.phase === 'faint') classes.push('is-fainting')
+  return classes.join(' ')
 }
 
 function PartyIndicators({ side }) {
@@ -330,11 +474,15 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
   const [introVisible, setIntroVisible] = useState(true)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
+  const [turnCue, setTurnCue] = useState(null)
+  const [isTurnAnimating, setIsTurnAnimating] = useState(false)
   const logRef = useRef(null)
+  const playbackTimerRef = useRef(null)
+  const playbackTokenRef = useRef(0)
+  const turnLockedRef = useRef(false)
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
   const summary = useMemo(() => getBattleSummary(battle), [battle])
-  const lastEvent = battle.lastEvent
 
   useEffect(() => {
     const animationFrame = requestAnimationFrame(() => {
@@ -344,22 +492,63 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
     return () => cancelAnimationFrame(animationFrame)
   }, [battle.log.length])
 
+  useEffect(() => () => {
+    playbackTokenRef.current += 1
+    turnLockedRef.current = false
+    if (playbackTimerRef.current) clearTimeout(playbackTimerRef.current)
+  }, [])
+
+  const startAnimatedTurn = (playerAction) => {
+    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch) return
+    turnLockedRef.current = true
+    const playbackToken = playbackTokenRef.current + 1
+    playbackTokenRef.current = playbackToken
+    const resolution = createBattleTurnTimeline(battle, playerAction)
+    const steps = resolution.timeline
+
+    setMenu('command')
+    setIsTurnAnimating(steps.length > 0)
+
+    const playStep = (stepIndex) => {
+      if (playbackTokenRef.current !== playbackToken) return
+      if (stepIndex >= steps.length) {
+        setBattle(resolution.state)
+        setTurnCue(null)
+        setIsTurnAnimating(false)
+        turnLockedRef.current = false
+        playbackTimerRef.current = null
+        return
+      }
+
+      const step = steps[stepIndex]
+      setBattle(step.state)
+      setTurnCue(step)
+      playbackTimerRef.current = setTimeout(() => playStep(stepIndex + 1), turnStepDuration(step))
+    }
+
+    if (steps.length > 0) {
+      playStep(0)
+    } else {
+      setBattle(resolution.state)
+      setTurnCue(null)
+      setIsTurnAnimating(false)
+      turnLockedRef.current = false
+    }
+  }
+
   const chooseMove = (moveIndex) => {
-    setBattle((state) => playBattleTurn(state, {
+    startAnimatedTurn({
       type: 'move',
       moveIndex,
       gimmick: pendingGimmick,
-    }))
+    })
     setPendingGimmick(null)
-    setMenu('command')
   }
 
   const chooseSwitch = (targetIndex) => {
-    setBattle((state) => (
-      state.awaitingPlayerSwitch
-        ? forcePlayerSwitch(state, targetIndex)
-        : playBattleTurn(state, { type: 'switch', targetIndex })
-    ))
+    if (turnLockedRef.current) return
+    if (battle.awaitingPlayerSwitch) setBattle(forcePlayerSwitch(battle, targetIndex))
+    else startAnimatedTurn({ type: 'switch', targetIndex })
     setMenu('command')
   }
 
@@ -382,7 +571,7 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
           <small>TURN</small>
           <strong>{Math.max(1, battle.turn)}</strong>
         </div>
-        <button type="button" onClick={() => completeBattle('opponent')}>
+        <button type="button" disabled={isTurnAnimating} onClick={() => completeBattle('opponent')}>
           <RotateCcw size={16} /> 기권
         </button>
       </header>
@@ -402,8 +591,8 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
         </div>
 
         <div
-          className={`battle-pokemon-stage opponent${lastEvent?.targetSideId === 'opponent' ? ' is-hit' : ''}${opponentActive.dynamaxActive ? ' is-dynamax' : ''}`}
-          key={`opponent-stage-${opponentActive.battleId}-${lastEvent?.nonce ?? 0}`}
+          className={battleStageClassName('opponent', opponentActive, turnCue)}
+          key={`opponent-stage-${opponentActive.battleId}`}
         >
           <PokemonSprite
             animatedSrc={opponentActive.spriteFront}
@@ -415,8 +604,8 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
         </div>
 
         <div
-          className={`battle-pokemon-stage player${lastEvent?.targetSideId === 'player' ? ' is-hit' : ''}${playerActive.dynamaxActive ? ' is-dynamax' : ''}`}
-          key={`player-stage-${playerActive.battleId}-${lastEvent?.nonce ?? 0}`}
+          className={battleStageClassName('player', playerActive, turnCue)}
+          key={`player-stage-${playerActive.battleId}`}
         >
           <PokemonSprite
             animatedSrc={playerActive.spriteBack}
@@ -427,6 +616,7 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
           />
         </div>
 
+        <BattleArenaEffects cue={turnCue} />
       </section>
 
       <section className="battle-command-deck">
@@ -442,8 +632,10 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
           </div>
         </aside>
 
-        <div className="battle-command-panel">
-          {battle.awaitingPlayerSwitch || menu === 'party' ? (
+        <div className={`battle-command-panel${isTurnAnimating ? ' is-turn-locked' : ''}`}>
+          {isTurnAnimating ? (
+            <BattleTurnPlayback key={turnCue?.id ?? 'waiting'} cue={turnCue} turn={Math.max(1, battle.turn)} />
+          ) : battle.awaitingPlayerSwitch || menu === 'party' ? (
             <PokemonPartyMenu
               battle={battle}
               forced={battle.awaitingPlayerSwitch}
@@ -494,7 +686,7 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
         />
       )}
 
-      {battle.winner && !introVisible && (
+      {battle.winner && !introVisible && !isTurnAnimating && (
         <section className={`battle-result-overlay result-${battle.winner}`}>
           <span>{battle.winner === 'player' ? <Trophy size={42} /> : <Shield size={42} />}</span>
           <div>
