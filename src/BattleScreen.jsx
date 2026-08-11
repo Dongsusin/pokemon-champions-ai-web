@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeftRight,
   ChevronLeft,
@@ -6,6 +6,7 @@ import {
   Circle,
   Gem,
   RotateCcw,
+  ScrollText,
   Shield,
   Sparkles,
   Swords,
@@ -248,6 +249,14 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
   const summary = useMemo(() => getBattleSummary(battle), [battle])
   const lastEvent = battle.lastEvent
 
+  useEffect(() => {
+    const animationFrame = requestAnimationFrame(() => {
+      if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+    })
+
+    return () => cancelAnimationFrame(animationFrame)
+  }, [battle.log.length])
+
   const chooseMove = (moveIndex) => {
     setBattle((state) => playBattleTurn(state, {
       type: 'move',
@@ -256,9 +265,6 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
     }))
     setPendingGimmick(null)
     setMenu('command')
-    requestAnimationFrame(() => {
-      if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
-    })
   }
 
   const chooseSwitch = (targetIndex) => {
@@ -334,53 +340,62 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
           />
         </div>
 
-        <aside className="battle-log-panel" ref={logRef} aria-live="polite">
-          {battle.log.slice(-8).map((entry) => (
-            <p className={`tone-${entry.tone}`} key={entry.id}>{entry.message}</p>
-          ))}
-        </aside>
       </section>
 
       <section className="battle-command-deck">
-        {battle.awaitingPlayerSwitch || menu === 'party' ? (
-          <PokemonPartyMenu
-            battle={battle}
-            forced={battle.awaitingPlayerSwitch}
-            onSelect={chooseSwitch}
-            onBack={() => setMenu('command')}
-          />
-        ) : menu === 'fight' ? (
-          <MoveMenu
-            battle={battle}
-            pendingGimmick={pendingGimmick}
-            onGimmick={setPendingGimmick}
-            onMove={chooseMove}
-            onBack={() => {
-              setPendingGimmick(null)
-              setMenu('command')
-            }}
-          />
-        ) : (
-          <section className="battle-command-menu">
-            <div className="battle-dialogue-box">
-              <small>WHAT WILL YOU DO?</small>
-              <strong>{playerActive.name}은(는) 무엇을 할까?</strong>
-              <span>{opponentActive.name} · HP {Math.ceil(hpRatio(opponentActive))}%</span>
-            </div>
-            <div className="battle-command-buttons">
-              <button className="fight" type="button" onClick={() => setMenu('fight')}>
-                <Swords size={25} />
-                <span><small>FIGHT</small><strong>싸운다</strong></span>
-                <ChevronRight size={18} />
-              </button>
-              <button className="pokemon" type="button" onClick={() => setMenu('party')}>
-                <ArrowLeftRight size={25} />
-                <span><small>POKÉMON</small><strong>포켓몬</strong></span>
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </section>
-        )}
+        <aside className="battle-log-panel">
+          <header>
+            <span><ScrollText size={15} /> BATTLE LOG</span>
+            <strong>TURN {Math.max(1, battle.turn)}</strong>
+          </header>
+          <div className="battle-log-scroll" ref={logRef} aria-live="polite">
+            {battle.log.slice(-30).map((entry) => (
+              <p className={`tone-${entry.tone}`} key={entry.id}>{entry.message}</p>
+            ))}
+          </div>
+        </aside>
+
+        <div className="battle-command-panel">
+          {battle.awaitingPlayerSwitch || menu === 'party' ? (
+            <PokemonPartyMenu
+              battle={battle}
+              forced={battle.awaitingPlayerSwitch}
+              onSelect={chooseSwitch}
+              onBack={() => setMenu('command')}
+            />
+          ) : menu === 'fight' ? (
+            <MoveMenu
+              battle={battle}
+              pendingGimmick={pendingGimmick}
+              onGimmick={setPendingGimmick}
+              onMove={chooseMove}
+              onBack={() => {
+                setPendingGimmick(null)
+                setMenu('command')
+              }}
+            />
+          ) : (
+            <section className="battle-command-menu">
+              <div className="battle-dialogue-box">
+                <small>WHAT WILL YOU DO?</small>
+                <strong>{playerActive.name}은(는) 무엇을 할까?</strong>
+                <span>{opponentActive.name} · HP {Math.ceil(hpRatio(opponentActive))}%</span>
+              </div>
+              <div className="battle-command-buttons">
+                <button className="fight" type="button" onClick={() => setMenu('fight')}>
+                  <Swords size={25} />
+                  <span><small>FIGHT</small><strong>싸운다</strong></span>
+                  <ChevronRight size={18} />
+                </button>
+                <button className="pokemon" type="button" onClick={() => setMenu('party')}>
+                  <ArrowLeftRight size={25} />
+                  <span><small>POKÉMON</small><strong>포켓몬</strong></span>
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </section>
+          )}
+        </div>
       </section>
 
       {introVisible && (
