@@ -711,6 +711,8 @@ function App() {
           playerPokemon={competition.playerTeam}
           opponent={battleMatch.opponent}
           opponentTeam={battleMatch.opponentTeam}
+          soundEnabled={soundEnabled}
+          onToggleSound={() => setSoundEnabled((enabled) => !enabled)}
           onComplete={finishCompetitionBattle}
         />
       ) : screen === 'hatch' ? (
