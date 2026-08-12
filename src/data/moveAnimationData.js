@@ -1,5 +1,7 @@
 import moveAnimationManifest from './generatedMoveAnimationManifest.json' with { type: 'json' }
 
+const clamp = (minimum, value, maximum) => Math.min(maximum, Math.max(minimum, value))
+
 const TYPE_THEMES = {
   노말: ['#d9dee8', '#8792a5', '#ffffff'],
   불꽃: ['#ff6a3d', '#d82331', '#ffe277'],
@@ -475,7 +477,17 @@ export function getMovePixelAnimationPlan(profile) {
   const fieldFile = fieldAssetForMove(profile)
   const fallbackPrimary = { file: primaryFile, src: fxAsset(primaryFile), kind: 'sprite' }
   const fallbackSecondary = { file: secondaryFile, src: fxAsset(secondaryFile), kind: 'sprite' }
-  const resourceAssets = profile.resource?.assets?.map(ebdxAsset) ?? []
+  const rawResourceAssets = profile.resource?.assets ?? []
+  const resourceAssetRecords = rawResourceAssets.length > 24
+    ? (() => {
+        const anchor = rawResourceAssets[0]?.file?.match(/^eb\d+/i)?.[0]
+        const family = anchor
+          ? rawResourceAssets.filter((asset) => asset.file?.startsWith(anchor))
+          : []
+        return (family.length ? family : rawResourceAssets).slice(0, 12)
+      })()
+    : rawResourceAssets
+  const resourceAssets = resourceAssetRecords.map(ebdxAsset)
   const resourceBackgrounds = profile.resource?.backgrounds?.map(ebdxAsset) ?? []
   const primaryAsset = resourceAssets[0] ?? fallbackPrimary
   const secondaryAsset = resourceAssets[1] ?? resourceAssets[0] ?? fallbackSecondary
@@ -504,12 +516,12 @@ export function getMovePixelAnimationPlan(profile) {
       : impactAssetsForMode(mode, profile).map((file) => ({ file, src: fxAsset(file), kind: 'sprite' })),
     fieldAsset: resourceBackgrounds[0] ?? (fieldFile ? { file: fieldFile, src: fxAsset(fieldFile), kind: 'background' } : null),
     copies: smallestParticle <= 48
-      ? 7 + (profile.seed % 4)
+      ? 6 + (profile.seed % 2)
       : mode === 'stream' || mode === 'rain'
-        ? 5 + (profile.seed % 3)
+        ? 5 + (profile.seed % 2)
         : mode === 'projectile'
-          ? 2 + (profile.seed % 3)
-          : 4,
+          ? 2 + (profile.seed % 2)
+          : 3,
     scale: 0.84 + (profile.seed % 29) / 100,
     impactScale: 1 + ((profile.seed >>> 5) % 36) / 100,
     arc: (profile.seed % 31) - 15,
@@ -530,7 +542,9 @@ export function getMoveAnimationProfile(move = {}) {
   const intensity = power >= 120 ? 3 : power >= 75 ? 2 : 1
   const baseDuration = ARCHETYPE_DURATION[inferred.archetype] ?? (category === 'status' ? 1460 : 1480)
   const resource = MOVE_RESOURCE_BY_ID.get(moveId) ?? null
-  const duration = resource?.durationMs ?? (baseDuration + (seed % 121) - 60)
+  const duration = resource?.durationMs
+    ? Math.round(clamp(1250, resource.durationMs * 0.78, 2200))
+    : Math.round(clamp(1250, baseDuration + (seed % 121) - 60, 1900))
   const moveTarget = move.moveTarget ?? move.target
   const targetSelf = ['self', 'allySide', 'allyTeam', 'allies', 'adjacentAllyOrSelf'].includes(moveTarget)
     || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(inferred.archetype)

@@ -78,6 +78,7 @@ function expandAssetToken(token, assetStems) {
 
   const prefix = cleanToken.slice(0, cleanToken.indexOf('#{'))
   const suffix = cleanToken.slice(cleanToken.indexOf('}') + 1)
+  if (prefix.length < 4 && !suffix) return []
   return [...assetStems].filter((assetName) => assetName.startsWith(prefix) && assetName.endsWith(suffix))
 }
 

@@ -6,6 +6,7 @@ function PokemonSprite({
   frameClassName = '',
   className = '',
   alt = '',
+  decodingMode = 'sync',
   onLoad,
   onError,
   ...imageProps
@@ -27,7 +28,7 @@ function PokemonSprite({
           alt=""
           aria-hidden="true"
           loading="eager"
-          decoding="sync"
+          decoding={decodingMode}
           fetchPriority="high"
           onLoad={onLoad}
           onError={(event) => {

@@ -38,6 +38,59 @@ function fallbackImageHandler(fallback) {
   }
 }
 
+const moveAssetDecodeCache = new Map()
+
+function decodeMoveAsset(src) {
+  if (!src) return Promise.resolve()
+  if (moveAssetDecodeCache.has(src)) return moveAssetDecodeCache.get(src)
+
+  const decodePromise = new Promise((resolve) => {
+    const image = new Image()
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      if (image.decode && image.naturalWidth) {
+        image.decode().catch(() => {}).finally(resolve)
+      } else {
+        resolve()
+      }
+    }
+
+    image.decoding = 'async'
+    image.onload = finish
+    image.onerror = finish
+    image.src = src
+    if (image.complete) finish()
+  })
+
+  moveAssetDecodeCache.set(src, decodePromise)
+  return decodePromise
+}
+
+function preloadMoveAssets(assets) {
+  return Promise.allSettled([...new Set(assets)].map(decodeMoveAsset))
+}
+
+function preloadMoveAssetsWithTimeout(assets, timeout = 1800) {
+  return new Promise((resolve) => {
+    const timeoutId = window.setTimeout(resolve, timeout)
+    preloadMoveAssets(assets).finally(() => {
+      window.clearTimeout(timeoutId)
+      resolve()
+    })
+  })
+}
+
+function getBattleSpriteAssets(pokemon) {
+  return [
+    pokemon.spriteFront,
+    pokemon.spriteBack,
+    pokemon.spriteFrontFallback,
+    pokemon.spriteBackFallback,
+  ].flat().filter(Boolean)
+}
+
 function hpRatio(pokemon) {
   return Math.max(0, Math.min(100, (pokemon.hp / pokemon.maxHp) * 100))
 }
@@ -72,18 +125,18 @@ function effectivenessPresentation(multiplier) {
 }
 
 const TURN_STEP_DURATIONS = {
-  gimmick: 950,
-  announce: 680,
+  gimmick: 900,
+  announce: 480,
   attack: 760,
-  impact: 820,
-  resolve: 760,
-  status: 780,
-  'switch-out': 620,
-  switch: 820,
-  residual: 720,
-  faint: 880,
-  prompt: 520,
-  result: 780,
+  impact: 600,
+  resolve: 520,
+  status: 650,
+  'switch-out': 560,
+  switch: 740,
+  residual: 600,
+  faint: 760,
+  prompt: 460,
+  result: 700,
 }
 
 function turnStepDuration(step) {
@@ -147,11 +200,12 @@ function BattleTurnPlayback({ cue, turn }) {
 function MoveAnimation({ cue }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
-  const [animationFrame, setAnimationFrame] = useState(0)
+  const animationRef = useRef(null)
+  const renderTrajectory = plan.trajectoryAssets.length > 0 || plan.mode === 'dash'
   const trajectoryAssets = plan.trajectoryAssets.length
     ? plan.trajectoryAssets
     : [plan.primaryAsset, plan.secondaryAsset]
-  const sprites = Array.from({ length: plan.copies }, (_, spriteIndex) => ({
+  const sprites = Array.from({ length: renderTrajectory ? plan.copies : 0 }, (_, spriteIndex) => ({
     index: spriteIndex,
     asset: trajectoryAssets[spriteIndex % trajectoryAssets.length],
     delay: spriteIndex * plan.stagger,
@@ -170,17 +224,58 @@ function MoveAnimation({ cue }) {
   }
 
   useEffect(() => {
-    setAnimationFrame(0)
-    const frameDuration = Math.max(80, Math.round(profile.duration / 12))
-    const frameTimer = setInterval(() => {
-      setAnimationFrame((currentFrame) => Math.min(11, currentFrame + 1))
-    }, frameDuration)
-    return () => clearInterval(frameTimer)
+    const animationRoot = animationRef.current
+    if (!animationRoot) return undefined
+
+    const framedAssets = [...animationRoot.querySelectorAll('.pixel-fx-asset.has-frames')]
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    const startedAt = performance.now()
+    let requestId = null
+    let currentTimelineFrame = 0
+
+    const renderFrame = (timestamp) => {
+      const elapsed = Math.max(0, timestamp - startedAt)
+
+      if (reducedMotion) {
+        const timelineFrame = Math.min(11, Math.floor((elapsed / profile.duration) * 12))
+        if (timelineFrame !== currentTimelineFrame) {
+          animationRoot.classList.remove(`timeline-frame-${currentTimelineFrame}`)
+          animationRoot.classList.add(`timeline-frame-${timelineFrame}`)
+          currentTimelineFrame = timelineFrame
+        }
+      }
+
+      framedAssets.forEach((assetNode) => {
+        const columns = Math.max(1, Number(assetNode.dataset.fxColumns) || 1)
+        const rows = Math.max(1, Number(assetNode.dataset.fxRows) || 1)
+        const frameCount = Math.max(1, Number(assetNode.dataset.fxFrameCount) || columns * rows)
+        const frameOffset = Math.max(0, Number(assetNode.dataset.fxFrameOffset) || 0)
+        const frameInterval = Math.max(72, Math.min(120, profile.duration / Math.max(4, frameCount * 2)))
+        const cycleLength = frameCount > 1 ? frameCount * 2 - 2 : 1
+        const cycleFrame = Math.floor(elapsed / frameInterval + frameOffset) % cycleLength
+        const sheetFrame = cycleFrame < frameCount ? cycleFrame : cycleLength - cycleFrame
+
+        if (assetNode.dataset.renderedFxFrame === String(sheetFrame)) return
+        assetNode.dataset.renderedFxFrame = String(sheetFrame)
+        const sheetColumn = sheetFrame % columns
+        const sheetRow = Math.floor(sheetFrame / columns) % rows
+        assetNode.style.setProperty('--fx-fallback-shift-x', `${-((sheetColumn / columns) * 100)}%`)
+        assetNode.style.setProperty('--fx-fallback-shift-y', `${-((sheetRow / rows) * 100)}%`)
+      })
+
+      if (elapsed < profile.duration) requestId = requestAnimationFrame(renderFrame)
+    }
+
+    requestId = requestAnimationFrame(renderFrame)
+    return () => {
+      if (requestId !== null) cancelAnimationFrame(requestId)
+    }
   }, [cue.id, profile.duration])
 
   return (
     <div
-      className={`battle-pixel-move-animation timeline-frame-${animationFrame} side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
+      ref={animationRef}
+      className={`battle-pixel-move-animation timeline-frame-0 side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
       style={style}
       data-move-id={profile.moveId}
       data-animation-source={profile.sourceKind}
@@ -191,8 +286,8 @@ function MoveAnimation({ cue }) {
       {plan.fieldAsset && <img className="pixel-move-field" src={plan.fieldAsset.src} alt="" draggable="false" />}
 
       <span className="pixel-move-source">
-        <MoveFxAsset asset={plan.primaryAsset} animationFrame={animationFrame} />
-        <MoveFxAsset asset={plan.secondaryAsset} animationFrame={animationFrame} />
+        <MoveFxAsset asset={plan.primaryAsset} />
+        <MoveFxAsset asset={plan.secondaryAsset} frameOffset={1} />
         <i />
       </span>
 
@@ -201,7 +296,7 @@ function MoveAnimation({ cue }) {
           <MoveFxAsset
             key={`${profile.moveId}-${sprite.index}`}
             asset={sprite.asset}
-            animationFrame={animationFrame + sprite.index}
+            frameOffset={sprite.index}
             style={{
               '--sprite-index': sprite.index,
               '--sprite-delay': `${sprite.delay}ms`,
@@ -218,7 +313,7 @@ function MoveAnimation({ cue }) {
           <MoveFxAsset
             key={`${asset.src}-${assetIndex}`}
             asset={asset}
-            animationFrame={animationFrame + assetIndex}
+            frameOffset={assetIndex}
             style={{ '--impact-index': assetIndex }}
           />
         ))}
@@ -228,16 +323,13 @@ function MoveAnimation({ cue }) {
   )
 }
 
-function MoveFxAsset({ asset, animationFrame = 0, style }) {
+function MoveFxAsset({ asset, frameOffset = 0, style }) {
   if (!asset?.src) return null
   const frame = asset.frame
   const columns = Math.max(1, Number(frame?.columns) || 1)
   const rows = Math.max(1, Number(frame?.rows) || 1)
   const frameCount = Math.max(1, Number(frame?.count) || columns * rows)
   const framed = frameCount > 1
-  const sheetFrame = animationFrame % frameCount
-  const sheetColumn = sheetFrame % columns
-  const sheetRow = Math.floor(sheetFrame / columns) % rows
   const assetStyle = framed
     ? {
         ...style,
@@ -247,20 +339,27 @@ function MoveFxAsset({ asset, animationFrame = 0, style }) {
         '--fx-frame-duration': `${Math.max(180, frameCount * 88)}ms`,
         '--fx-shift-x': `${-((columns - 1) / columns) * 100}%`,
         '--fx-shift-y': `${-((rows - 1) / rows) * 100}%`,
-        '--fx-fallback-shift-x': `${-(sheetColumn / columns) * 100}%`,
-        '--fx-fallback-shift-y': `${-(sheetRow / rows) * 100}%`,
+        '--fx-fallback-shift-x': '0%',
+        '--fx-fallback-shift-y': '0%',
         aspectRatio: `${frame.frameWidth} / ${frame.frameHeight}`,
       }
     : style
 
   return (
-    <span className={`pixel-fx-asset${framed ? ' has-frames' : ''}`} style={assetStyle}>
+    <span
+      className={`pixel-fx-asset${framed ? ' has-frames' : ''}`}
+      style={assetStyle}
+      data-fx-columns={framed ? columns : undefined}
+      data-fx-rows={framed ? rows : undefined}
+      data-fx-frame-count={framed ? frameCount : undefined}
+      data-fx-frame-offset={framed ? frameOffset : undefined}
+    >
       {framed ? (
         <span className="pixel-fx-frame">
-          <img src={asset.src} alt="" draggable="false" />
+          <img src={asset.src} alt="" draggable="false" decoding="async" />
         </span>
       ) : (
-        <img src={asset.src} alt="" draggable="false" />
+        <img src={asset.src} alt="" draggable="false" decoding="async" />
       )}
     </span>
   )
@@ -339,6 +438,11 @@ function battleStageClassName(sideId, pokemon, cue) {
   if (cue.targetSideId === sideId && cue.phase === 'residual') classes.push('is-residual-hit')
   if (cue.targetSideId === sideId && cue.phase === 'faint') classes.push('is-fainting')
   return classes.join(' ')
+}
+
+function battleStageStyle(cue) {
+  if (cue?.phase !== 'attack') return undefined
+  return { '--move-duration': `${turnStepDuration(cue)}ms` }
 }
 
 function PartyIndicators({ side }) {
@@ -547,7 +651,7 @@ function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack }) {
   )
 }
 
-function BattleIntro({ opponent, opponentTeam, playerTeam, onStart }) {
+function BattleIntro({ opponent, opponentTeam, playerTeam, effectsReady, onStart }) {
   return (
     <section className="battle-intro-overlay">
       <div className="battle-intro-light battle-intro-light-player" />
@@ -593,8 +697,10 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, onStart }) {
         <small>AI BATTLE PLAN</small>
         <strong>{opponentTeam.strategy?.summary ?? `${opponent.name}의 정예 팀과 맞붙습니다.`}</strong>
       </div>
-      <button type="button" onClick={onStart}>
-        <Swords size={19} /> 배틀 개시 <ChevronRight size={19} />
+      <button type="button" disabled={!effectsReady} onClick={onStart}>
+        {effectsReady ? <Swords size={19} /> : <Sparkles size={19} />}
+        {effectsReady ? '배틀 개시' : '기술 연출 준비 중…'}
+        {effectsReady && <ChevronRight size={19} />}
       </button>
     </section>
   )
@@ -607,6 +713,7 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
   const [pendingGimmick, setPendingGimmick] = useState(null)
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
+  const [moveAssetsReady, setMoveAssetsReady] = useState(false)
   const logRef = useRef(null)
   const playbackTimerRef = useRef(null)
   const playbackTokenRef = useRef(0)
@@ -616,15 +723,43 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
   const summary = useMemo(() => getBattleSummary(battle), [battle])
 
   useEffect(() => {
-    const assets = [...new Set(
-      [...battle.player.team, ...battle.opponent.team]
-        .flatMap((pokemon) => pokemon.moves.flatMap(getMoveAnimationAssets)),
-    )]
-    assets.forEach((asset) => {
-      const image = new Image()
-      image.decoding = 'async'
-      image.src = asset
+    let active = true
+    let idleHandle = null
+    const activePokemon = [
+      battle.player.team[battle.player.activeIndex],
+      battle.opponent.team[battle.opponent.activeIndex],
+    ].filter(Boolean)
+    const criticalAssets = activePokemon.flatMap((pokemon) => [
+      ...getBattleSpriteAssets(pokemon),
+      ...pokemon.moves.flatMap(getMoveAnimationAssets),
+    ])
+    const allAssets = [...battle.player.team, ...battle.opponent.team]
+      .flatMap((pokemon) => [
+        ...getBattleSpriteAssets(pokemon),
+        ...pokemon.moves.flatMap(getMoveAnimationAssets),
+      ])
+
+    preloadMoveAssetsWithTimeout(criticalAssets).then(() => {
+      if (active) setMoveAssetsReady(true)
     })
+
+    const warmRemainingAssets = () => {
+      allAssets.forEach((asset) => {
+        if (!moveAssetDecodeCache.has(asset)) decodeMoveAsset(asset)
+      })
+    }
+
+    if ('requestIdleCallback' in window) {
+      idleHandle = window.requestIdleCallback(warmRemainingAssets, { timeout: 1200 })
+    } else {
+      idleHandle = window.setTimeout(warmRemainingAssets, 80)
+    }
+
+    return () => {
+      active = false
+      if ('cancelIdleCallback' in window) window.cancelIdleCallback(idleHandle)
+      else window.clearTimeout(idleHandle)
+    }
   }, [])
 
   useEffect(() => {
@@ -664,7 +799,7 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
       }
 
       const step = steps[stepIndex]
-      setBattle(step.state)
+      if (step.phase !== 'attack' || stepIndex === 0) setBattle(step.state)
       setTurnCue(step)
       playbackTimerRef.current = setTimeout(() => playStep(stepIndex + 1), turnStepDuration(step))
     }
@@ -736,12 +871,14 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
         <div
           className={battleStageClassName('opponent', opponentActive, turnCue)}
           key={`opponent-stage-${opponentActive.battleId}`}
+          style={battleStageStyle(turnCue)}
         >
           <PokemonSprite
             animatedSrc={opponentActive.spriteFront}
             fallbackSrc={opponentActive.spriteFrontFallback}
             frameClassName="battle-live-sprite-frame opponent-sprite-frame"
             className="battle-live-sprite"
+            decodingMode="async"
             alt={opponentActive.name}
           />
         </div>
@@ -749,12 +886,14 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
         <div
           className={battleStageClassName('player', playerActive, turnCue)}
           key={`player-stage-${playerActive.battleId}`}
+          style={battleStageStyle(turnCue)}
         >
           <PokemonSprite
             animatedSrc={playerActive.spriteBack}
             fallbackSrc={playerActive.spriteBackFallback}
             frameClassName="battle-live-sprite-frame player-sprite-frame"
             className="battle-live-sprite"
+            decodingMode="async"
             alt={playerActive.name}
           />
         </div>
@@ -825,6 +964,7 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
           opponent={opponent}
           opponentTeam={{ ...opponentTeam, pokemon: battle.opponent.team }}
           playerTeam={playerPokemon}
+          effectsReady={moveAssetsReady}
           onStart={() => setIntroVisible(false)}
         />
       )}
