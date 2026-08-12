@@ -676,6 +676,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     moveName: move.name,
     moveType: move.type,
     moveCategory,
+    moveGeneration: move.generation,
     movePower: Number(move.power) || 0,
     moveTarget: move.target,
     moveFlags: [...(move.flags ?? [])],

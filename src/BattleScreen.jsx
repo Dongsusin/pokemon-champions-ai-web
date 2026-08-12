@@ -24,9 +24,9 @@ import {
   getTypeEffectiveness,
 } from './data/battleEngine'
 import {
+  getMoveAnimationAssets,
   getMoveAnimationProfile,
   getMovePixelAnimationPlan,
-  MOVE_PIXEL_FX_ASSETS,
 } from './data/moveAnimationData'
 import { typeClassName } from './data/trainingData'
 
@@ -147,9 +147,13 @@ function BattleTurnPlayback({ cue, turn }) {
 function MoveAnimation({ cue }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
+  const [animationFrame, setAnimationFrame] = useState(0)
+  const trajectoryAssets = plan.trajectoryAssets.length
+    ? plan.trajectoryAssets
+    : [plan.primaryAsset, plan.secondaryAsset]
   const sprites = Array.from({ length: plan.copies }, (_, spriteIndex) => ({
     index: spriteIndex,
-    asset: spriteIndex % 3 === 2 ? plan.secondaryAsset : plan.primaryAsset,
+    asset: trajectoryAssets[spriteIndex % trajectoryAssets.length],
     delay: spriteIndex * plan.stagger,
     lane: ((profile.seed >>> (spriteIndex % 12)) + spriteIndex * 17) % 5,
     spin: ((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 53) % 360,
@@ -165,29 +169,39 @@ function MoveAnimation({ cue }) {
     '--move-arc': `${plan.arc}deg`,
   }
 
+  useEffect(() => {
+    setAnimationFrame(0)
+    const frameDuration = Math.max(80, Math.round(profile.duration / 12))
+    const frameTimer = setInterval(() => {
+      setAnimationFrame((currentFrame) => Math.min(11, currentFrame + 1))
+    }, frameDuration)
+    return () => clearInterval(frameTimer)
+  }, [cue.id, profile.duration])
+
   return (
     <div
-      className={`battle-pixel-move-animation side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
+      className={`battle-pixel-move-animation timeline-frame-${animationFrame} side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
       style={style}
       data-move-id={profile.moveId}
+      data-animation-source={profile.sourceKind}
+      data-move-generation={profile.generation ?? undefined}
       aria-hidden="true"
     >
       <span className="pixel-move-screen" />
-      {plan.fieldAsset && <img className="pixel-move-field" src={plan.fieldAsset} alt="" draggable="false" />}
+      {plan.fieldAsset && <img className="pixel-move-field" src={plan.fieldAsset.src} alt="" draggable="false" />}
 
       <span className="pixel-move-source">
-        <img src={plan.primaryAsset} alt="" draggable="false" />
-        <img src={plan.secondaryAsset} alt="" draggable="false" />
+        <MoveFxAsset asset={plan.primaryAsset} animationFrame={animationFrame} />
+        <MoveFxAsset asset={plan.secondaryAsset} animationFrame={animationFrame} />
         <i />
       </span>
 
       <span className="pixel-move-trajectory">
         {sprites.map((sprite) => (
-          <img
+          <MoveFxAsset
             key={`${profile.moveId}-${sprite.index}`}
-            src={sprite.asset}
-            alt=""
-            draggable="false"
+            asset={sprite.asset}
+            animationFrame={animationFrame + sprite.index}
             style={{
               '--sprite-index': sprite.index,
               '--sprite-delay': `${sprite.delay}ms`,
@@ -201,17 +215,54 @@ function MoveAnimation({ cue }) {
       <span className="pixel-move-beam"><i /><b /></span>
       <span className="pixel-move-impact">
         {plan.impactAssets.map((asset, assetIndex) => (
-          <img
-            key={`${asset}-${assetIndex}`}
-            src={asset}
-            alt=""
-            draggable="false"
+          <MoveFxAsset
+            key={`${asset.src}-${assetIndex}`}
+            asset={asset}
+            animationFrame={animationFrame + assetIndex}
             style={{ '--impact-index': assetIndex }}
           />
         ))}
       </span>
       <strong className="pixel-move-name">{cue.moveName}</strong>
     </div>
+  )
+}
+
+function MoveFxAsset({ asset, animationFrame = 0, style }) {
+  if (!asset?.src) return null
+  const frame = asset.frame
+  const columns = Math.max(1, Number(frame?.columns) || 1)
+  const rows = Math.max(1, Number(frame?.rows) || 1)
+  const frameCount = Math.max(1, Number(frame?.count) || columns * rows)
+  const framed = frameCount > 1
+  const sheetFrame = animationFrame % frameCount
+  const sheetColumn = sheetFrame % columns
+  const sheetRow = Math.floor(sheetFrame / columns) % rows
+  const assetStyle = framed
+    ? {
+        ...style,
+        '--fx-columns': columns,
+        '--fx-rows': rows,
+        '--fx-frame-steps': Math.max(1, frameCount - 1),
+        '--fx-frame-duration': `${Math.max(180, frameCount * 88)}ms`,
+        '--fx-shift-x': `${-((columns - 1) / columns) * 100}%`,
+        '--fx-shift-y': `${-((rows - 1) / rows) * 100}%`,
+        '--fx-fallback-shift-x': `${-(sheetColumn / columns) * 100}%`,
+        '--fx-fallback-shift-y': `${-(sheetRow / rows) * 100}%`,
+        aspectRatio: `${frame.frameWidth} / ${frame.frameHeight}`,
+      }
+    : style
+
+  return (
+    <span className={`pixel-fx-asset${framed ? ' has-frames' : ''}`} style={assetStyle}>
+      {framed ? (
+        <span className="pixel-fx-frame">
+          <img src={asset.src} alt="" draggable="false" />
+        </span>
+      ) : (
+        <img src={asset.src} alt="" draggable="false" />
+      )}
+    </span>
   )
 }
 
@@ -565,7 +616,11 @@ function BattleScreen({ competitionLabel, playerPokemon, opponent, opponentTeam,
   const summary = useMemo(() => getBattleSummary(battle), [battle])
 
   useEffect(() => {
-    MOVE_PIXEL_FX_ASSETS.forEach((asset) => {
+    const assets = [...new Set(
+      [...battle.player.team, ...battle.opponent.team]
+        .flatMap((pokemon) => pokemon.moves.flatMap(getMoveAnimationAssets)),
+    )]
+    assets.forEach((asset) => {
       const image = new Image()
       image.decoding = 'async'
       image.src = asset

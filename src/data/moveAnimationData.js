@@ -1,3 +1,5 @@
+import moveAnimationManifest from './generatedMoveAnimationManifest.json' with { type: 'json' }
+
 const TYPE_THEMES = {
   노말: ['#d9dee8', '#8792a5', '#ffffff'],
   불꽃: ['#ff6a3d', '#d82331', '#ffe277'],
@@ -307,6 +309,14 @@ const MOVE_PIXEL_FX_FILES = [
 ]
 
 const fxAsset = (fileName) => `/assets/move-fx/${fileName}`
+const ebdxAsset = (asset) => ({
+  ...asset,
+  src: `${moveAnimationManifest.assetRoot}/${asset.file}`,
+})
+const normalizeMoveId = (value = '') => String(value).toLowerCase().replace(/[^a-z0-9]+/g, '')
+const MOVE_RESOURCE_BY_ID = new Map(
+  Object.entries(moveAnimationManifest.moves).map(([moveId, resource]) => [normalizeMoveId(moveId), resource]),
+)
 
 export const MOVE_PIXEL_FX_ASSETS = MOVE_PIXEL_FX_FILES.map(fxAsset)
 
@@ -427,6 +437,7 @@ const ARCHETYPE_PIXEL_MODES = {
 }
 
 function fieldAssetForMove(profile) {
+  if (!profile.targetField && !['terrain', 'weather'].includes(profile.archetype)) return null
   if (profile.moveId.includes('electricterrain')) return 'weather-electricterrain.png'
   if (profile.moveId.includes('grassyterrain')) return 'weather-grassyterrain.png'
   if (profile.moveId.includes('mistyterrain')) return 'weather-mistyterrain.png'
@@ -462,14 +473,43 @@ export function getMovePixelAnimationPlan(profile) {
   const primaryFile = MOTIF_PIXEL_ASSETS[profile.motif] ?? TYPE_PIXEL_ASSETS[profile.type] ?? 'impact.png'
   const secondaryFile = TYPE_PIXEL_ASSETS[profile.type] ?? 'shine.png'
   const fieldFile = fieldAssetForMove(profile)
+  const fallbackPrimary = { file: primaryFile, src: fxAsset(primaryFile), kind: 'sprite' }
+  const fallbackSecondary = { file: secondaryFile, src: fxAsset(secondaryFile), kind: 'sprite' }
+  const resourceAssets = profile.resource?.assets?.map(ebdxAsset) ?? []
+  const resourceBackgrounds = profile.resource?.backgrounds?.map(ebdxAsset) ?? []
+  const primaryAsset = resourceAssets[0] ?? fallbackPrimary
+  const secondaryAsset = resourceAssets[1] ?? resourceAssets[0] ?? fallbackSecondary
+  const compactAssets = resourceAssets.slice(0, 4)
+  const trailingAssets = resourceAssets.slice(-4)
+  const impactAssets = mode === 'lightning'
+    ? compactAssets
+    : ['melee', 'slash', 'bite', 'ground', 'burst', 'eruption', 'rings', 'self', 'hazard'].includes(mode)
+      ? compactAssets
+      : trailingAssets
+  const trajectoryAssets = ['lightning', 'slash', 'bite', 'self', 'field', 'dash', 'vanish'].includes(mode)
+    ? []
+    : compactAssets.length ? compactAssets : [fallbackPrimary, fallbackSecondary]
+  const smallestParticle = resourceAssets.reduce(
+    (smallest, asset) => Math.min(smallest, Number(asset.width) || 999, Number(asset.height) || 999),
+    999,
+  )
 
   return {
     mode,
-    primaryAsset: fxAsset(primaryFile),
-    secondaryAsset: fxAsset(secondaryFile),
-    impactAssets: impactAssetsForMode(mode, profile).map(fxAsset),
-    fieldAsset: fieldFile ? fxAsset(fieldFile) : null,
-    copies: mode === 'stream' || mode === 'rain' ? 7 + (profile.seed % 4) : mode === 'projectile' ? 2 + (profile.seed % 3) : 4,
+    primaryAsset,
+    secondaryAsset,
+    trajectoryAssets,
+    impactAssets: impactAssets.length
+      ? impactAssets
+      : impactAssetsForMode(mode, profile).map((file) => ({ file, src: fxAsset(file), kind: 'sprite' })),
+    fieldAsset: resourceBackgrounds[0] ?? (fieldFile ? { file: fieldFile, src: fxAsset(fieldFile), kind: 'background' } : null),
+    copies: smallestParticle <= 48
+      ? 7 + (profile.seed % 4)
+      : mode === 'stream' || mode === 'rain'
+        ? 5 + (profile.seed % 3)
+        : mode === 'projectile'
+          ? 2 + (profile.seed % 3)
+          : 4,
     scale: 0.84 + (profile.seed % 29) / 100,
     impactScale: 1 + ((profile.seed >>> 5) % 36) / 100,
     arc: (profile.seed % 31) - 15,
@@ -478,9 +518,7 @@ export function getMovePixelAnimationPlan(profile) {
 }
 
 export function getMoveAnimationProfile(move = {}) {
-  const moveId = String(move.moveId ?? move.id ?? move.englishName ?? move.moveName ?? 'unknown')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
+  const moveId = normalizeMoveId(move.moveId ?? move.id ?? move.englishName ?? move.moveName ?? 'unknown')
   const category = move.moveCategory ?? move.categoryId ?? (move.category === '변화' ? 'status' : move.category === '물리' ? 'physical' : 'special')
   const type = move.moveType ?? move.type ?? '노말'
   const flags = new Set(move.moveFlags ?? move.flags ?? [])
@@ -491,7 +529,8 @@ export function getMoveAnimationProfile(move = {}) {
   const power = Math.max(0, Number(move.movePower ?? move.power) || 0)
   const intensity = power >= 120 ? 3 : power >= 75 ? 2 : 1
   const baseDuration = ARCHETYPE_DURATION[inferred.archetype] ?? (category === 'status' ? 1460 : 1480)
-  const duration = baseDuration + (seed % 121) - 60
+  const resource = MOVE_RESOURCE_BY_ID.get(moveId) ?? null
+  const duration = resource?.durationMs ?? (baseDuration + (seed % 121) - 60)
   const moveTarget = move.moveTarget ?? move.target
   const targetSelf = ['self', 'allySide', 'allyTeam', 'allies', 'adjacentAllyOrSelf'].includes(moveTarget)
     || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(inferred.archetype)
@@ -515,9 +554,24 @@ export function getMoveAnimationProfile(move = {}) {
     rotation: (seed % 41) - 20,
     spread: 18 + (seed % 24),
     duration,
+    generation: Number(move.moveGeneration ?? move.generation ?? resource?.generation) || null,
+    sourceKind: resource?.sourceKind ?? 'showdown-fallback',
+    resource,
     targetSelf,
     targetField,
   }
+}
+
+export function getMoveAnimationAssets(move = {}) {
+  const profile = getMoveAnimationProfile(move)
+  const plan = getMovePixelAnimationPlan(profile)
+  return [...new Set([
+    plan.fieldAsset?.src,
+    plan.primaryAsset?.src,
+    plan.secondaryAsset?.src,
+    ...plan.trajectoryAssets.map((asset) => asset.src),
+    ...plan.impactAssets.map((asset) => asset.src),
+  ].filter(Boolean))]
 }
 
 export function summarizeMoveAnimationCoverage(moves) {

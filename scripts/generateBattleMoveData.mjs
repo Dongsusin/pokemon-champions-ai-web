@@ -54,6 +54,18 @@ const GENERATION_NUMBERS = {
 const cleanText = (value = '') => value.replace(/[\n\f\r]+/g, ' ').replace(/\s+/g, ' ').trim()
 const toId = (value = '') => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 
+function generationForMoveNumber(number) {
+  if (number <= 165) return 1
+  if (number <= 251) return 2
+  if (number <= 354) return 3
+  if (number <= 467) return 4
+  if (number <= 559) return 5
+  if (number <= 621) return 6
+  if (number <= 742) return 7
+  if (number <= 850) return 8
+  return 9
+}
+
 async function readJsonIfPresent(filePath) {
   try {
     return JSON.parse(await fs.readFile(filePath, 'utf8'))
@@ -173,7 +185,7 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     accuracyLabel: showdownMove.accuracy === true || localized.accuracy === null ? '필중' : null,
     priority: Number(showdownMove.priority ?? localized.priority) || 0,
     target: showdownMove.target ?? localized.target,
-    generation: localized.generation,
+    generation: generationForMoveNumber(showdownMove.num) ?? localized.generation,
     description: localized.description || fallbackDescription(localized),
     flags: Object.keys(showdownMove.flags ?? {}),
   }]

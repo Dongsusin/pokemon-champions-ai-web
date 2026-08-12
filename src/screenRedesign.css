@@ -4487,23 +4487,190 @@
   .battle-pixel-move-animation .pixel-move-screen,
   .battle-pixel-move-animation .pixel-move-field,
   .battle-pixel-move-animation .pixel-move-source > img,
+  .battle-pixel-move-animation .pixel-move-source > .pixel-fx-asset,
   .battle-pixel-move-animation .pixel-move-source > i,
   .battle-pixel-move-animation .pixel-move-beam > i,
   .battle-pixel-move-animation .pixel-move-beam > b,
   .battle-pixel-move-animation .pixel-move-impact > img,
+  .battle-pixel-move-animation .pixel-move-impact > .pixel-fx-asset,
   .battle-pixel-move-animation .pixel-move-name {
     animation-duration: var(--move-duration) !important;
     animation-iteration-count: 1 !important;
   }
 
-  .battle-pixel-move-animation .pixel-move-trajectory > img {
+  .battle-pixel-move-animation .pixel-move-trajectory > img,
+  .battle-pixel-move-animation .pixel-move-trajectory > .pixel-fx-asset {
     animation-duration: calc(var(--move-duration) - var(--sprite-delay)) !important;
     animation-delay: var(--sprite-delay) !important;
     animation-iteration-count: 1 !important;
   }
 
-  .battle-pixel-move-animation .pixel-move-impact > img {
+  .battle-pixel-move-animation .pixel-move-impact > img,
+  .battle-pixel-move-animation .pixel-move-impact > .pixel-fx-asset {
     animation-delay: calc(var(--impact-index) * 65ms) !important;
+  }
+
+  .battle-pixel-move-animation .pixel-fx-frame > img {
+    animation: none !important;
+    transform: translate(var(--fx-fallback-shift-x), var(--fx-fallback-shift-y)) !important;
+  }
+
+  .battle-pixel-move-animation .pixel-move-screen,
+  .battle-pixel-move-animation .pixel-move-field,
+  .battle-pixel-move-animation .pixel-move-source > .pixel-fx-asset,
+  .battle-pixel-move-animation .pixel-move-source > i,
+  .battle-pixel-move-animation .pixel-move-trajectory > .pixel-fx-asset,
+  .battle-pixel-move-animation .pixel-move-beam > i,
+  .battle-pixel-move-animation .pixel-move-beam > b,
+  .battle-pixel-move-animation .pixel-move-impact > .pixel-fx-asset,
+  .battle-pixel-move-animation .pixel-move-name {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-0 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-1 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-2 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-4 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-5 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-6 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-8 .pixel-move-name,
+  .battle-pixel-move-animation.timeline-frame-9 .pixel-move-name {
+    opacity: 1 !important;
+    transform: translate(-50%, 0) scale(1) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-1 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-2 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-4 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-5 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-6 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-8 .pixel-move-screen,
+  .battle-pixel-move-animation.timeline-frame-9 .pixel-move-screen {
+    opacity: 0.48 !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-2 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-4 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-5 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-6 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-8 .pixel-move-field,
+  .battle-pixel-move-animation.timeline-frame-9 .pixel-move-field {
+    opacity: 0.7 !important;
+    transform: scale(1) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-1 .pixel-move-source > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-2 .pixel-move-source > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-source > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-1 .pixel-move-source > i,
+  .battle-pixel-move-animation.timeline-frame-2 .pixel-move-source > i,
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-source > i {
+    opacity: 1 !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-1 .pixel-move-source > .pixel-fx-asset {
+    transform: translate(-50%, -50%) rotate(70deg) scale(0.55) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-2 .pixel-move-source > .pixel-fx-asset {
+    transform: translate(-50%, -50%) rotate(190deg) scale(1) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-source > .pixel-fx-asset {
+    transform: translate(-50%, -50%) rotate(310deg) scale(0.76) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-3 {
+    --fallback-travel-x: 0vw;
+    --fallback-travel-y: 0vh;
+  }
+
+  .battle-pixel-move-animation.side-player.timeline-frame-4 {
+    --fallback-travel-x: 16vw;
+    --fallback-travel-y: -4vh;
+  }
+
+  .battle-pixel-move-animation.side-player.timeline-frame-5 {
+    --fallback-travel-x: 32vw;
+    --fallback-travel-y: -8vh;
+  }
+
+  .battle-pixel-move-animation.side-player.timeline-frame-6 {
+    --fallback-travel-x: 48vw;
+    --fallback-travel-y: -13vh;
+  }
+
+  .battle-pixel-move-animation.side-player.timeline-frame-7 {
+    --fallback-travel-x: 64vw;
+    --fallback-travel-y: -17vh;
+  }
+
+  .battle-pixel-move-animation.side-opponent.timeline-frame-4 {
+    --fallback-travel-x: -16vw;
+    --fallback-travel-y: 4vh;
+  }
+
+  .battle-pixel-move-animation.side-opponent.timeline-frame-5 {
+    --fallback-travel-x: -32vw;
+    --fallback-travel-y: 8vh;
+  }
+
+  .battle-pixel-move-animation.side-opponent.timeline-frame-6 {
+    --fallback-travel-x: -48vw;
+    --fallback-travel-y: 13vh;
+  }
+
+  .battle-pixel-move-animation.side-opponent.timeline-frame-7 {
+    --fallback-travel-x: -64vw;
+    --fallback-travel-y: 17vh;
+  }
+
+  .battle-pixel-move-animation.target-self {
+    --fallback-travel-x: 0vw !important;
+    --fallback-travel-y: 0vh !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-3 .pixel-move-trajectory > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-4 .pixel-move-trajectory > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-5 .pixel-move-trajectory > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-6 .pixel-move-trajectory > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-trajectory > .pixel-fx-asset {
+    opacity: 1 !important;
+    transform: translate(calc(-50% + var(--fallback-travel-x)), calc(-50% + var(--fallback-travel-y) + var(--lane-offset))) rotate(var(--sprite-spin)) scale(var(--move-scale)) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-4 .pixel-move-beam > i,
+  .battle-pixel-move-animation.timeline-frame-4 .pixel-move-beam > b,
+  .battle-pixel-move-animation.timeline-frame-5 .pixel-move-beam > i,
+  .battle-pixel-move-animation.timeline-frame-5 .pixel-move-beam > b,
+  .battle-pixel-move-animation.timeline-frame-6 .pixel-move-beam > i,
+  .battle-pixel-move-animation.timeline-frame-6 .pixel-move-beam > b,
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-beam > i,
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-beam > b,
+  .battle-pixel-move-animation.timeline-frame-8 .pixel-move-beam > i,
+  .battle-pixel-move-animation.timeline-frame-8 .pixel-move-beam > b {
+    opacity: 1 !important;
+    transform: translateY(-50%) scaleX(1) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-7 .pixel-move-impact > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-8 .pixel-move-impact > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-9 .pixel-move-impact > .pixel-fx-asset,
+  .battle-pixel-move-animation.timeline-frame-10 .pixel-move-impact > .pixel-fx-asset {
+    opacity: 1 !important;
+    transform: translate(-50%, -50%) rotate(18deg) scale(var(--move-impact-scale)) !important;
+  }
+
+  .battle-pixel-move-animation.timeline-frame-10 .pixel-move-impact > .pixel-fx-asset {
+    opacity: 0.45 !important;
+    transform: translate(-50%, -50%) rotate(38deg) scale(calc(var(--move-impact-scale) * 1.35)) !important;
   }
 }
 
@@ -12350,6 +12517,204 @@
 
 .variant-3 .pixel-move-impact > img {
   filter: drop-shadow(0 0 12px var(--move-highlight)) drop-shadow(0 0 28px var(--move-secondary)) brightness(1.14);
+}
+
+.pixel-fx-asset,
+.pixel-fx-frame,
+.pixel-fx-frame > img,
+.pixel-fx-asset > img {
+  display: block;
+}
+
+.pixel-fx-asset > img,
+.pixel-fx-frame {
+  width: 100%;
+  height: 100%;
+}
+
+.pixel-fx-asset > img {
+  object-fit: contain;
+}
+
+.pixel-fx-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.pixel-fx-frame > img {
+  width: calc(var(--fx-columns) * 100%);
+  height: calc(var(--fx-rows) * 100%);
+  max-width: none;
+  object-fit: fill;
+  transform: translate(0, 0);
+  animation: ebdx-sheet-play var(--fx-frame-duration) steps(var(--fx-frame-steps), end) infinite alternate;
+}
+
+.pixel-move-source > .pixel-fx-asset {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 88%;
+  height: 88%;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px var(--move-primary)) drop-shadow(0 0 18px var(--move-secondary));
+  transform: translate(-50%, -50%);
+  animation: pixel-source-charge var(--move-duration) steps(10, end) both;
+}
+
+.pixel-move-source > .pixel-fx-asset:nth-child(2) {
+  width: 58%;
+  height: 58%;
+  animation-name: pixel-source-charge-reverse;
+}
+
+.pixel-move-trajectory > .pixel-fx-asset {
+  --lane-offset: calc((var(--sprite-lane) - 2) * 17px);
+  position: absolute;
+  top: var(--source-y);
+  left: var(--source-x);
+  width: clamp(62px, 6.7vw, 110px);
+  height: clamp(62px, 6.7vw, 110px);
+  opacity: 0;
+  filter: drop-shadow(0 0 8px var(--move-primary)) drop-shadow(0 0 16px var(--move-secondary));
+  animation-name: pixel-projectile-flight;
+  animation-duration: calc(var(--move-duration) - var(--sprite-delay));
+  animation-timing-function: steps(14, end);
+  animation-delay: var(--sprite-delay);
+  animation-fill-mode: both;
+}
+
+.pixel-move-impact > .pixel-fx-asset {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px var(--move-highlight)) drop-shadow(0 0 22px var(--move-primary));
+  transform: translate(-50%, -50%);
+  animation: pixel-impact-pop var(--move-duration) steps(11, end) both;
+  animation-delay: calc(var(--impact-index) * 65ms);
+}
+
+.pixel-move-impact > .pixel-fx-asset:nth-child(2) {
+  width: 78%;
+  height: 78%;
+}
+
+.pixel-move-impact > .pixel-fx-asset:nth-child(3),
+.pixel-move-impact > .pixel-fx-asset:nth-child(4) {
+  width: 62%;
+  height: 62%;
+}
+
+.mode-beam .pixel-move-trajectory > .pixel-fx-asset {
+  width: clamp(38px, 4vw, 62px);
+  height: clamp(38px, 4vw, 62px);
+  mix-blend-mode: screen;
+}
+
+.mode-stream .pixel-move-trajectory > .pixel-fx-asset {
+  width: clamp(48px, 5vw, 78px);
+  height: clamp(48px, 5vw, 78px);
+}
+
+.mode-wave .pixel-move-trajectory > .pixel-fx-asset {
+  width: clamp(118px, 13vw, 210px);
+  height: clamp(118px, 13vw, 210px);
+  opacity: 0;
+  mix-blend-mode: screen;
+  animation-name: pixel-wave-sweep;
+}
+
+.mode-lightning .pixel-move-impact > .pixel-fx-asset:first-child {
+  width: 100%;
+  height: 100%;
+  animation-name: pixel-lightning-strike;
+}
+
+.mode-melee .pixel-move-trajectory > .pixel-fx-asset {
+  width: clamp(72px, 7vw, 116px);
+  height: clamp(72px, 7vw, 116px);
+}
+
+.mode-slash .pixel-move-impact > .pixel-fx-asset {
+  animation-name: pixel-slash-one;
+}
+
+.mode-slash .pixel-move-impact > .pixel-fx-asset:nth-child(2) {
+  animation-name: pixel-slash-two;
+}
+
+.mode-slash .pixel-move-impact > .pixel-fx-asset:nth-child(3) {
+  animation-name: pixel-slash-three;
+}
+
+.mode-bite .pixel-move-impact > .pixel-fx-asset:first-child {
+  top: 17%;
+  animation-name: pixel-bite-top;
+}
+
+.mode-bite .pixel-move-impact > .pixel-fx-asset:nth-child(2) {
+  top: 83%;
+  width: 100%;
+  height: 100%;
+  animation-name: pixel-bite-bottom;
+}
+
+.mode-rain .pixel-move-trajectory > .pixel-fx-asset,
+.mode-ground .pixel-move-trajectory > .pixel-fx-asset,
+.mode-eruption .pixel-move-trajectory > .pixel-fx-asset {
+  top: -22%;
+  left: calc(var(--target-x) + (var(--sprite-lane) * 6%) - 12%);
+  width: clamp(54px, 6vw, 96px);
+  height: clamp(54px, 6vw, 96px);
+  animation-name: pixel-rain-fall;
+}
+
+.mode-burst .pixel-move-impact > .pixel-fx-asset,
+.mode-eruption .pixel-move-impact > .pixel-fx-asset {
+  animation-name: pixel-explosion-pop;
+}
+
+.mode-rings .pixel-move-impact > .pixel-fx-asset {
+  animation-name: pixel-rings-expand;
+}
+
+.mode-self .pixel-move-impact > .pixel-fx-asset {
+  animation-name: pixel-self-orbit;
+}
+
+.mode-hazard .pixel-move-impact > .pixel-fx-asset {
+  animation-name: pixel-hazard-set;
+}
+
+.mode-drain .pixel-move-trajectory > .pixel-fx-asset {
+  top: var(--target-y);
+  left: var(--target-x);
+  width: clamp(44px, 4.5vw, 72px);
+  height: clamp(44px, 4.5vw, 72px);
+  animation-name: pixel-drain-return;
+}
+
+.mode-vanish .pixel-move-impact > .pixel-fx-asset {
+  animation-name: pixel-vanish-wisp;
+}
+
+.variant-1 .pixel-move-trajectory > .pixel-fx-asset {
+  filter: drop-shadow(0 0 10px var(--move-primary)) saturate(1.25);
+}
+
+.variant-2 .pixel-move-trajectory > .pixel-fx-asset {
+  animation-timing-function: steps(10, end);
+}
+
+.variant-3 .pixel-move-impact > .pixel-fx-asset {
+  filter: drop-shadow(0 0 12px var(--move-highlight)) drop-shadow(0 0 28px var(--move-secondary)) brightness(1.14);
+}
+
+@keyframes ebdx-sheet-play {
+  to { transform: translate(var(--fx-shift-x), var(--fx-shift-y)); }
 }
 
 @keyframes pixel-move-screen-pulse {
