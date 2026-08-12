@@ -31,7 +31,7 @@ import {
   getMoveAnimationProfile,
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
-import { typeClassName } from './data/trainingData'
+import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
 function fallbackImageHandler(fallback) {
   return (event) => {
@@ -86,11 +86,20 @@ function preloadMoveAssetsWithTimeout(assets, timeout = 1800) {
 }
 
 function getBattleSpriteAssets(pokemon) {
+  const formAssets = getBattleFormOptions(pokemon.originalSpeciesId ?? pokemon.speciesId)
+    .flatMap((form) => [
+      form.spriteFront,
+      form.spriteBack,
+      form.spriteFrontFallback,
+      form.spriteBackFallback,
+    ])
+
   return [
     pokemon.spriteFront,
     pokemon.spriteBack,
     pokemon.spriteFrontFallback,
     pokemon.spriteBackFallback,
+    ...formAssets,
   ].flat().filter(Boolean)
 }
 
@@ -128,7 +137,7 @@ function effectivenessPresentation(multiplier) {
 }
 
 const TURN_STEP_DURATIONS = {
-  gimmick: 920,
+  gimmick: 2100,
   announce: 380,
   attack: 760,
   impact: 440,
@@ -142,8 +151,17 @@ const TURN_STEP_DURATIONS = {
   result: 760,
 }
 
+const GIMMICK_STEP_DURATIONS = {
+  mega: 2300,
+  zmove: 1950,
+  dynamax: 2450,
+  tera: 2200,
+  primal: 2350,
+}
+
 function turnStepDuration(step) {
   if (step?.phase === 'attack' && step.moveId) return getMoveAnimationProfile(step).duration
+  if (step?.phase === 'gimmick') return GIMMICK_STEP_DURATIONS[step.mechanicId] ?? TURN_STEP_DURATIONS.gimmick
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
 }
 
@@ -368,6 +386,148 @@ function MoveFxAsset({ asset, frameOffset = 0, style }) {
   )
 }
 
+const GIMMICK_SPARKS = Array.from({ length: 18 }, (_, index) => index)
+const GIMMICK_CRYSTALS = Array.from({ length: 14 }, (_, index) => index)
+
+const GIMMICK_PRESENTATION = {
+  mega: {
+    eyebrow: 'KEY STONE RESONANCE',
+    title: '메가진화',
+  },
+  zmove: {
+    eyebrow: 'TRAINER & POKÉMON · FULL FORCE',
+    title: 'Z파워',
+  },
+  dynamax: {
+    eyebrow: 'GALAR PARTICLE SURGE',
+    title: '다이맥스',
+  },
+  tera: {
+    eyebrow: 'TERASTAL PHENOMENON',
+    title: '테라스탈',
+  },
+  primal: {
+    eyebrow: 'ANCIENT ENERGY AWAKENING',
+    title: '원시회귀',
+  },
+}
+
+function gimmickDetail(cue) {
+  if (cue.mechanicId === 'tera') return `${cue.mechanicType ?? '노말'} TERA TYPE`
+  if (cue.mechanicId === 'dynamax') return cue.mechanicMode === 'gigantamax' ? 'GIGANTAMAX' : 'DYNAMAX'
+  if (cue.mechanicId === 'zmove') return cue.chargedMoveName ?? 'Z-MOVE CHARGED'
+  if (cue.actorPreviousName && cue.actorPreviousName !== cue.actorName) {
+    return `${cue.actorPreviousName}  →  ${cue.actorName}`
+  }
+  return cue.actorName
+}
+
+function GimmickAnimation({ cue }) {
+  const presentation = GIMMICK_PRESENTATION[cue.mechanicId] ?? {
+    eyebrow: 'BATTLE GIMMICK',
+    title: cue.mechanicLabel ?? '배틀 기믹',
+  }
+  const useBackSprite = cue.sideId === 'player'
+  const beforeSrc = useBackSprite ? cue.spriteBeforeBack : cue.spriteBeforeFront
+  const beforeFallback = useBackSprite ? cue.spriteBeforeBackFallback : cue.spriteBeforeFrontFallback
+  const afterSrc = useBackSprite ? cue.spriteAfterBack : cue.spriteAfterFront
+  const afterFallback = useBackSprite ? cue.spriteAfterBackFallback : cue.spriteAfterFrontFallback
+  const mechanicTypeClass = cue.mechanicType ? ` tera-type-${typeClassName(cue.mechanicType)}` : ''
+  const duration = turnStepDuration(cue)
+
+  return (
+    <section
+      className={`battle-gimmick-sequence mechanic-${cue.mechanicId} side-${cue.sideId}${mechanicTypeClass}`}
+      style={{ '--gimmick-duration': `${duration}ms` }}
+      role="img"
+      aria-label={`${cue.actorName}의 ${presentation.title} 연출`}
+    >
+      <span className="battle-gimmick-screen-tint" />
+      <span className="battle-gimmick-speedlines" />
+      <span className="battle-gimmick-whiteout" />
+
+      {cue.mechanicId === 'mega' && (
+        <div className="gimmick-mega-layer" aria-hidden="true">
+          <img className="gimmick-mega-background" src="/assets/move-fx/ebdx/ebMegaBg.png" alt="" />
+          <span className="gimmick-mega-helix"><i /><i /><i /></span>
+          <img className="gimmick-mega-sigil" src="/assets/move-fx/ebdx/ebMega006.png" alt="" />
+          <img className="gimmick-mega-strike" src="/assets/move-fx/ebdx/ebMega005.png" alt="" />
+        </div>
+      )}
+
+      {cue.mechanicId === 'zmove' && (
+        <div className="gimmick-z-layer" aria-hidden="true">
+          <span className="gimmick-z-emblem">Z</span>
+          <span className="gimmick-z-prism"><i /><i /><i /><i /><i /><i /></span>
+          <span className="gimmick-z-energy-line" />
+        </div>
+      )}
+
+      {cue.mechanicId === 'dynamax' && (
+        <div className="gimmick-dynamax-layer" aria-hidden="true">
+          <span className="gimmick-dynamax-clouds"><i /><i /><i /></span>
+          <span className="gimmick-dynamax-vortex"><i /><i /><i /></span>
+          <span className="gimmick-dynamax-pillars"><i /><i /><i /><i /></span>
+        </div>
+      )}
+
+      {cue.mechanicId === 'tera' && (
+        <div className="gimmick-tera-layer" aria-hidden="true">
+          <span className="gimmick-tera-rainbow" />
+          <span className="gimmick-tera-crown"><i /><i /><i /><b>{cue.mechanicType?.slice(0, 1)}</b></span>
+          <span className="gimmick-tera-crystals">
+            {GIMMICK_CRYSTALS.map((index) => (
+              <i key={index} style={{ '--crystal-index': index }} />
+            ))}
+          </span>
+        </div>
+      )}
+
+      {cue.mechanicId === 'primal' && (
+        <div className="gimmick-primal-layer" aria-hidden="true">
+          <span className="gimmick-primal-sigil"><i /><i /><i /></span>
+          <span className="gimmick-primal-wave"><i /><i /></span>
+        </div>
+      )}
+
+      <div className="battle-gimmick-sparks" aria-hidden="true">
+        {GIMMICK_SPARKS.map((index) => (
+          <i key={index} style={{ '--spark-index': index }} />
+        ))}
+      </div>
+
+      <div className="battle-gimmick-focus" aria-hidden="true">
+        <span className="battle-gimmick-ground" />
+        <span className="battle-gimmick-orbit orbit-outer" />
+        <span className="battle-gimmick-orbit orbit-inner" />
+        <PokemonSprite
+          animatedSrc={beforeSrc}
+          fallbackSrc={beforeFallback}
+          frameClassName="battle-gimmick-pokemon is-before"
+          className="battle-gimmick-pokemon-image"
+          decodingMode="sync"
+          alt=""
+        />
+        <PokemonSprite
+          animatedSrc={afterSrc ?? beforeSrc}
+          fallbackSrc={afterFallback ?? beforeFallback}
+          frameClassName="battle-gimmick-pokemon is-after"
+          className="battle-gimmick-pokemon-image"
+          decodingMode="sync"
+          alt=""
+        />
+        <span className="battle-gimmick-silhouette" />
+      </div>
+
+      <div className="battle-gimmick-title-card">
+        <small>{presentation.eyebrow}</small>
+        <strong>{cue.mechanicId === 'dynamax' && cue.mechanicMode === 'gigantamax' ? '거다이맥스' : presentation.title}</strong>
+        <span>{gimmickDetail(cue)}</span>
+      </div>
+    </section>
+  )
+}
+
 function BattleArenaEffects({ cue }) {
   if (!cue) return null
   const presentation = cue.effectiveness == null
@@ -381,9 +541,7 @@ function BattleArenaEffects({ cue }) {
   return (
     <>
       {cue.phase === 'gimmick' && (
-        <div className={`battle-gimmick-aura side-${cue.sideId} mechanic-${cue.mechanicId}`} key={`gimmick-${cue.id}`}>
-          <i /><span /><b>{cue.actorName}</b>
-        </div>
+        <GimmickAnimation cue={cue} key={`gimmick-${cue.id}`} />
       )}
 
       {showMoveEffect && (
@@ -437,6 +595,7 @@ function BattleArenaEffects({ cue }) {
 function battleStageClassName(sideId, pokemon, cue) {
   const classes = ['battle-pokemon-stage', sideId]
   if (pokemon.dynamaxActive) classes.push('is-dynamax')
+  if (pokemon.teraActive) classes.push('is-terastal', `tera-${typeClassName(pokemon.teraType)}`)
   if (pokemon.fainted) classes.push('is-fainted')
   if (!cue) return classes.join(' ')
 
@@ -449,7 +608,9 @@ function battleStageClassName(sideId, pokemon, cue) {
       `move-archetype-${profile.archetype}`,
     )
   }
-  if (cue.sideId === sideId && cue.phase === 'gimmick') classes.push('is-gimmicking')
+  if (cue.sideId === sideId && cue.phase === 'gimmick') {
+    classes.push('is-gimmicking', `gimmick-${cue.mechanicId}`)
+  }
   if (cue.sideId === sideId && cue.phase === 'switch-out') classes.push('is-switching-out')
   if (cue.sideId === sideId && cue.phase === 'switch') classes.push('is-switching-in')
   if (cue.targetSideId === sideId && cue.phase === 'attack' && cue.sideId !== sideId) classes.push('is-anticipating-hit')
@@ -467,12 +628,14 @@ function battleCameraClassName(cue) {
   classes.push(`phase-${cue.phase}`)
   if (cue.sideId) classes.push(`actor-${cue.sideId}`)
   if (cue.targetSideId) classes.push(`target-${cue.targetSideId}`)
+  if (cue.phase === 'gimmick' && cue.mechanicId) classes.push(`gimmick-${cue.mechanicId}`)
   return classes.join(' ')
 }
 
 function battleStageStyle(cue) {
-  if (cue?.phase !== 'attack') return undefined
-  return { '--move-duration': `${turnStepDuration(cue)}ms` }
+  if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue)}ms` }
+  if (cue?.phase === 'gimmick') return { '--gimmick-duration': `${turnStepDuration(cue)}ms` }
+  return undefined
 }
 
 function PartyIndicators({ side }) {
@@ -514,6 +677,8 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
           <strong>{pokemon.name}</strong>
           {pokemon.teraActive && <span className={`type-${typeClassName(pokemon.teraType)}`}><Gem size={10} /> {pokemon.teraType}</span>}
           {pokemon.dynamaxActive && <span className="dynamax-state">MAX</span>}
+          {pokemon.megaActive && <span className="mega-state">MEGA</span>}
+          {pokemon.primalActive && <span className="primal-state">PRIMAL</span>}
         </div>
         <span>Lv.50</span>
       </header>
@@ -629,7 +794,9 @@ function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack, onPreview
               onPointerEnter={onPreview}
               onClick={() => onGimmick(pendingGimmick === mechanic.id ? null : mechanic.id)}
             >
-              {mechanic.id === 'tera' ? <Gem size={13} /> : <Sparkles size={13} />}
+              <span className="battle-gimmick-button-symbol" aria-hidden="true">
+                {mechanic.id === 'tera' ? '◇' : mechanic.id === 'dynamax' ? 'MAX' : mechanic.id === 'zmove' ? 'Z' : 'M'}
+              </span>
               {mechanic.shortLabel}
             </button>
           ))}

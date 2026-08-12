@@ -581,6 +581,1085 @@
   }
 }
 
+/* Battle gimmicks: distinct transformation cinematics */
+.app-shell.battle-view .battle-field-camera.phase-gimmick {
+  animation: refined-gimmick-camera var(--gimmick-duration, 2200ms) cubic-bezier(0.2, 0.72, 0.2, 1) both;
+}
+
+.app-shell.battle-view .battle-field-camera.phase-gimmick.gimmick-dynamax {
+  animation-name: refined-dynamax-camera;
+}
+
+.app-shell.battle-view .battle-field-camera.phase-gimmick.gimmick-zmove {
+  animation-name: refined-zmove-camera;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-gimmicking {
+  animation: none;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-gimmicking .battle-live-sprite-frame,
+.app-shell.battle-view .battle-pokemon-stage.is-gimmicking .battle-pokemon-shadow {
+  animation: refined-gimmick-stage-hide var(--gimmick-duration, 2200ms) linear both;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-dynamax:not(.is-gimmicking) {
+  filter: drop-shadow(0 0 22px rgba(255, 58, 163, 0.72));
+  transform: scale(1.14);
+  transform-origin: center bottom;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence {
+  --gimmick-primary: #8fe9ff;
+  --gimmick-secondary: #ac56ff;
+  --gimmick-highlight: #fff8c7;
+  position: absolute;
+  inset: 0;
+  z-index: 46;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  animation: refined-gimmick-sequence var(--gimmick-duration, 2200ms) linear both;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-mega {
+  --gimmick-primary: #65e8ff;
+  --gimmick-secondary: #9f4fff;
+  --gimmick-highlight: #fff8b0;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-zmove {
+  --gimmick-primary: #ffe54d;
+  --gimmick-secondary: #ff3f9d;
+  --gimmick-highlight: #59ecff;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-dynamax {
+  --gimmick-primary: #ff3d9c;
+  --gimmick-secondary: #751861;
+  --gimmick-highlight: #ffc4e6;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-tera {
+  --gimmick-primary: #79efff;
+  --gimmick-secondary: #9e64ff;
+  --gimmick-highlight: #fff8db;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-primal {
+  --gimmick-primary: #ff6947;
+  --gimmick-secondary: #1fbddd;
+  --gimmick-highlight: #fff0a4;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-normal { --gimmick-primary: #d8d3cd; --gimmick-secondary: #8e8a84; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-fire { --gimmick-primary: #ff7453; --gimmick-secondary: #d82f40; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-water { --gimmick-primary: #54cfff; --gimmick-secondary: #277bdc; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-electric { --gimmick-primary: #fff057; --gimmick-secondary: #f1a62d; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-grass { --gimmick-primary: #84ee77; --gimmick-secondary: #2eb765; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-ice { --gimmick-primary: #b8f7ff; --gimmick-secondary: #53c9e8; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-fighting { --gimmick-primary: #ff7b60; --gimmick-secondary: #a72f37; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-poison { --gimmick-primary: #dc74f4; --gimmick-secondary: #7c35a3; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-ground { --gimmick-primary: #e8b469; --gimmick-secondary: #9c673d; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-flying { --gimmick-primary: #b9e7ff; --gimmick-secondary: #668de5; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-psychic { --gimmick-primary: #ff8bc2; --gimmick-secondary: #bd4eaa; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-bug { --gimmick-primary: #c9ec59; --gimmick-secondary: #709a33; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-rock { --gimmick-primary: #e3c776; --gimmick-secondary: #87744b; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-ghost { --gimmick-primary: #ad87ff; --gimmick-secondary: #524b9f; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-dragon { --gimmick-primary: #7aa9ff; --gimmick-secondary: #793ed7; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-dark { --gimmick-primary: #9e94aa; --gimmick-secondary: #42384e; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-steel { --gimmick-primary: #d4ecf1; --gimmick-secondary: #75929d; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-fairy { --gimmick-primary: #ffabdd; --gimmick-secondary: #c85ba9; }
+.app-shell.battle-view .battle-gimmick-sequence.tera-type-stellar { --gimmick-primary: #ffffff; --gimmick-secondary: #67e8ff; --gimmick-highlight: #ffe36c; }
+
+.app-shell.battle-view .battle-gimmick-screen-tint,
+.app-shell.battle-view .battle-gimmick-speedlines,
+.app-shell.battle-view .battle-gimmick-whiteout {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.app-shell.battle-view .battle-gimmick-screen-tint {
+  z-index: 0;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 54%, color-mix(in srgb, var(--gimmick-primary) 34%, transparent), transparent 33%),
+    linear-gradient(145deg, color-mix(in srgb, var(--gimmick-secondary) 84%, #07101f), rgba(4, 10, 25, 0.96));
+  animation: refined-gimmick-tint var(--gimmick-duration, 2200ms) ease-in-out both;
+}
+
+.app-shell.battle-view .battle-gimmick-speedlines {
+  z-index: 1;
+  opacity: 0;
+  background:
+    repeating-linear-gradient(172deg, transparent 0 26px, color-mix(in srgb, var(--gimmick-primary) 25%, transparent) 27px 30px),
+    repeating-linear-gradient(8deg, transparent 0 46px, rgba(255, 255, 255, 0.09) 47px 49px);
+  mix-blend-mode: screen;
+  animation: refined-gimmick-lines var(--gimmick-duration, 2200ms) linear both;
+}
+
+.app-shell.battle-view .battle-gimmick-whiteout {
+  z-index: 42;
+  opacity: 0;
+  background: #fff;
+  mix-blend-mode: screen;
+  animation: refined-gimmick-whiteout var(--gimmick-duration, 2200ms) steps(2, end) both;
+}
+
+.app-shell.battle-view .battle-gimmick-focus {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  z-index: 18;
+  width: clamp(205px, 23vw, 340px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .battle-gimmick-ground {
+  position: absolute;
+  right: -22%;
+  bottom: -3%;
+  left: -22%;
+  z-index: 0;
+  height: 24%;
+  border: 3px solid color-mix(in srgb, var(--gimmick-primary) 80%, white);
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--gimmick-primary) 46%, transparent), transparent 68%);
+  box-shadow: 0 0 34px var(--gimmick-primary), inset 0 0 24px var(--gimmick-secondary);
+  transform: scaleY(0.36);
+  animation: refined-gimmick-ground var(--gimmick-duration, 2200ms) ease-out both;
+}
+
+.app-shell.battle-view .battle-gimmick-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  border: 3px solid var(--gimmick-primary);
+  border-right-color: transparent;
+  border-left-color: var(--gimmick-highlight);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 18px var(--gimmick-primary);
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .battle-gimmick-orbit.orbit-outer {
+  width: 118%;
+  height: 76%;
+  animation: refined-gimmick-orbit-outer var(--gimmick-duration, 2200ms) ease-in-out both;
+}
+
+.app-shell.battle-view .battle-gimmick-orbit.orbit-inner {
+  width: 82%;
+  height: 108%;
+  animation: refined-gimmick-orbit-inner var(--gimmick-duration, 2200ms) ease-in-out both;
+}
+
+.app-shell.battle-view .battle-gimmick-pokemon {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: visible;
+}
+
+.app-shell.battle-view .battle-gimmick-pokemon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 15px 8px rgba(0, 0, 0, 0.45));
+  transform-origin: center bottom;
+}
+
+.app-shell.battle-view .battle-gimmick-pokemon.is-before {
+  animation: refined-gimmick-pokemon-before var(--gimmick-duration, 2200ms) steps(2, end) both;
+}
+
+.app-shell.battle-view .battle-gimmick-pokemon.is-after {
+  opacity: 0;
+  animation: refined-gimmick-pokemon-after var(--gimmick-duration, 2200ms) cubic-bezier(0.18, 0.78, 0.22, 1) both;
+}
+
+.app-shell.battle-view .battle-gimmick-silhouette {
+  position: absolute;
+  inset: 7%;
+  z-index: 6;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, #fff 0 17%, var(--gimmick-highlight) 23%, var(--gimmick-primary) 36%, transparent 68%);
+  filter: blur(8px);
+  mix-blend-mode: screen;
+  animation: refined-gimmick-silhouette var(--gimmick-duration, 2200ms) ease-in-out both;
+}
+
+.app-shell.battle-view .battle-gimmick-sparks {
+  position: absolute;
+  inset: 0;
+  z-index: 21;
+}
+
+.app-shell.battle-view .battle-gimmick-sparks i {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  width: 5px;
+  height: 18px;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  opacity: 0;
+  background: var(--gimmick-primary);
+  box-shadow: 0 0 9px var(--gimmick-primary), 0 0 15px var(--gimmick-highlight);
+  transform-origin: 50% 0;
+  animation: refined-gimmick-spark var(--gimmick-duration, 2200ms) ease-out both;
+  animation-delay: calc(var(--spark-index) * 24ms);
+}
+
+.app-shell.battle-view .battle-gimmick-sparks i:nth-child(3n + 2) {
+  width: 4px;
+  height: 11px;
+  background: var(--gimmick-highlight);
+}
+
+.app-shell.battle-view .battle-gimmick-sparks i:nth-child(3n) {
+  background: var(--gimmick-secondary);
+}
+
+.app-shell.battle-view .battle-gimmick-title-card {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  z-index: 48;
+  display: grid;
+  min-width: min(330px, 52vw);
+  padding: 8px 27px 10px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  outline: 3px solid color-mix(in srgb, var(--gimmick-secondary) 68%, #142039);
+  border-radius: 5px 22px 5px 22px;
+  color: #fff;
+  text-align: center;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.17), transparent),
+    linear-gradient(135deg, color-mix(in srgb, var(--gimmick-secondary) 86%, #18223b), color-mix(in srgb, var(--gimmick-primary) 72%, #17243a));
+  box-shadow: 0 5px 0 rgba(3, 10, 24, 0.42), 0 0 28px color-mix(in srgb, var(--gimmick-primary) 42%, transparent);
+  transform: translate(-50%, -24px);
+  animation: refined-gimmick-title var(--gimmick-duration, 2200ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.app-shell.battle-view .battle-gimmick-title-card small {
+  color: var(--gimmick-highlight);
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.18em;
+}
+
+.app-shell.battle-view .battle-gimmick-title-card strong {
+  margin-top: -1px;
+  font-size: clamp(20px, 2.25vw, 35px);
+  font-weight: 1000;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 0 rgba(16, 20, 50, 0.7), 0 0 15px var(--gimmick-primary);
+}
+
+.app-shell.battle-view .battle-gimmick-title-card span {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+/* Mega Evolution: EBDX backdrop, resonance helix, silhouette swap */
+.app-shell.battle-view .gimmick-mega-layer,
+.app-shell.battle-view .gimmick-z-layer,
+.app-shell.battle-view .gimmick-dynamax-layer,
+.app-shell.battle-view .gimmick-tera-layer,
+.app-shell.battle-view .gimmick-primal-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.app-shell.battle-view .gimmick-mega-background {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  object-fit: cover;
+  opacity: 0;
+  image-rendering: pixelated;
+  mix-blend-mode: screen;
+  animation: refined-mega-background var(--gimmick-duration) steps(8, end) both;
+}
+
+.app-shell.battle-view .gimmick-mega-helix {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  width: clamp(230px, 29vw, 430px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .gimmick-mega-helix i {
+  position: absolute;
+  inset: 8%;
+  border: 5px dotted rgba(255, 255, 255, 0.86);
+  border-right-color: var(--gimmick-primary);
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 15px var(--gimmick-secondary);
+  animation: refined-mega-helix var(--gimmick-duration) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.app-shell.battle-view .gimmick-mega-helix i:nth-child(2) {
+  inset: 22%;
+  border-style: dashed;
+  animation-direction: reverse;
+}
+
+.app-shell.battle-view .gimmick-mega-helix i:nth-child(3) {
+  inset: 36%;
+  border-width: 3px;
+}
+
+.app-shell.battle-view .gimmick-mega-sigil {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  z-index: 8;
+  width: clamp(105px, 12vw, 180px);
+  aspect-ratio: 1;
+  opacity: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 18px var(--gimmick-primary));
+  transform: translate(-50%, -50%);
+  animation: refined-mega-sigil var(--gimmick-duration) steps(6, end) both;
+}
+
+.app-shell.battle-view .gimmick-mega-strike {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  z-index: 7;
+  width: min(64vw, 760px);
+  height: 90px;
+  object-fit: fill;
+  opacity: 0;
+  filter: drop-shadow(0 0 12px #fff) drop-shadow(0 0 24px var(--gimmick-primary));
+  transform: translate(-50%, -50%);
+  animation: refined-mega-strike var(--gimmick-duration) steps(2, end) both;
+}
+
+.app-shell.battle-view .mechanic-mega .battle-gimmick-pokemon.is-before,
+.app-shell.battle-view .mechanic-primal .battle-gimmick-pokemon.is-before {
+  animation-name: refined-transform-pokemon-before;
+}
+
+.app-shell.battle-view .mechanic-mega .battle-gimmick-pokemon.is-after,
+.app-shell.battle-view .mechanic-primal .battle-gimmick-pokemon.is-after {
+  animation-name: refined-transform-pokemon-after;
+}
+
+/* Z-Power: trainer-to-partner charge, prism cut-in, move handoff */
+.app-shell.battle-view .mechanic-zmove .battle-gimmick-screen-tint {
+  background:
+    radial-gradient(circle at 50% 54%, rgba(255, 239, 95, 0.3), transparent 28%),
+    linear-gradient(135deg, #191025 0 18%, #73204f 18% 36%, #182c6d 36% 54%, #168b87 54% 72%, #7d4b16 72% 86%, #141024 86%);
+}
+
+.app-shell.battle-view .gimmick-z-emblem {
+  position: absolute;
+  top: 50%;
+  left: 22%;
+  color: #191525;
+  font-family: Impact, sans-serif;
+  font-size: clamp(150px, 24vw, 370px);
+  font-style: italic;
+  font-weight: 1000;
+  line-height: 0.7;
+  opacity: 0;
+  -webkit-text-stroke: 9px #ffe44c;
+  text-shadow: 14px 12px 0 #f34091, -8px -8px 0 #59ddff, 0 0 32px #fff;
+  transform: translate(-50%, -50%) skewX(-12deg);
+  animation: refined-z-emblem var(--gimmick-duration) steps(5, end) both;
+}
+
+.app-shell.battle-view .gimmick-z-prism {
+  position: absolute;
+  inset: -22%;
+  opacity: 0;
+  background: repeating-conic-gradient(from 18deg at 50% 53%, rgba(255, 231, 70, 0.42) 0 3deg, transparent 3deg 18deg, rgba(83, 227, 255, 0.28) 18deg 22deg, transparent 22deg 39deg);
+  mix-blend-mode: screen;
+  animation: refined-z-prism var(--gimmick-duration) linear both;
+}
+
+.app-shell.battle-view .gimmick-z-prism i {
+  display: none;
+}
+
+.app-shell.battle-view .gimmick-z-energy-line {
+  position: absolute;
+  top: 61%;
+  left: -14%;
+  width: 128%;
+  height: 12px;
+  border: 3px solid #fff;
+  opacity: 0;
+  background: linear-gradient(90deg, #ff4b9f, #ffe54d 45%, #65ecff);
+  box-shadow: 0 0 15px #fff, 0 0 34px #ffe54d;
+  transform: rotate(-10deg) scaleX(0);
+  animation: refined-z-energy-line var(--gimmick-duration) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.app-shell.battle-view .mechanic-zmove .battle-gimmick-pokemon.is-after {
+  animation-name: refined-z-pokemon-charge;
+}
+
+/* Dynamax: crimson storm, vortex and giant reveal */
+.app-shell.battle-view .mechanic-dynamax .battle-gimmick-screen-tint {
+  background:
+    radial-gradient(circle at 50% 61%, rgba(255, 69, 169, 0.32), transparent 31%),
+    linear-gradient(180deg, rgba(33, 8, 31, 0.96), rgba(105, 18, 72, 0.9) 54%, rgba(18, 8, 30, 0.96));
+}
+
+.app-shell.battle-view .gimmick-dynamax-clouds {
+  position: absolute;
+  top: -7%;
+  left: 50%;
+  width: min(78vw, 980px);
+  height: 42%;
+  opacity: 0;
+  filter: blur(7px);
+  transform: translateX(-50%);
+  animation: refined-dynamax-cloud-bank var(--gimmick-duration) ease-in-out both;
+}
+
+.app-shell.battle-view .gimmick-dynamax-clouds i {
+  position: absolute;
+  top: 26%;
+  width: 44%;
+  height: 72%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 56, 158, 0.82), rgba(86, 15, 72, 0.72) 52%, transparent 73%);
+  box-shadow: 0 0 40px #ff3290;
+}
+
+.app-shell.battle-view .gimmick-dynamax-clouds i:nth-child(1) { left: 0; }
+.app-shell.battle-view .gimmick-dynamax-clouds i:nth-child(2) { left: 28%; top: 3%; }
+.app-shell.battle-view .gimmick-dynamax-clouds i:nth-child(3) { right: 0; }
+
+.app-shell.battle-view .gimmick-dynamax-vortex {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  width: clamp(270px, 40vw, 620px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .gimmick-dynamax-vortex i {
+  position: absolute;
+  inset: 12%;
+  border: 10px solid rgba(255, 59, 161, 0.6);
+  border-right-color: transparent;
+  border-bottom-color: rgba(255, 178, 223, 0.22);
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 12px #ff3b9f);
+  animation: refined-dynamax-vortex var(--gimmick-duration) ease-in-out both;
+}
+
+.app-shell.battle-view .gimmick-dynamax-vortex i:nth-child(2) { inset: 25%; animation-direction: reverse; }
+.app-shell.battle-view .gimmick-dynamax-vortex i:nth-child(3) { inset: 38%; border-width: 6px; }
+
+.app-shell.battle-view .gimmick-dynamax-pillars {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: refined-dynamax-pillars var(--gimmick-duration) ease-out both;
+}
+
+.app-shell.battle-view .gimmick-dynamax-pillars i {
+  position: absolute;
+  bottom: -22%;
+  width: 8%;
+  height: 104%;
+  background: linear-gradient(180deg, transparent, rgba(255, 62, 165, 0.28), rgba(255, 220, 240, 0.76), transparent);
+  filter: blur(4px);
+  transform: rotate(10deg);
+}
+
+.app-shell.battle-view .gimmick-dynamax-pillars i:nth-child(1) { left: 13%; }
+.app-shell.battle-view .gimmick-dynamax-pillars i:nth-child(2) { left: 37%; transform: rotate(-7deg); }
+.app-shell.battle-view .gimmick-dynamax-pillars i:nth-child(3) { right: 31%; }
+.app-shell.battle-view .gimmick-dynamax-pillars i:nth-child(4) { right: 8%; transform: rotate(-12deg); }
+
+.app-shell.battle-view .mechanic-dynamax .battle-gimmick-pokemon.is-before {
+  animation-name: refined-dynamax-pokemon-before;
+}
+
+.app-shell.battle-view .mechanic-dynamax .battle-gimmick-pokemon.is-after {
+  animation-name: refined-dynamax-pokemon-after;
+}
+
+/* Terastal: refracted light, crystal shell and type crown */
+.app-shell.battle-view .mechanic-tera .battle-gimmick-screen-tint {
+  background:
+    radial-gradient(circle at 50% 54%, color-mix(in srgb, var(--gimmick-primary) 46%, transparent), transparent 30%),
+    linear-gradient(145deg, rgba(8, 16, 48, 0.97), color-mix(in srgb, var(--gimmick-secondary) 48%, #10152d), rgba(4, 15, 34, 0.98));
+}
+
+.app-shell.battle-view .gimmick-tera-rainbow {
+  position: absolute;
+  inset: -20%;
+  opacity: 0;
+  background:
+    repeating-conic-gradient(from 0deg at 50% 54%, rgba(255, 96, 179, 0.22) 0 7deg, rgba(255, 235, 96, 0.2) 7deg 14deg, rgba(98, 255, 202, 0.22) 14deg 21deg, rgba(96, 180, 255, 0.22) 21deg 28deg, transparent 28deg 42deg),
+    radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 42%);
+  filter: saturate(1.35);
+  mix-blend-mode: screen;
+  animation: refined-tera-rainbow var(--gimmick-duration) linear both;
+}
+
+.app-shell.battle-view .gimmick-tera-crown {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  z-index: 24;
+  width: clamp(92px, 10vw, 145px);
+  height: clamp(74px, 8vw, 118px);
+  opacity: 0;
+  filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 22px var(--gimmick-primary));
+  transform: translate(-50%, 28px) scale(0.3);
+  animation: refined-tera-crown var(--gimmick-duration) cubic-bezier(0.18, 0.78, 0.22, 1) both;
+}
+
+.app-shell.battle-view .gimmick-tera-crown::before,
+.app-shell.battle-view .gimmick-tera-crown::after,
+.app-shell.battle-view .gimmick-tera-crown i {
+  position: absolute;
+  content: "";
+  background: linear-gradient(135deg, #fff 0 16%, var(--gimmick-highlight) 17% 34%, var(--gimmick-primary) 35% 66%, var(--gimmick-secondary) 67% 100%);
+  box-shadow: inset -4px -5px rgba(30, 45, 98, 0.24), inset 3px 3px rgba(255, 255, 255, 0.7);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.app-shell.battle-view .gimmick-tera-crown::before {
+  right: 7%;
+  bottom: 0;
+  left: 7%;
+  height: 48%;
+}
+
+.app-shell.battle-view .gimmick-tera-crown::after {
+  top: 0;
+  left: 31%;
+  width: 38%;
+  height: 64%;
+}
+
+.app-shell.battle-view .gimmick-tera-crown i:nth-child(1) { top: 27%; left: 3%; width: 35%; height: 42%; transform: rotate(-24deg); }
+.app-shell.battle-view .gimmick-tera-crown i:nth-child(2) { top: 27%; right: 3%; width: 35%; height: 42%; transform: rotate(24deg); }
+.app-shell.battle-view .gimmick-tera-crown i:nth-child(3) { right: 22%; bottom: -12%; left: 22%; height: 32%; }
+
+.app-shell.battle-view .gimmick-tera-crown b {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 3;
+  color: #13203b;
+  font-size: clamp(13px, 1.4vw, 21px);
+  font-weight: 1000;
+  text-shadow: 0 1px #fff;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .gimmick-tera-crystals {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+}
+
+.app-shell.battle-view .gimmick-tera-crystals i {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  width: 15px;
+  height: 28px;
+  opacity: 0;
+  background: linear-gradient(135deg, #fff, var(--gimmick-primary) 47%, var(--gimmick-secondary));
+  clip-path: polygon(50% 0, 100% 35%, 78% 100%, 18% 82%, 0 28%);
+  filter: drop-shadow(0 0 6px var(--gimmick-primary));
+  animation: refined-tera-crystal var(--gimmick-duration) ease-out both;
+  animation-delay: calc(var(--crystal-index) * 18ms);
+}
+
+.app-shell.battle-view .mechanic-tera .battle-gimmick-pokemon.is-after {
+  animation-name: refined-tera-pokemon-after;
+}
+
+/* Primal Reversion: split ancient energy and rune pulse */
+.app-shell.battle-view .mechanic-primal .battle-gimmick-screen-tint {
+  background:
+    radial-gradient(circle at 50% 54%, rgba(255, 236, 151, 0.32), transparent 28%),
+    linear-gradient(115deg, rgba(111, 22, 12, 0.96) 0 48%, rgba(9, 72, 93, 0.96) 52% 100%);
+}
+
+.app-shell.battle-view .gimmick-primal-sigil {
+  position: absolute;
+  top: 53%;
+  left: 50%;
+  width: clamp(270px, 36vw, 560px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .gimmick-primal-sigil i {
+  position: absolute;
+  inset: 9%;
+  border: 9px double rgba(255, 239, 161, 0.9);
+  border-right-color: #2cd6ff;
+  border-left-color: #ff6241;
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 13px #ffce78);
+  animation: refined-primal-sigil var(--gimmick-duration) steps(8, end) both;
+}
+
+.app-shell.battle-view .gimmick-primal-sigil i:nth-child(2) { inset: 25%; border-style: dashed; animation-direction: reverse; }
+.app-shell.battle-view .gimmick-primal-sigil i:nth-child(3) { inset: 40%; border-width: 5px; }
+
+.app-shell.battle-view .gimmick-primal-wave i {
+  position: absolute;
+  bottom: -10%;
+  width: 58%;
+  height: 46%;
+  opacity: 0;
+  filter: blur(3px);
+  animation: refined-primal-wave var(--gimmick-duration) ease-out both;
+}
+
+.app-shell.battle-view .gimmick-primal-wave i:first-child {
+  left: -7%;
+  background: radial-gradient(ellipse at bottom, rgba(255, 83, 45, 0.78), transparent 68%);
+}
+
+.app-shell.battle-view .gimmick-primal-wave i:last-child {
+  right: -7%;
+  background: radial-gradient(ellipse at bottom, rgba(45, 207, 255, 0.74), transparent 68%);
+}
+
+/* Persistent state chips and selector identity */
+.app-shell.battle-view .battle-hp-panel header .mega-state {
+  color: #142844;
+  background: linear-gradient(135deg, #76e9ff, #e4c2ff);
+}
+
+.app-shell.battle-view .battle-hp-panel header .primal-state {
+  background: linear-gradient(135deg, #df513a, #277fa8);
+}
+
+.app-shell.battle-view .battle-gimmick-selector button {
+  --selector-color: #8fdcf0;
+  gap: 6px;
+  border: 2px solid color-mix(in srgb, var(--selector-color) 48%, #e9f5ef);
+  border-radius: 5px 12px 5px 5px;
+  color: #edf8f2;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--selector-color) 22%, #1b3650), #14263d);
+  box-shadow: inset 0 -3px rgba(1, 10, 24, 0.24);
+}
+
+.app-shell.battle-view .battle-gimmick-selector button.mechanic-mega { --selector-color: #7ce7ff; }
+.app-shell.battle-view .battle-gimmick-selector button.mechanic-zmove { --selector-color: #ffe45c; }
+.app-shell.battle-view .battle-gimmick-selector button.mechanic-dynamax { --selector-color: #ff54aa; }
+.app-shell.battle-view .battle-gimmick-selector button.mechanic-tera { --selector-color: #b38cff; }
+.app-shell.battle-view .battle-gimmick-selector button.mechanic-primal { --selector-color: #ff7650; }
+
+.app-shell.battle-view .battle-gimmick-selector button.selected {
+  border-color: #fff;
+  color: #14243b;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--selector-color) 76%, white), var(--selector-color));
+  box-shadow: 0 0 0 2px #f5db54, 0 0 16px color-mix(in srgb, var(--selector-color) 58%, transparent), inset 0 -3px rgba(18, 35, 57, 0.18);
+}
+
+.app-shell.battle-view .battle-gimmick-button-symbol {
+  display: grid;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 3px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  place-items: center;
+  font-family: Impact, sans-serif;
+  font-size: 8px;
+  font-style: normal;
+  line-height: 1;
+}
+
+@keyframes refined-gimmick-camera {
+  0%, 100% { transform: translate(0, 0) scale(1); filter: brightness(1); }
+  10% { transform: translate(0, 1%) scale(1.035); filter: brightness(0.72); }
+  46% { transform: translate(0, -1%) scale(1.075); filter: brightness(0.82); }
+  58% { transform: translate(0, -1%) scale(1.095); filter: brightness(1.28); }
+  82% { transform: translate(0, 0) scale(1.035); filter: brightness(1.08); }
+}
+
+@keyframes refined-dynamax-camera {
+  0%, 100% { transform: translate(0, 0) scale(1); filter: brightness(1); }
+  12% { transform: translateY(2%) scale(1.05); filter: brightness(0.58) saturate(1.2); }
+  55% { transform: translateY(4%) scale(0.91); filter: brightness(0.72) saturate(1.35); }
+  80% { transform: translateY(1%) scale(0.94); filter: brightness(0.92) saturate(1.2); }
+}
+
+@keyframes refined-zmove-camera {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  14% { transform: translateX(-1.8%) scale(1.035); }
+  34% { transform: translateX(1.5%) scale(1.07); }
+  58% { transform: translateX(-0.7%) scale(1.095); }
+  76% { transform: translateX(0.4%) scale(1.04); }
+}
+
+@keyframes refined-gimmick-stage-hide {
+  0% { opacity: 1; }
+  5%, 96% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes refined-gimmick-sequence {
+  0% { opacity: 0; }
+  3%, 94% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes refined-gimmick-tint {
+  0% { opacity: 0; }
+  8% { opacity: 0.96; }
+  78% { opacity: 0.92; }
+  100% { opacity: 0; }
+}
+
+@keyframes refined-gimmick-lines {
+  0% { opacity: 0; transform: translateX(-5%); }
+  12% { opacity: 0.62; }
+  72% { opacity: 0.38; transform: translateX(5%); }
+  100% { opacity: 0; transform: translateX(8%); }
+}
+
+@keyframes refined-gimmick-whiteout {
+  0%, 41%, 47%, 54%, 100% { opacity: 0; }
+  43% { opacity: 0.8; }
+  51% { opacity: 0.96; }
+}
+
+@keyframes refined-gimmick-ground {
+  0%, 8%, 100% { opacity: 0; transform: scaleY(0.36) scaleX(0.25); }
+  24%, 82% { opacity: 0.92; transform: scaleY(0.36) scaleX(1); }
+}
+
+@keyframes refined-gimmick-orbit-outer {
+  0%, 8%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(0.25); }
+  24% { opacity: 0.86; }
+  72% { opacity: 0.7; transform: translate(-50%, -50%) rotate(520deg) scale(1); }
+  92% { opacity: 0; transform: translate(-50%, -50%) rotate(620deg) scale(1.3); }
+}
+
+@keyframes refined-gimmick-orbit-inner {
+  0%, 12%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(90deg) scale(0.2); }
+  30% { opacity: 0.78; }
+  76% { opacity: 0.64; transform: translate(-50%, -50%) rotate(-430deg) scale(1); }
+  94% { opacity: 0; transform: translate(-50%, -50%) rotate(-520deg) scale(1.25); }
+}
+
+@keyframes refined-gimmick-pokemon-before {
+  0%, 10% { opacity: 1; filter: brightness(1); transform: scale(1); }
+  34% { opacity: 1; filter: brightness(2.2) saturate(0); transform: scale(1.04); }
+  47%, 100% { opacity: 0; filter: brightness(5) saturate(0); transform: scale(0.96); }
+}
+
+@keyframes refined-gimmick-pokemon-after {
+  0%, 46% { opacity: 0; filter: brightness(5) saturate(0); transform: scale(0.78); }
+  54% { opacity: 1; filter: brightness(4) saturate(0.2); transform: scale(1.09); }
+  67%, 90% { opacity: 1; filter: brightness(1) saturate(1); transform: scale(1); }
+  100% { opacity: 0; filter: brightness(1.2); transform: scale(1); }
+}
+
+@keyframes refined-transform-pokemon-before {
+  0%, 14% { opacity: 1; filter: brightness(1); transform: scale(1); }
+  30% { opacity: 1; filter: brightness(0) drop-shadow(0 0 15px var(--gimmick-primary)); transform: scale(0.95); }
+  45% { opacity: 1; filter: brightness(5) saturate(0); transform: scale(1.08); }
+  49%, 100% { opacity: 0; transform: scale(0.92); }
+}
+
+@keyframes refined-transform-pokemon-after {
+  0%, 46% { opacity: 0; filter: brightness(6) saturate(0); transform: scale(0.72); }
+  53% { opacity: 1; filter: brightness(5) saturate(0); transform: scale(1.15); }
+  64%, 91% { opacity: 1; filter: brightness(1) saturate(1); transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes refined-gimmick-silhouette {
+  0%, 25%, 62%, 100% { opacity: 0; transform: scale(0.3); }
+  40% { opacity: 0.86; transform: scale(0.92); }
+  51% { opacity: 1; transform: scale(1.35); }
+}
+
+@keyframes refined-gimmick-spark {
+  0%, 16% { opacity: 0; transform: rotate(calc(var(--spark-index) * 20deg)) translateY(-25px) scale(0.2); }
+  34% { opacity: 1; }
+  76% { opacity: 0.8; transform: rotate(calc(var(--spark-index) * 20deg)) translateY(-150px) scale(1); }
+  100% { opacity: 0; transform: rotate(calc(var(--spark-index) * 20deg)) translateY(-220px) scale(0.55); }
+}
+
+@keyframes refined-gimmick-title {
+  0%, 7% { opacity: 0; transform: translate(-50%, -24px) scaleX(0.72); }
+  15%, 79% { opacity: 1; transform: translate(-50%, 0) scaleX(1); }
+  91%, 100% { opacity: 0; transform: translate(-50%, 13px) scaleX(0.96); }
+}
+
+@keyframes refined-mega-background {
+  0%, 4%, 100% { opacity: 0; transform: translateX(-3%) scale(1.04); }
+  12%, 78% { opacity: 0.78; transform: translateX(3%) scale(1.04); }
+  91% { opacity: 0; }
+}
+
+@keyframes refined-mega-helix {
+  0%, 10%, 100% { opacity: 0; transform: rotate(0) scale(0.2); }
+  26% { opacity: 0.88; }
+  72% { opacity: 0.72; transform: rotate(620deg) scale(1); }
+  90% { opacity: 0; transform: rotate(760deg) scale(1.32); }
+}
+
+@keyframes refined-mega-sigil {
+  0%, 22%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.25) rotate(-60deg); }
+  31%, 46% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+  54% { opacity: 0; transform: translate(-50%, -50%) scale(1.8) rotate(18deg); }
+}
+
+@keyframes refined-mega-strike {
+  0%, 45%, 55%, 100% { opacity: 0; transform: translate(-50%, -50%) scaleX(0); }
+  48%, 52% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+}
+
+@keyframes refined-z-emblem {
+  0%, 5%, 100% { opacity: 0; transform: translate(-62%, -50%) skewX(-12deg) scale(1.4); }
+  13%, 33% { opacity: 0.92; transform: translate(-50%, -50%) skewX(-12deg) scale(1); }
+  43% { opacity: 0; transform: translate(-38%, -50%) skewX(-12deg) scale(0.78); }
+}
+
+@keyframes refined-z-prism {
+  0%, 4%, 100% { opacity: 0; transform: rotate(-12deg) scale(0.75); }
+  15%, 68% { opacity: 0.78; }
+  84% { opacity: 0.25; transform: rotate(32deg) scale(1.25); }
+}
+
+@keyframes refined-z-energy-line {
+  0%, 28%, 100% { opacity: 0; transform: rotate(-10deg) scaleX(0); }
+  42%, 55% { opacity: 1; transform: rotate(-10deg) scaleX(1); }
+  65% { opacity: 0; transform: rotate(-10deg) scaleX(1.2); }
+}
+
+@keyframes refined-z-pokemon-charge {
+  0%, 28% { opacity: 0; filter: brightness(3) saturate(0); transform: scale(0.84); }
+  38% { opacity: 1; filter: brightness(2.8) saturate(1.8); transform: scale(1.08); }
+  51%, 86% { opacity: 1; filter: brightness(1.1) saturate(1.3) drop-shadow(0 0 13px #ffe44d); transform: scale(1); }
+  94%, 100% { opacity: 0; transform: scale(1.05); }
+}
+
+@keyframes refined-dynamax-cloud-bank {
+  0%, 5%, 100% { opacity: 0; transform: translateX(-50%) translateY(-35%) scale(0.72); }
+  22%, 82% { opacity: 0.86; transform: translateX(-50%) translateY(0) scale(1); }
+  94% { opacity: 0; transform: translateX(-50%) translateY(-6%) scale(1.12); }
+}
+
+@keyframes refined-dynamax-vortex {
+  0%, 8%, 100% { opacity: 0; transform: rotate(0) scale(0.22); }
+  28% { opacity: 0.9; }
+  72% { opacity: 0.62; transform: rotate(540deg) scale(1); }
+  92% { opacity: 0; transform: rotate(680deg) scale(1.18); }
+}
+
+@keyframes refined-dynamax-pillars {
+  0%, 28%, 100% { opacity: 0; transform: translateY(36%); }
+  45%, 77% { opacity: 1; transform: translateY(0); }
+  92% { opacity: 0; transform: translateY(-16%); }
+}
+
+@keyframes refined-dynamax-pokemon-before {
+  0%, 16% { opacity: 1; filter: brightness(1); transform: scale(1); }
+  35% { opacity: 1; filter: brightness(0) drop-shadow(0 0 18px #ff3c9f); transform: scale(0.78); }
+  48%, 100% { opacity: 0; filter: brightness(3); transform: scale(0.48); }
+}
+
+@keyframes refined-dynamax-pokemon-after {
+  0%, 42% { opacity: 0; filter: brightness(0) drop-shadow(0 0 24px #ff3c9f); transform: translateY(26%) scale(0.45); }
+  58% { opacity: 1; filter: brightness(0.12) saturate(1.8) drop-shadow(0 0 26px #ff3c9f); transform: translateY(0) scale(1.72); }
+  69%, 91% { opacity: 1; filter: brightness(0.92) saturate(1.16) drop-shadow(0 0 20px #ff3c9f); transform: translateY(0) scale(1.58); }
+  100% { opacity: 0; transform: scale(1.58); }
+}
+
+@keyframes refined-tera-rainbow {
+  0%, 8%, 100% { opacity: 0; transform: rotate(-14deg) scale(0.65); }
+  30%, 82% { opacity: 0.88; }
+  92% { opacity: 0; transform: rotate(34deg) scale(1.2); }
+}
+
+@keyframes refined-tera-crown {
+  0%, 36%, 100% { opacity: 0; transform: translate(-50%, 28px) scale(0.3) rotate(-14deg); }
+  48% { opacity: 1; transform: translate(-50%, -10px) scale(1.16) rotate(3deg); }
+  58%, 88% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0); }
+  96% { opacity: 0; transform: translate(-50%, 3px) scale(1); }
+}
+
+@keyframes refined-tera-crystal {
+  0%, 22% { opacity: 0; transform: rotate(calc(var(--crystal-index) * 25.7deg)) translateY(-18px) scale(0.2); }
+  42% { opacity: 1; }
+  76% { opacity: 0.9; transform: rotate(calc(var(--crystal-index) * 25.7deg)) translateY(-155px) scale(1); }
+  100% { opacity: 0; transform: rotate(calc(var(--crystal-index) * 25.7deg)) translateY(-235px) scale(0.5); }
+}
+
+@keyframes refined-tera-pokemon-after {
+  0%, 43% { opacity: 0; filter: brightness(4) saturate(0); transform: scale(0.82); }
+  53% { opacity: 1; filter: brightness(4) saturate(0.2); transform: scale(1.1); }
+  64%, 91% { opacity: 1; filter: brightness(1.3) saturate(1.45) drop-shadow(0 0 7px #fff) drop-shadow(0 0 16px var(--gimmick-primary)); transform: scale(1); }
+  100% { opacity: 0; filter: brightness(1.15) saturate(1.25); transform: scale(1); }
+}
+
+@keyframes refined-primal-sigil {
+  0%, 7%, 100% { opacity: 0; transform: rotate(0) scale(0.18); }
+  25% { opacity: 0.94; }
+  74% { opacity: 0.74; transform: rotate(600deg) scale(1); }
+  93% { opacity: 0; transform: rotate(720deg) scale(1.28); }
+}
+
+@keyframes refined-primal-wave {
+  0%, 20%, 100% { opacity: 0; transform: translateY(34%) scale(0.7); }
+  44%, 82% { opacity: 1; transform: translateY(0) scale(1); }
+  94% { opacity: 0; transform: translateY(-12%) scale(1.1); }
+}
+
+@media (max-width: 760px) {
+  .app-shell.battle-view .battle-gimmick-focus {
+    top: 57%;
+    width: clamp(170px, 42vw, 260px);
+  }
+
+  .app-shell.battle-view .battle-gimmick-title-card {
+    top: 8%;
+    min-width: min(270px, 68vw);
+    padding: 6px 17px 8px;
+  }
+
+  .app-shell.battle-view .battle-gimmick-title-card strong {
+    font-size: clamp(17px, 4.3vw, 26px);
+  }
+
+  .app-shell.battle-view .battle-gimmick-title-card small,
+  .app-shell.battle-view .battle-gimmick-title-card span {
+    font-size: 7px;
+  }
+
+  .app-shell.battle-view .gimmick-tera-crown {
+    top: 23%;
+  }
+
+  .app-shell.battle-view .battle-gimmick-selector button {
+    min-height: 29px;
+    padding: 0 7px;
+    font-size: 8px;
+  }
+
+  .app-shell.battle-view .battle-gimmick-button-symbol {
+    min-width: 18px;
+    height: 17px;
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell.battle-view .battle-gimmick-title-card {
+    min-width: min(230px, 72vw);
+  }
+
+  .app-shell.battle-view .gimmick-z-emblem {
+    left: 17%;
+    -webkit-text-stroke-width: 5px;
+  }
+
+  .app-shell.battle-view .battle-gimmick-selector {
+    gap: 4px;
+  }
+
+  .app-shell.battle-view .battle-gimmick-selector button {
+    padding: 0 5px;
+  }
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-terastal {
+  --tera-stage-color: #8eeeff;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-normal { --tera-stage-color: #d8d3cd; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-fire { --tera-stage-color: #ff7453; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-water { --tera-stage-color: #54cfff; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-electric { --tera-stage-color: #fff057; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-grass { --tera-stage-color: #84ee77; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-ice { --tera-stage-color: #b8f7ff; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-fighting { --tera-stage-color: #ff7b60; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-poison { --tera-stage-color: #dc74f4; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-ground { --tera-stage-color: #e8b469; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-flying { --tera-stage-color: #b9e7ff; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-psychic { --tera-stage-color: #ff8bc2; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-bug { --tera-stage-color: #c9ec59; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-rock { --tera-stage-color: #e3c776; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-ghost { --tera-stage-color: #ad87ff; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-dragon { --tera-stage-color: #7aa9ff; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-dark { --tera-stage-color: #9e94aa; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-steel { --tera-stage-color: #d4ecf1; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-fairy { --tera-stage-color: #ffabdd; }
+.app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-stellar { --tera-stage-color: #ffffff; }
+
+.app-shell.battle-view .battle-pokemon-stage.is-terastal .battle-live-sprite-frame img.battle-live-sprite {
+  filter: brightness(1.12) saturate(1.32) drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38));
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-terastal::after {
+  position: absolute;
+  top: -7%;
+  left: 50%;
+  z-index: 8;
+  color: var(--tera-stage-color);
+  content: "◆";
+  font-size: clamp(24px, 3vw, 43px);
+  line-height: 1;
+  text-shadow: -17px 9px 0 color-mix(in srgb, var(--tera-stage-color) 76%, white), 17px 9px 0 color-mix(in srgb, var(--tera-stage-color) 62%, #9f70ff), 0 0 7px #fff, 0 0 16px var(--tera-stage-color);
+  transform: translateX(-50%);
+  animation: refined-tera-idle-crown 1.4s steps(4, end) infinite;
+}
+
+@keyframes refined-tera-idle-crown {
+  0%, 100% { filter: brightness(1); transform: translateX(-50%) translateY(0); }
+  50% { filter: brightness(1.8); transform: translateX(-50%) translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.battle-view .battle-gimmick-sequence *,
+  .app-shell.battle-view .battle-field-camera.phase-gimmick,
+  .app-shell.battle-view .battle-pokemon-stage.is-gimmicking * {
+    animation-timing-function: steps(2, end) !important;
+  }
+}
+
 /* Refined fan-game presentation: arena-first composition and classic feedback rhythm. */
 .app-shell.battle-view .battle-game-screen {
   --battle-ink: #10233a;

@@ -237,6 +237,112 @@ export function createBattleAudio(initialEnabled = true) {
     if (cue.critical) tone(880, now + 0.04, 0.16, { volume: 0.12, slide: 1760 })
   }
 
+  const duckMusicForGimmick = (now, duration) => {
+    if (!musicGain) return
+    const restoredVolume = lowHpActive ? 0.058 : 0.085
+    musicGain.gain.cancelScheduledValues(now)
+    musicGain.gain.setTargetAtTime(0.018, now, 0.035)
+    musicGain.gain.setTargetAtTime(restoredVolume, now + duration * 0.78, 0.11)
+  }
+
+  const playGimmick = (cue) => {
+    const audio = ensureContext()
+    if (!audio || !enabled) return
+    const now = audio.currentTime + 0.01
+
+    if (cue.mechanicId === 'mega') {
+      duckMusicForGimmick(now, 2.3)
+      tone(98, now, 0.72, { volume: 0.13, slide: 392, wave: 'sawtooth' })
+      sequence([262, 330, 392, 523, 659, 784, 1047], {
+        delay: 0.12,
+        step: 0.12,
+        duration: 0.17,
+        volume: 0.11,
+        wave: 'triangle',
+      })
+      noise(now + 0.78, 0.34, { volume: 0.11, frequency: 1800, q: 2.4 })
+      tone(1047, now + 0.96, 0.52, { volume: 0.14, slide: 2093, wave: 'sine' })
+      tone(523, now + 1.08, 0.48, { volume: 0.11, slide: 1047, wave: 'square' })
+      return
+    }
+
+    if (cue.mechanicId === 'zmove') {
+      duckMusicForGimmick(now, 1.95)
+      sequence([196, 247, 294, 392], {
+        step: 0.09,
+        duration: 0.12,
+        volume: 0.13,
+        wave: 'square',
+      })
+      sequence([523, 659, 784, 988], {
+        delay: 0.42,
+        step: 0.085,
+        duration: 0.13,
+        volume: 0.12,
+        wave: 'triangle',
+      })
+      tone(130, now + 0.62, 0.62, { volume: 0.16, slide: 1047, wave: 'sawtooth' })
+      noise(now + 0.9, 0.3, { volume: 0.13, frequency: 1400, q: 1.8 })
+      tone(1568, now + 1.02, 0.26, { volume: 0.13, slide: 784, wave: 'sine' })
+      return
+    }
+
+    if (cue.mechanicId === 'dynamax') {
+      duckMusicForGimmick(now, 2.45)
+      tone(48, now, 1.45, { volume: 0.2, slide: 92, wave: 'sawtooth' })
+      tone(73, now + 0.12, 1.2, { volume: 0.14, slide: 147, wave: 'triangle' })
+      noise(now + 0.08, 1.24, { volume: 0.12, frequency: 210, q: 0.7, filterType: 'lowpass' })
+      sequence([110, 147, 196], {
+        delay: 0.72,
+        step: 0.24,
+        duration: 0.3,
+        volume: 0.15,
+        wave: 'square',
+      })
+      tone(55, now + 1.22, 0.62, { volume: 0.2, slide: 220, wave: 'sawtooth' })
+      noise(now + 1.28, 0.48, { volume: 0.15, frequency: 520, q: 0.9 })
+      return
+    }
+
+    if (cue.mechanicId === 'tera') {
+      duckMusicForGimmick(now, 2.2)
+      sequence([523, 659, 784, 988, 1175, 1568], {
+        step: 0.105,
+        duration: 0.18,
+        volume: 0.105,
+        wave: 'sine',
+      })
+      sequence([784, 1047, 1319, 2093], {
+        delay: 0.54,
+        step: 0.09,
+        duration: 0.22,
+        volume: 0.1,
+        wave: 'triangle',
+      })
+      noise(now + 0.58, 0.5, { volume: 0.075, frequency: 3600, q: 3.2, filterType: 'highpass' })
+      tone(2093, now + 0.9, 0.42, { volume: 0.12, slide: 1047, wave: 'sine' })
+      return
+    }
+
+    if (cue.mechanicId === 'primal') {
+      duckMusicForGimmick(now, 2.35)
+      tone(65, now, 1.05, { volume: 0.19, slide: 196, wave: 'sawtooth' })
+      tone(78, now + 0.08, 1.05, { volume: 0.16, slide: 233, wave: 'triangle' })
+      noise(now + 0.16, 0.82, { volume: 0.13, frequency: 340, q: 0.8 })
+      sequence([196, 262, 330, 392, 523], {
+        delay: 0.58,
+        step: 0.13,
+        duration: 0.2,
+        volume: 0.12,
+        wave: 'square',
+      })
+      tone(1047, now + 1.12, 0.42, { volume: 0.12, slide: 523, wave: 'sine' })
+      return
+    }
+
+    sequence([262, 330, 392, 523, 659, 784], { step: 0.09, duration: 0.13, volume: 0.13 })
+  }
+
   const playCue = (cue) => {
     if (!cue || cue.id === lastCueId) return
     lastCueId = cue.id
@@ -245,7 +351,7 @@ export function createBattleAudio(initialEnabled = true) {
     const now = audio.currentTime + 0.01
 
     if (cue.phase === 'gimmick') {
-      sequence([262, 330, 392, 523, 659, 784], { step: 0.07, duration: 0.11, volume: 0.13 })
+      playGimmick(cue)
     } else if (cue.phase === 'announce') {
       tone(cue.sideId === 'player' ? 523 : 392, now, 0.055, { volume: 0.1 })
     } else if (cue.phase === 'attack') {

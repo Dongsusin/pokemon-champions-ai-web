@@ -156,6 +156,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     teraActive: false,
     dynamaxActive: false,
     dynamaxTurns: 0,
+    dynamaxOriginalForm: null,
     megaActive: false,
     primalActive: false,
     consumedItem: false,
@@ -215,6 +216,7 @@ function clonePokemon(pokemon) {
     statStages: { ...pokemon.statStages },
     status: pokemon.status ? { ...pokemon.status } : null,
     battleMechanics: [...pokemon.battleMechanics],
+    dynamaxOriginalForm: pokemon.dynamaxOriginalForm ? { ...pokemon.dynamaxOriginalForm } : null,
   }
 }
 
@@ -247,6 +249,17 @@ function pushTimelineStep(timeline, state, step) {
 
 function latestLogMessage(state, fallback) {
   return state.log[state.log.length - 1]?.message ?? fallback
+}
+
+function mechanicPokemonSnapshot(pokemon) {
+  return {
+    name: pokemon.name,
+    types: [...pokemon.types],
+    spriteFront: pokemon.spriteFront,
+    spriteBack: pokemon.spriteBack,
+    spriteFrontFallback: pokemon.spriteFrontFallback,
+    spriteBackFallback: pokemon.spriteBackFallback,
+  }
 }
 
 function getSide(state, sideId) {
@@ -529,6 +542,31 @@ function transformPokemon(state, pokemon, formId, mechanicId) {
   return true
 }
 
+function transformGigantamax(pokemon) {
+  const formOptions = getBattleFormOptions(pokemon.originalSpeciesId)
+  const configuredForm = pokemon.gimmickFormId ? getSpeciesProfile(pokemon.gimmickFormId) : null
+  const form = configuredForm?.slug?.includes('-gmax')
+    ? configuredForm
+    : formOptions.find((option) => option.slug.includes('-gmax'))
+  if (!form) return false
+
+  pokemon.dynamaxOriginalForm = {
+    speciesId: pokemon.speciesId,
+    name: pokemon.name,
+    spriteFront: pokemon.spriteFront,
+    spriteBack: pokemon.spriteBack,
+    spriteFrontFallback: pokemon.spriteFrontFallback,
+    spriteBackFallback: pokemon.spriteBackFallback,
+  }
+  pokemon.speciesId = form.id
+  pokemon.name = form.name
+  pokemon.spriteFront = form.spriteFront
+  pokemon.spriteBack = form.spriteBack
+  pokemon.spriteFrontFallback = form.spriteFrontFallback
+  pokemon.spriteBackFallback = form.spriteBackFallback
+  return true
+}
+
 function inferConfiguredMechanics(pokemon) {
   return pokemon.battleMechanics.map((mechanic) => {
     if (mechanic === 'terastallization') return 'tera'
@@ -594,14 +632,16 @@ function activateMechanic(state, sideId, mechanicId) {
     pokemon.types = [pokemon.teraType]
     appendLog(state, `${trainerName}의 ${pokemon.name}이(가) ${pokemon.teraType}타입으로 테라스탈했다!`, 'gimmick')
   } else if (mechanicId === 'dynamax') {
+    const originalName = pokemon.name
     side.usedMechanics.dynamax = true
+    if (pokemon.dynamaxMode === 'gigantamax') transformGigantamax(pokemon)
     pokemon.dynamaxActive = true
     pokemon.dynamaxTurns = 3
     pokemon.hp += pokemon.maxHp
     pokemon.maxHp *= 2
     appendLog(
       state,
-      `${trainerName}의 ${pokemon.name}이(가) ${pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}했다!`,
+      `${trainerName}의 ${originalName}이(가) ${pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}했다!`,
       'gimmick',
     )
   } else if (mechanicId === 'mega' || mechanicId === 'primal') {
@@ -650,15 +690,30 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   const mechanicWasUsed = action.gimmick ? side.usedMechanics[action.gimmick] : false
+  const mechanicBefore = action.gimmick ? mechanicPokemonSnapshot(attacker) : null
   const powerMultiplier = activateMechanic(state, sideId, action.gimmick)
   if (action.gimmick && !mechanicWasUsed && side.usedMechanics[action.gimmick]) {
+    const mechanicAfter = mechanicPokemonSnapshot(attacker)
     pushTimelineStep(timeline, state, {
       phase: 'gimmick',
       actionOrder,
       sideId,
       targetSideId: sideId,
-      actorName: attacker.name,
+      actorName: mechanicAfter.name,
+      actorPreviousName: mechanicBefore.name,
       mechanicId: action.gimmick,
+      mechanicLabel: MECHANIC_LABELS[action.gimmick],
+      mechanicType: action.gimmick === 'tera' ? attacker.teraType : null,
+      mechanicMode: action.gimmick === 'dynamax' ? attacker.dynamaxMode : null,
+      chargedMoveName: action.gimmick === 'zmove' ? move.name : null,
+      spriteBeforeFront: mechanicBefore.spriteFront,
+      spriteBeforeBack: mechanicBefore.spriteBack,
+      spriteBeforeFrontFallback: mechanicBefore.spriteFrontFallback,
+      spriteBeforeBackFallback: mechanicBefore.spriteBackFallback,
+      spriteAfterFront: mechanicAfter.spriteFront,
+      spriteAfterBack: mechanicAfter.spriteBack,
+      spriteAfterFrontFallback: mechanicAfter.spriteFrontFallback,
+      spriteAfterBackFallback: mechanicAfter.spriteBackFallback,
       message: latestLogMessage(state, `${attacker.name}의 배틀 기믹이 발동했다!`),
     })
   }
@@ -814,8 +869,17 @@ function endDynamax(state, pokemon) {
   if (!pokemon.dynamaxActive) return
   pokemon.dynamaxActive = false
   pokemon.dynamaxTurns = 0
-  pokemon.hp = Math.max(1, Math.ceil(pokemon.hp / 2))
+  pokemon.hp = pokemon.hp > 0 ? Math.max(1, Math.ceil(pokemon.hp / 2)) : 0
   pokemon.maxHp = pokemon.originalMaxHp
+  if (pokemon.dynamaxOriginalForm) {
+    pokemon.speciesId = pokemon.dynamaxOriginalForm.speciesId
+    pokemon.name = pokemon.dynamaxOriginalForm.name
+    pokemon.spriteFront = pokemon.dynamaxOriginalForm.spriteFront
+    pokemon.spriteBack = pokemon.dynamaxOriginalForm.spriteBack
+    pokemon.spriteFrontFallback = pokemon.dynamaxOriginalForm.spriteFrontFallback
+    pokemon.spriteBackFallback = pokemon.dynamaxOriginalForm.spriteBackFallback
+    pokemon.dynamaxOriginalForm = null
+  }
   appendLog(state, `${pokemon.name}의 다이맥스가 풀렸다.`, 'muted')
 }
 
