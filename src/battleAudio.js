@@ -37,9 +37,11 @@ export function createBattleAudio(initialEnabled = true) {
   let effectsGain = null
   let musicGain = null
   let musicTimer = null
+  let lowHpTimer = null
   let musicPatternIndex = 0
   let enabled = Boolean(initialEnabled)
   let battleStarted = false
+  let lowHpActive = false
   let lastCueId = null
 
   const ensureContext = () => {
@@ -162,6 +164,27 @@ export function createBattleAudio(initialEnabled = true) {
     musicTimer = null
   }
 
+  const playLowHpPulse = () => {
+    if (!battleStarted || !enabled || !lowHpActive) return
+    const audio = ensureContext()
+    if (!audio) return
+    const now = audio.currentTime + 0.01
+    tone(880, now, 0.075, { volume: 0.105, wave: 'square' })
+    tone(659, now + 0.105, 0.09, { volume: 0.09, wave: 'square' })
+  }
+
+  const startLowHpWarning = () => {
+    if (lowHpTimer || !battleStarted || !enabled || !lowHpActive) return
+    playLowHpPulse()
+    lowHpTimer = window.setInterval(playLowHpPulse, 820)
+  }
+
+  const stopLowHpWarning = () => {
+    if (!lowHpTimer) return
+    window.clearInterval(lowHpTimer)
+    lowHpTimer = null
+  }
+
   const playMenu = (kind = 'select') => {
     const audio = ensureContext()
     if (!audio || !enabled) return
@@ -270,13 +293,31 @@ export function createBattleAudio(initialEnabled = true) {
       masterGain.gain.cancelScheduledValues(audio.currentTime)
       masterGain.gain.setTargetAtTime(enabled ? 0.72 : 0, audio.currentTime, 0.015)
     }
-    if (enabled && battleStarted) startMusic()
-    if (!enabled) stopMusic()
+    if (enabled && battleStarted) {
+      startMusic()
+      startLowHpWarning()
+    }
+    if (!enabled) {
+      stopMusic()
+      stopLowHpWarning()
+    }
+  }
+
+  const setLowHpWarning = (active) => {
+    lowHpActive = Boolean(active)
+    const audio = context
+    if (audio && musicGain) {
+      musicGain.gain.cancelScheduledValues(audio.currentTime)
+      musicGain.gain.setTargetAtTime(lowHpActive ? 0.058 : 0.085, audio.currentTime, 0.05)
+    }
+    if (lowHpActive) startLowHpWarning()
+    else stopLowHpWarning()
   }
 
   const destroy = () => {
     battleStarted = false
     stopMusic()
+    stopLowHpWarning()
     if (context && context.state !== 'closed') context.close().catch(() => {})
     context = null
   }
@@ -286,6 +327,7 @@ export function createBattleAudio(initialEnabled = true) {
     playCue,
     playMenu,
     setEnabled,
+    setLowHpWarning,
     start,
   }
 }
