@@ -841,6 +841,20 @@ function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack, onPreview
   )
 }
 
+const BATTLE_STAT_STAGE_LABELS = [
+  ['attack', '공격'],
+  ['defense', '방어'],
+  ['specialAttack', '특공'],
+  ['specialDefense', '특방'],
+  ['speed', '스피드'],
+]
+
+function battleStatStageEntries(pokemon) {
+  return BATTLE_STAT_STAGE_LABELS
+    .map(([id, label]) => ({ id, label, stage: pokemon.statStages?.[id] ?? 0 }))
+    .filter(({ stage }) => stage !== 0)
+}
+
 function BattleOverviewMenu({ battle, onBack, onPreview }) {
   const player = getActivePokemon(battle, 'player')
   const opponent = getActivePokemon(battle, 'opponent')
@@ -855,21 +869,42 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
         {[
           { id: 'player', label: '아군', pokemon: player, remaining: battle.player.team.filter((member) => !member.fainted).length },
           { id: 'opponent', label: '상대', pokemon: opponent, remaining: battle.opponent.team.filter((member) => !member.fainted).length },
-        ].map(({ id, label, pokemon, remaining }) => (
-          <article className={`side-${id}`} key={id}>
-            <div>
-              <small>{label} · 남은 포켓몬 {remaining}</small>
-              <strong>{pokemon.name}</strong>
-            </div>
-            <span className="battle-overview-types">
-              {pokemon.types.map((type) => <b className={`type-${typeClassName(type)}`} key={type}>{type}</b>)}
-            </span>
-            <span className={`battle-overview-hp tone-${hpTone(pokemon)}`}>
-              <i style={{ width: `${hpRatio(pokemon)}%` }} />
-            </span>
-            <em>HP {pokemon.hp} / {pokemon.maxHp}{pokemon.status ? ` · ${pokemon.status.label}` : ''}</em>
-          </article>
-        ))}
+        ].map(({ id, label, pokemon, remaining }) => {
+          const hpPercent = Math.ceil(hpRatio(pokemon))
+          const statStages = battleStatStageEntries(pokemon)
+
+          return (
+            <article className={`side-${id}`} key={id}>
+              <div className="battle-overview-heading">
+                <small>{label} · 남은 포켓몬 {remaining}</small>
+                <strong>{pokemon.name}</strong>
+              </div>
+              <span className="battle-overview-types">
+                {pokemon.types.map((type) => <b className={`type-${typeClassName(type)}`} key={type}>{type}</b>)}
+              </span>
+              <div className="battle-overview-hp-line">
+                <span className={`battle-overview-hp tone-${hpTone(pokemon)}`}>
+                  <i style={{ width: `${hpRatio(pokemon)}%` }} />
+                </span>
+                <em>HP {hpPercent}%{pokemon.status ? ` · ${pokemon.status.label}` : ''}</em>
+              </div>
+              <div className="battle-overview-stat-stages" aria-label={`${pokemon.name} 능력 변화`}>
+                <small>능력 변화</small>
+                <span>
+                  {statStages.length > 0 ? statStages.map(({ id: statId, label: statLabel, stage }) => (
+                    <b
+                      className={stage > 0 ? 'is-raised' : 'is-lowered'}
+                      key={statId}
+                      title={`${statLabel} ${Math.abs(stage)}단계 ${stage > 0 ? '상승' : '하락'}`}
+                    >
+                      {statLabel}<em>{stage > 0 ? '+' : ''}{stage}</em>
+                    </b>
+                  )) : <em className="is-neutral">변화 없음</em>}
+                </span>
+              </div>
+            </article>
+          )
+        })}
       </div>
     </section>
   )

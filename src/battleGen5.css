@@ -2985,3 +2985,111 @@
   animation: none !important;
   transform: none !important;
 }
+
+.app-shell.battle-view .battle-overview-grid article {
+  grid-template-rows: auto auto auto minmax(30px, 1fr);
+  align-content: stretch;
+  gap: 4px;
+  padding: 7px 9px;
+}
+
+.app-shell.battle-view .battle-overview-heading {
+  min-width: 0;
+}
+
+.app-shell.battle-view .battle-overview-hp-line {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.app-shell.battle-view .battle-overview-hp-line > em {
+  color: #3f5668;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 5px;
+  border: 1px solid rgba(73, 94, 107, 0.3);
+  border-radius: 4px;
+  background: rgba(246, 247, 230, 0.56);
+}
+
+.app-shell.battle-view .battle-overview-stat-stages > small {
+  color: #5b6e79;
+  font-size: 7px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages > span::-webkit-scrollbar {
+  display: none;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages b,
+.app-shell.battle-view .battle-overview-stat-stages .is-neutral {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  min-height: 19px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages b.is-raised {
+  color: #155a45;
+  background: #b9ead2;
+  box-shadow: inset 3px 0 #3cac7c;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages b.is-lowered {
+  color: #7a2932;
+  background: #f1c3c7;
+  box-shadow: inset 3px 0 #cf5964;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages b > em {
+  font-size: 8px;
+  font-style: normal;
+}
+
+.app-shell.battle-view .battle-overview-stat-stages .is-neutral {
+  color: #71808a;
+  background: rgba(101, 119, 128, 0.12);
+}
+
+@media (max-width: 560px) {
+  .app-shell.battle-view .battle-overview-stat-stages {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .app-shell.battle-view .battle-overview-stat-stages > span {
+    justify-content: flex-start;
+  }
+}
