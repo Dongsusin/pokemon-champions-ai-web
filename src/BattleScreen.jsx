@@ -953,10 +953,6 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, effectsReady, onStart
           ))}</span>
         </div>
       </article>
-      <div className="battle-intro-strategy">
-        <small>AI BATTLE PLAN</small>
-        <strong>{opponentTeam.strategy?.summary ?? `${opponent.name}의 정예 팀과 맞붙습니다.`}</strong>
-      </div>
       <button type="button" disabled={!effectsReady} onPointerEnter={effectsReady ? onPreview : undefined} onClick={onStart}>
         {effectsReady ? <Swords size={19} /> : <Sparkles size={19} />}
         {effectsReady ? '배틀 개시' : '기술 연출 준비 중…'}
