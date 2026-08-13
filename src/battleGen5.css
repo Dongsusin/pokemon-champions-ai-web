@@ -421,6 +421,7 @@
 }
 
 .app-shell.battle-view .battle-intro-overlay > button {
+  top: clamp(-72px, -7vh, -40px);
   min-width: 210px;
   min-height: 43px;
   border: 3px solid #fff6c7;
