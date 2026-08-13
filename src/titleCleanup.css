@@ -1,0 +1,25 @@
+.draw-title > p,
+.pc-title > p,
+.training-title > p,
+.shop-title > p,
+.battle-select-title > p,
+.battle-mode-select-heading p,
+.move-picker-header p,
+.item-equip-header p,
+.tera-picker-header p,
+.dynamax-picker-header p {
+  display: none;
+}
+
+.draw-title h1,
+.pc-title h1,
+.training-title h1,
+.shop-title h1,
+.battle-select-title h1,
+.battle-mode-select-heading h2,
+.move-picker-header h3,
+.item-equip-header h2,
+.tera-picker-header h2,
+.dynamax-picker-header h2 {
+  margin-bottom: 0;
+}
