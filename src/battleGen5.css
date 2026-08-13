@@ -2980,3 +2980,8 @@
   cursor: wait;
   transform: none;
 }
+
+.app-shell.battle-view .battle-field-camera:is(.phase-announce, .phase-attack, .phase-impact) {
+  animation: none !important;
+  transform: none !important;
+}
