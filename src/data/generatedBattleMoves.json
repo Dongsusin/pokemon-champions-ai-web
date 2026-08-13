@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T01:25:36.751Z",
+  "generatedAt": "2026-08-13T13:19:00.975Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
@@ -52,7 +52,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "doubleslap",
@@ -76,6 +77,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -101,6 +106,10 @@
         "mirror",
         "punch",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -174,7 +183,11 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "icepunch",
@@ -199,7 +212,11 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "frz"
+      }
     },
     {
       "id": "thunderpunch",
@@ -224,7 +241,11 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "par"
+      }
     },
     {
       "id": "scratch",
@@ -296,7 +317,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "ohko": true
     },
     {
       "id": "razorwind",
@@ -322,7 +344,8 @@
         "metronome",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "swordsdance",
@@ -345,7 +368,10 @@
         "snatch",
         "dance",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 2
+      }
     },
     {
       "id": "cut",
@@ -448,7 +474,8 @@
         "noassist",
         "failcopycat",
         "wind"
-      ]
+      ],
+      "forceSwitch": true
     },
     {
       "id": "fly",
@@ -502,7 +529,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "slam",
@@ -577,7 +605,11 @@
         "nonsky",
         "metronome",
         "minimize"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "doublekick",
@@ -601,7 +633,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "megakick",
@@ -650,7 +683,8 @@
         "mirror",
         "gravity",
         "metronome"
-      ]
+      ],
+      "hasCrashDamage": true
     },
     {
       "id": "rollingkick",
@@ -674,7 +708,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "sandattack",
@@ -698,7 +736,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "accuracy": -1
+      }
     },
     {
       "id": "headbutt",
@@ -722,7 +763,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "hornattack",
@@ -770,6 +815,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -794,7 +843,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "ohko": true
     },
     {
       "id": "tackle",
@@ -844,7 +894,11 @@
         "nonsky",
         "metronome",
         "minimize"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "wrap",
@@ -868,7 +922,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "takedown",
@@ -892,6 +947,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        1,
+        4
       ]
     },
     {
@@ -917,7 +976,10 @@
         "mirror",
         "metronome",
         "failinstruct"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "lockedmove"
+      }
     },
     {
       "id": "doubleedge",
@@ -941,6 +1003,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        33,
+        100
       ]
     },
     {
@@ -965,7 +1031,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": -1
+      }
     },
     {
       "id": "poisonsting",
@@ -988,7 +1057,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "psn"
+      }
     },
     {
       "id": "twineedle",
@@ -1011,7 +1084,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "psn"
+      },
+      "multihit": 2
     },
     {
       "id": "pinmissile",
@@ -1034,6 +1112,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -1058,7 +1140,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": -1
+      }
     },
     {
       "id": "bite",
@@ -1083,7 +1168,11 @@
         "mirror",
         "metronome",
         "bite"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "growl",
@@ -1109,7 +1198,10 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -1
+      }
     },
     {
       "id": "roar",
@@ -1137,7 +1229,8 @@
         "metronome",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "forceSwitch": true
     },
     {
       "id": "sing",
@@ -1163,7 +1256,8 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "supersonic",
@@ -1189,7 +1283,8 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "confusion"
     },
     {
       "id": "sonicboom",
@@ -1212,7 +1307,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "damage": 20
     },
     {
       "id": "disable",
@@ -1237,7 +1333,8 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "disable"
     },
     {
       "id": "acid",
@@ -1260,7 +1357,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "ember",
@@ -1283,7 +1386,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "flamethrower",
@@ -1306,7 +1413,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "mist",
@@ -1421,7 +1532,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "frz"
+      }
     },
     {
       "id": "blizzard",
@@ -1445,7 +1560,11 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "frz"
+      }
     },
     {
       "id": "psybeam",
@@ -1468,7 +1587,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "bubblebeam",
@@ -1491,7 +1614,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "aurorabeam",
@@ -1514,7 +1643,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "hyperbeam",
@@ -1538,7 +1673,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "peck",
@@ -1612,6 +1750,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        1,
+        4
       ]
     },
     {
@@ -1686,7 +1828,8 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "damage": "level"
     },
     {
       "id": "strength",
@@ -1734,6 +1877,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -1758,6 +1905,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -1782,7 +1933,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "leechseed"
     },
     {
       "id": "growth",
@@ -1804,7 +1956,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "spa": 1
+      }
     },
     {
       "id": "razorleaf",
@@ -1828,7 +1984,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "solarbeam",
@@ -1879,7 +2036,8 @@
         "mirror",
         "metronome",
         "powder"
-      ]
+      ],
+      "status": "psn"
     },
     {
       "id": "stunspore",
@@ -1904,7 +2062,8 @@
         "mirror",
         "metronome",
         "powder"
-      ]
+      ],
+      "status": "par"
     },
     {
       "id": "sleeppowder",
@@ -1929,7 +2088,8 @@
         "mirror",
         "metronome",
         "powder"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "petaldance",
@@ -1955,7 +2115,10 @@
         "dance",
         "metronome",
         "failinstruct"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "lockedmove"
+      }
     },
     {
       "id": "stringshot",
@@ -1979,7 +2142,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spe": -2
+      }
     },
     {
       "id": "dragonrage",
@@ -2002,7 +2168,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "damage": 40
     },
     {
       "id": "firespin",
@@ -2025,7 +2192,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "thundershock",
@@ -2048,7 +2216,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "par"
+      }
     },
     {
       "id": "thunderbolt",
@@ -2071,7 +2243,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "par"
+      }
     },
     {
       "id": "thunderwave",
@@ -2095,7 +2271,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "par"
     },
     {
       "id": "thunder",
@@ -2118,7 +2295,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "rockthrow",
@@ -2189,7 +2370,8 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "ohko": true
     },
     {
       "id": "dig",
@@ -2242,7 +2424,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "tox"
     },
     {
       "id": "confusion",
@@ -2265,7 +2448,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "psychic",
@@ -2288,7 +2475,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "hypnosis",
@@ -2312,7 +2505,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "meditate",
@@ -2334,7 +2528,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1
+      }
     },
     {
       "id": "agility",
@@ -2356,7 +2553,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spe": 2
+      }
     },
     {
       "id": "quickattack",
@@ -2404,7 +2604,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "rage"
+      }
     },
     {
       "id": "teleport",
@@ -2425,7 +2628,8 @@
       "description": "교대할 포켓몬이 있을 때 사용하면 교체한다. 야생 포켓몬은 도망가 버린다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "selfSwitch": true
     },
     {
       "id": "nightshade",
@@ -2448,7 +2652,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "damage": "level"
     },
     {
       "id": "mimic",
@@ -2504,7 +2709,10 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": -2
+      }
     },
     {
       "id": "doubleteam",
@@ -2526,7 +2734,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "evasion": 1
+      }
     },
     {
       "id": "recover",
@@ -2549,6 +2760,10 @@
         "snatch",
         "heal",
         "metronome"
+      ],
+      "heal": [
+        1,
+        2
       ]
     },
     {
@@ -2571,7 +2786,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 1
+      }
     },
     {
       "id": "minimize",
@@ -2593,7 +2811,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "minimize",
+      "boosts": {
+        "evasion": 2
+      }
     },
     {
       "id": "smokescreen",
@@ -2617,7 +2839,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "accuracy": -1
+      }
     },
     {
       "id": "confuseray",
@@ -2641,7 +2866,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "confusion"
     },
     {
       "id": "withdraw",
@@ -2663,7 +2889,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 1
+      }
     },
     {
       "id": "defensecurl",
@@ -2685,7 +2914,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "defensecurl",
+      "boosts": {
+        "def": 1
+      }
     },
     {
       "id": "barrier",
@@ -2707,7 +2940,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 2
+      }
     },
     {
       "id": "lightscreen",
@@ -2795,7 +3031,8 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "focusenergy"
     },
     {
       "id": "bide",
@@ -2820,7 +3057,8 @@
         "metronome",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "volatileStatus": "bide"
     },
     {
       "id": "metronome",
@@ -2896,7 +3134,8 @@
         "mirror",
         "metronome",
         "noparentalbond"
-      ]
+      ],
+      "selfdestruct": "always"
     },
     {
       "id": "eggbomb",
@@ -2944,7 +3183,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "smog",
@@ -2967,7 +3210,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 40,
+        "status": "psn"
+      }
     },
     {
       "id": "sludge",
@@ -2990,7 +3237,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "psn"
+      }
     },
     {
       "id": "boneclub",
@@ -3013,7 +3264,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "fireblast",
@@ -3036,7 +3291,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "waterfall",
@@ -3060,7 +3319,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "clamp",
@@ -3084,7 +3347,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "swift",
@@ -3157,6 +3421,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -3181,7 +3449,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "amnesia",
@@ -3203,7 +3477,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spd": 2
+      }
     },
     {
       "id": "kinesis",
@@ -3227,7 +3504,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "accuracy": -1
+      }
     },
     {
       "id": "softboiled",
@@ -3250,6 +3530,10 @@
         "snatch",
         "heal",
         "metronome"
+      ],
+      "heal": [
+        1,
+        2
       ]
     },
     {
@@ -3275,7 +3559,8 @@
         "mirror",
         "gravity",
         "metronome"
-      ]
+      ],
+      "hasCrashDamage": true
     },
     {
       "id": "glare",
@@ -3299,7 +3584,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "par"
     },
     {
       "id": "dreameater",
@@ -3323,6 +3609,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -3347,7 +3637,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "psn"
     },
     {
       "id": "barrage",
@@ -3371,6 +3662,10 @@
         "mirror",
         "metronome",
         "bullet"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -3396,6 +3691,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -3420,7 +3719,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "skyattack",
@@ -3447,7 +3747,12 @@
         "metronome",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      },
+      "critRatio": 2
     },
     {
       "id": "transform",
@@ -3496,7 +3801,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "dizzypunch",
@@ -3521,7 +3832,11 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "spore",
@@ -3546,7 +3861,8 @@
         "mirror",
         "metronome",
         "powder"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "flash",
@@ -3570,7 +3886,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "accuracy": -1
+      }
     },
     {
       "id": "psywave",
@@ -3637,7 +3956,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 2
+      }
     },
     {
       "id": "crabhammer",
@@ -3661,7 +3983,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "explosion",
@@ -3685,7 +4008,8 @@
         "mirror",
         "metronome",
         "noparentalbond"
-      ]
+      ],
+      "selfdestruct": "always"
     },
     {
       "id": "furyswipes",
@@ -3709,6 +4033,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -3732,7 +4060,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "rest",
@@ -3778,7 +4107,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "hyperfang",
@@ -3803,7 +4136,11 @@
         "mirror",
         "metronome",
         "bite"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "sharpen",
@@ -3825,7 +4162,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1
+      }
     },
     {
       "id": "conversion",
@@ -3870,7 +4210,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20
+      }
     },
     {
       "id": "superfang",
@@ -3919,7 +4262,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "substitute",
@@ -3942,7 +4286,8 @@
         "snatch",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "substitute"
     },
     {
       "id": "struggle",
@@ -4025,7 +4370,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 3
     },
     {
       "id": "thief",
@@ -4121,7 +4467,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "nightmare"
     },
     {
       "id": "flamewheel",
@@ -4146,7 +4493,11 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "snore",
@@ -4170,7 +4521,11 @@
         "mirror",
         "sound",
         "bypasssub"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "curse",
@@ -4192,7 +4547,8 @@
       "flags": [
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "curse"
     },
     {
       "id": "flail",
@@ -4263,7 +4619,8 @@
         "distance",
         "metronome",
         "wind"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "cottonspore",
@@ -4288,7 +4645,10 @@
         "mirror",
         "metronome",
         "powder"
-      ]
+      ],
+      "boosts": {
+        "spe": -2
+      }
     },
     {
       "id": "reversal",
@@ -4360,7 +4720,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "frz"
+      }
     },
     {
       "id": "protect",
@@ -4382,7 +4746,8 @@
       "flags": [
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "protect"
     },
     {
       "id": "machpunch",
@@ -4432,7 +4797,10 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spe": -2
+      }
     },
     {
       "id": "feintattack",
@@ -4480,7 +4848,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "confusion"
     },
     {
       "id": "bellydrum",
@@ -4526,7 +4895,11 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "psn"
+      }
     },
     {
       "id": "mudslap",
@@ -4549,7 +4922,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "octazooka",
@@ -4573,7 +4952,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "spikes",
@@ -4621,7 +5006,11 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "status": "par"
+      }
     },
     {
       "id": "foresight",
@@ -4646,7 +5035,8 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "foresight"
     },
     {
       "id": "destinybond",
@@ -4669,7 +5059,8 @@
         "bypasssub",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "destinybond"
     },
     {
       "id": "perishsong",
@@ -4717,7 +5108,13 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "detect",
@@ -4739,7 +5136,8 @@
       "flags": [
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "protect"
     },
     {
       "id": "bonerush",
@@ -4762,6 +5160,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -4810,7 +5212,10 @@
         "mirror",
         "metronome",
         "failinstruct"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "lockedmove"
+      }
     },
     {
       "id": "sandstorm",
@@ -4856,6 +5261,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -4878,7 +5287,8 @@
       "flags": [
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "endure"
     },
     {
       "id": "charm",
@@ -4903,7 +5313,10 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -2
+      }
     },
     {
       "id": "rollout",
@@ -4978,7 +5391,11 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "confusion",
+      "boosts": {
+        "atk": 2
+      }
     },
     {
       "id": "milkdrink",
@@ -5001,6 +5418,10 @@
         "snatch",
         "heal",
         "metronome"
+      ],
+      "heal": [
+        1,
+        2
       ]
     },
     {
@@ -5025,7 +5446,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "furycutter",
@@ -5074,7 +5499,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "self": {
+          "boosts": {
+            "def": 1
+          }
+        }
+      }
     },
     {
       "id": "meanlook",
@@ -5122,7 +5555,8 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "attract"
     },
     {
       "id": "sleeptalk",
@@ -5314,7 +5748,11 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "status": "brn"
+      }
     },
     {
       "id": "magnitude",
@@ -5363,7 +5801,11 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "megahorn",
@@ -5410,7 +5852,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "batonpass",
@@ -5431,7 +5877,9 @@
       "description": "교대 포켓몬과 바뀐다. 능력 변화는 바뀐 포켓몬이 그대로 이어받는다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "self": {},
+      "selfSwitch": "copyvolatile"
     },
     {
       "id": "encore",
@@ -5457,7 +5905,8 @@
         "bypasssub",
         "metronome",
         "failencore"
-      ]
+      ],
+      "volatileStatus": "encore"
     },
     {
       "id": "pursuit",
@@ -5505,7 +5954,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "sweetscent",
@@ -5529,7 +5986,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "evasion": -2
+      }
     },
     {
       "id": "irontail",
@@ -5553,7 +6013,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "metalclaw",
@@ -5577,7 +6043,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "self": {
+          "boosts": {
+            "atk": 1
+          }
+        }
+      }
     },
     {
       "id": "vitalthrow",
@@ -6069,7 +6543,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "twister",
@@ -6093,7 +6568,11 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "raindance",
@@ -6160,7 +6639,13 @@
         "mirror",
         "metronome",
         "bite"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "mirrorcoat",
@@ -6253,7 +6738,19 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "self": {
+          "boosts": {
+            "atk": 1,
+            "def": 1,
+            "spa": 1,
+            "spd": 1,
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "shadowball",
@@ -6277,7 +6774,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "futuresight",
@@ -6324,7 +6827,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "whirlpool",
@@ -6347,7 +6856,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "beatup",
@@ -6395,7 +6905,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "uproar",
@@ -6422,7 +6936,10 @@
         "metronome",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "uproar"
+      }
     },
     {
       "id": "stockpile",
@@ -6444,7 +6961,8 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "stockpile"
     },
     {
       "id": "spitup",
@@ -6513,7 +7031,11 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "hail",
@@ -6559,7 +7081,8 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "torment"
     },
     {
       "id": "flatter",
@@ -6584,7 +7107,11 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "confusion",
+      "boosts": {
+        "spa": 1
+      }
     },
     {
       "id": "willowisp",
@@ -6608,7 +7135,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "brn"
     },
     {
       "id": "memento",
@@ -6631,7 +7159,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "selfdestruct": "ifHit",
+      "boosts": {
+        "atk": -2,
+        "spa": -2
+      }
     },
     {
       "id": "facade",
@@ -6729,7 +7262,8 @@
       "flags": [
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "followme"
     },
     {
       "id": "naturepower",
@@ -6777,7 +7311,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "charge",
+      "boosts": {
+        "spd": 1
+      }
     },
     {
       "id": "taunt",
@@ -6802,7 +7340,8 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "taunt"
     },
     {
       "id": "helpinghand",
@@ -6825,7 +7364,8 @@
         "bypasssub",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "helpinghand"
     },
     {
       "id": "trick",
@@ -6945,7 +7485,8 @@
         "snatch",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "ingrain"
     },
     {
       "id": "superpower",
@@ -6969,7 +7510,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "atk": -1,
+          "def": -1
+        }
+      }
     },
     {
       "id": "magiccoat",
@@ -6990,7 +7537,8 @@
       "description": "상대가 상태 이상이 되는 기술이나 씨뿌리기 등을 썼을 때 되받아친다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "volatileStatus": "magiccoat"
     },
     {
       "id": "recycle",
@@ -7084,7 +7632,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "yawn"
     },
     {
       "id": "knockoff",
@@ -7205,7 +7754,8 @@
         "bypasssub",
         "metronome",
         "mustpressure"
-      ]
+      ],
+      "volatileStatus": "imprison"
     },
     {
       "id": "refresh",
@@ -7249,7 +7799,8 @@
       "flags": [
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "grudge"
     },
     {
       "id": "snatch",
@@ -7273,7 +7824,8 @@
         "mustpressure",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "snatch"
     },
     {
       "id": "secretpower",
@@ -7296,7 +7848,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "dive",
@@ -7350,6 +7906,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -7394,7 +7954,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": 3
+      }
     },
     {
       "id": "lusterpurge",
@@ -7417,7 +7980,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "mistball",
@@ -7441,7 +8010,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "featherdance",
@@ -7467,7 +8042,10 @@
         "dance",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -2
+      }
     },
     {
       "id": "teeterdance",
@@ -7491,7 +8069,8 @@
         "mirror",
         "dance",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "confusion"
     },
     {
       "id": "blazekick",
@@ -7515,7 +8094,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      },
+      "critRatio": 2
     },
     {
       "id": "mudsport",
@@ -7588,7 +8172,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "slackoff",
@@ -7611,6 +8199,10 @@
         "snatch",
         "heal",
         "metronome"
+      ],
+      "heal": [
+        1,
+        2
       ]
     },
     {
@@ -7661,7 +8253,11 @@
         "mirror",
         "metronome",
         "bite"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "status": "tox"
+      }
     },
     {
       "id": "crushclaw",
@@ -7685,7 +8281,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "blastburn",
@@ -7709,7 +8311,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "hydrocannon",
@@ -7733,7 +8338,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "meteormash",
@@ -7758,7 +8366,15 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "self": {
+          "boosts": {
+            "atk": 1
+          }
+        }
+      }
     },
     {
       "id": "astonish",
@@ -7782,7 +8398,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "weatherball",
@@ -7854,7 +8474,10 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spd": -2
+      }
     },
     {
       "id": "aircutter",
@@ -7879,7 +8502,8 @@
         "metronome",
         "slicing",
         "wind"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "overheat",
@@ -7902,7 +8526,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spa": -2
+        }
+      }
     },
     {
       "id": "odorsleuth",
@@ -7928,7 +8557,8 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "foresight"
     },
     {
       "id": "rocktomb",
@@ -7951,7 +8581,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "silverwind",
@@ -7974,7 +8610,19 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "self": {
+          "boosts": {
+            "atk": 1,
+            "def": 1,
+            "spa": 1,
+            "spd": 1,
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "metalsound",
@@ -8001,7 +8649,10 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spd": -2
+      }
     },
     {
       "id": "grasswhistle",
@@ -8027,7 +8678,8 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "tickle",
@@ -8052,7 +8704,11 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -1,
+        "def": -1
+      }
     },
     {
       "id": "cosmicpower",
@@ -8074,7 +8730,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 1,
+        "spd": 1
+      }
     },
     {
       "id": "waterspout",
@@ -8120,7 +8780,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "shadowpunch",
@@ -8168,7 +8832,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "skyuppercut",
@@ -8216,7 +8884,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "sheercold",
@@ -8239,7 +8908,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "ohko": "Ice"
     },
     {
       "id": "muddywater",
@@ -8263,7 +8933,13 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "bulletseed",
@@ -8287,6 +8963,10 @@
         "mirror",
         "metronome",
         "bullet"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -8336,6 +9016,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -8358,7 +9042,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 2
+      }
     },
     {
       "id": "block",
@@ -8404,7 +9091,10 @@
         "snatch",
         "sound",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1
+      }
     },
     {
       "id": "dragonclaw",
@@ -8453,7 +9143,10 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "bulkup",
@@ -8475,7 +9168,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "def": 1
+      }
     },
     {
       "id": "bounce",
@@ -8505,7 +9202,11 @@
         "nosleeptalk",
         "noassist",
         "failinstruct"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "mudshot",
@@ -8528,7 +9229,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "poisontail",
@@ -8552,7 +9259,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "psn"
+      },
+      "critRatio": 2
     },
     {
       "id": "covet",
@@ -8602,7 +9314,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "recoil": [
+        33,
+        100
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "par"
+      }
     },
     {
       "id": "magicalleaf",
@@ -8669,7 +9389,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": 1,
+        "spd": 1
+      }
     },
     {
       "id": "leafblade",
@@ -8694,7 +9418,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "dragondance",
@@ -8717,7 +9442,11 @@
         "snatch",
         "dance",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "spe": 1
+      }
     },
     {
       "id": "rockblast",
@@ -8741,6 +9470,10 @@
         "mirror",
         "metronome",
         "bullet"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -8789,7 +9522,11 @@
         "distance",
         "metronome",
         "pulse"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "doomdesire",
@@ -8834,7 +9571,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spa": -2
+        }
+      }
     },
     {
       "id": "roost",
@@ -8857,6 +9599,13 @@
         "snatch",
         "heal",
         "metronome"
+      ],
+      "self": {
+        "volatileStatus": "roost"
+      },
+      "heal": [
+        1,
+        2
       ]
     },
     {
@@ -8904,7 +9653,8 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "miracleeye"
     },
     {
       "id": "wakeupslap",
@@ -8953,7 +9703,12 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "gyroball",
@@ -9001,7 +9756,8 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "selfdestruct": "ifHit"
     },
     {
       "id": "brine",
@@ -9187,7 +9943,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "selfSwitch": true
     },
     {
       "id": "closecombat",
@@ -9211,7 +9968,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "def": -1,
+          "spd": -1
+        }
+      }
     },
     {
       "id": "payback",
@@ -9283,7 +10046,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "embargo"
     },
     {
       "id": "fling",
@@ -9331,7 +10095,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {}
     },
     {
       "id": "trumpcard",
@@ -9379,7 +10144,8 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "healblock"
     },
     {
       "id": "wringout",
@@ -9425,7 +10191,8 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "powertrick"
     },
     {
       "id": "gastroacid",
@@ -9450,7 +10217,8 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "gastroacid"
     },
     {
       "id": "luckychant",
@@ -9745,7 +10513,8 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "aquaring"
     },
     {
       "id": "magnetrise",
@@ -9768,7 +10537,8 @@
         "snatch",
         "gravity",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "magnetrise"
     },
     {
       "id": "flareblitz",
@@ -9793,7 +10563,15 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "recoil": [
+        33,
+        100
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "forcepalm",
@@ -9817,7 +10595,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "aurasphere",
@@ -9865,7 +10647,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spe": 2
+      }
     },
     {
       "id": "poisonjab",
@@ -9889,7 +10674,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "psn"
+      }
     },
     {
       "id": "darkpulse",
@@ -9914,7 +10703,11 @@
         "distance",
         "metronome",
         "pulse"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "nightslash",
@@ -9939,7 +10732,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "aquatail",
@@ -10012,7 +10806,11 @@
         "distance",
         "metronome",
         "slicing"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "xscissor",
@@ -10062,7 +10860,13 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "dragonpulse",
@@ -10112,7 +10916,11 @@
         "mirror",
         "metronome",
         "minimize"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "powergem",
@@ -10161,6 +10969,10 @@
         "punch",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -10208,7 +11020,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "energyball",
@@ -10232,7 +11050,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "bravebird",
@@ -10257,6 +11081,10 @@
         "mirror",
         "distance",
         "metronome"
+      ],
+      "recoil": [
+        33,
+        100
       ]
     },
     {
@@ -10281,7 +11109,13 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "switcheroo",
@@ -10331,7 +11165,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "nastyplot",
@@ -10353,7 +11190,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": 2
+      }
     },
     {
       "id": "bulletpunch",
@@ -10449,7 +11289,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "thunderfang",
@@ -10474,6 +11315,16 @@
         "mirror",
         "metronome",
         "bite"
+      ],
+      "secondaries": [
+        {
+          "chance": 10,
+          "status": "par"
+        },
+        {
+          "chance": 10,
+          "volatileStatus": "flinch"
+        }
       ]
     },
     {
@@ -10499,6 +11350,16 @@
         "mirror",
         "metronome",
         "bite"
+      ],
+      "secondaries": [
+        {
+          "chance": 10,
+          "status": "frz"
+        },
+        {
+          "chance": 10,
+          "volatileStatus": "flinch"
+        }
       ]
     },
     {
@@ -10524,6 +11385,16 @@
         "mirror",
         "metronome",
         "bite"
+      ],
+      "secondaries": [
+        {
+          "chance": 10,
+          "status": "brn"
+        },
+        {
+          "chance": 10,
+          "volatileStatus": "flinch"
+        }
       ]
     },
     {
@@ -10572,7 +11443,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "psychocut",
@@ -10596,7 +11473,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "zenheadbutt",
@@ -10620,7 +11498,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "mirrorshot",
@@ -10643,7 +11525,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "flashcannon",
@@ -10666,7 +11554,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "rockclimb",
@@ -10690,7 +11584,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "defog",
@@ -10760,7 +11658,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spa": -2
+        }
+      }
     },
     {
       "id": "discharge",
@@ -10783,7 +11686,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "lavaplume",
@@ -10806,7 +11713,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "leafstorm",
@@ -10829,7 +11740,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spa": -2
+        }
+      }
     },
     {
       "id": "powerwhip",
@@ -10878,7 +11794,10 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "crosspoison",
@@ -10903,7 +11822,12 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "psn"
+      },
+      "critRatio": 2
     },
     {
       "id": "gunkshot",
@@ -10926,7 +11850,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "psn"
+      }
     },
     {
       "id": "ironhead",
@@ -10950,7 +11878,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "magnetbomb",
@@ -10997,7 +11929,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "captivate",
@@ -11021,7 +11954,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": -2
+      }
     },
     {
       "id": "stealthrock",
@@ -11099,7 +12035,11 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "judgment",
@@ -11169,7 +12109,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 70,
+        "self": {
+          "boosts": {
+            "spa": 1
+          }
+        }
+      }
     },
     {
       "id": "woodhammer",
@@ -11193,6 +12141,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        33,
+        100
       ]
     },
     {
@@ -11240,7 +12192,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "defendorder",
@@ -11262,7 +12215,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 1,
+        "spd": 1
+      }
     },
     {
       "id": "healorder",
@@ -11285,6 +12242,10 @@
         "snatch",
         "heal",
         "metronome"
+      ],
+      "heal": [
+        1,
+        2
       ]
     },
     {
@@ -11309,6 +12270,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        1,
+        2
       ]
     },
     {
@@ -11333,7 +12298,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "roaroftime",
@@ -11357,7 +12323,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "spacialrend",
@@ -11380,7 +12349,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "lunardance",
@@ -11404,7 +12374,8 @@
         "dance",
         "heal",
         "metronome"
-      ]
+      ],
+      "selfdestruct": "ifHit"
     },
     {
       "id": "crushgrip",
@@ -11451,7 +12422,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "darkvoid",
@@ -11476,7 +12448,8 @@
         "mirror",
         "metronome",
         "nosketch"
-      ]
+      ],
+      "status": "slp"
     },
     {
       "id": "seedflare",
@@ -11499,7 +12472,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 40,
+        "boosts": {
+          "spd": -2
+        }
+      }
     },
     {
       "id": "ominouswind",
@@ -11522,7 +12501,19 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "self": {
+          "boosts": {
+            "atk": 1,
+            "def": 1,
+            "spa": 1,
+            "spd": 1,
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "shadowforce",
@@ -11571,7 +12562,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "accuracy": 1
+      }
     },
     {
       "id": "wideguard",
@@ -11728,7 +12723,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spe": 2
+      }
     },
     {
       "id": "ragepowder",
@@ -11751,7 +12749,8 @@
         "noassist",
         "failcopycat",
         "powder"
-      ]
+      ],
+      "volatileStatus": "ragepowder"
     },
     {
       "id": "telekinesis",
@@ -11777,7 +12776,8 @@
         "gravity",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "telekinesis"
     },
     {
       "id": "magicroom",
@@ -11823,7 +12823,8 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "smackdown"
     },
     {
       "id": "stormthrow",
@@ -11847,7 +12848,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "willCrit": true
     },
     {
       "id": "flameburst",
@@ -11893,7 +12895,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "psn"
+      }
     },
     {
       "id": "quiverdance",
@@ -11916,7 +12922,12 @@
         "snatch",
         "dance",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": 1,
+        "spd": 1,
+        "spe": 1
+      }
     },
     {
       "id": "heavyslam",
@@ -12038,7 +13049,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "coil",
@@ -12060,7 +13079,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "def": 1,
+        "accuracy": 1
+      }
     },
     {
       "id": "lowsweep",
@@ -12084,7 +13108,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "acidspray",
@@ -12108,7 +13138,13 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spd": -2
+        }
+      }
     },
     {
       "id": "foulplay",
@@ -12390,7 +13426,11 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "shellsmash",
@@ -12412,7 +13452,14 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": -1,
+        "spd": -1,
+        "atk": 2,
+        "spa": 2,
+        "spe": 2
+      }
     },
     {
       "id": "healpulse",
@@ -12514,7 +13561,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spe": 2,
+        "atk": 1
+      }
     },
     {
       "id": "circlethrow",
@@ -12540,7 +13591,8 @@
         "metronome",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "forceSwitch": true
     },
     {
       "id": "incinerate",
@@ -12681,7 +13733,8 @@
         "protect",
         "metronome",
         "noparentalbond"
-      ]
+      ],
+      "selfdestruct": "ifHit"
     },
     {
       "id": "bestow",
@@ -12729,7 +13782,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "status": "brn"
+      }
     },
     {
       "id": "waterpledge",
@@ -12827,7 +13884,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "selfSwitch": true
     },
     {
       "id": "strugglebug",
@@ -12850,7 +13908,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "bulldoze",
@@ -12874,7 +13938,13 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "frostbreath",
@@ -12897,7 +13967,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "willCrit": true
     },
     {
       "id": "dragontail",
@@ -12923,7 +13994,8 @@
         "metronome",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "forceSwitch": true
     },
     {
       "id": "workup",
@@ -12945,7 +14017,11 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "spa": 1
+      }
     },
     {
       "id": "electroweb",
@@ -12968,7 +14044,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "wildcharge",
@@ -12992,6 +14074,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        1,
+        4
       ]
     },
     {
@@ -13016,7 +14102,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "dualchop",
@@ -13040,7 +14127,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "heartstamp",
@@ -13064,7 +14152,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "hornleech",
@@ -13089,6 +14181,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -13139,7 +14235,13 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "heatcrash",
@@ -13188,7 +14290,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "steamroller",
@@ -13213,7 +14321,11 @@
         "mirror",
         "metronome",
         "minimize"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "cottonguard",
@@ -13235,7 +14347,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 3
+      }
     },
     {
       "id": "nightdaze",
@@ -13258,7 +14373,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 40,
+        "boosts": {
+          "accuracy": -1
+        }
+      }
     },
     {
       "id": "psystrike",
@@ -13305,6 +14426,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -13330,7 +14455,11 @@
         "distance",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "headcharge",
@@ -13354,6 +14483,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        1,
+        4
       ]
     },
     {
@@ -13378,7 +14511,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "searingshot",
@@ -13402,7 +14536,11 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "technoblast",
@@ -13448,7 +14586,11 @@
         "mirror",
         "sound",
         "bypasssub"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "slp"
+      }
     },
     {
       "id": "secretsword",
@@ -13494,7 +14636,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "boltstrike",
@@ -13518,7 +14666,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "par"
+      }
     },
     {
       "id": "blueflare",
@@ -13541,7 +14693,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "brn"
+      }
     },
     {
       "id": "fierydance",
@@ -13565,7 +14721,15 @@
         "mirror",
         "dance",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "self": {
+          "boosts": {
+            "spa": 1
+          }
+        }
+      }
     },
     {
       "id": "freezeshock",
@@ -13590,7 +14754,11 @@
         "mirror",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "iceburn",
@@ -13615,7 +14783,11 @@
         "mirror",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "snarl",
@@ -13639,7 +14811,13 @@
         "mirror",
         "sound",
         "bypasssub"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "iciclecrash",
@@ -13662,7 +14840,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "vcreate",
@@ -13685,7 +14867,14 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spe": -1,
+          "def": -1,
+          "spd": -1
+        }
+      }
     },
     {
       "id": "fusionflare",
@@ -13958,7 +15147,11 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -1,
+        "spa": -1
+      }
     },
     {
       "id": "iondeluge",
@@ -14003,6 +15196,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -14075,7 +15272,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "frz"
+      }
     },
     {
       "id": "disarmingvoice",
@@ -14126,7 +15327,8 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "selfSwitch": true
     },
     {
       "id": "topsyturvy",
@@ -14176,6 +15378,10 @@
         "mirror",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        3,
+        4
       ]
     },
     {
@@ -14285,7 +15491,8 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "electrify"
     },
     {
       "id": "playrough",
@@ -14309,7 +15516,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "fairywind",
@@ -14356,7 +15569,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "boomburst",
@@ -14427,7 +15646,8 @@
         "noassist",
         "failcopycat",
         "failinstruct"
-      ]
+      ],
+      "volatileStatus": "kingsshield"
     },
     {
       "id": "playnice",
@@ -14451,7 +15671,10 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -1
+      }
     },
     {
       "id": "confide",
@@ -14476,7 +15699,10 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": -1
+      }
     },
     {
       "id": "diamondstorm",
@@ -14498,7 +15724,14 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {},
+      "self": {
+        "chance": 50,
+        "boosts": {
+          "def": 2
+        }
+      }
     },
     {
       "id": "steameruption",
@@ -14521,7 +15754,11 @@
         "protect",
         "mirror",
         "defrost"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "hyperspacehole",
@@ -14566,6 +15803,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -14589,7 +15830,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "spikyshield",
@@ -14611,7 +15858,8 @@
       "flags": [
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "spikyshield"
     },
     {
       "id": "aromaticmist",
@@ -14633,7 +15881,10 @@
       "flags": [
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spd": 1
+      }
     },
     {
       "id": "eerieimpulse",
@@ -14657,7 +15908,10 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "spa": -2
+      }
     },
     {
       "id": "venomdrench",
@@ -14707,7 +15961,8 @@
         "bypasssub",
         "metronome",
         "powder"
-      ]
+      ],
+      "volatileStatus": "powder"
     },
     {
       "id": "geomancy",
@@ -14732,7 +15987,12 @@
         "metronome",
         "nosleeptalk",
         "failinstruct"
-      ]
+      ],
+      "boosts": {
+        "spa": 2,
+        "spd": 2,
+        "spe": 2
+      }
     },
     {
       "id": "magneticflux",
@@ -14898,7 +16158,10 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -1
+      }
     },
     {
       "id": "nuzzle",
@@ -14922,7 +16185,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "status": "par"
+      }
     },
     {
       "id": "holdback",
@@ -14970,7 +16237,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "poweruppunch",
@@ -14995,7 +16263,15 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "atk": 1
+          }
+        }
+      }
     },
     {
       "id": "oblivionwing",
@@ -15020,6 +16296,10 @@
         "distance",
         "heal",
         "metronome"
+      ],
+      "drain": [
+        3,
+        4
       ]
     },
     {
@@ -15043,7 +16323,8 @@
         "protect",
         "mirror",
         "nonsky"
-      ]
+      ],
+      "volatileStatus": "smackdown"
     },
     {
       "id": "thousandwaves",
@@ -15112,6 +16393,10 @@
       "flags": [
         "protect",
         "mirror"
+      ],
+      "recoil": [
+        1,
+        2
       ]
     },
     {
@@ -15182,7 +16467,13 @@
         "protect",
         "mirror",
         "distance"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "def": -1,
+          "spd": -1
+        }
+      }
     },
     {
       "id": "hyperspacefury",
@@ -15205,7 +16496,12 @@
         "mirror",
         "bypasssub",
         "nosketch"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "shoreup",
@@ -15274,7 +16570,8 @@
       "flags": [
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "banefulbunker"
     },
     {
       "id": "spiritshackle",
@@ -15297,7 +16594,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100
+      }
     },
     {
       "id": "darkestlariat",
@@ -15346,7 +16646,11 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "sparklingaria"
+      }
     },
     {
       "id": "icehammer",
@@ -15371,7 +16675,12 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "floralhealing",
@@ -15521,7 +16830,8 @@
         "allyanim",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "spotlight"
     },
     {
       "id": "toxicthread",
@@ -15545,7 +16855,11 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "status": "psn",
+      "boosts": {
+        "spe": -1
+      }
     },
     {
       "id": "laserfocus",
@@ -15567,7 +16881,8 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "laserfocus"
     },
     {
       "id": "gearup",
@@ -15614,7 +16929,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100
+      }
     },
     {
       "id": "pollenpuff",
@@ -15663,7 +16981,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100
+      }
     },
     {
       "id": "psychicterrain",
@@ -15709,7 +17030,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "firelash",
@@ -15733,7 +17060,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "powertrip",
@@ -15781,7 +17114,8 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "self": {}
     },
     {
       "id": "speedswap",
@@ -15925,7 +17259,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "instruct",
@@ -16119,7 +17459,12 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spa": -2
+        }
+      }
     },
     {
       "id": "psychicfangs",
@@ -16191,7 +17536,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "accelerock",
@@ -16239,7 +17590,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "prismaticlaser",
@@ -16263,7 +17620,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "spectralthief",
@@ -16355,7 +17715,11 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": -1,
+        "spa": -1
+      }
     },
     {
       "id": "zingzap",
@@ -16379,7 +17743,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "naturesmadness",
@@ -16447,7 +17815,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "mindBlownRecoil": true
     },
     {
       "id": "plasmafists",
@@ -16516,7 +17885,15 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "evasion": 1
+          }
+        }
+      }
     },
     {
       "id": "splishysplash",
@@ -16538,7 +17915,11 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "floatyfall",
@@ -16562,7 +17943,11 @@
         "protect",
         "mirror",
         "gravity"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "pikapapow",
@@ -16607,6 +17992,10 @@
         "protect",
         "mirror",
         "heal"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -16629,7 +18018,11 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "status": "par"
+      }
     },
     {
       "id": "sizzlyslide",
@@ -16653,7 +18046,11 @@
         "protect",
         "mirror",
         "defrost"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "status": "brn"
+      }
     },
     {
       "id": "glitzyglow",
@@ -16675,7 +18072,10 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "sideCondition": "lightscreen"
+      }
     },
     {
       "id": "baddybad",
@@ -16697,7 +18097,10 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "sideCondition": "reflect"
+      }
     },
     {
       "id": "sappyseed",
@@ -16764,7 +18167,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {}
     },
     {
       "id": "veeveevolley",
@@ -16811,7 +18215,12 @@
         "protect",
         "mirror",
         "punch"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      },
+      "multihit": 2
     },
     {
       "id": "dynamaxcannon",
@@ -16861,7 +18270,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "jawlock",
@@ -16930,7 +18340,15 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "noretreat",
+      "boosts": {
+        "atk": 1,
+        "def": 1,
+        "spa": 1,
+        "spd": 1,
+        "spe": 1
+      }
     },
     {
       "id": "tarshot",
@@ -16954,7 +18372,11 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "tarshot",
+      "boosts": {
+        "spe": -1
+      }
     },
     {
       "id": "magicpowder",
@@ -17004,7 +18426,8 @@
         "mirror",
         "metronome",
         "noparentalbond"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "teatime",
@@ -17049,7 +18472,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "octolock"
     },
     {
       "id": "boltbeak",
@@ -17143,7 +18567,14 @@
         "snatch",
         "sound",
         "dance"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "def": 1,
+        "spa": 1,
+        "spd": 1,
+        "spe": 1
+      }
     },
     {
       "id": "bodypress",
@@ -17187,7 +18618,11 @@
       "description": "데코레이션을 해서 상대의 공격과 특수공격을 크게 올린다.",
       "flags": [
         "allyanim"
-      ]
+      ],
+      "boosts": {
+        "atk": 2,
+        "spa": 2
+      }
     },
     {
       "id": "drumbeating",
@@ -17209,7 +18644,13 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "snaptrap",
@@ -17232,7 +18673,8 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "pyroball",
@@ -17256,7 +18698,11 @@
         "mirror",
         "defrost",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "brn"
+      }
     },
     {
       "id": "behemothblade",
@@ -17329,7 +18775,15 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "breakingswipe",
@@ -17352,7 +18806,13 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "branchpoke",
@@ -17421,7 +18881,13 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spd": -1
+        }
+      }
     },
     {
       "id": "gravapple",
@@ -17443,7 +18909,13 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "spiritbreak",
@@ -17466,7 +18938,13 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "strangesteam",
@@ -17488,7 +18966,11 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "lifedew",
@@ -17511,6 +18993,10 @@
         "snatch",
         "heal",
         "bypasssub"
+      ],
+      "heal": [
+        1,
+        4
       ]
     },
     {
@@ -17532,7 +19018,8 @@
       "description": "상대의 공격을 전혀 받지 않는다. 연속으로 쓰면 실패하기 쉽다. 접촉한 상대의 방어를 크게 떨어뜨린다.",
       "flags": [
         "failinstruct"
-      ]
+      ],
+      "volatileStatus": "obstruct"
     },
     {
       "id": "falsesurrender",
@@ -17579,7 +19066,10 @@
         "protect",
         "mirror",
         "failinstruct"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "eternabeam",
@@ -17602,7 +19092,10 @@
         "recharge",
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "mustrecharge"
+      }
     },
     {
       "id": "steelbeam",
@@ -17624,7 +19117,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "mindBlownRecoil": true
     },
     {
       "id": "expandingforce",
@@ -17694,6 +19188,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "multihit": [
+        2,
+        5
       ]
     },
     {
@@ -17741,7 +19239,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "psn"
+      }
     },
     {
       "id": "mistyexplosion",
@@ -17764,7 +19266,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "selfdestruct": "always"
     },
     {
       "id": "grassyglide",
@@ -17859,7 +19362,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "burningjealousy",
@@ -17882,7 +19391,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100
+      }
     },
     {
       "id": "lashout",
@@ -17977,7 +19489,11 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "def": 1
+      }
     },
     {
       "id": "flipturn",
@@ -18001,7 +19517,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "selfSwitch": true
     },
     {
       "id": "tripleaxel",
@@ -18025,7 +19542,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 3
     },
     {
       "id": "dualwingbeat",
@@ -18049,7 +19567,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "scorchingsands",
@@ -18073,7 +19592,11 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "junglehealing",
@@ -18120,7 +19643,8 @@
         "protect",
         "mirror",
         "punch"
-      ]
+      ],
+      "willCrit": true
     },
     {
       "id": "surgingstrikes",
@@ -18144,7 +19668,9 @@
         "protect",
         "mirror",
         "punch"
-      ]
+      ],
+      "multihit": 3,
+      "willCrit": true
     },
     {
       "id": "thundercage",
@@ -18166,7 +19692,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "volatileStatus": "partiallytrapped"
     },
     {
       "id": "dragonenergy",
@@ -18210,7 +19737,11 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "frz"
+      }
     },
     {
       "id": "fierywrath",
@@ -18232,7 +19763,11 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "thunderouskick",
@@ -18255,7 +19790,13 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "glaciallance",
@@ -18324,7 +19865,10 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100
+      }
     },
     {
       "id": "direclaw",
@@ -18348,7 +19892,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50
+      }
     },
     {
       "id": "psyshieldbash",
@@ -18372,7 +19919,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "def": 1
+          }
+        }
+      }
     },
     {
       "id": "powershift",
@@ -18393,7 +19948,8 @@
       "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "snatch"
-      ]
+      ],
+      "volatileStatus": "powershift"
     },
     {
       "id": "stoneaxe",
@@ -18418,7 +19974,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "secondary": {}
     },
     {
       "id": "springtidestorm",
@@ -18441,7 +19998,13 @@
         "protect",
         "mirror",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "mysticalpower",
@@ -18464,7 +20027,15 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spa": 1
+          }
+        }
+      }
     },
     {
       "id": "ragingfury",
@@ -18486,7 +20057,10 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "lockedmove"
+      }
     },
     {
       "id": "wavecrash",
@@ -18510,6 +20084,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "recoil": [
+        33,
+        100
       ]
     },
     {
@@ -18556,7 +20134,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "victorydance",
@@ -18579,7 +20161,12 @@
         "snatch",
         "dance",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "atk": 1,
+        "def": 1,
+        "spe": 1
+      }
     },
     {
       "id": "headlongrush",
@@ -18604,7 +20191,13 @@
         "mirror",
         "punch",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "def": -1,
+          "spd": -1
+        }
+      }
     },
     {
       "id": "barbbarrage",
@@ -18627,7 +20220,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "status": "psn"
+      }
     },
     {
       "id": "esperwing",
@@ -18650,7 +20247,16 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spe": 1
+          }
+        }
+      },
+      "critRatio": 2
     },
     {
       "id": "bittermalice",
@@ -18673,7 +20279,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "shelter",
@@ -18695,7 +20307,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "boosts": {
+        "def": 2
+      }
     },
     {
       "id": "triplearrows",
@@ -18718,7 +20333,20 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondaries": [
+        {
+          "chance": 50,
+          "boosts": {
+            "def": -1
+          }
+        },
+        {
+          "chance": 30,
+          "volatileStatus": "flinch"
+        }
+      ],
+      "critRatio": 2
     },
     {
       "id": "infernalparade",
@@ -18741,7 +20369,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "ceaselessedge",
@@ -18766,7 +20398,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "secondary": {}
     },
     {
       "id": "bleakwindstorm",
@@ -18790,7 +20423,13 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "wildboltstorm",
@@ -18814,7 +20453,11 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "par"
+      }
     },
     {
       "id": "sandsearstorm",
@@ -18838,7 +20481,11 @@
         "mirror",
         "metronome",
         "wind"
-      ]
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "brn"
+      }
     },
     {
       "id": "lunarblessing",
@@ -18926,7 +20573,8 @@
       "target": "self",
       "generation": 9,
       "description": "배틀의 흐름을 바꾸는 벌레타입 변화 기술이다.",
-      "flags": []
+      "flags": [],
+      "volatileStatus": "silktrap"
     },
     {
       "id": "axekick",
@@ -18950,7 +20598,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "confusion"
+      },
+      "hasCrashDamage": true
     },
     {
       "id": "lastrespects",
@@ -18996,7 +20649,13 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spd": -2
+        }
+      }
     },
     {
       "id": "orderup",
@@ -19064,7 +20723,11 @@
         "protect",
         "reflectable",
         "mirror"
-      ]
+      ],
+      "boosts": {
+        "atk": 2,
+        "def": -2
+      }
     },
     {
       "id": "spinout",
@@ -19088,7 +20751,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spe": -2
+        }
+      }
     },
     {
       "id": "populationbomb",
@@ -19112,7 +20780,8 @@
         "protect",
         "mirror",
         "slicing"
-      ]
+      ],
+      "multihit": 10
     },
     {
       "id": "icespinner",
@@ -19160,7 +20829,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "self": {
+        "volatileStatus": "glaiverush"
+      }
     },
     {
       "id": "revivalblessing",
@@ -19182,7 +20854,8 @@
       "flags": [
         "heal",
         "nosketch"
-      ]
+      ],
+      "selfSwitch": true
     },
     {
       "id": "saltcure",
@@ -19204,7 +20877,11 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "saltcure"
+      }
     },
     {
       "id": "tripledive",
@@ -19228,7 +20905,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "multihit": 3
     },
     {
       "id": "mortalspin",
@@ -19252,7 +20930,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "status": "psn"
+      }
     },
     {
       "id": "doodle",
@@ -19292,7 +20974,12 @@
       "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "snatch"
-      ]
+      ],
+      "boosts": {
+        "atk": 2,
+        "spa": 2,
+        "spe": 2
+      }
     },
     {
       "id": "kowtowcleave",
@@ -19340,7 +21027,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "willCrit": true
     },
     {
       "id": "torchsong",
@@ -19365,7 +21053,15 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spa": 1
+          }
+        }
+      }
     },
     {
       "id": "aquastep",
@@ -19390,7 +21086,15 @@
         "mirror",
         "dance",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "ragingbull",
@@ -19435,7 +21139,12 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "spa": -1
+        }
+      }
     },
     {
       "id": "psyblade",
@@ -19571,7 +21280,10 @@
       "target": "self",
       "generation": 9,
       "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
-      "flags": []
+      "flags": [],
+      "volatileStatus": "substitute",
+      "self": {},
+      "selfSwitch": "shedtail"
     },
     {
       "id": "chillyreception",
@@ -19590,7 +21302,8 @@
       "target": "all",
       "generation": 9,
       "description": "배틀의 흐름을 바꾸는 얼음타입 변화 기술이다.",
-      "flags": []
+      "flags": [],
+      "selfSwitch": true
     },
     {
       "id": "tidyup",
@@ -19651,7 +21364,13 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "spe": -1
+        }
+      }
     },
     {
       "id": "trailblaze",
@@ -19674,7 +21393,15 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "self": {
+          "boosts": {
+            "spe": 1
+          }
+        }
+      }
     },
     {
       "id": "chillingwater",
@@ -19696,7 +21423,13 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "boosts": {
+          "atk": -1
+        }
+      }
     },
     {
       "id": "hyperdrill",
@@ -19740,7 +21473,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "ragefist",
@@ -19786,7 +21520,13 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {
+        "boosts": {
+          "def": -1,
+          "spd": -1
+        }
+      }
     },
     {
       "id": "bitterblade",
@@ -19812,6 +21552,10 @@
         "heal",
         "metronome",
         "slicing"
+      ],
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -19835,7 +21579,8 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "self": {}
     },
     {
       "id": "gigatonhammer",
@@ -19907,7 +21652,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "blazingtorque",
@@ -19936,7 +21682,11 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "brn"
+      }
     },
     {
       "id": "wickedtorque",
@@ -19965,7 +21715,11 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "secondary": {
+        "chance": 10,
+        "status": "slp"
+      }
     },
     {
       "id": "noxioustorque",
@@ -19994,7 +21748,11 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "psn"
+      }
     },
     {
       "id": "combattorque",
@@ -20023,7 +21781,11 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "status": "par"
+      }
     },
     {
       "id": "magicaltorque",
@@ -20052,7 +21814,11 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "secondary": {
+        "chance": 30,
+        "volatileStatus": "confusion"
+      }
     },
     {
       "id": "bloodmoon",
@@ -20101,6 +21867,14 @@
         "defrost",
         "heal",
         "metronome"
+      ],
+      "secondary": {
+        "chance": 20,
+        "status": "brn"
+      },
+      "drain": [
+        1,
+        2
       ]
     },
     {
@@ -20125,7 +21899,11 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "syrupbomb"
+      }
     },
     {
       "id": "ivycudgel",
@@ -20148,7 +21926,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "critRatio": 2
     },
     {
       "id": "electroshot",
@@ -20244,7 +22023,8 @@
         "metronome",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "volatileStatus": "burningbulwark"
     },
     {
       "id": "thunderclap",
@@ -20315,7 +22095,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "multihit": 2
     },
     {
       "id": "hardpress",
@@ -20362,7 +22143,8 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "volatileStatus": "dragoncheer"
     },
     {
       "id": "alluringvoice",
@@ -20387,7 +22169,10 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100
+      }
     },
     {
       "id": "temperflare",
@@ -20436,7 +22221,8 @@
         "mirror",
         "metronome",
         "minimize"
-      ]
+      ],
+      "hasCrashDamage": true
     },
     {
       "id": "psychicnoise",
@@ -20461,7 +22247,11 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "healblock"
+      }
     },
     {
       "id": "upperhand",
@@ -20485,7 +22275,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 100,
+        "volatileStatus": "flinch"
+      }
     },
     {
       "id": "malignantchain",
@@ -20508,7 +22302,11 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "secondary": {
+        "chance": 50,
+        "status": "tox"
+      }
     }
   ]
 }

@@ -24,6 +24,7 @@ import {
   getActivePokemon,
   getAvailableBattleMechanics,
   getBattleSummary,
+  getForcedBattleAction,
   getTypeEffectiveness,
 } from './data/battleEngine'
 import {
@@ -777,7 +778,8 @@ function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack, onPreview
       </header>
       <div className="battle-move-grid">
         {pokemon.moves.map((move, moveIndex) => {
-          const isDamagingMove = Number(move.power) > 0 && move.category !== '변화'
+          const isDamagingMove = move.category !== '변화'
+            && (Number(move.power) > 0 || move.ohko || move.damage !== undefined || move.id === 'finalgambit')
           const multiplier = isDamagingMove
             ? getTypeEffectiveness(move.type, opponent.types)
             : null
@@ -847,6 +849,8 @@ const BATTLE_STAT_STAGE_LABELS = [
   ['specialAttack', '특공'],
   ['specialDefense', '특방'],
   ['speed', '스피드'],
+  ['accuracy', '명중'],
+  ['evasion', '회피'],
 ]
 
 function battleStatStageEntries(pokemon) {
@@ -1101,6 +1105,38 @@ function BattleScreen({
       turnLockedRef.current = false
     }
   }
+
+  const forcedPlayerAction = getForcedBattleAction(battle, 'player')
+  const forcedReason = forcedPlayerAction?.forcedReason ?? null
+  const forcedMoveIndex = forcedPlayerAction?.moveIndex ?? null
+
+  useEffect(() => {
+    if (
+      introVisible
+      || isTurnAnimating
+      || battle.winner
+      || battle.awaitingPlayerSwitch
+      || !forcedReason
+    ) return undefined
+
+    const timerId = window.setTimeout(() => {
+      startAnimatedTurn({
+        type: 'move',
+        moveIndex: forcedMoveIndex ?? 0,
+        gimmick: null,
+        forcedReason,
+      })
+    }, 320)
+    return () => window.clearTimeout(timerId)
+  }, [
+    battle.awaitingPlayerSwitch,
+    battle.turn,
+    battle.winner,
+    forcedMoveIndex,
+    forcedReason,
+    introVisible,
+    isTurnAnimating,
+  ])
 
   const chooseMove = (moveIndex) => {
     battleAudioRef.current?.playMenu('select')

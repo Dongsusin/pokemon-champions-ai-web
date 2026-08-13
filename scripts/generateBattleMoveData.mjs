@@ -155,6 +155,34 @@ function fallbackDescription(move) {
   return `상대를 공격하는 ${TYPE_LABELS[move.typeId]}타입 기술이다.`
 }
 
+const BATTLE_MECHANIC_FIELDS = [
+  'recoil',
+  'selfdestruct',
+  'secondary',
+  'secondaries',
+  'status',
+  'volatileStatus',
+  'self',
+  'boosts',
+  'drain',
+  'heal',
+  'multihit',
+  'ohko',
+  'damage',
+  'hasCrashDamage',
+  'forceSwitch',
+  'selfSwitch',
+  'willCrit',
+  'critRatio',
+  'mindBlownRecoil',
+]
+
+function battleMechanics(move) {
+  return Object.fromEntries(BATTLE_MECHANIC_FIELDS.flatMap((field) => (
+    move[field] === undefined ? [] : [[field, move[field]]]
+  )))
+}
+
 await fs.mkdir(cacheDir, { recursive: true })
 
 const [localizedMoves, showdownMoves] = await Promise.all([
@@ -188,6 +216,7 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     generation: generationForMoveNumber(showdownMove.num) ?? localized.generation,
     description: localized.description || fallbackDescription(localized),
     flags: Object.keys(showdownMove.flags ?? {}),
+    ...battleMechanics(showdownMove),
   }]
 }).sort((left, right) => left.number - right.number || left.name.localeCompare(right.name, 'ko'))
 
