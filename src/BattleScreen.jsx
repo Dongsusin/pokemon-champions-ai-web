@@ -33,6 +33,23 @@ import {
 } from './data/moveAnimationData'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
+const MOVE_REFERENCE_BADGES = {
+  MAX_MOVE: 'MAX MOVE',
+  GMAX_MOVE: 'G-MAX MOVE',
+  Z_GENERIC_PHYSICAL: 'Z-POWER',
+  Z_GENERIC_SPECIAL: 'Z-POWER',
+  Z_SIGNATURE: 'SIGNATURE Z',
+  SHADOW_MOVE: 'SHADOW MOVE',
+  TERA_TYPE_VARIANTS: 'TERA TYPE',
+  FORM_TYPE_VARIANTS: 'FORM TYPE',
+  STARMOBILE_TORQUE: 'STAR TORQUE',
+  PLZA_NEW_MOVE: 'NEW MOVE',
+}
+
+function animationClassToken(value = '') {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
+}
+
 function fallbackImageHandler(fallback) {
   return (event) => {
     if (!fallback || event.currentTarget.dataset.fallbackApplied) return
@@ -234,6 +251,8 @@ function MoveAnimation({ cue }) {
     spin: ((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 53) % 360,
   }))
   const targetSelf = profile.targetSelf || cue.targetSideId === cue.sideId
+  const referenceBadge = MOVE_REFERENCE_BADGES[profile.recordVariant] ?? null
+  const displayedMoveName = referenceBadge && profile.referenceName ? profile.referenceName : cue.moveName
   const style = {
     '--move-primary': profile.primary,
     '--move-secondary': profile.secondary,
@@ -296,11 +315,17 @@ function MoveAnimation({ cue }) {
   return (
     <div
       ref={animationRef}
-      className={`battle-pixel-move-animation timeline-frame-0 side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
+      className={`battle-pixel-move-animation timeline-frame-0 side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
       style={style}
       data-move-id={profile.moveId}
       data-animation-source={profile.sourceKind}
       data-move-generation={profile.generation ?? undefined}
+      data-reference-record={profile.referenceRecordNo ?? undefined}
+      data-reference-variant={profile.recordVariant}
+      data-reference-availability={profile.referenceAvailability}
+      data-reference-fidelity={profile.fidelityGrade ?? undefined}
+      data-runtime-coverage={profile.runtimeCoverage}
+      data-logical-canvas={`${profile.logicalCanvas.width}x${profile.logicalCanvas.height}`}
       aria-hidden="true"
     >
       <span className="pixel-move-screen" />
@@ -339,7 +364,8 @@ function MoveAnimation({ cue }) {
           />
         ))}
       </span>
-      <strong className="pixel-move-name">{cue.moveName}</strong>
+      <strong className="pixel-move-name">{displayedMoveName}</strong>
+      {referenceBadge && <small className="pixel-move-reference-badge">{referenceBadge}</small>}
     </div>
   )
 }

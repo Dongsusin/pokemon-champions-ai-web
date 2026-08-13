@@ -10,6 +10,8 @@
     "generate:battle-items": "node scripts/generateBattleItemData.mjs",
     "generate:battle-moves": "node scripts/generateBattleMoveData.mjs",
     "generate:move-animations": "node scripts/generateMoveAnimationManifest.mjs",
+    "import:move-animation-reference": "node scripts/importMoveAnimationReference.mjs",
+    "validate:move-animations": "node scripts/validateMoveAnimationCoverage.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",
     "generate:sprite-manifest": "node scripts/generateGen5SpriteManifest.mjs",
     "generate:trainer-teams": "node scripts/generateTrainerTeams.mjs && node scripts/generateTrainerLoadouts.mjs",

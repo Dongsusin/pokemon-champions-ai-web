@@ -1,4 +1,5 @@
 import moveAnimationManifest from './generatedMoveAnimationManifest.json' with { type: 'json' }
+import moveAnimationReference from './generatedMoveAnimationReference.json' with { type: 'json' }
 
 const clamp = (minimum, value, maximum) => Math.min(maximum, Math.max(minimum, value))
 
@@ -22,6 +23,50 @@ const TYPE_THEMES = {
   강철: ['#b7d3df', '#647e91', '#ffffff'],
   페어리: ['#ff9ed5', '#bd55a0', '#fff0fb'],
   스텔라: ['#76f6ef', '#8e63ff', '#fff59b'],
+}
+
+const TYPE_MOTIFS = {
+  노말: 'impact',
+  불꽃: 'flame',
+  물: 'water',
+  전기: 'bolt',
+  풀: 'leaf',
+  얼음: 'ice',
+  격투: 'fist',
+  독: 'toxic',
+  땅: 'crack',
+  비행: 'wind',
+  에스퍼: 'psychic',
+  벌레: 'web',
+  바위: 'rock',
+  고스트: 'ghost',
+  드래곤: 'dragon',
+  악: 'dark',
+  강철: 'steel',
+  페어리: 'sparkle',
+  스텔라: 'prism',
+}
+
+const SPECIAL_ARCHETYPES_BY_TYPE = {
+  노말: 'blast',
+  불꽃: 'eruption',
+  물: 'wave',
+  전기: 'lightning',
+  풀: 'leaves',
+  얼음: 'storm',
+  격투: 'barrage',
+  독: 'sludge',
+  땅: 'quake',
+  비행: 'aerial',
+  에스퍼: 'psychic',
+  벌레: 'storm',
+  바위: 'meteor',
+  고스트: 'spectral',
+  드래곤: 'beam',
+  악: 'pulse',
+  강철: 'meteor',
+  페어리: 'prism',
+  스텔라: 'prism',
 }
 
 const SIGNATURE_PROFILES = {
@@ -319,6 +364,167 @@ const normalizeMoveId = (value = '') => String(value).toLowerCase().replace(/[^a
 const MOVE_RESOURCE_BY_ID = new Map(
   Object.entries(moveAnimationManifest.moves).map(([moveId, resource]) => [normalizeMoveId(moveId), resource]),
 )
+const MOVE_REFERENCE_BY_RECORD_NO = new Map(
+  moveAnimationReference.records.map((record) => [record.recordNo, record]),
+)
+const MOVE_REFERENCES_BY_ALIAS = new Map()
+
+moveAnimationReference.records.forEach((record) => {
+  record.aliases.forEach((alias) => {
+    const references = MOVE_REFERENCES_BY_ALIAS.get(alias) ?? []
+    references.push(record)
+    MOVE_REFERENCES_BY_ALIAS.set(alias, references)
+  })
+})
+
+const GMAX_REFERENCE_BY_SPECIES = [
+  ['urshifurapidstrike', 'gmaxrapidflow'],
+  ['urshifusinglestrike', 'gmaxoneblow'],
+  ['charizard', 'gmaxwildfire'],
+  ['butterfree', 'gmaxbefuddle'],
+  ['pikachu', 'gmaxvoltcrash'],
+  ['meowth', 'gmaxgoldrush'],
+  ['machamp', 'gmaxchistrike'],
+  ['gengar', 'gmaxterror'],
+  ['lapras', 'gmaxresonance'],
+  ['eevee', 'gmaxcuddle'],
+  ['snorlax', 'gmaxreplenish'],
+  ['garbodor', 'gmaxmalodor'],
+  ['drednaw', 'gmaxstonesurge'],
+  ['corviknight', 'gmaxwindrage'],
+  ['toxtricity', 'gmaxstunshock'],
+  ['alcremie', 'gmaxfinale'],
+  ['duraludon', 'gmaxdepletion'],
+  ['orbeetle', 'gmaxgravitas'],
+  ['coalossal', 'gmaxvolcalith'],
+  ['sandaconda', 'gmaxsandblast'],
+  ['grimmsnarl', 'gmaxsnooze'],
+  ['flapple', 'gmaxtartness'],
+  ['appletun', 'gmaxsweetness'],
+  ['hatterene', 'gmaxsmite'],
+  ['copperajah', 'gmaxsteelsurge'],
+  ['melmetal', 'gmaxmeltdown'],
+  ['kingler', 'gmaxfoamburst'],
+  ['centiskorch', 'gmaxcentiferno'],
+  ['venusaur', 'gmaxvinelash'],
+  ['blastoise', 'gmaxcannonade'],
+  ['rillaboom', 'gmaxdrumsolo'],
+  ['cinderace', 'gmaxfireball'],
+  ['inteleon', 'gmaxhydrosnipe'],
+]
+
+function normalizeReferenceVariant(value = '') {
+  return String(value).trim().toUpperCase().replace(/[-\s]+/g, '_')
+}
+
+function referencesForAlias(value) {
+  return MOVE_REFERENCES_BY_ALIAS.get(normalizeMoveId(value)) ?? []
+}
+
+function referenceForAlias(value, predicate = () => true) {
+  return referencesForAlias(value).find(predicate) ?? null
+}
+
+function referenceForGmaxSpecies(move, type) {
+  const species = normalizeMoveId(move.actorSpeciesSlug ?? move.actorName ?? '')
+  const mappedAlias = GMAX_REFERENCE_BY_SPECIES.find(([speciesAlias]) => species.includes(speciesAlias))?.[1]
+  const mappedReference = mappedAlias ? referenceForAlias(mappedAlias) : null
+  if (mappedReference?.type === type) return mappedReference
+  return moveAnimationReference.records.find((record) => (
+    record.variant === 'MAX_MOVE'
+    && record.type === type
+    && record.moveKey !== 'MAX_GUARD'
+  ))
+    ?? null
+}
+
+function referenceForRequestedVariant(move, variant, category, type) {
+  if (!variant) return null
+  if (move.animationReferenceKey) {
+    const explicit = referenceForAlias(move.animationReferenceKey, (record) => record.variant === variant)
+    if (explicit) return explicit
+  }
+
+  if (variant === 'GMAX_MOVE') {
+    if (category === 'status') return referenceForAlias('maxguard')
+    return referenceForGmaxSpecies(move, type)
+  }
+  if (variant === 'MAX_MOVE') {
+    if (category === 'status') return referenceForAlias('maxguard')
+    return moveAnimationReference.records.find((record) => (
+      record.variant === 'MAX_MOVE'
+      && record.type === type
+      && record.moveKey !== 'MAX_GUARD'
+    )) ?? null
+  }
+  if (variant === 'Z_GENERIC_PHYSICAL' || variant === 'Z_GENERIC_SPECIAL') {
+    return moveAnimationReference.records.find((record) => record.variant === variant && record.type === type) ?? null
+  }
+
+  return referenceForAlias(move.moveId ?? move.id ?? move.englishName ?? move.moveName, (record) => record.variant === variant)
+}
+
+export function getMoveAnimationReference(move = {}) {
+  const moveId = normalizeMoveId(move.moveId ?? move.id ?? move.englishName ?? move.moveName ?? 'unknown')
+  const category = move.moveCategory ?? move.categoryId ?? (move.category === '변화' ? 'status' : move.category === '물리' ? 'physical' : 'special')
+  const type = move.animationType ?? move.moveType ?? move.type ?? '노말'
+  const requestedVariant = normalizeReferenceVariant(move.animationVariant ?? move.recordVariant)
+  const requestedReference = referenceForRequestedVariant(move, requestedVariant, category, type)
+  if (requestedReference) return requestedReference
+
+  const indexedRecordNumber = moveAnimationReference.activeMoveIndex[moveId]
+  if (indexedRecordNumber) return MOVE_REFERENCE_BY_RECORD_NO.get(indexedRecordNumber) ?? null
+
+  const aliases = [moveId, move.englishName, move.moveName, move.name]
+  const candidates = aliases.flatMap(referencesForAlias)
+  return candidates.find((record) => ['STANDARD_MOVE', 'STANDARD_WITH_HEAL_BRANCH'].includes(record.variant))
+    ?? candidates[0]
+    ?? null
+}
+
+function getReferenceAnimationStyle(reference, category, type, move, inferred) {
+  const variant = reference?.variant ?? 'UNMAPPED'
+  const typeMotif = TYPE_MOTIFS[type] ?? inferred.motif
+  const specialArchetype = SPECIAL_ARCHETYPES_BY_TYPE[type] ?? inferred.archetype
+
+  if (variant === 'MAX_MOVE') {
+    if (reference?.moveKey === 'MAX_GUARD') {
+      return { archetype: 'barrier', motif: 'shield', screen: 'max', motion: 'brace', intensity: 3, durationScale: 1.12 }
+    }
+    return { archetype: specialArchetype, motif: typeMotif, screen: 'max', intensity: 3, durationScale: 1.16 }
+  }
+  if (variant === 'GMAX_MOVE') {
+    return { archetype: specialArchetype, motif: typeMotif, screen: 'gmax', intensity: 3, durationScale: 1.24 }
+  }
+  if (variant === 'Z_GENERIC_PHYSICAL') {
+    return { archetype: category === 'physical' ? 'barrage' : specialArchetype, motif: typeMotif, screen: 'zpower', motion: 'lunge', intensity: 3, durationScale: 1.18 }
+  }
+  if (variant === 'Z_GENERIC_SPECIAL' || variant === 'Z_SIGNATURE') {
+    return { archetype: specialArchetype, motif: typeMotif, screen: 'zpower', motion: 'cast', intensity: 3, durationScale: 1.2 }
+  }
+  if (variant === 'SHADOW_MOVE') {
+    return { archetype: 'spectral', motif: 'ghost', screen: 'shadow', intensity: 3, durationScale: 1.08 }
+  }
+  if (variant === 'STARMOBILE_TORQUE') {
+    return { archetype: 'spin', motif: typeMotif, screen: 'torque', motion: 'spin', intensity: 2, durationScale: 1.04 }
+  }
+  if (variant === 'TERA_TYPE_VARIANTS') {
+    return { archetype: 'prism', motif: typeMotif, screen: 'tera', intensity: 3, durationScale: 1.12 }
+  }
+  if (variant === 'FORM_TYPE_VARIANTS') {
+    return { archetype: 'strike', motif: typeMotif, screen: 'mask', motion: 'lunge', intensity: 3, durationScale: 1.08 }
+  }
+  if (variant === 'PLZA_NEW_MOVE') {
+    return { archetype: 'beam', motif: 'dragon', screen: 'nihil', motion: 'cast', intensity: 3, durationScale: 1.22 }
+  }
+  if (variant === 'LGPE_PARTNER_MOVE') {
+    return { intensity: Math.max(2, Number(move.movePower ?? move.power) >= 100 ? 3 : 2), durationScale: 1.04 }
+  }
+  if (variant === 'STANDARD_WITH_HEAL_BRANCH' && move.animationBranch === 'HEAL_RESULT') {
+    return { archetype: 'restore', motif: 'heal', screen: 'flash', motion: 'rise', intensity: 2, durationScale: 1.04 }
+  }
+  return {}
+}
 
 export const MOVE_PIXEL_FX_ASSETS = MOVE_PIXEL_FX_FILES.map(fxAsset)
 
@@ -352,6 +558,7 @@ const MOTIF_PIXEL_ASSETS = {
   burst: 'flareball.png',
   crack: 'rocks.png',
   cross: 'leftslash.png',
+  dark: 'blackwisp.png',
   dragon: 'alpha.png',
   drop: 'poisonwisp.png',
   energy: 'alpha.png',
@@ -370,6 +577,7 @@ const MOTIF_PIXEL_ASSETS = {
   mote: 'wisp.png',
   petal: 'petal.png',
   psychic: 'mistball.png',
+  prism: 'rainbow.png',
   rain: 'waterwisp.png',
   ring: 'sound.png',
   rock: 'rock2.png',
@@ -505,6 +713,21 @@ export function getMovePixelAnimationPlan(profile) {
     (smallest, asset) => Math.min(smallest, Number(asset.width) || 999, Number(asset.height) || 999),
     999,
   )
+  const referenceScale = profile.recordVariant === 'GMAX_MOVE'
+    ? 1.16
+    : ['MAX_MOVE', 'Z_GENERIC_PHYSICAL', 'Z_GENERIC_SPECIAL', 'Z_SIGNATURE'].includes(profile.recordVariant)
+      ? 1.1
+      : profile.recordVariant === 'TERA_TYPE_VARIANTS'
+        ? 1.06
+        : 1
+  const baseCopies = smallestParticle <= 48
+    ? 6 + (profile.seed % 2)
+    : mode === 'stream' || mode === 'rain'
+      ? 5 + (profile.seed % 2)
+      : mode === 'projectile'
+        ? 2 + (profile.seed % 2)
+        : 3
+  const extraCopies = profile.intensity >= 3 && !['self', 'field', 'vanish'].includes(mode) ? 2 : 0
 
   return {
     mode,
@@ -515,49 +738,59 @@ export function getMovePixelAnimationPlan(profile) {
       ? impactAssets
       : impactAssetsForMode(mode, profile).map((file) => ({ file, src: fxAsset(file), kind: 'sprite' })),
     fieldAsset: resourceBackgrounds[0] ?? (fieldFile ? { file: fieldFile, src: fxAsset(fieldFile), kind: 'background' } : null),
-    copies: smallestParticle <= 48
-      ? 6 + (profile.seed % 2)
-      : mode === 'stream' || mode === 'rain'
-        ? 5 + (profile.seed % 2)
-        : mode === 'projectile'
-          ? 2 + (profile.seed % 2)
-          : 3,
-    scale: 0.84 + (profile.seed % 29) / 100,
-    impactScale: 1 + ((profile.seed >>> 5) % 36) / 100,
+    copies: Math.min(10, baseCopies + extraCopies),
+    scale: (0.84 + (profile.seed % 29) / 100) * referenceScale,
+    impactScale: (1 + ((profile.seed >>> 5) % 36) / 100) * referenceScale,
     arc: (profile.seed % 31) - 15,
-    stagger: 58 + (profile.seed % 43),
+    stagger: Math.max(46, 58 + (profile.seed % 43) - extraCopies * 4),
   }
 }
 
 export function getMoveAnimationProfile(move = {}) {
   const moveId = normalizeMoveId(move.moveId ?? move.id ?? move.englishName ?? move.moveName ?? 'unknown')
   const category = move.moveCategory ?? move.categoryId ?? (move.category === '변화' ? 'status' : move.category === '물리' ? 'physical' : 'special')
-  const type = move.moveType ?? move.type ?? '노말'
+  const rawType = move.animationType ?? move.moveType ?? move.type ?? '노말'
+  const type = rawType === '다크' ? '악' : rawType
   const flags = new Set(move.moveFlags ?? move.flags ?? [])
   const text = `${move.moveName ?? move.name ?? ''} ${move.moveDescription ?? move.description ?? ''}`.toLowerCase()
-  const seed = hashMoveId(moveId)
+  const reference = getMoveAnimationReference({ ...move, moveId, moveCategory: category, animationType: type })
+  const isSpecialReference = Boolean(move.animationVariant)
+    || !['STANDARD_MOVE', 'STANDARD_WITH_HEAL_BRANCH'].includes(reference?.variant)
+  const seed = hashMoveId(isSpecialReference ? `${moveId}:${reference?.recordNo ?? 'unmapped'}:${move.animationVariantKey ?? ''}` : moveId)
   const inferred = inferArchetype(moveId, category, type, flags, text)
+  const referenceStyle = getReferenceAnimationStyle(reference, category, type, move, inferred)
+  const archetype = referenceStyle.archetype ?? inferred.archetype
+  const motif = referenceStyle.motif ?? inferred.motif
+  const screen = referenceStyle.screen ?? inferred.screen ?? 'none'
+  const motion = referenceStyle.motion ?? inferred.motion ?? ARCHETYPE_MOTION[archetype] ?? (category === 'physical' ? 'lunge' : 'cast')
   const theme = TYPE_THEMES[type] ?? TYPE_THEMES.노말
   const power = Math.max(0, Number(move.movePower ?? move.power) || 0)
-  const intensity = power >= 120 ? 3 : power >= 75 ? 2 : 1
-  const baseDuration = ARCHETYPE_DURATION[inferred.archetype] ?? (category === 'status' ? 1460 : 1480)
+  const powerIntensity = power >= 120 ? 3 : power >= 75 ? 2 : 1
+  const intensity = Math.max(powerIntensity, referenceStyle.intensity ?? 1)
+  const baseDuration = ARCHETYPE_DURATION[archetype] ?? (category === 'status' ? 1460 : 1480)
   const resource = MOVE_RESOURCE_BY_ID.get(moveId) ?? null
-  const duration = resource?.durationMs
+  const unscaledDuration = resource?.durationMs
     ? Math.round(clamp(1250, resource.durationMs * 0.78, 2200))
     : Math.round(clamp(1250, baseDuration + (seed % 121) - 60, 1900))
+  const duration = Math.round(clamp(1250, unscaledDuration * (referenceStyle.durationScale ?? 1), 2500))
   const moveTarget = move.moveTarget ?? move.target
   const targetSelf = ['self', 'allySide', 'allyTeam', 'allies', 'adjacentAllyOrSelf'].includes(moveTarget)
-    || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(inferred.archetype)
+    || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(archetype)
   const targetField = ['all', 'allAdjacent'].includes(moveTarget)
-    || ['terrain', 'weather'].includes(inferred.archetype)
+    || ['terrain', 'weather'].includes(archetype)
+  const runtimeCoverage = resource?.specific
+    ? 'dedicated-ebdx'
+    : resource
+      ? 'fallback-ebdx'
+      : 'procedural-reference'
 
   return {
     moveId,
-    archetype: inferred.archetype,
-    motif: inferred.motif,
+    archetype,
+    motif,
     type,
-    screen: inferred.screen ?? 'none',
-    motion: inferred.motion ?? ARCHETYPE_MOTION[inferred.archetype] ?? (category === 'physical' ? 'lunge' : 'cast'),
+    screen,
+    motion,
     primary: theme[0],
     secondary: theme[1],
     highlight: theme[2],
@@ -568,9 +801,20 @@ export function getMoveAnimationProfile(move = {}) {
     rotation: (seed % 41) - 20,
     spread: 18 + (seed % 24),
     duration,
-    generation: Number(move.moveGeneration ?? move.generation ?? resource?.generation) || null,
-    sourceKind: resource?.sourceKind ?? 'showdown-fallback',
+    generation: Number(reference?.generation ?? move.moveGeneration ?? move.generation ?? resource?.generation) || null,
+    sourceKind: resource?.sourceKind ?? 'procedural-reference',
+    runtimeCoverage,
     resource,
+    reference,
+    referenceRecordNo: reference?.recordNo ?? null,
+    referenceMoveKey: reference?.moveKey ?? null,
+    referenceName: reference?.koreanName ?? reference?.englishName ?? null,
+    recordVariant: reference?.variant ?? 'UNMAPPED',
+    referenceAvailability: reference?.availability ?? 'UNMAPPED',
+    fidelityGrade: reference?.fidelity ?? null,
+    manualPriority: reference?.manualPriority ?? null,
+    manualVariants: reference?.manualVariants ?? [],
+    logicalCanvas: moveAnimationReference.logicalCanvas,
     targetSelf,
     targetField,
   }
@@ -593,6 +837,9 @@ export function summarizeMoveAnimationCoverage(moves) {
   return {
     total: profiles.length,
     covered: profiles.filter((profile) => profile.archetype).length,
+    referenceMatched: profiles.filter((profile) => profile.referenceRecordNo).length,
+    dedicatedEbdx: profiles.filter((profile) => profile.runtimeCoverage === 'dedicated-ebdx').length,
+    fallbackEbdx: profiles.filter((profile) => profile.runtimeCoverage === 'fallback-ebdx').length,
     archetypes: [...new Set(profiles.map((profile) => profile.archetype))].sort(),
   }
 }

@@ -99,6 +99,41 @@ const MECHANIC_LABELS = {
   primal: '원시회귀',
 }
 
+const IVY_CUDGEL_VARIANTS = {
+  'hearthflame-mask': { key: 'HEARTHFLAME_MASK', type: '불꽃' },
+  'wellspring-mask': { key: 'WELLSPRING_MASK', type: '물' },
+  'cornerstone-mask': { key: 'CORNERSTONE_MASK', type: '바위' },
+}
+
+function moveAnimationMetadata(attacker, move, action, moveCategory) {
+  let animationType = move.type
+  let animationVariant = null
+  let animationVariantKey = null
+
+  if (action.gimmick === 'zmove') {
+    animationVariant = moveCategory === 'physical' ? 'Z_GENERIC_PHYSICAL' : 'Z_GENERIC_SPECIAL'
+  } else if (attacker.dynamaxActive) {
+    animationVariant = attacker.dynamaxMode === 'gigantamax' ? 'GMAX_MOVE' : 'MAX_MOVE'
+  } else if (move.id === 'terablast') {
+    animationVariant = 'TERA_TYPE_VARIANTS'
+    animationType = attacker.teraActive ? attacker.teraType : move.type
+    animationVariantKey = animationType
+  } else if (move.id === 'ivycudgel') {
+    const maskVariant = IVY_CUDGEL_VARIANTS[attacker.heldItemId]
+    animationVariant = 'FORM_TYPE_VARIANTS'
+    animationVariantKey = maskVariant?.key ?? 'TEAL_MASK'
+    animationType = maskVariant?.type ?? move.type
+  }
+
+  return {
+    animationType,
+    animationVariant,
+    animationVariantKey,
+    actorSpeciesSlug: attacker.slug ?? '',
+    actorHeldItemId: attacker.heldItemId ?? '',
+  }
+}
+
 function statObject(pokemon) {
   return Object.fromEntries(calculateStats(pokemon).map((stat) => [stat.key, stat.value]))
 }
@@ -720,6 +755,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   move.currentPp = Math.max(0, move.currentPp - 1)
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
+  const animationMetadata = moveAnimationMetadata(attacker, move, action, moveCategory)
 
   const moveStep = {
     actionOrder,
@@ -736,6 +772,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     moveTarget: move.target,
     moveFlags: [...(move.flags ?? [])],
     moveDescription: move.description ?? '',
+    ...animationMetadata,
     message: `${attacker.name}의 ${move.name}!`,
   }
   pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
