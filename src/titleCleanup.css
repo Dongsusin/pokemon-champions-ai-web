@@ -23,3 +23,22 @@
 .dynamax-picker-header h2 {
   margin-bottom: 0;
 }
+
+.mode-copy > span,
+.battle-mode-option-copy > span:not(.battle-mode-meta-row),
+.battle-mode-option-copy > em,
+.move-picker-choice-name > small,
+.profile-picker-choice .profile-choice-copy > small,
+.item-equip-card-copy > em,
+.dynamax-option-copy > p {
+  display: none;
+}
+
+.mode-copy,
+.battle-mode-option-copy,
+.move-picker-choice-name,
+.profile-choice-copy,
+.item-equip-card-copy,
+.dynamax-option-copy {
+  align-content: center;
+}
