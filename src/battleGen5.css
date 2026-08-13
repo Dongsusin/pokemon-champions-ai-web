@@ -2888,3 +2888,95 @@
   object-position: center;
   image-rendering: pixelated;
 }
+
+.app-shell.battle-view .battle-log-panel > header span {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.app-shell.battle-view .battle-log-panel > header strong {
+  font-size: 10px;
+}
+
+.app-shell.battle-view .battle-log-body {
+  display: block;
+  min-height: 0;
+  padding: 6px 8px 8px;
+}
+
+.app-shell.battle-view .battle-log-scroll {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-content: end;
+  gap: 3px;
+  padding: 3px 4px;
+  overflow-y: auto;
+}
+
+.app-shell.battle-view .battle-log-panel p {
+  padding: 3px 7px 3px 10px;
+  color: #d5e2e3;
+  font-size: clamp(10px, 0.78vw, 12px);
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
+.app-shell.battle-view .battle-log-panel p.battle-log-current {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid rgba(220, 232, 219, 0.72);
+  border-left: 4px solid #f1d55f;
+  border-radius: 3px 10px 3px 3px;
+  color: #fffbe8;
+  font-size: clamp(11px, 0.9vw, 14px);
+  font-weight: 800;
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(29, 71, 96, 0.96), rgba(16, 43, 70, 0.96));
+}
+
+.app-shell.battle-view .battle-log-panel p.battle-log-current::before {
+  display: none;
+  content: none;
+}
+
+.app-shell.battle-view .battle-log-current > span:first-child {
+  grid-column: 1;
+  color: #f6d85d;
+}
+
+.app-shell.battle-view .battle-log-current-message {
+  grid-column: 2;
+  min-width: 0;
+  color: inherit;
+}
+
+.app-shell.battle-view .battle-command-menu {
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+.app-shell.battle-view .battle-command-buttons {
+  height: 100%;
+}
+
+.app-shell.battle-view .battle-command-panel.is-turn-locked {
+  overflow: hidden;
+  border-color: #f4f0d8;
+  background: #102f49;
+}
+
+.app-shell.battle-view .battle-command-panel.is-turn-locked .battle-command-buttons {
+  opacity: 0.62;
+  filter: saturate(0.42);
+}
+
+.app-shell.battle-view .battle-command-buttons > button:disabled {
+  cursor: wait;
+  transform: none;
+}

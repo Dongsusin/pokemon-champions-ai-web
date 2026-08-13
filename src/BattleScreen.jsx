@@ -182,59 +182,6 @@ function turnStepDuration(step) {
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
 }
 
-function turnPhaseLabel(cue) {
-  if (!cue) return 'TURN PROCESSING'
-  if (cue.phase === 'gimmick') return 'BATTLE GIMMICK'
-  if (cue.phase === 'announce') return cue.actionOrder === 0 ? 'FIRST ACTION' : 'SECOND ACTION'
-  if (cue.phase === 'attack') return 'MOVE IN MOTION'
-  if (cue.phase === 'impact') return 'DAMAGE'
-  if (cue.phase === 'resolve') return 'MOVE RESULT'
-  if (cue.phase === 'status') return 'STATUS EFFECT'
-  if (cue.phase === 'switch-out' || cue.phase === 'switch') return 'POKÉMON SWITCH'
-  if (cue.phase === 'residual') return 'END OF TURN'
-  if (cue.phase === 'faint') return 'KNOCK OUT'
-  if (cue.phase === 'prompt') return 'CHOOSE NEXT'
-  if (cue.phase === 'result') return 'BATTLE RESULT'
-  return 'TURN PROCESSING'
-}
-
-function BattleTurnPlayback({ cue, turn }) {
-  const presentation = cue?.effectiveness == null
-    ? null
-    : effectivenessPresentation(cue.effectiveness)
-
-  return (
-    <section
-      className={`battle-turn-playback phase-${cue?.phase ?? 'waiting'} side-${cue?.sideId ?? 'neutral'}`}
-      style={{ '--turn-step-duration': `${turnStepDuration(cue)}ms` }}
-      aria-live="assertive"
-    >
-      <span className="battle-turn-playback-emblem">
-        {cue?.phase?.includes('switch') ? <ArrowLeftRight size={27} /> : cue?.phase === 'gimmick' ? <Sparkles size={27} /> : <Swords size={27} />}
-      </span>
-      <div>
-        <small>TURN {turn} · {turnPhaseLabel(cue)}</small>
-        <strong>{cue?.message ?? '행동 순서를 결정하고 있습니다.'}</strong>
-        {cue?.moveName && (
-          <span className="battle-turn-move-meta">
-            <b className={`type-${typeClassName(cue.moveType)}`}>{cue.moveType}</b>
-            <em>{cue.moveName}</em>
-            {cue.actionOrder != null && <i>{cue.actionOrder === 0 ? '선공' : '후공'}</i>}
-          </span>
-        )}
-      </div>
-      {cue?.damage > 0 && <b className="battle-turn-damage-readout">-{cue.damage}</b>}
-      {presentation && (
-        <span className={`battle-turn-effectiveness effectiveness-${presentation.tone}`}>
-          <strong>{presentation.value}</strong>
-          <small>{presentation.label}</small>
-        </span>
-      )}
-      <span className="battle-turn-progress" aria-hidden="true"><i /></span>
-    </section>
-  )
-}
-
 function MoveAnimation({ cue }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
@@ -1015,6 +962,7 @@ function BattleScreen({
   const battleLogHistory = battle.log
     .filter((entry) => entry.id !== currentLogEntry?.id || turnCue)
     .slice(-12)
+  const commandLocked = isTurnAnimating || Boolean(battle.winner)
 
   useEffect(() => {
     let active = true
@@ -1062,7 +1010,7 @@ function BattleScreen({
     })
 
     return () => cancelAnimationFrame(animationFrame)
-  }, [battle.log.length])
+  }, [battle.log.length, currentBattleMessage])
 
   useEffect(() => () => {
     playbackTokenRef.current += 1
@@ -1273,27 +1221,27 @@ function BattleScreen({
       <section className="battle-command-deck">
         <aside className="battle-log-panel">
           <header>
-            <span><ScrollText size={15} /> 배틀 메시지</span>
+            <span><ScrollText size={15} /> 배틀 로그</span>
             <strong>TURN {Math.max(1, battle.turn)}</strong>
           </header>
           <div className="battle-log-body">
-            <div className={`battle-log-focus tone-${currentBattleTone}`} aria-live="assertive">
-              <span aria-hidden="true">▶</span>
-              <strong>{currentBattleMessage}</strong>
-              {!isTurnAnimating && <i aria-hidden="true" />}
-            </div>
-            <div className="battle-log-scroll" ref={logRef} aria-label="이전 배틀 메시지">
+            <div className="battle-log-scroll" ref={logRef} aria-label="배틀 로그" aria-live="polite">
               {battleLogHistory.map((entry) => (
                 <p className={`tone-${entry.tone}`} key={entry.id}>{entry.message}</p>
               ))}
+              <p
+                className={`battle-log-current tone-${currentBattleTone}`}
+                key={`current-${turnCue?.id ?? currentLogEntry?.id ?? 'ready'}`}
+              >
+                <span aria-hidden="true">▶</span>
+                <span className="battle-log-current-message">{currentBattleMessage}</span>
+              </p>
             </div>
           </div>
         </aside>
 
-        <div className={`battle-command-panel${isTurnAnimating ? ' is-turn-locked' : ''}`}>
-          {isTurnAnimating ? (
-            <BattleTurnPlayback key={turnCue?.id ?? 'waiting'} cue={turnCue} turn={Math.max(1, battle.turn)} />
-          ) : battle.awaitingPlayerSwitch || menu === 'party' ? (
+        <div className={`battle-command-panel${commandLocked ? ' is-turn-locked' : ''}`} aria-busy={isTurnAnimating}>
+          {!commandLocked && (battle.awaitingPlayerSwitch || menu === 'party') ? (
             <PokemonPartyMenu
               battle={battle}
               forced={battle.awaitingPlayerSwitch}
@@ -1301,7 +1249,7 @@ function BattleScreen({
               onBack={returnToCommandMenu}
               onPreview={previewBattleMenu}
             />
-          ) : menu === 'fight' ? (
+          ) : !commandLocked && menu === 'fight' ? (
             <MoveMenu
               battle={battle}
               pendingGimmick={pendingGimmick}
@@ -1310,29 +1258,24 @@ function BattleScreen({
               onBack={returnToCommandMenu}
               onPreview={previewBattleMenu}
             />
-          ) : menu === 'overview' ? (
+          ) : !commandLocked && menu === 'overview' ? (
             <BattleOverviewMenu battle={battle} onBack={returnToCommandMenu} onPreview={previewBattleMenu} />
           ) : (
             <section className="battle-command-menu">
-              <div className="battle-dialogue-box">
-                <small>행동을 선택해 주세요</small>
-                <strong>{playerActive.name}은(는) 무엇을 할까?</strong>
-                <span>{opponentActive.name} · HP {Math.ceil(hpRatio(opponentActive))}%</span>
-              </div>
               <div className="battle-command-buttons">
-                <button className="fight" type="button" onPointerEnter={previewBattleMenu} onClick={() => openBattleMenu('fight')}>
+                <button className="fight" type="button" disabled={commandLocked} onPointerEnter={previewBattleMenu} onClick={() => openBattleMenu('fight')}>
                   <Swords size={21} />
                   <span><small>FIGHT</small><strong>싸운다</strong></span>
                 </button>
-                <button className="pokemon" type="button" onPointerEnter={previewBattleMenu} onClick={() => openBattleMenu('party')}>
+                <button className="pokemon" type="button" disabled={commandLocked} onPointerEnter={previewBattleMenu} onClick={() => openBattleMenu('party')}>
                   <ArrowLeftRight size={21} />
                   <span><small>POKÉMON</small><strong>포켓몬</strong></span>
                 </button>
-                <button className="overview" type="button" onPointerEnter={previewBattleMenu} onClick={() => openBattleMenu('overview')}>
+                <button className="overview" type="button" disabled={commandLocked} onPointerEnter={previewBattleMenu} onClick={() => openBattleMenu('overview')}>
                   <Activity size={21} />
                   <span><small>STATUS</small><strong>전황</strong></span>
                 </button>
-                <button className="surrender" type="button" disabled={isTurnAnimating} onPointerEnter={previewBattleMenu} onClick={() => completeBattle('opponent')}>
+                <button className="surrender" type="button" disabled={commandLocked} onPointerEnter={previewBattleMenu} onClick={() => completeBattle('opponent')}>
                   <Flag size={21} />
                   <span><small>GIVE UP</small><strong>기권</strong></span>
                 </button>
