@@ -1,11 +1,11 @@
 const TRAINER_SPRITE_ROOT = 'https://play.pokemonshowdown.com/sprites/trainers'
 
-const TRAINER_SPRITE_SLUGS = {
+export const TRAINER_SPRITE_SLUGS = {
   레드: 'red-gen2',
   태주: 'chase',
   보연: 'elaine',
   심향: 'ethan-gen2',
-  금선: 'kris-gen2',
+  금선: 'lyra',
   휘웅: 'brendan-gen3',
   봄이: 'may-gen3',
   광휘: 'lucas-gen4pt',
@@ -88,7 +88,6 @@ const TRAINER_SPRITE_SLUGS = {
   루자미네: 'lusamine',
   로즈: 'rose',
   마스터드: 'mustard-master',
-  반디나: 'beauty-gen8',
   호브: 'hop',
   비트: 'bede',
   마리: 'marnie',
@@ -105,8 +104,6 @@ const TRAINER_SPRITE_SLUGS = {
   네리네: 'amarys',
   제빈: 'drayton',
   청목: 'larry',
-  J: 'rocketexecutivef-gen2',
-  택트: 'veteran-gen4',
   알랭: 'alain',
   웅: 'brock-gen3',
   이슬: 'misty-gen3',
@@ -199,7 +196,6 @@ const TRAINER_SPRITE_SLUGS = {
   '로사&로이': 'jessiejames-gen1',
   실버: 'silver-gen2',
   수호: 'eusine-gen2',
-  핸섬: 'policeman-gen4',
   루티아: 'lisia',
   모미: 'cheryl',
   미루: 'mira',
@@ -209,12 +205,11 @@ const TRAINER_SPRITE_SLUGS = {
   벨: 'bianca',
   상행: 'ingo',
   하행: 'emmet',
-  철권: 'blackbelt',
+  철권: 'curtis',
   루리: 'yancy',
   사나: 'shauna',
   티에르노: 'tierno',
   트로바: 'trevor',
-  유리카: 'pokekid',
   마티에르: 'emma',
   가이: 'paxton',
   타니: 'jacinthe',
@@ -232,29 +227,8 @@ const TRAINER_SPRITE_SLUGS = {
   용규: 'ryuki',
   도청: 'klara',
   세이버리: 'avery',
-  찬석: 'acetrainer-gen4',
-  주혜: 'acetrainerf-gen4',
-  진철: 'acetrainer-gen4',
-  철이: 'scientist-gen4',
-  승태: 'youngster-gen6',
-  고우: 'chase',
-  채하루: 'elaine',
-}
-
-const REGION_FALLBACK_SLUGS = {
-  kanto: 'acetrainer-gen1',
-  johto: 'acetrainer-gen2',
-  hoenn: 'acetrainer-gen3',
-  sinnoh: 'acetrainer-gen4',
-  unova: 'acetrainer',
-  kalos: 'acetrainer-gen6',
-  alola: 'acetrainer-gen7',
-  galar: 'artist-gen8',
-  hisui: 'rei',
-  paldea: 'artist-gen9',
-  za: 'backpacker-gen9',
-  anime: 'veteran-gen4',
-  international: 'policeman-gen4',
+  찬석: 'adaman',
+  주혜: 'irida',
 }
 
 function spriteUrl(slug) {
@@ -263,8 +237,11 @@ function spriteUrl(slug) {
 
 export function getTrainerSpriteCandidates(trainer = {}) {
   const primarySlug = TRAINER_SPRITE_SLUGS[trainer.name]
-  const regionSlug = REGION_FALLBACK_SLUGS[trainer.region] ?? 'acetrainer'
-  return [...new Set([primarySlug, regionSlug, 'acetrainer'].filter(Boolean))].map(spriteUrl)
+  return primarySlug ? [spriteUrl(primarySlug)] : []
+}
+
+export function hasTrainerSprite(trainerName) {
+  return Boolean(TRAINER_SPRITE_SLUGS[trainerName])
 }
 
 export function getPlayerTrainerSpriteCandidates() {

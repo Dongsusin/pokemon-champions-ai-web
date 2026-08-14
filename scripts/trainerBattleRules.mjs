@@ -63,20 +63,16 @@ export const LEGENDARY_ASSOCIATIONS = {
   페퍼: legendary('koraidon miraidon', '파트너 전설 포켓몬과 에리어 제로'),
   스포일러: legendary('koraidon miraidon', '에리어 제로 최종 결전'),
   카지: legendary('ogerpon terapagos', '오거폰과 테라파고스 사건'),
-  J: legendary('regigigas', '전설 포켓몬 포획 작전'),
-  택트: legendary('darkrai latios', '신오리그에서 전설·환상 포켓몬 사용'),
   알랭: legendary('zygarde', '플레어단과 지가르데 사건'),
   피아나: legendary('rayquaza', '별의 백성과 레쿠쟈 소환'),
   종수: legendary('regigigas cresselia heatran', '배틀타워에서 전설 포켓몬 사용'),
   피오니: legendary('calyrex regigigas', '왕관설원 전설 탐사'),
   수호: legendary('suicune', '스이쿤 추적과 연구'),
-  유리카: legendary('zygarde', '푸니짱과의 동행'),
   가이: legendary('zygarde', '미르시티 지가르데 사건'),
   타니: legendary('zygarde', '미르시티 지가르데 사건'),
   안샤: legendary('hoopa', '후파를 보유한 미르시티 트레이너'),
   릴리에: legendary('solgaleo lunala', '별구름과의 동행'),
   글라디오: legendary('silvally', '실버디를 파트너로 사용'),
-  고우: legendary('suicune regieleki mew', '스이쿤 포획과 프로젝트 뮤'),
 }
 
 export const REGION_MECHANIC_PREFERENCES = {
@@ -122,7 +118,6 @@ export const TRAINER_MECHANIC_OVERRIDES = {
   로즈: ['dynamax'],
   마스터드: ['dynamax'],
   호브: ['dynamax'],
-  택트: ['terastallization'],
   알랭: ['mega-evolution'],
   피오니: ['dynamax'],
   가이: ['mega-evolution'],
@@ -130,7 +125,6 @@ export const TRAINER_MECHANIC_OVERRIDES = {
   릴리에: ['z-move'],
   구즈마: ['z-move'],
   글라디오: ['z-move'],
-  고우: ['dynamax', 'terastallization'],
 }
 
 export function mechanicPreferencesFor(trainerName, region) {

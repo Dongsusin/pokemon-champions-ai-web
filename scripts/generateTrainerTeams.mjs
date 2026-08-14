@@ -9,6 +9,7 @@ import {
   LEGENDARY_ASSOCIATIONS,
   mechanicPreferencesFor,
 } from './trainerBattleRules.mjs'
+import { hasTrainerSprite } from '../src/data/trainerSprites.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -273,6 +274,7 @@ function validateBlueprints() {
     seenNames.add(profile.name)
 
     if (!profile.ace) throw new Error(`Trainer has no ace: ${profile.name}`)
+    if (!hasTrainerSprite(profile.name)) throw new Error(`Trainer has no verified sprite: ${profile.name}`)
     if (profile.types.some((type) => !TYPE_LABELS[type])) {
       throw new Error(`Trainer has an unknown type: ${profile.name}`)
     }
@@ -313,7 +315,9 @@ function validateBlueprints() {
 }
 
 function validateGeneratedData(data) {
-  if (data.trainers.length !== 238) throw new Error(`Expected 238 trainers, received ${data.trainers.length}`)
+  if (data.trainers.length !== TRAINER_BLUEPRINTS.length) {
+    throw new Error(`Expected ${TRAINER_BLUEPRINTS.length} trainers, received ${data.trainers.length}`)
+  }
 
   const teamSignatures = new Set()
   for (const trainerEntry of data.trainers) {
