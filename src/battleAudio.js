@@ -251,8 +251,8 @@ export function createBattleAudio(initialEnabled = true) {
     const now = audio.currentTime + 0.01
 
     if (cue.mechanicId === 'mega') {
-      duckMusicForGimmick(now, 2.3)
-      tone(98, now, 0.72, { volume: 0.13, slide: 392, wave: 'sawtooth' })
+      duckMusicForGimmick(now, 3)
+      tone(98, now, 0.92, { volume: 0.13, slide: 392, wave: 'sawtooth' })
       sequence([262, 330, 392, 523, 659, 784, 1047], {
         delay: 0.12,
         step: 0.12,
@@ -260,14 +260,22 @@ export function createBattleAudio(initialEnabled = true) {
         volume: 0.11,
         wave: 'triangle',
       })
-      noise(now + 0.78, 0.34, { volume: 0.11, frequency: 1800, q: 2.4 })
-      tone(1047, now + 0.96, 0.52, { volume: 0.14, slide: 2093, wave: 'sine' })
-      tone(523, now + 1.08, 0.48, { volume: 0.11, slide: 1047, wave: 'square' })
+      noise(now + 0.9, 0.42, { volume: 0.11, frequency: 1800, q: 2.4 })
+      tone(1047, now + 1.16, 0.62, { volume: 0.14, slide: 2093, wave: 'sine' })
+      tone(523, now + 1.3, 0.56, { volume: 0.11, slide: 1047, wave: 'square' })
+      sequence([784, 1047, 1319, 1568, 2093], {
+        delay: 1.62,
+        step: 0.11,
+        duration: 0.2,
+        volume: 0.1,
+        wave: 'sine',
+      })
+      noise(now + 2.14, 0.36, { volume: 0.1, frequency: 2600, q: 2.8 })
       return
     }
 
     if (cue.mechanicId === 'zmove') {
-      duckMusicForGimmick(now, 1.95)
+      duckMusicForGimmick(now, 2.7)
       sequence([196, 247, 294, 392], {
         step: 0.09,
         duration: 0.12,
@@ -281,17 +289,25 @@ export function createBattleAudio(initialEnabled = true) {
         volume: 0.12,
         wave: 'triangle',
       })
-      tone(130, now + 0.62, 0.62, { volume: 0.16, slide: 1047, wave: 'sawtooth' })
-      noise(now + 0.9, 0.3, { volume: 0.13, frequency: 1400, q: 1.8 })
-      tone(1568, now + 1.02, 0.26, { volume: 0.13, slide: 784, wave: 'sine' })
+      tone(130, now + 0.62, 0.82, { volume: 0.16, slide: 1047, wave: 'sawtooth' })
+      noise(now + 0.92, 0.38, { volume: 0.13, frequency: 1400, q: 1.8 })
+      tone(1568, now + 1.08, 0.34, { volume: 0.13, slide: 784, wave: 'sine' })
+      sequence([392, 523, 659, 784, 988, 1319], {
+        delay: 1.34,
+        step: 0.095,
+        duration: 0.16,
+        volume: 0.11,
+        wave: 'square',
+      })
+      tone(196, now + 1.88, 0.48, { volume: 0.14, slide: 1568, wave: 'sawtooth' })
       return
     }
 
     if (cue.mechanicId === 'dynamax') {
-      duckMusicForGimmick(now, 2.45)
-      tone(48, now, 1.45, { volume: 0.2, slide: 92, wave: 'sawtooth' })
-      tone(73, now + 0.12, 1.2, { volume: 0.14, slide: 147, wave: 'triangle' })
-      noise(now + 0.08, 1.24, { volume: 0.12, frequency: 210, q: 0.7, filterType: 'lowpass' })
+      duckMusicForGimmick(now, 3.3)
+      tone(48, now, 1.85, { volume: 0.2, slide: 92, wave: 'sawtooth' })
+      tone(73, now + 0.12, 1.6, { volume: 0.14, slide: 147, wave: 'triangle' })
+      noise(now + 0.08, 1.62, { volume: 0.12, frequency: 210, q: 0.7, filterType: 'lowpass' })
       sequence([110, 147, 196], {
         delay: 0.72,
         step: 0.24,
@@ -299,13 +315,22 @@ export function createBattleAudio(initialEnabled = true) {
         volume: 0.15,
         wave: 'square',
       })
-      tone(55, now + 1.22, 0.62, { volume: 0.2, slide: 220, wave: 'sawtooth' })
-      noise(now + 1.28, 0.48, { volume: 0.15, frequency: 520, q: 0.9 })
+      tone(55, now + 1.35, 0.88, { volume: 0.2, slide: 220, wave: 'sawtooth' })
+      noise(now + 1.42, 0.64, { volume: 0.15, frequency: 520, q: 0.9 })
+      tone(92, now + 2.02, 0.72, { volume: 0.18, slide: 294, wave: 'sawtooth' })
+      noise(now + 2.08, 0.56, { volume: 0.13, frequency: 760, q: 0.8 })
+      sequence([147, 196, 294], {
+        delay: 2.3,
+        step: 0.18,
+        duration: 0.26,
+        volume: 0.12,
+        wave: 'square',
+      })
       return
     }
 
     if (cue.mechanicId === 'tera') {
-      duckMusicForGimmick(now, 2.2)
+      duckMusicForGimmick(now, 3.05)
       sequence([523, 659, 784, 988, 1175, 1568], {
         step: 0.105,
         duration: 0.18,
@@ -319,8 +344,17 @@ export function createBattleAudio(initialEnabled = true) {
         volume: 0.1,
         wave: 'triangle',
       })
-      noise(now + 0.58, 0.5, { volume: 0.075, frequency: 3600, q: 3.2, filterType: 'highpass' })
-      tone(2093, now + 0.9, 0.42, { volume: 0.12, slide: 1047, wave: 'sine' })
+      noise(now + 0.58, 0.58, { volume: 0.075, frequency: 3600, q: 3.2, filterType: 'highpass' })
+      tone(2093, now + 0.9, 0.5, { volume: 0.12, slide: 1047, wave: 'sine' })
+      sequence([659, 988, 1319, 1760, 2349], {
+        delay: 1.34,
+        step: 0.12,
+        duration: 0.22,
+        volume: 0.1,
+        wave: 'sine',
+      })
+      noise(now + 1.7, 0.62, { volume: 0.07, frequency: 4200, q: 3.6, filterType: 'highpass' })
+      tone(2637, now + 2.08, 0.34, { volume: 0.1, slide: 1319, wave: 'triangle' })
       return
     }
 

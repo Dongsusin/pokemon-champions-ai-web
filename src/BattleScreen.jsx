@@ -2,17 +2,36 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   ArrowLeftRight,
+  Axe,
+  Bug,
   ChevronLeft,
   ChevronRight,
+  Circle,
+  Dna,
+  Droplets,
+  Dumbbell,
+  Earth,
+  Eye,
+  Feather,
   Flag,
+  Flame,
+  Flower2,
   Gem,
+  Ghost,
+  Heart,
+  Moon,
+  Mountain,
   ScrollText,
   Shield,
+  Skull,
+  Snowflake,
   Sparkles,
+  Star,
   Swords,
   Trophy,
   Volume2,
   VolumeX,
+  Zap,
 } from 'lucide-react'
 import { createBattleAudio } from './battleAudio'
 import PokemonSprite from './PokemonSprite'
@@ -170,10 +189,10 @@ const TURN_STEP_DURATIONS = {
 }
 
 const GIMMICK_STEP_DURATIONS = {
-  mega: 2300,
-  zmove: 1950,
-  dynamax: 2450,
-  tera: 2200,
+  mega: 3000,
+  zmove: 2700,
+  dynamax: 3300,
+  tera: 3050,
   primal: 2350,
 }
 
@@ -360,8 +379,54 @@ function MoveFxAsset({ asset, frameOffset = 0, style }) {
   )
 }
 
-const GIMMICK_SPARKS = Array.from({ length: 18 }, (_, index) => index)
-const GIMMICK_CRYSTALS = Array.from({ length: 14 }, (_, index) => index)
+const TERA_TYPE_ICONS = {
+  normal: Circle,
+  fire: Flame,
+  water: Droplets,
+  electric: Zap,
+  grass: Flower2,
+  ice: Snowflake,
+  fighting: Dumbbell,
+  poison: Skull,
+  ground: Earth,
+  flying: Feather,
+  psychic: Eye,
+  bug: Bug,
+  rock: Mountain,
+  ghost: Ghost,
+  dragon: Dna,
+  dark: Moon,
+  steel: Axe,
+  fairy: Heart,
+  stellar: Star,
+}
+
+const TERA_JEWEL_RAYS = Array.from({ length: 8 }, (_, index) => index)
+const GIMMICK_SPARKS = Array.from({ length: 22 }, (_, index) => index)
+const GIMMICK_CRYSTALS = Array.from({ length: 18 }, (_, index) => index)
+const GIMMICK_SHARDS = Array.from({ length: 12 }, (_, index) => index)
+
+function TeraTypeJewel({ type, mode = 'stage' }) {
+  const typeToken = typeClassName(type ?? '노말')
+  const TypeIcon = TERA_TYPE_ICONS[typeToken] ?? Gem
+
+  return (
+    <span className={`tera-type-jewel is-${mode} tera-jewel-${typeToken}`} aria-hidden="true">
+      <span className="tera-jewel-aura" />
+      <span className="tera-jewel-rays">
+        {TERA_JEWEL_RAYS.map((index) => <i key={index} style={{ '--jewel-ray': index }} />)}
+      </span>
+      <span className="tera-jewel-crest">
+        <span className="tera-jewel-prong prong-left" />
+        <span className="tera-jewel-prong prong-right" />
+        <span className="tera-jewel-emblem"><TypeIcon /></span>
+        <span className="tera-jewel-facet facet-left" />
+        <span className="tera-jewel-facet facet-right" />
+      </span>
+      <span className="tera-jewel-circlet"><i /><i /><i /></span>
+    </span>
+  )
+}
 
 const GIMMICK_PRESENTATION = {
   mega: {
@@ -407,11 +472,12 @@ function GimmickAnimation({ cue }) {
   const afterSrc = useBackSprite ? cue.spriteAfterBack : cue.spriteAfterFront
   const afterFallback = useBackSprite ? cue.spriteAfterBackFallback : cue.spriteAfterFrontFallback
   const mechanicTypeClass = cue.mechanicType ? ` tera-type-${typeClassName(cue.mechanicType)}` : ''
+  const mechanicModeClass = cue.mechanicMode ? ` mode-${animationClassToken(cue.mechanicMode)}` : ''
   const duration = turnStepDuration(cue)
 
   return (
     <section
-      className={`battle-gimmick-sequence mechanic-${cue.mechanicId} side-${cue.sideId}${mechanicTypeClass}`}
+      className={`battle-gimmick-sequence mechanic-${cue.mechanicId} side-${cue.sideId}${mechanicTypeClass}${mechanicModeClass}`}
       style={{ '--gimmick-duration': `${duration}ms` }}
       role="img"
       aria-label={`${cue.actorName}의 ${presentation.title} 연출`}
@@ -419,36 +485,51 @@ function GimmickAnimation({ cue }) {
       <span className="battle-gimmick-screen-tint" />
       <span className="battle-gimmick-speedlines" />
       <span className="battle-gimmick-whiteout" />
+      <span className="battle-gimmick-return-flash" />
 
       {cue.mechanicId === 'mega' && (
         <div className="gimmick-mega-layer" aria-hidden="true">
           <img className="gimmick-mega-background" src="/assets/move-fx/ebdx/ebMegaBg.png" alt="" />
+          <span className="gimmick-mega-keystone">
+            <span className="gimmick-mega-keystone-core"><b>M</b><i /><i /><i /><i /></span>
+          </span>
+          <span className="gimmick-mega-resonance-beam" />
           <span className="gimmick-mega-helix"><i /><i /><i /></span>
           <img className="gimmick-mega-sigil" src="/assets/move-fx/ebdx/ebMega006.png" alt="" />
           <img className="gimmick-mega-strike" src="/assets/move-fx/ebdx/ebMega005.png" alt="" />
+          <span className="gimmick-mega-shards">
+            {GIMMICK_SHARDS.map((index) => <i key={index} style={{ '--gimmick-shard': index }} />)}
+          </span>
         </div>
       )}
 
       {cue.mechanicId === 'zmove' && (
         <div className="gimmick-z-layer" aria-hidden="true">
+          <span className="gimmick-z-crystal"><b>Z</b><i /><i /><i /><i /></span>
+          <span className="gimmick-z-pose"><i /><i /><i /></span>
           <span className="gimmick-z-emblem">Z</span>
           <span className="gimmick-z-prism"><i /><i /><i /><i /><i /><i /></span>
-          <span className="gimmick-z-energy-line" />
+          <span className="gimmick-z-energy-line"><i /><i /><i /></span>
+          <span className="gimmick-z-power-ring"><i /><i /><i /></span>
         </div>
       )}
 
       {cue.mechanicId === 'dynamax' && (
         <div className="gimmick-dynamax-layer" aria-hidden="true">
+          <span className="gimmick-dynamax-band"><b>MAX</b><i /><i /><i /></span>
+          <span className="gimmick-dynamax-ball"><i /><i /><b /></span>
           <span className="gimmick-dynamax-clouds"><i /><i /><i /></span>
           <span className="gimmick-dynamax-vortex"><i /><i /><i /></span>
           <span className="gimmick-dynamax-pillars"><i /><i /><i /><i /></span>
+          <span className="gimmick-dynamax-crown-clouds"><i /><i /><i /></span>
         </div>
       )}
 
       {cue.mechanicId === 'tera' && (
         <div className="gimmick-tera-layer" aria-hidden="true">
+          <span className="gimmick-tera-orb"><b><Sparkles /></b><i /><i /><i /></span>
           <span className="gimmick-tera-rainbow" />
-          <span className="gimmick-tera-crown"><i /><i /><i /><b>{cue.mechanicType?.slice(0, 1)}</b></span>
+          <span className="gimmick-tera-shell"><i /><i /><i /><i /><i /><i /></span>
           <span className="gimmick-tera-crystals">
             {GIMMICK_CRYSTALS.map((index) => (
               <i key={index} style={{ '--crystal-index': index }} />
@@ -491,6 +572,7 @@ function GimmickAnimation({ cue }) {
           alt=""
         />
         <span className="battle-gimmick-silhouette" />
+        {cue.mechanicId === 'tera' && <TeraTypeJewel type={cue.mechanicType} mode="cinematic" />}
       </div>
 
       <div className="battle-gimmick-title-card">
@@ -1263,6 +1345,7 @@ function BattleScreen({
               decodingMode="async"
               alt={opponentActive.name}
             />
+            {opponentActive.teraActive && <TeraTypeJewel type={opponentActive.teraType} />}
           </div>
 
           <div
@@ -1279,6 +1362,7 @@ function BattleScreen({
               decodingMode="async"
               alt={playerActive.name}
             />
+            {playerActive.teraActive && <TeraTypeJewel type={playerActive.teraType} />}
           </div>
 
           <BattleArenaEffects cue={turnCue} />
