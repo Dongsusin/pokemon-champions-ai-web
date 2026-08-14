@@ -51,7 +51,8 @@ import {
   getMoveAnimationProfile,
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
-import { getBattleFormOptions, typeClassName } from './data/trainingData'
+import { getBattleItem } from './data/shopData'
+import { getAbility, getBattleFormOptions, typeClassName } from './data/trainingData'
 
 const MOVE_REFERENCE_BADGES = {
   MAX_MOVE: 'MAX MOVE',
@@ -941,6 +942,142 @@ function battleStatStageEntries(pokemon) {
     .filter(({ stage }) => stage !== 0)
 }
 
+function battleConditionEntries(pokemon) {
+  const chargingMove = pokemon.chargingMove
+    ? pokemon.moves[pokemon.chargingMove.moveIndex]
+    : null
+  const lockedMove = pokemon.lockedMove
+    ? pokemon.moves[pokemon.lockedMove.moveIndex]
+    : null
+
+  return [
+    pokemon.status && { id: `status-${pokemon.status.id}`, label: pokemon.status.label, tone: 'status' },
+    pokemon.confusionTurns > 0 && { id: 'confusion', label: `혼란 ${pokemon.confusionTurns}턴`, tone: 'status' },
+    pokemon.yawnTurns > 0 && { id: 'yawn', label: '졸음', tone: 'warning' },
+    pokemon.perishCount != null && { id: 'perish', label: `멸망 ${pokemon.perishCount}`, tone: 'danger' },
+    pokemon.rechargeTurns > 0 && { id: 'recharge', label: '반동 대기', tone: 'warning' },
+    pokemon.protected && { id: 'protect', label: '방어 중', tone: 'positive' },
+    pokemon.destinyBondActive && { id: 'destiny-bond', label: '길동무', tone: 'danger' },
+    chargingMove && { id: 'charging', label: `${chargingMove.name} 준비`, tone: 'accent' },
+    lockedMove && { id: 'locked', label: `${lockedMove.name} 연속`, tone: 'accent' },
+    pokemon.semiInvulnerable && !chargingMove && { id: 'semi-invulnerable', label: '회피 상태', tone: 'positive' },
+  ].filter(Boolean)
+}
+
+function battleGimmickEntries(pokemon) {
+  return [
+    pokemon.megaActive && { id: 'mega', label: '메가진화' },
+    pokemon.primalActive && { id: 'primal', label: '원시회귀' },
+    pokemon.teraActive && { id: 'tera', label: `${pokemon.teraType} 테라스탈` },
+    pokemon.dynamaxActive && {
+      id: pokemon.dynamaxMode === 'gigantamax' ? 'gigantamax' : 'dynamax',
+      label: `${pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'} ${pokemon.dynamaxTurns}턴`,
+    },
+  ].filter(Boolean)
+}
+
+function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible }) {
+  const hpPercent = Math.ceil(hpRatio(pokemon))
+  const statStages = battleStatStageEntries(pokemon)
+  const conditions = battleConditionEntries(pokemon)
+  const gimmicks = battleGimmickEntries(pokemon)
+  const heldItem = getBattleItem(pokemon.heldItemId)
+  const abilityInfo = getAbility(pokemon.ability)
+  const heldItemName = heldItem?.name || pokemon.heldItemName || '없음'
+
+  return (
+    <aside
+      className={`battle-pokemon-inspector side-${side}${visible ? ' is-visible' : ''}`}
+      id={id}
+      role="tooltip"
+      aria-hidden={!visible}
+    >
+      <header className="battle-pokemon-inspector-header">
+        <PokemonSprite
+          animatedSrc={pokemon.icon}
+          fallbackSrc={pokemon.iconFallback}
+          frameClassName="battle-pokemon-inspector-icon"
+          className="battle-pokemon-inspector-icon-sprite"
+          alt={pokemon.name}
+        />
+        <span>
+          <small>{side === 'player' ? 'MY POKÉMON' : `${trainerName} · OPPONENT`}</small>
+          <strong>{pokemon.name}</strong>
+          <em>Lv.{pokemon.level ?? 50} · {pokemon.nature ?? '노력'} 성격</em>
+        </span>
+        <b>STATUS</b>
+      </header>
+
+      <div className="battle-pokemon-inspector-vitals">
+        <span className="battle-pokemon-inspector-types">
+          {pokemon.types.map((type) => (
+            <b className={`type-${typeClassName(type)}`} key={type}>{type}</b>
+          ))}
+        </span>
+        <span className="battle-pokemon-inspector-hp">
+          <small>HP</small>
+          <span className={`battle-hp-meter tone-${hpTone(pokemon)}`}>
+            <i style={{ width: `${hpRatio(pokemon)}%` }} />
+          </span>
+          <strong>{hpPercent}%</strong>
+        </span>
+      </div>
+
+      <div className="battle-pokemon-inspector-meta">
+        <span>
+          <small>특성</small>
+          <strong>{pokemon.ability || '—'}</strong>
+          <em>{abilityInfo.trigger}</em>
+        </span>
+        <span>
+          <small>지닌 도구</small>
+          <strong>
+            {heldItem?.sprite && <img src={heldItem.sprite} alt="" draggable="false" />}
+            {heldItemName}
+          </strong>
+          <em>{heldItemName === '없음' ? '미장착' : pokemon.consumedItem ? '사용 완료' : '장착 중'}</em>
+        </span>
+        <span>
+          <small>테라스탈 타입</small>
+          <strong>{pokemon.teraType || '—'}</strong>
+          <em>{pokemon.teraActive ? '발동 중' : '대기'}</em>
+        </span>
+      </div>
+
+      <div className="battle-pokemon-inspector-state">
+        <small>현재 전투 상태</small>
+        <span>
+          {gimmicks.map((entry) => (
+            <b className={`is-gimmick gimmick-${entry.id}`} key={entry.id}>{entry.label}</b>
+          ))}
+          {conditions.map((entry) => (
+            <b className={`condition-${entry.tone}`} key={entry.id}>{entry.label}</b>
+          ))}
+          {statStages.map(({ id: statId, label, stage }) => (
+            <b className={stage > 0 ? 'is-raised' : 'is-lowered'} key={statId}>
+              {label}<em>{stage > 0 ? '+' : ''}{stage}</em>
+            </b>
+          ))}
+          {gimmicks.length + conditions.length + statStages.length === 0 && <em className="is-neutral">변화 없음</em>}
+        </span>
+      </div>
+
+      <section className="battle-pokemon-inspector-moves">
+        <header><small>배틀 기술</small><span>현재 PP</span></header>
+        <div>
+          {pokemon.moves.map((move, index) => (
+            <span className="battle-pokemon-inspector-move" key={`${move.id}-${index}`}>
+              <i className={`type-${typeClassName(move.type)}`}>{move.type}</i>
+              <strong>{move.name}</strong>
+              <em>{move.currentPp}/{move.maxPp}</em>
+            </span>
+          ))}
+        </div>
+      </section>
+    </aside>
+  )
+}
+
 function BattleOverviewMenu({ battle, onBack, onPreview }) {
   const player = getActivePokemon(battle, 'player')
   const opponent = getActivePokemon(battle, 'opponent')
@@ -1064,6 +1201,9 @@ function BattleScreen({
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
   const [moveAssetsReady, setMoveAssetsReady] = useState(false)
+  const [hoveredPokemonSide, setHoveredPokemonSide] = useState(null)
+  const [focusedPokemonSide, setFocusedPokemonSide] = useState(null)
+  const [pinnedPokemonSide, setPinnedPokemonSide] = useState(null)
   const logRef = useRef(null)
   const playbackTimerRef = useRef(null)
   const playbackTokenRef = useRef(0)
@@ -1072,6 +1212,7 @@ function BattleScreen({
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled)
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
+  const inspectedPokemonSide = hoveredPokemonSide ?? focusedPokemonSide ?? pinnedPokemonSide
   const summary = useMemo(() => getBattleSummary(battle), [battle])
   const currentLogEntry = battle.log.at(-1)
   const currentBattleMessage = turnCue?.message ?? currentLogEntry?.message ?? '배틀을 준비하고 있습니다.'
@@ -1140,6 +1281,12 @@ function BattleScreen({
   useEffect(() => {
     battleAudioRef.current?.setEnabled(soundEnabled)
   }, [soundEnabled])
+
+  useEffect(() => {
+    setHoveredPokemonSide(null)
+    setFocusedPokemonSide(null)
+    setPinnedPokemonSide(null)
+  }, [playerActive.battleId, opponentActive.battleId])
 
   useEffect(() => {
     battleAudioRef.current?.setLowHpWarning(
@@ -1289,6 +1436,43 @@ function BattleScreen({
     battleAudioRef.current?.playMenu('cursor')
   }
 
+  const pokemonInspectorProps = (side, pokemon) => ({
+    tabIndex: 0,
+    role: 'button',
+    'aria-label': `${pokemon.name} 현재 상태 보기`,
+    'aria-describedby': `${side}-pokemon-status-tooltip`,
+    'aria-expanded': inspectedPokemonSide === side,
+    onPointerEnter: (event) => {
+      if (event.pointerType === 'mouse') setHoveredPokemonSide(side)
+    },
+    onPointerLeave: (event) => {
+      if (event.pointerType === 'mouse') {
+        setHoveredPokemonSide((currentSide) => (currentSide === side ? null : currentSide))
+      }
+    },
+    onPointerDown: (event) => {
+      if (event.pointerType === 'mouse') return
+      event.stopPropagation()
+      setPinnedPokemonSide((currentSide) => (currentSide === side ? null : side))
+    },
+    onFocus: (event) => {
+      if (event.currentTarget.matches(':focus-visible')) setFocusedPokemonSide(side)
+    },
+    onBlur: () => {
+      setFocusedPokemonSide((currentSide) => (currentSide === side ? null : currentSide))
+    },
+    onKeyDown: (event) => {
+      if (event.key === 'Escape') {
+        setFocusedPokemonSide(null)
+        setPinnedPokemonSide(null)
+        event.currentTarget.blur()
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        setPinnedPokemonSide((currentSide) => (currentSide === side ? null : side))
+      }
+    },
+  })
+
   return (
     <main className={`battle-game-screen cue-${turnCue?.phase ?? 'command'} actor-${turnCue?.sideId ?? 'none'} target-${turnCue?.targetSideId ?? 'none'}`}>
       <header className="battle-game-header">
@@ -1315,7 +1499,12 @@ function BattleScreen({
         </div>
       </header>
 
-      <section className={`battle-arena phase-${turnCue?.phase ?? 'command'}`}>
+      <section
+        className={`battle-arena phase-${turnCue?.phase ?? 'command'}`}
+        onPointerDown={(event) => {
+          if (event.pointerType !== 'mouse') setPinnedPokemonSide(null)
+        }}
+      >
         <div className={statusAnchorClassName('opponent', turnCue)}>
           <BattleStatusPanel pokemon={opponentActive} side="opponent" trainerName={opponent.name} />
           <PartyIndicators side={battle.opponent} />
@@ -1324,6 +1513,21 @@ function BattleScreen({
           <BattleStatusPanel pokemon={playerActive} side="player" trainerName="PLAYER_01" />
           <PartyIndicators side={battle.player} />
         </div>
+
+        <BattlePokemonStatusTooltip
+          id="opponent-pokemon-status-tooltip"
+          pokemon={opponentActive}
+          side="opponent"
+          trainerName={opponent.name}
+          visible={!introVisible && inspectedPokemonSide === 'opponent'}
+        />
+        <BattlePokemonStatusTooltip
+          id="player-pokemon-status-tooltip"
+          pokemon={playerActive}
+          side="player"
+          trainerName="PLAYER_01"
+          visible={!introVisible && inspectedPokemonSide === 'player'}
+        />
 
         <div className={battleCameraClassName(turnCue)} style={battleStageStyle(turnCue)}>
           <div className="battle-field-horizon" />
@@ -1335,9 +1539,10 @@ function BattleScreen({
           <div className="battle-platform player-platform" />
 
           <div
-            className={battleStageClassName('opponent', opponentActive, turnCue)}
+            className={`${battleStageClassName('opponent', opponentActive, turnCue)}${inspectedPokemonSide === 'opponent' ? ' is-inspected' : ''}`}
             key={`opponent-stage-${opponentActive.battleId}`}
             style={battleStageStyle(turnCue)}
+            {...pokemonInspectorProps('opponent', opponentActive)}
           >
             <span className="battle-pokemon-shadow" aria-hidden="true" />
             <PokemonSprite
@@ -1352,9 +1557,10 @@ function BattleScreen({
           </div>
 
           <div
-            className={battleStageClassName('player', playerActive, turnCue)}
+            className={`${battleStageClassName('player', playerActive, turnCue)}${inspectedPokemonSide === 'player' ? ' is-inspected' : ''}`}
             key={`player-stage-${playerActive.battleId}`}
             style={battleStageStyle(turnCue)}
+            {...pokemonInspectorProps('player', playerActive)}
           >
             <span className="battle-pokemon-shadow" aria-hidden="true" />
             <PokemonSprite
