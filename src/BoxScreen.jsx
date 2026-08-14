@@ -3,9 +3,6 @@ import {
   ArrowLeft,
   Backpack,
   Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
   CircleOff,
   Crown,
   Dna,
@@ -23,7 +20,11 @@ import {
   X,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
-import { getPokemonEvolutionFamilyKey, getShinyOdds } from './data/pokemonPool'
+import {
+  getPokemonEvolutionFamilyKey,
+  getShinyOdds,
+  getTrainingRosterPokemon,
+} from './data/pokemonPool'
 import {
   BATTLE_ITEMS,
   SHOP_CATEGORIES,
@@ -31,17 +32,15 @@ import {
 } from './data/shopData'
 import {
   DYNAMAX_MODES,
-  NATIONAL_DEX,
-  NATIONAL_DEX_COUNT,
   TERA_TYPES,
   canGigantamax,
   getGigantamaxProfile,
+  getSpeciesProfile,
   typeClassName,
 } from './data/trainingData'
 
-const PAGE_SIZE = 12
 const PARTY_SIZE = 6
-const GENERATIONS = Array.from({ length: 9 }, (_, index) => index + 1)
+const BATTLE_LEVEL = 50
 const ITEM_BY_ID = new Map(BATTLE_ITEMS.map((item) => [item.id, item]))
 const ITEM_CATEGORY_BY_ID = new Map(SHOP_CATEGORIES.map((category) => [category.id, category]))
 
@@ -79,7 +78,7 @@ function BoxScreen({
   pokemon,
   teams = [],
   activeTeamId,
-  teamIds,
+  teamIds = [],
   inventory = {},
   onBack,
   backLabel = '로비',
@@ -93,59 +92,69 @@ function BoxScreen({
   onOpenHatch,
   onOpenShop,
 }) {
-  const [page, setPage] = useState(0)
-  const [selectedDexId, setSelectedDexId] = useState(pokemon[0]?.dexSpeciesId ?? 1)
+  const trainingPokemon = useMemo(() => getTrainingRosterPokemon(pokemon), [pokemon])
+  const [selectedCaptureId, setSelectedCaptureId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [search, setSearch] = useState('')
-  const [generation, setGeneration] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [teamFilter, setTeamFilter] = useState('all')
   const [showShiny, setShowShiny] = useState(false)
   const [itemPickerOpen, setItemPickerOpen] = useState(false)
   const [teraPickerOpen, setTeraPickerOpen] = useState(false)
   const [dynamaxPickerOpen, setDynamaxPickerOpen] = useState(false)
   const [itemSearch, setItemSearch] = useState('')
   const [itemCategory, setItemCategory] = useState('all')
-  const collectionByDexId = useMemo(
-    () => new Map(pokemon.map((entry) => [Number(entry.dexSpeciesId ?? entry.speciesId), entry])),
-    [pokemon],
-  )
-  const shinyCount = pokemon.filter((entry) => entry.shinyObtained).length
+  const shinyCount = trainingPokemon.filter((entry) => entry.shinyObtained).length
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
-  const teamPokemon = teamIds
-    .map((captureId) => pokemon.find((entry) => entry.captureId === captureId))
-    .filter(Boolean)
-
-  const filteredDex = useMemo(() => {
+  const teamPokemon = useMemo(
+    () => teamIds
+      .map((captureId) => pokemon.find((entry) => entry.captureId === captureId))
+      .filter(Boolean),
+    [pokemon, teamIds],
+  )
+  const teamPokemonByFamily = useMemo(
+    () => new Map(teamPokemon.map((entry) => [getPokemonEvolutionFamilyKey(entry), entry])),
+    [teamPokemon],
+  )
+  const rosterTypes = useMemo(
+    () => [...new Set(trainingPokemon.flatMap((entry) => entry.types ?? []))]
+      .sort((left, right) => left.localeCompare(right, 'ko-KR')),
+    [trainingPokemon],
+  )
+  const filteredRoster = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('ko-KR')
 
-    return NATIONAL_DEX.filter((profile) => {
-      const collectedPokemon = collectionByDexId.get(profile.id)
-      const isCollected = Boolean(collectedPokemon)
-      const numberMatches = String(profile.id).includes(normalizedSearch.replace(/^#/, ''))
-      const nameMatches = isCollected && profile.name.toLocaleLowerCase('ko-KR').includes(normalizedSearch)
-      const searchMatches = !normalizedSearch || numberMatches || nameMatches
-      const generationMatches = generation === 'all' || profile.generation === Number(generation)
-      const statusMatches = statusFilter === 'all'
-        || (statusFilter === 'collected' && isCollected)
-        || (statusFilter === 'unseen' && !isCollected)
-        || (statusFilter === 'shiny' && collectedPokemon?.shinyObtained)
-        || (statusFilter === 'legendary' && profile.isLegendary)
-        || (statusFilter === 'mythical' && profile.isMythical)
+    return trainingPokemon.filter((entry) => {
+      const profile = getSpeciesProfile(entry.speciesId)
+      const teamMember = teamPokemonByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? null
+      const teamMemberProfile = teamMember ? getSpeciesProfile(teamMember.speciesId) : null
+      const isInTeam = Boolean(teamMember)
+      const searchMatches = !normalizedSearch
+        || entry.name.toLocaleLowerCase('ko-KR').includes(normalizedSearch)
+        || String(profile?.id ?? entry.speciesId).includes(normalizedSearch.replace(/^#/, ''))
+        || teamMember?.name.toLocaleLowerCase('ko-KR').includes(normalizedSearch)
+        || String(teamMemberProfile?.id ?? '').includes(normalizedSearch.replace(/^#/, ''))
+      const typeMatches = typeFilter === 'all' || entry.types?.includes(typeFilter)
+      const teamMatches = teamFilter === 'all'
+        || (teamFilter === 'in-team' && isInTeam)
+        || (teamFilter === 'available' && !isInTeam)
 
-      return searchMatches && generationMatches && statusMatches
+      return searchMatches && typeMatches && teamMatches
     })
-  }, [collectionByDexId, generation, search, statusFilter])
+  }, [search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
 
-  const pageCount = Math.max(1, Math.ceil(filteredDex.length / PAGE_SIZE))
-  const pageEntries = filteredDex.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const selectedProfile = NATIONAL_DEX.find((entry) => entry.id === selectedDexId) ?? null
-  const selectedPokemon = collectionByDexId.get(selectedDexId) ?? null
-  const selectedTeamIndex = selectedPokemon ? teamIds.indexOf(selectedPokemon.captureId) : -1
-  const selectedIsInTeam = selectedTeamIndex !== -1
-  const selectedFamilyConflict = selectedPokemon && !selectedIsInTeam
-    ? teamPokemon.find((entry) => (
-      getPokemonEvolutionFamilyKey(entry) === getPokemonEvolutionFamilyKey(selectedPokemon)
-    ))
+  const selectedSourcePokemon = trainingPokemon.find((entry) => entry.captureId === selectedCaptureId)
+    ?? pokemon.find((entry) => entry.captureId === selectedCaptureId)
+    ?? null
+  const selectedFamilyKey = selectedSourcePokemon
+    ? getPokemonEvolutionFamilyKey(selectedSourcePokemon)
     : null
+  const selectedTeamMember = selectedFamilyKey
+    ? teamPokemonByFamily.get(selectedFamilyKey) ?? null
+    : null
+  const selectedPokemon = selectedTeamMember ?? selectedSourcePokemon
+  const selectedProfile = selectedPokemon ? getSpeciesProfile(selectedPokemon.speciesId) : null
+  const selectedTeamIndex = selectedTeamMember ? teamIds.indexOf(selectedTeamMember.captureId) : -1
+  const selectedIsInTeam = Boolean(selectedTeamMember)
   const selectedHeldItem = selectedPokemon ? ITEM_BY_ID.get(selectedPokemon.heldItemId) ?? null : null
   const selectedTeraType = selectedPokemon?.teraType ?? selectedProfile?.types[0] ?? '노말'
   const selectedDynamaxMode = selectedPokemon?.dynamaxMode ?? 'dynamax'
@@ -181,25 +190,20 @@ function BoxScreen({
     : null
 
   useEffect(() => {
-    setPage(0)
-  }, [generation, search, statusFilter])
-
-  useEffect(() => {
-    setPage((currentPage) => Math.min(currentPage, pageCount - 1))
-  }, [pageCount])
-
-  useEffect(() => {
-    if (!filteredDex.some((entry) => entry.id === selectedDexId)) {
-      setSelectedDexId(filteredDex[0]?.id ?? 1)
+    if (!pokemon.some((entry) => entry.captureId === selectedCaptureId)) {
+      const teamSelection = teamIds.find((captureId) => (
+        pokemon.some((entry) => entry.captureId === captureId)
+      ))
+      setSelectedCaptureId(teamSelection ?? trainingPokemon[0]?.captureId ?? null)
     }
-  }, [filteredDex, selectedDexId])
+  }, [pokemon, selectedCaptureId, teamIds, trainingPokemon])
 
   useEffect(() => {
     setShowShiny(false)
     setItemPickerOpen(false)
     setTeraPickerOpen(false)
     setDynamaxPickerOpen(false)
-  }, [selectedDexId])
+  }, [selectedCaptureId])
 
   useEffect(() => {
     if (!itemPickerOpen && !teraPickerOpen && !dynamaxPickerOpen) return undefined
@@ -262,7 +266,7 @@ function BoxScreen({
   }
 
   return (
-    <main className="pc-screen pokedex-screen">
+    <main className="pc-screen pokedex-screen team-box-screen">
       <header className="pc-header">
         <button className="screen-back-button" type="button" aria-label={`${backLabel} 화면으로 돌아가기`} onClick={onBack}>
           <ArrowLeft size={19} />
@@ -270,19 +274,19 @@ function BoxScreen({
         </button>
 
         <div className="pc-title">
-          <span>NATIONAL POKÉDEX & BATTLE PARTY</span>
-          <h1>전국도감 · 팀 편성</h1>
-          <p>뽑기로 진화 계통을 해금하고, 직접 뽑은 포켓몬마다 이로치 확률을 성장시키세요.</p>
+          <span>POKÉMON BOX & BATTLE PARTY</span>
+          <h1>박스 · 팀 편성</h1>
+          <p>보유한 진화 계열 대표 포켓몬 중 배틀에 참가할 6마리를 선택하세요.</p>
         </div>
 
-        <div className="pc-summary" aria-label={`도감 ${pokemon.length}, 이로치 ${shinyCount}, 팀 ${teamPokemon.length}`}>
-          <span><Dna size={15} /> {pokemon.length}<em>/{NATIONAL_DEX_COUNT}</em></span>
+        <div className="pc-summary" aria-label={`보유 ${trainingPokemon.length}계열, 이로치 ${shinyCount}, 팀 ${teamPokemon.length}`}>
+          <span><Dna size={15} /> {trainingPokemon.length}<em>계열</em></span>
           <span><Star size={15} /> {shinyCount}<em>SHINY</em></span>
           <span><ShieldCheck size={15} /> {teamPokemon.length}<em>/6</em></span>
         </div>
       </header>
 
-      <section className="pc-workspace pokedex-workspace">
+      <section className="pc-workspace pokedex-workspace team-box-workspace">
         <aside className="pc-party-panel" aria-label="배틀 팀">
           <div className="pc-party-heading">
             <div>
@@ -312,7 +316,7 @@ function BoxScreen({
             {partySlots.map((entry, index) => (
               entry ? (
                 <div className={`pc-party-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedPokemon?.captureId ? ' selected' : ''}`} key={entry.captureId}>
-                  <button type="button" onClick={() => setSelectedDexId(entry.dexSpeciesId)}>
+                  <button type="button" onClick={() => setSelectedCaptureId(entry.captureId)}>
                     <span className="pc-party-index">{index + 1}</span>
                     {entry.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
                     <span className="pokemon-icon-frame pc-party-sprite-frame" aria-hidden="true">
@@ -362,14 +366,14 @@ function BoxScreen({
                 <div className="pc-party-card empty" key={`party-empty-${index}`}>
                   <span className="pc-party-index">{index + 1}</span>
                   <Plus size={20} />
-                  <span><strong>빈 슬롯</strong><small>도감에서 선택하세요</small></span>
+                  <span><strong>빈 슬롯</strong><small>보유 목록에서 선택하세요</small></span>
                 </div>
               )
             ))}
           </div>
 
           <div className="pc-party-actions">
-            <button type="button" onClick={onAutoTeam} disabled={pokemon.length === 0}>
+            <button type="button" onClick={onAutoTeam} disabled={trainingPokemon.length === 0}>
               <WandSparkles size={16} /> 자동 편성
             </button>
             <button className="primary" type="button" onClick={onConfirmTeam}>
@@ -378,121 +382,183 @@ function BoxScreen({
           </div>
         </aside>
 
-        <section className="pc-box-panel pokedex-panel" aria-label="전국도감">
-          <div className="pokedex-toolbar">
-            <label className="pokedex-search">
+        <section className="pc-box-panel pokedex-panel team-box-panel" aria-label="보유 포켓몬 팀 편성">
+          <div className="team-box-toolbar">
+            <div className="team-box-heading">
+              <span>BOX POKÉMON</span>
+              <strong>보유 포켓몬</strong>
+              <em>{trainingPokemon.length}계열</em>
+            </div>
+
+            <label className="pokedex-search team-box-search">
               <Search size={15} />
               <input
                 type="search"
                 value={search}
                 placeholder="이름 또는 도감 번호"
-                aria-label="포켓몬 검색"
+                aria-label="보유 포켓몬 검색"
                 onChange={(event) => setSearch(event.target.value)}
               />
               {search && <button type="button" aria-label="검색어 지우기" onClick={() => setSearch('')}><X size={13} /></button>}
             </label>
 
-            <div className="pokedex-generation-filter" aria-label="세대 필터">
-              <button className={generation === 'all' ? 'active' : ''} type="button" onClick={() => setGeneration('all')}>전체</button>
-              {GENERATIONS.map((value) => (
+            <label className="team-box-type-filter">
+              <span>타입</span>
+              <select value={typeFilter} aria-label="포켓몬 타입 필터" onChange={(event) => setTypeFilter(event.target.value)}>
+                <option value="all">전체 타입</option>
+                {rosterTypes.map((type) => <option value={type} key={type}>{type}</option>)}
+              </select>
+            </label>
+
+            <div className="team-box-team-filter" role="group" aria-label="팀 편성 상태 필터">
+              <button className={teamFilter === 'all' ? 'active' : ''} type="button" aria-pressed={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>전체</button>
+              <button className={teamFilter === 'in-team' ? 'active' : ''} type="button" aria-pressed={teamFilter === 'in-team'} onClick={() => setTeamFilter('in-team')}>팀 편성</button>
+              <button className={teamFilter === 'available' ? 'active' : ''} type="button" aria-pressed={teamFilter === 'available'} onClick={() => setTeamFilter('available')}>미편성</button>
+            </div>
+          </div>
+
+          <div className="team-box-mobile-tools">
+            <div className="team-box-mobile-presets" aria-label="모바일 저장 팀 선택">
+              {teams.map((team, index) => (
                 <button
-                  className={generation === String(value) ? 'active' : ''}
+                  className={team.id === activeTeam?.id ? 'selected' : ''}
                   type="button"
-                  key={value}
-                  onClick={() => setGeneration(String(value))}
+                  aria-label={`${team.name}, ${team.pokemonIds.length}마리`}
+                  aria-pressed={team.id === activeTeam?.id}
+                  key={team.id}
+                  onClick={() => onSelectTeam(team.id)}
                 >
-                  {value}세대
+                  <strong>{index + 1}</strong>
+                  <small>{team.pokemonIds.length}/6</small>
                 </button>
               ))}
             </div>
-
-            <select value={statusFilter} aria-label="도감 상태 필터" onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">모든 상태</option>
-              <option value="collected">발견 완료</option>
-              <option value="unseen">미발견</option>
-              <option value="shiny">이로치 발견</option>
-              <option value="legendary">전설</option>
-              <option value="mythical">환상</option>
-            </select>
+            <button
+              className="team-box-mobile-command"
+              type="button"
+              aria-label="자동 편성"
+              title="자동 편성"
+              disabled={trainingPokemon.length === 0}
+              onClick={onAutoTeam}
+            >
+              <WandSparkles size={15} />
+            </button>
+            <button
+              className="team-box-mobile-command primary"
+              type="button"
+              aria-label="팀 저장"
+              title="팀 저장"
+              onClick={onConfirmTeam}
+            >
+              <Check size={15} />
+            </button>
           </div>
 
-          <div className="pokedex-progress" aria-label={`도감 완성도 ${pokemon.length} / ${NATIONAL_DEX_COUNT}`}>
-            <span><b style={{ width: `${(pokemon.length / NATIONAL_DEX_COUNT) * 100}%` }} /></span>
-            <strong>{((pokemon.length / NATIONAL_DEX_COUNT) * 100).toFixed(1)}%</strong>
-            <em>{filteredDex.length} ENTRIES</em>
+          <div className="team-box-mobile-party" aria-label={`현재 팀 ${teamPokemon.length}마리`}>
+            {partySlots.map((entry, index) => (
+              entry ? (
+                <button
+                  className={entry.captureId === selectedCaptureId ? 'selected' : ''}
+                  type="button"
+                  aria-label={`팀 ${index + 1}번 ${entry.name} 선택`}
+                  key={entry.captureId}
+                  onClick={() => setSelectedCaptureId(entry.captureId)}
+                >
+                  <span>{index + 1}</span>
+                  <img src={entry.icon} alt="" onError={fallbackImageHandler(entry.iconFallback)} />
+                  <strong>{entry.name}</strong>
+                </button>
+              ) : (
+                <span className="empty" key={`mobile-party-empty-${index}`}><b>{index + 1}</b><Plus size={15} /></span>
+              )
+            ))}
           </div>
 
-          <div className="pc-box-grid-wrap pokedex-grid-wrap">
-            <div className="pc-box-grid pokedex-grid" aria-label={`전국도감 목록, 페이지당 ${PAGE_SIZE}마리`}>
-              {pageEntries.map((profile) => {
-                const collectedPokemon = collectionByDexId.get(profile.id)
-                const isCollected = Boolean(collectedPokemon)
-                const teamIndex = collectedPokemon ? teamIds.indexOf(collectedPokemon.captureId) : -1
-                const isSelected = profile.id === selectedDexId
+          <div className="team-box-result-bar">
+            <span>트레이닝과 동일한 진화 계열 대표 목록 · 입수순</span>
+            <strong>{filteredRoster.length}<em>마리 표시</em></strong>
+          </div>
+
+          <div className="pc-box-grid-wrap team-box-grid-wrap">
+            <div className="team-box-grid" aria-label={`보유 포켓몬 ${filteredRoster.length}마리`}>
+              {filteredRoster.map((entry) => {
+                const profile = getSpeciesProfile(entry.speciesId)
+                const teamMember = teamPokemonByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? null
+                const teamIndex = teamMember ? teamIds.indexOf(teamMember.captureId) : -1
+                const isInTeam = Boolean(teamMember)
+                const isSelected = getPokemonEvolutionFamilyKey(entry) === selectedFamilyKey
+                const loadoutPokemon = teamMember ?? entry
+                const heldItem = ITEM_BY_ID.get(loadoutPokemon.heldItemId) ?? null
+                const addDisabled = !isInTeam && teamPokemon.length >= PARTY_SIZE
+                const toggleLabel = isInTeam
+                  ? `${teamMember.name} (${entry.name} 계열) 팀 ${teamIndex + 1}번에서 빼기`
+                  : teamPokemon.length >= PARTY_SIZE
+                    ? '팀이 가득 차서 추가할 수 없음'
+                    : `${entry.name} 팀에 추가`
 
                 return (
-                  <button
-                    className={`pokedex-entry${isCollected ? ' collected' : ' unseen'}${isSelected ? ' selected' : ''}${teamIndex !== -1 ? ' in-team' : ''}${collectedPokemon?.shinyObtained ? ' has-shiny' : ''}`}
-                    key={profile.id}
-                    type="button"
-                    aria-label={isCollected ? `${profile.name}, 도감 번호 ${profile.id}` : `미발견 포켓몬, 도감 번호 ${profile.id}`}
-                    aria-pressed={isSelected}
-                    onClick={() => setSelectedDexId(profile.id)}
+                  <article
+                    className={`team-box-card${entry.isShiny ? ' is-shiny' : ''}${isSelected ? ' selected' : ''}${isInTeam ? ' in-team' : ''}${teamMember && teamMember.captureId !== entry.captureId ? ' has-team-form' : ''}${addDisabled ? ' unavailable' : ''}`}
+                    key={entry.captureId}
                   >
-                    <span className="pokedex-entry-number">#{String(profile.id).padStart(4, '0')}</span>
-                    {teamIndex !== -1 && <span className="pc-team-badge">{teamIndex + 1}</span>}
-                    {collectedPokemon?.shinyObtained && <span className="pokemon-shiny-mark" aria-label="이로치 발견">★</span>}
-                    {collectedPokemon?.heldItemId && ITEM_BY_ID.has(collectedPokemon.heldItemId) && (
-                      <span
-                        className="pokedex-held-item-badge"
-                        aria-label={`지닌 도구 ${ITEM_BY_ID.get(collectedPokemon.heldItemId).name}`}
-                        title={ITEM_BY_ID.get(collectedPokemon.heldItemId).name}
-                      >
-                        <BattleItemArtwork item={ITEM_BY_ID.get(collectedPokemon.heldItemId)} compact />
-                      </span>
-                    )}
-                    {isCollected ? (
-                      <span className="pokemon-icon-frame pokedex-entry-sprite-frame" aria-hidden="true">
+                    <button
+                      className="team-box-card-select"
+                      type="button"
+                      aria-label={`${entry.isShiny ? '이로치 ' : ''}${entry.name}, 레벨 ${BATTLE_LEVEL}${teamMember && teamMember.captureId !== entry.captureId ? `, 팀 편성 ${teamMember.name}` : ''} 상세 선택`}
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedCaptureId(entry.captureId)}
+                    >
+                      <span className="training-card-level">Lv.{BATTLE_LEVEL}</span>
+                      {entry.shinyObtained && <span className="pokemon-shiny-mark" aria-label="이로치 보유">★</span>}
+                      {heldItem && (
+                        <span className="team-box-held-item" title={`${loadoutPokemon.name} · ${heldItem.name}`}>
+                          <BattleItemArtwork item={heldItem} compact />
+                        </span>
+                      )}
+                      <span className="pokemon-icon-frame team-box-card-sprite" aria-hidden="true">
                         <img
                           className="pokemon-box-icon"
-                          src={profile.icon}
+                          src={entry.icon ?? profile?.icon}
                           alt=""
                           draggable="false"
-                          onError={fallbackImageHandler(profile.iconFallback)}
+                          onError={fallbackImageHandler(entry.iconFallback ?? profile?.iconFallback)}
                         />
                       </span>
-                    ) : (
-                      <span className="pokedex-question" aria-hidden="true">?</span>
-                    )}
-                    <strong>{isCollected ? profile.name : '???'}</strong>
-                    <small>{isCollected ? `직접 획득 ${collectedPokemon.directDrawCount}회` : '미발견'}</small>
-                  </button>
+                      <strong>{entry.name}</strong>
+                      <span className="training-card-types">{entry.types.join(' · ')}</span>
+                      {teamMember && teamMember.captureId !== entry.captureId && (
+                        <span className="team-box-card-team-form">팀 {teamIndex + 1} · {teamMember.name}</span>
+                      )}
+                    </button>
+                    <button
+                      className={`team-box-card-toggle${isInTeam ? ' remove' : ''}`}
+                      type="button"
+                      aria-label={toggleLabel}
+                      title={toggleLabel}
+                      disabled={addDisabled}
+                      onClick={() => {
+                        setSelectedCaptureId(entry.captureId)
+                        onToggleTeam(teamMember?.captureId ?? entry.captureId)
+                      }}
+                    >
+                      {isInTeam ? <><Check size={13} /><span>{teamIndex + 1}</span></> : <Plus size={14} />}
+                    </button>
+                  </article>
                 )
               })}
             </div>
 
-            {pageEntries.length === 0 && (
-              <div className="pc-empty-box">
-                <span><CircleHelp size={27} /></span>
-                <strong>조건에 맞는 도감 항목이 없습니다.</strong>
-                <p>검색어나 세대·수집 필터를 변경해보세요.</p>
+            {filteredRoster.length === 0 && (
+              <div className="pc-empty-box team-box-empty">
+                <span><Search size={25} /></span>
+                <strong>{trainingPokemon.length === 0 ? '보유한 포켓몬이 없습니다.' : '조건에 맞는 포켓몬이 없습니다.'}</strong>
+                <p>{trainingPokemon.length === 0 ? '먼저 포켓몬 뽑기에서 새로운 파트너를 획득하세요.' : '검색어나 타입·편성 필터를 변경해보세요.'}</p>
+                {trainingPokemon.length === 0 && <button type="button" onClick={onOpenHatch}><Sparkles size={16} /> 포켓몬 뽑기</button>}
               </div>
             )}
           </div>
 
-          <div className="pokedex-footer">
-            <div className="pc-pagination">
-              <button type="button" aria-label="이전 페이지" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>
-                <ChevronLeft size={18} />
-              </button>
-              <span>{page + 1} / {pageCount}</span>
-              <button type="button" aria-label="다음 페이지" disabled={page === pageCount - 1} onClick={() => setPage((value) => value + 1)}>
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className={`pc-selection-bar pokedex-selection${selectedPokemon ? ' has-selection' : ''}`}>
+          <div className={`pc-selection-bar pokedex-selection team-box-selection${selectedPokemon ? ' has-selection' : ''}`}>
             {selectedPokemon && selectedProfile ? (
               <>
                 <div className={`pokedex-selected-art${showShiny ? ' shiny' : ''}`}>
@@ -509,7 +575,7 @@ function BoxScreen({
                   <small>NO. {String(selectedProfile.id).padStart(4, '0')}</small>
                   <strong>{selectedProfile.name}</strong>
                   <span className="pokedex-category">
-                    {selectedProfile.isMythical ? '환상' : selectedProfile.isLegendary ? '전설' : `${selectedProfile.generation}세대`}
+                    {selectedIsInTeam ? `팀 ${selectedTeamIndex + 1}번` : '진화 계열 대표'}
                   </span>
                 </div>
                 <div className="type-chip-list">
@@ -518,8 +584,8 @@ function BoxScreen({
                   ))}
                 </div>
                 <div className="pc-selection-meta pokedex-selection-meta">
-                  <span>직접 획득 <strong>{selectedPokemon.directDrawCount}회</strong></span>
-                  <span>다음 이로치 <strong>1/{getShinyOdds(selectedPokemon.directDrawCount).toLocaleString()}</strong></span>
+                  <span>직접 획득 <strong>{selectedPokemon.directDrawCount ?? 0}회</strong></span>
+                  <span>다음 이로치 <strong>1/{getShinyOdds(selectedPokemon.directDrawCount ?? 0).toLocaleString()}</strong></span>
                 </div>
                 <button
                   className={`pokedex-held-item-button${selectedHeldItem ? ' equipped' : ''}`}
@@ -572,29 +638,21 @@ function BoxScreen({
                   {selectedPokemon.shinyObtained ? showShiny ? '일반색 보기' : '이로치 보기' : '이로치 미발견'}
                 </button>
                 <button
-                  className={selectedIsInTeam ? 'remove' : ''}
+                  className={`team-box-selection-action${selectedIsInTeam ? ' remove' : ''}`}
                   type="button"
-                  onClick={() => onToggleTeam(selectedPokemon.captureId)}
+                  disabled={!selectedIsInTeam && teamPokemon.length >= PARTY_SIZE}
+                  onClick={() => onToggleTeam(selectedTeamMember?.captureId ?? selectedPokemon.captureId)}
                 >
                   {selectedIsInTeam ? <X size={16} /> : <Plus size={16} />}
                   {selectedIsInTeam
-                    ? `팀 ${selectedTeamIndex + 1}번에서 빼기`
-                    : selectedFamilyConflict
-                      ? `${selectedFamilyConflict.name}과 같은 진화 계열`
-                      : teamPokemon.length >= PARTY_SIZE
-                        ? '팀이 가득 찼습니다'
-                        : '팀에 추가'}
+                    ? `${selectedTeamMember.name} · 팀 ${selectedTeamIndex + 1}번에서 빼기`
+                    : teamPokemon.length >= PARTY_SIZE
+                      ? '팀이 가득 찼습니다'
+                      : '팀에 추가'}
                 </button>
               </>
-            ) : selectedProfile ? (
-              <div className="pokedex-unseen-detail">
-                <span>?</span>
-                <div><small>NO. {String(selectedProfile.id).padStart(4, '0')}</small><strong>아직 발견하지 못한 포켓몬</strong></div>
-                <p>뽑기에서 이 포켓몬 또는 같은 진화 계통을 만나면 도감이 해금됩니다.</p>
-                <button type="button" onClick={onOpenHatch}><Sparkles size={16} /> 10회 뽑기</button>
-              </div>
             ) : (
-              <span className="pc-no-selection">도감 항목을 선택하세요.</span>
+              <span className="pc-no-selection">보유 목록에서 포켓몬을 선택하세요.</span>
             )}
           </div>
         </section>
