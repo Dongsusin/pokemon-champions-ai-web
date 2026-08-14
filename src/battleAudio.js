@@ -1,30 +1,10 @@
-import { getMoveAnimationProfile } from './data/moveAnimationData'
-
-const TYPE_FREQUENCIES = {
-  노말: 220,
-  불꽃: 277,
-  물: 196,
-  전기: 370,
-  풀: 247,
-  얼음: 330,
-  격투: 165,
-  독: 185,
-  땅: 147,
-  비행: 294,
-  에스퍼: 349,
-  벌레: 208,
-  바위: 131,
-  고스트: 175,
-  드래곤: 233,
-  악: 156,
-  강철: 262,
-  페어리: 392,
-}
+import { getMoveSoundProfile } from './data/moveSoundData.js'
 
 const BATTLE_AUDIO_ROOT = '/assets/audio/battle'
+const BATTLE_MOVE_AUDIO_ROOT = `${BATTLE_AUDIO_ROOT}/moves`
 const BATTLE_MUSIC_PATH = `${BATTLE_AUDIO_ROOT}/battle-theme.ogg`
 const POKEMON_CRY_ROOT = 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon'
-const BATTLE_SAMPLE_PATHS = {
+export const BATTLE_SAMPLE_PATHS = {
   cursor: `${BATTLE_AUDIO_ROOT}/ui-cursor.ogg`,
   select: `${BATTLE_AUDIO_ROOT}/ui-select.ogg`,
   cancel: `${BATTLE_AUDIO_ROOT}/ui-cancel.ogg`,
@@ -34,6 +14,42 @@ const BATTLE_SAMPLE_PATHS = {
   explosion: `${BATTLE_AUDIO_ROOT}/explosion.ogg`,
   explosionHeavy: `${BATTLE_AUDIO_ROOT}/explosion-heavy.ogg`,
   item: `${BATTLE_AUDIO_ROOT}/item.ogg`,
+  blade1: `${BATTLE_MOVE_AUDIO_ROOT}/blade-1.ogg`,
+  blade2: `${BATTLE_MOVE_AUDIO_ROOT}/blade-2.ogg`,
+  blade3: `${BATTLE_MOVE_AUDIO_ROOT}/blade-3.ogg`,
+  chain1: `${BATTLE_MOVE_AUDIO_ROOT}/chain-1.ogg`,
+  chain2: `${BATTLE_MOVE_AUDIO_ROOT}/chain-2.ogg`,
+  electricCrackle: `${BATTLE_MOVE_AUDIO_ROOT}/electric-crackle.wav`,
+  electricGround: `${BATTLE_MOVE_AUDIO_ROOT}/electric-ground.wav`,
+  electricHit: `${BATTLE_MOVE_AUDIO_ROOT}/electric-hit.wav`,
+  fire1: `${BATTLE_MOVE_AUDIO_ROOT}/fire-1.ogg`,
+  fire2: `${BATTLE_MOVE_AUDIO_ROOT}/fire-2.ogg`,
+  fire3: `${BATTLE_MOVE_AUDIO_ROOT}/fire-3.ogg`,
+  gem1: `${BATTLE_MOVE_AUDIO_ROOT}/gem-1.ogg`,
+  gem2: `${BATTLE_MOVE_AUDIO_ROOT}/gem-2.ogg`,
+  ice1: `${BATTLE_MOVE_AUDIO_ROOT}/ice-1.ogg`,
+  ice2: `${BATTLE_MOVE_AUDIO_ROOT}/ice-2.ogg`,
+  ice3: `${BATTLE_MOVE_AUDIO_ROOT}/ice-3.ogg`,
+  magic1: `${BATTLE_MOVE_AUDIO_ROOT}/magic-1.ogg`,
+  magic2: `${BATTLE_MOVE_AUDIO_ROOT}/magic-2.ogg`,
+  magic3: `${BATTLE_MOVE_AUDIO_ROOT}/magic-3.ogg`,
+  magic4: `${BATTLE_MOVE_AUDIO_ROOT}/magic-4.ogg`,
+  magic5: `${BATTLE_MOVE_AUDIO_ROOT}/magic-5.ogg`,
+  magic6: `${BATTLE_MOVE_AUDIO_ROOT}/magic-6.ogg`,
+  magic7: `${BATTLE_MOVE_AUDIO_ROOT}/magic-7.ogg`,
+  metal1: `${BATTLE_MOVE_AUDIO_ROOT}/metal-1.ogg`,
+  metal2: `${BATTLE_MOVE_AUDIO_ROOT}/metal-2.ogg`,
+  slime1: `${BATTLE_MOVE_AUDIO_ROOT}/slime-1.ogg`,
+  slime2: `${BATTLE_MOVE_AUDIO_ROOT}/slime-2.ogg`,
+  spell1: `${BATTLE_MOVE_AUDIO_ROOT}/spell-1.ogg`,
+  spell2: `${BATTLE_MOVE_AUDIO_ROOT}/spell-2.ogg`,
+  stone1: `${BATTLE_MOVE_AUDIO_ROOT}/stone-1.ogg`,
+  stone2: `${BATTLE_MOVE_AUDIO_ROOT}/stone-2.ogg`,
+  waterBubbles: `${BATTLE_MOVE_AUDIO_ROOT}/water-bubbles.ogg`,
+  waterImpact: `${BATTLE_MOVE_AUDIO_ROOT}/water-impact.ogg`,
+  wind: `${BATTLE_MOVE_AUDIO_ROOT}/wind.ogg`,
+  wood1: `${BATTLE_MOVE_AUDIO_ROOT}/wood-1.ogg`,
+  wood2: `${BATTLE_MOVE_AUDIO_ROOT}/wood-2.ogg`,
 }
 
 const BATTLE_MASTER_VOLUME = 0.96
@@ -240,10 +256,23 @@ export function createBattleAudio(initialEnabled = true) {
     const source = context.createBufferSource()
     const gain = context.createGain()
     let lastNode = gain
+    const playbackRate = Math.max(0.45, Math.min(2.25, options.rate ?? 1))
+    const volume = Math.max(0.0001, options.volume ?? 0.72)
+    const playAt = Math.max(context.currentTime, start)
+    const offset = Math.max(0, Math.min(buffer.duration - 0.01, options.offset ?? 0))
+    const availableDuration = Math.max(0.01, buffer.duration - offset)
+    const requestedDuration = Math.max(0.01, options.duration ?? availableDuration / playbackRate)
+    const sourceDuration = Math.min(availableDuration, requestedDuration * playbackRate)
+    const outputDuration = sourceDuration / playbackRate
+    const fadeIn = Math.min(options.fadeIn ?? 0.008, outputDuration * 0.2)
+    const fadeOut = Math.min(options.fadeOut ?? 0.025, outputDuration * 0.3)
 
     source.buffer = buffer
-    source.playbackRate.value = Math.max(0.45, Math.min(2.25, options.rate ?? 1))
-    gain.gain.value = Math.max(0.0001, options.volume ?? 0.72)
+    source.playbackRate.value = playbackRate
+    gain.gain.setValueAtTime(0.0001, playAt)
+    gain.gain.exponentialRampToValueAtTime(volume, playAt + fadeIn)
+    gain.gain.setValueAtTime(volume, Math.max(playAt + fadeIn, playAt + outputDuration - fadeOut))
+    gain.gain.exponentialRampToValueAtTime(0.0001, playAt + outputDuration)
     source.connect(gain)
 
     if (options.filter) {
@@ -263,7 +292,7 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     lastNode.connect(effectsGain)
-    source.start(Math.max(context.currentTime, start), options.offset ?? 0)
+    source.start(playAt, offset, sourceDuration)
     return true
   }
 
@@ -449,20 +478,52 @@ export function createBattleAudio(initialEnabled = true) {
     const audio = ensureContext()
     if (!audio || !enabled) return
     const now = audio.currentTime + 0.01
-    const profile = getMoveAnimationProfile(cue)
+    const profile = getMoveSoundProfile(cue)
     const pan = sidePan(cue.sideId)
     const variation = 1 + ((profile.seed % 9) - 4) * 0.018
-    const root = (TYPE_FREQUENCIES[profile.type] ?? 220) * variation
+    const root = profile.root * variation
     const intensity = Math.max(1, profile.intensity ?? 1)
     const volumeBoost = 1 + (intensity - 1) * 0.12
     const effectOptions = { pan, volume: 0.15 * volumeBoost }
+    const brightTexture = ['전기', '얼음', '강철', '페어리', '스텔라'].includes(profile.type)
+
+    playSample(profile.launchSample, now + 0.012, {
+      volume: (0.42 + intensity * 0.07) * volumeBoost,
+      rate: profile.sampleRate,
+      duration: profile.sampleDuration,
+      pan,
+    })
+    if (profile.textureSample && profile.textureSample !== profile.launchSample) {
+      playSample(profile.textureSample, now + profile.textureDelay, {
+        volume: 0.24 + intensity * 0.035,
+        rate: profile.textureRate,
+        duration: profile.textureDuration,
+        pan: -pan * 0.58,
+        filter: {
+          type: brightTexture ? 'highpass' : 'lowpass',
+          frequency: brightTexture ? profile.highpass : profile.lowpass,
+          q: 0.65,
+        },
+      })
+    }
+    profile.signatureFrequencies.forEach((frequency, index) => {
+      tone(frequency, now + index * profile.signatureCadence, profile.signatureDuration, {
+        volume: profile.signatureVolume,
+        wave: profile.wave,
+        pan: index % 2 === 0 ? pan : -pan * 0.5,
+        filter: { frequency: profile.lowpass, q: 0.55 },
+      })
+    })
+    for (let pulseIndex = 1; pulseIndex < profile.pulseCount; pulseIndex += 1) {
+      playSample(profile.launchSample, now + 0.1 + pulseIndex * profile.pulseGap, {
+        volume: Math.max(0.18, 0.36 - pulseIndex * 0.045),
+        rate: profile.sampleRate * (1 + pulseIndex * 0.035),
+        duration: Math.min(0.2, profile.sampleDuration),
+        pan: pulseIndex % 2 === 0 ? pan : -pan * 0.7,
+      })
+    }
 
     if (['punch', 'kick', 'strike', 'dash', 'barrage', 'bite'].includes(profile.archetype)) {
-      playSample('punch', now + 0.045, {
-        volume: 0.78 * volumeBoost,
-        rate: Math.max(0.78, Math.min(1.28, variation * (profile.archetype === 'barrage' ? 1.12 : 1))),
-        pan,
-      })
       tone(root * 0.58, now, 0.16, { ...effectOptions, wave: 'sawtooth', slide: root * 1.9 })
       noise(now + 0.055, 0.13, { volume: 0.16 * volumeBoost, frequency: 640 + intensity * 180, pan })
       tone(92, now + 0.07, 0.13, { volume: 0.14 * volumeBoost, wave: 'square', slide: 48, pan: -pan })
@@ -474,7 +535,6 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     if (['slash', 'whip', 'aerial', 'spin'].includes(profile.archetype)) {
-      playSample('hit', now + 0.055, { volume: 0.46, rate: 1.22 + (profile.seed % 5) * 0.04, pan })
       noise(now, 0.22, { volume: 0.13 * volumeBoost, frequency: 2600, q: 1.5, filterType: 'highpass', pan })
       tone(root * 0.8, now, 0.2, { ...effectOptions, wave: 'sawtooth', slide: root * 2.8 })
       tone(root * 2.4, now + 0.09, 0.12, { volume: 0.09, wave: 'triangle', slide: root * 0.95, pan: -pan })
@@ -482,12 +542,6 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     if (['explosion', 'eruption', 'quake', 'meteor'].includes(profile.archetype)) {
-      playSample(intensity >= 3 ? 'explosionHeavy' : 'explosion', now + 0.025, {
-        volume: 0.82,
-        rate: profile.archetype === 'quake' ? 0.72 : 0.9 + (profile.seed % 4) * 0.04,
-        pan,
-        filter: profile.archetype === 'quake' ? { type: 'lowpass', frequency: 1450, q: 0.6 } : null,
-      })
       tone(54 + intensity * 8, now, 0.48, { volume: 0.2, wave: 'sawtooth', slide: 34, pan })
       noise(now + 0.04, 0.42, { volume: 0.18 * volumeBoost, frequency: profile.archetype === 'quake' ? 190 : 520, q: 0.6, filterType: 'lowpass', pan })
       noise(now + 0.12, 0.25, { volume: 0.13, frequency: 1450, q: 0.8, pan: -pan })
@@ -535,9 +589,6 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     if (cue.moveCategory === 'status' || ['barrier', 'boost', 'dance', 'restore', 'sleep', 'terrain', 'weather', 'hazard'].includes(profile.archetype)) {
-      if (['barrier', 'boost', 'restore'].includes(profile.archetype)) {
-        playSample('item', now + 0.08, { volume: 0.42, rate: profile.archetype === 'restore' ? 1.22 : 0.96, pan })
-      }
       sequence([root, root * 1.25, root * 1.5, root * 2], {
         step: 0.075,
         duration: 0.12,
@@ -555,7 +606,6 @@ export function createBattleAudio(initialEnabled = true) {
       return
     }
 
-    if (cue.moveCategory === 'physical') playSample('punch', now + 0.045, { volume: 0.65, rate: variation, pan })
     tone(root, now, 0.32, { ...effectOptions, wave: cue.moveCategory === 'physical' ? 'sawtooth' : 'square', slide: root * 1.9 })
     noise(now + 0.09, 0.16, { volume: 0.11, frequency: 980, pan })
   }
@@ -565,21 +615,27 @@ export function createBattleAudio(initialEnabled = true) {
     if (!audio || !enabled) return
     const now = audio.currentTime + 0.005
     const pan = sidePan(cue.targetSideId)
+    const profile = getMoveSoundProfile(cue)
     const strength = cue.effectiveness >= 2 ? 1.25 : cue.effectiveness > 0 && cue.effectiveness < 1 ? 0.72 : 1
     if (cue.effectiveness === 0) {
+      playSample('metal1', now, { volume: 0.28, rate: 1.24, duration: 0.2, pan })
       tone(220, now, 0.18, { volume: 0.1, wave: 'triangle', slide: 110, pan })
       return
     }
-    playSample('hit', now, {
-      volume: 0.46 * strength,
-      rate: cue.effectiveness >= 2 ? 0.9 : cue.effectiveness < 1 ? 1.2 : 1.04,
-      pan,
-    })
+    const impactPulseCount = Math.min(4, Math.max(1, profile.pulseCount))
+    for (let pulseIndex = 0; pulseIndex < impactPulseCount; pulseIndex += 1) {
+      playSample(profile.impactSample, now + pulseIndex * profile.pulseGap, {
+        volume: Math.max(0.2, (0.48 - pulseIndex * 0.055) * strength),
+        rate: profile.impactRate * (cue.effectiveness >= 2 ? 0.92 : cue.effectiveness < 1 ? 1.12 : 1) * (1 + pulseIndex * 0.025),
+        duration: Math.min(profile.impactDuration, impactPulseCount > 1 ? 0.24 : profile.impactDuration),
+        pan: pulseIndex % 2 === 0 ? pan : -pan * 0.52,
+      })
+    }
     if (cue.critical || cue.effectiveness >= 2) {
       playSample('hurt', now + 0.035, { volume: cue.critical ? 0.42 : 0.28, rate: cue.critical ? 0.86 : 1.08, pan })
     }
     noise(now, 0.17, { volume: 0.2 * strength, frequency: 720 * strength, q: 0.8, pan })
-    tone(120 * strength, now, 0.17, { volume: 0.18, slide: 58, wave: 'square', pan })
+    tone(profile.root * 0.55 * strength, now, 0.17, { volume: 0.14, slide: profile.root * 0.24, wave: profile.wave, pan })
     if (cue.effectiveness >= 2) tone(1047, now + 0.045, 0.14, { volume: 0.105, wave: 'square', slide: 1568, pan: -pan })
     if (cue.critical) tone(880, now + 0.04, 0.18, { volume: 0.13, slide: 1760, pan: -pan })
   }
@@ -751,9 +807,11 @@ export function createBattleAudio(initialEnabled = true) {
       }
     } else if (cue.phase === 'announce') {
       const pan = sidePan(cue.sideId)
-      const root = TYPE_FREQUENCIES[cue.moveType] ?? (cue.sideId === 'player' ? 523 : 392)
-      tone(root * 1.5, now, 0.055, { volume: 0.11, pan })
-      tone(root * 2, now + 0.045, 0.07, { volume: 0.085, pan: -pan })
+      const profile = getMoveSoundProfile(cue)
+      const firstNote = profile.signatureFrequencies[0] ?? profile.root
+      const secondNote = profile.signatureFrequencies[1] ?? profile.root * 1.5
+      tone(firstNote, now, 0.055, { volume: 0.085, wave: profile.wave, pan })
+      tone(secondNote, now + 0.045, 0.07, { volume: 0.065, wave: profile.wave, pan: -pan })
     } else if (cue.phase === 'attack') {
       playMove(cue)
     } else if (cue.phase === 'impact') {
@@ -769,9 +827,15 @@ export function createBattleAudio(initialEnabled = true) {
     } else if (cue.phase === 'status' || cue.phase === 'residual') {
       const pan = sidePan(cue.targetSideId ?? cue.sideId)
       if (cue.result === 'charging') {
-        const root = TYPE_FREQUENCIES[cue.moveType] ?? 196
-        tone(root * 0.55, now, 0.52, { volume: 0.14, wave: 'sawtooth', slide: root * 2.2, pan })
-        sequence([root, root * 1.25, root * 1.5], { delay: 0.14, step: 0.11, duration: 0.15, volume: 0.1, wave: 'triangle', pan })
+        const profile = getMoveSoundProfile(cue)
+        playSample(profile.textureSample, now + 0.02, {
+          volume: 0.34,
+          rate: profile.textureRate * 0.82,
+          duration: Math.min(0.78, profile.textureDuration + 0.18),
+          pan,
+        })
+        tone(profile.root * 0.55, now, 0.52, { volume: 0.14, wave: profile.wave, slide: profile.root * 2.2, pan })
+        sequence(profile.signatureFrequencies.slice(0, 3), { delay: 0.14, step: 0.11, duration: 0.15, volume: 0.1, wave: profile.wave, pan })
       } else if (cue.phase === 'residual') {
         tone(174, now, 0.22, { volume: 0.115, wave: 'sawtooth', slide: 98, pan })
         noise(now + 0.04, 0.16, { volume: 0.08, frequency: 540, q: 1.4, pan })
