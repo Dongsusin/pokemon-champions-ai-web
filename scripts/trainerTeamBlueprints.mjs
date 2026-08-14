@@ -18,9 +18,9 @@ const trainer = (tier, name, region, types, canon, options = {}) => {
 export const EXPECTED_TRAINERS_BY_TIER = {
   S: words('레드 태주 보연 심향 금선 휘웅 봄이 광휘 빛나 투지 투희 공명 명희 칼름 세레나 공준 새아 영태 미월 승재 우리 영빈 윤슬 보민 푸름'),
   A: words('그린 진우 목호 성호 난천 노간주 아이리스 카르네 쿠쿠이박사 단델 월로 테사 지우 리코'),
-  B: words('오박사 칸나 시바 국화 블루 비주기 일목 카렌 독수 민진 혁진 회연 미혜 권수 마적 아강 기선 윤진 충호 들국화 대엽 오엽 태홍 망초 블래리 카틀레야 연무 N 아크로마 게치스 구아버 간피 파키라 즈미 드라세나 플라드리 AZ 하우 할라 라이치 아세로라 카일리 멀레인 나누 하푸우 루자미네 로즈 마스터드 호브 비트 마리 네모 페퍼 모란 칠리 뽀삐 스포일러 팔자크 카지 타로 하솔 네리네 제빈 청목 알랭'),
+  B: words('오박사 칸나 시바 국화 블루 비주기 일목 카렌 독수 민진 혁진 회연 미혜 권수 마적 아강 기선 윤진 충호 들국화 대엽 오엽 태홍 망초 블래리 카틀레야 연무 N 아크로마 게치스 구아버 간피 파키라 즈미 드라세나 플라드리 AZ 하우 할라 라이치 아세로라 카일리 멀레인 나누 하푸우 루자미네 로즈 마스터드 호브 비트 마리 네모 페퍼 모란 칠리 뽀삐 스포일러 팔자크 카지 타로 하솔 네리네 제빈 청목 알랭 반디나 J 택트'),
   C: words('웅 이슬 마티스 민화 도희 초련 강연 비상 호일 꼭두 유진 사도 규리 류옹 이향 원규 철구 암페어 민지 종길 은송 풍&란 아단 피아나 강석 유채 자두 맥실러 멜리사 동관 무청 전진 용식 종수 덴트&콘&팟 알로에 아티 카밀레 야콘 풍란 담죽 사간 체렌 보미카 시즈 비올라 자크로 코르니 후쿠지 시트론 마슈 코지카 우르프 일리마 수련 마오 마마네 키아웨 말리화 자우보 아킬 야청 순무 채두 어니언 포플러 마쿠와 멜론 두송 금랑 피오니 미도 성화 억새 동백 사비 단지 포화 라나 르푸 단풍 콜사 모야모 곤포 라임 리파 그루샤'),
-  D: words('아폴로 로사&로이 실버 수호 루티아 모미 미루 현이 미정 맥 벨 상행 하행 철권 루리 사나 티에르노 트로바 마티에르 가이 타니 루디 이노 안샤 카나리 머스캣 시로 무쿠 카라스바 릴리에 구즈마 글라디오 용규 도청 세이버리 찬석 주혜'),
+  D: words('아폴로 로사&로이 실버 수호 루티아 모미 미루 현이 미정 맥 벨 상행 하행 철권 루리 사나 티에르노 트로바 마티에르 가이 타니 루디 이노 안샤 카나리 머스캣 시로 무쿠 카라스바 릴리에 구즈마 글라디오 용규 도청 세이버리 찬석 주혜 핸섬 유리카 진철 철이 승태 고우 채하루'),
 }
 
 export const TRAINER_BLUEPRINTS = [
@@ -256,4 +256,14 @@ export const TRAINER_BLUEPRINTS = [
   trainer('D', '세이버리', 'galar', 'psychic', 'slowking-galar alakazam swoobat gallade reuniclus hatterene', { support: 'kingambit indeedee' }),
   trainer('D', '찬석', 'hisui', 'grass water dark', 'leafeon vaporeon umbreon torterra floatzel honchkrow', { support: 'rotom-wash corviknight' }),
   trainer('D', '주혜', 'hisui', 'ice fire psychic', 'glaceon flareon espeon froslass arcanine gardevoir', { support: 'hatterene corviknight' }),
+  trainer('B', '반디나', 'galar', 'fairy normal', 'blissey alcremie indeedee togekiss ribombee chansey', { support: 'hatterene clefable' }),
+  trainer('B', 'J', 'anime', '', 'salamence drapion ariados golbat metagross regigigas', { support: 'garchomp kingambit' }),
+  trainer('B', '택트', 'anime', '', 'darkrai latios latias heatran regirock cresselia', { support: 'garchomp corviknight' }),
+  trainer('D', '핸섬', 'international', '', 'croagunk arcanine gumshoos machamp noctowl kecleon', { support: 'corviknight rotom-wash' }),
+  trainer('D', '유리카', 'kalos', 'electric dragon', 'dedenne zygarde tyrantrum noivern heliolisk goodra', { support: 'rotom-wash clefable' }),
+  trainer('D', '진철', 'anime', '', 'electivire torterra drapion ursaring honchkrow aggron ninjask', { support: 'garchomp corviknight' }),
+  trainer('D', '철이', 'anime', '', 'lucario ferrothorn samurott hydreigon swanna watchog', { support: 'corviknight rotom-wash' }),
+  trainer('D', '승태', 'anime', '', 'sceptile salamence slaking aegislash clawitzer slurpuff', { support: 'garchomp corviknight' }),
+  trainer('D', '고우', 'anime', '', 'cinderace inteleon rillaboom suicune regieleki flygon', { support: 'mew corviknight' }),
+  trainer('D', '채하루', 'anime', 'fairy', 'eevee rapidash-galar vaporeon sylveon glaceon espeon', { support: 'hatterene clefable' }),
 ]

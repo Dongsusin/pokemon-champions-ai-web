@@ -1,5 +1,18 @@
 const TRAINER_SPRITE_ROOT = 'https://play.pokemonshowdown.com/sprites/trainers'
 
+export const TRAINER_LOCAL_SPRITES = {
+  반디나: '/assets/trainers/generated/honey-gen5.png',
+  J: '/assets/trainers/generated/hunter-j-gen5.png',
+  택트: '/assets/trainers/generated/tobias-gen5.png',
+  핸섬: '/assets/trainers/generated/looker-gen5.png',
+  유리카: '/assets/trainers/generated/bonnie-gen5.png',
+  진철: '/assets/trainers/generated/paul-gen5.png',
+  철이: '/assets/trainers/generated/cameron-gen5.png',
+  승태: '/assets/trainers/generated/sawyer-gen5.png',
+  고우: '/assets/trainers/generated/goh-gen5.png',
+  채하루: '/assets/trainers/generated/chloe-gen5.png',
+}
+
 export const TRAINER_SPRITE_SLUGS = {
   레드: 'red-gen2',
   태주: 'chase',
@@ -236,12 +249,13 @@ function spriteUrl(slug) {
 }
 
 export function getTrainerSpriteCandidates(trainer = {}) {
+  const localSprite = TRAINER_LOCAL_SPRITES[trainer.name]
   const primarySlug = TRAINER_SPRITE_SLUGS[trainer.name]
-  return primarySlug ? [spriteUrl(primarySlug)] : []
+  return [localSprite, primarySlug ? spriteUrl(primarySlug) : null].filter(Boolean)
 }
 
 export function hasTrainerSprite(trainerName) {
-  return Boolean(TRAINER_SPRITE_SLUGS[trainerName])
+  return Boolean(TRAINER_LOCAL_SPRITES[trainerName] || TRAINER_SPRITE_SLUGS[trainerName])
 }
 
 export function getPlayerTrainerSpriteCandidates() {

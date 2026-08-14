@@ -2,11 +2,15 @@
 
 ## Trainer sprites
 
-Trainer pixel sprites are loaded without modification from the [Pokémon Showdown trainer sprite index](https://play.pokemonshowdown.com/sprites/trainers/?view=sprites).
+Most trainer pixel sprites are loaded without modification from the [Pokémon Showdown trainer sprite index](https://play.pokemonshowdown.com/sprites/trainers/?view=sprites).
 
 The index contains official-style and community-created sprites. Artist attribution and use restrictions vary by file; refer to the [credited sprite list](https://play.pokemonshowdown.com/sprites/trainers/?filter=credited) before redistributing assets. Credited contributors include Beliot419, Brumirage, Fifty Shades of Rez, Flamibane, Gnomowladny, Grapo, Horo, RADU, Selena, ZacWeavile, hyo-oppa, and kyledove.
 
 Community sprites are displayed as provided and are not edited.
+
+The ten transparent sprites under `public/assets/trainers/generated/` are project-local, AI-generated fan adaptations created with OpenAI's built-in image generation tool for trainers that do not have a trustworthy exact match in the Showdown index: Honey, Pokémon Hunter J, Tobias, Looker, Bonnie, Paul, Cameron, Sawyer, Goh, and Chloe. They use the characters' recognizable clothing and color references while translating them into a consistent Black 2 and White 2-inspired battle-sprite format. They are not official Pokémon game assets.
+
+Run `scripts/prepareTrainerSprite.ps1` to remove the generated chroma background and normalize a source image onto a transparent `512×512` game canvas.
 
 ## Pokémon sprites
 
