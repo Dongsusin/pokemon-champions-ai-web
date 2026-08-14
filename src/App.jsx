@@ -20,6 +20,7 @@ import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
+import { createGameAudio } from './gameAudio'
 import {
   createPokemonDraw,
   getPokemonEvolutionFamilyKey,
@@ -60,6 +61,13 @@ const TEAM_STORAGE_KEY = 'champions-team-v2'
 const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
+
+function interactiveSoundKind(element) {
+  const label = `${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`.toLowerCase()
+  if (/돌아|닫기|취소|해제|지우기|이전|기권/.test(label)) return 'cancel'
+  if (/구매|저장|확정|시작|개시|참가|뽑기|편성|장착|설정/.test(label)) return 'confirm'
+  return 'select'
+}
 
 function loadStoredArray(key) {
   try {
@@ -217,12 +225,59 @@ function App() {
   const [competition, setCompetition] = useState(null)
   const [battleMatch, setBattleMatch] = useState(null)
   const noticeTimer = useRef(null)
+  const gameAudioRef = useRef(null)
+  if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(true)
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
 
   useEffect(() => {
-    return () => window.clearTimeout(noticeTimer.current)
+    return () => {
+      window.clearTimeout(noticeTimer.current)
+      gameAudioRef.current?.destroy()
+    }
   }, [])
+
+  useEffect(() => {
+    gameAudioRef.current?.setEnabled(soundEnabled)
+  }, [soundEnabled])
+
+  useEffect(() => {
+    gameAudioRef.current?.setScene(screen === 'battle' ? null : screen)
+  }, [screen])
+
+  useEffect(() => {
+    if (screen === 'battle') return undefined
+
+    const interactiveSelector = 'button, [role="button"], select, input[type="checkbox"], input[type="radio"], input[type="range"]'
+    const findInteractive = (target) => target instanceof Element ? target.closest(interactiveSelector) : null
+    const playPointerSound = (event) => {
+      const interactive = findInteractive(event.target)
+      if (!interactive || interactive.matches(':disabled, [aria-disabled="true"]')) return
+      gameAudioRef.current?.playUi(interactiveSoundKind(interactive))
+    }
+    const playHoverSound = (event) => {
+      if (event.pointerType && event.pointerType !== 'mouse') return
+      const interactive = findInteractive(event.target)
+      if (!interactive || interactive.matches(':disabled, [aria-disabled="true"]')) return
+      if (event.relatedTarget instanceof Node && interactive.contains(event.relatedTarget)) return
+      gameAudioRef.current?.playUi('cursor')
+    }
+    const activateFromKeyboard = (event) => {
+      if (!['Enter', ' '].includes(event.key)) return
+      const interactive = findInteractive(event.target)
+      if (!interactive || interactive.matches(':disabled, [aria-disabled="true"]')) return
+      gameAudioRef.current?.playUi(interactiveSoundKind(interactive))
+    }
+
+    document.addEventListener('pointerdown', playPointerSound, true)
+    document.addEventListener('pointerover', playHoverSound, true)
+    document.addEventListener('keydown', activateFromKeyboard, true)
+    return () => {
+      document.removeEventListener('pointerdown', playPointerSound, true)
+      document.removeEventListener('pointerover', playHoverSound, true)
+      document.removeEventListener('keydown', activateFromKeyboard, true)
+    }
+  }, [screen])
 
   useEffect(() => {
     try {
@@ -280,6 +335,7 @@ function App() {
 
     setDrawResults(nextResults)
     setBoxPokemon(mergedDraw.collection)
+    gameAudioRef.current?.playEvent(mergedDraw.shinyCount > 0 ? 'shiny' : 'draw')
     showNotice(
       mergedDraw.shinyCount > 0
         ? `도감 ${mergedDraw.newlyUnlockedCount}칸 해금 · 이로치 ${mergedDraw.shinyCount}마리 발견!`
@@ -357,6 +413,7 @@ function App() {
 
   const startBattleMode = (battleMode) => {
     if (teamIds.length !== BATTLE_TEAM_SIZE) {
+      gameAudioRef.current?.playEvent('error')
       showNotice(`배틀에 참가하려면 ${activeTeam?.name ?? '선택한 팀'}에 포켓몬 6마리를 편성해주세요.`)
       return
     }
@@ -374,6 +431,7 @@ function App() {
     setCompetition(nextCompetition)
     setBattleMatch(null)
     setScreen('competition')
+    gameAudioRef.current?.playEvent('competition')
     showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 등록을 완료했습니다.`)
   }
 
@@ -382,6 +440,7 @@ function App() {
     const opponentTeam = getCompetitionOpponentTeam(competition)
 
     if (!currentMatch?.opponent || !opponentTeam) {
+      gameAudioRef.current?.playEvent('error')
       showNotice('진행할 대진을 찾을 수 없습니다.')
       return
     }
@@ -407,6 +466,7 @@ function App() {
       const nextVp = vpBalance.current + reward
       vpBalance.current = nextVp
       setVp(nextVp)
+      gameAudioRef.current?.playEvent('reward')
       showNotice(`배틀 승리 보상으로 ${reward} VP를 획득했습니다.`)
     }
 
@@ -425,6 +485,7 @@ function App() {
     const purchase = attemptItemPurchase(vpBalance.current, storedItemInventory.current, itemId)
 
     if (!purchase.ok) {
+      gameAudioRef.current?.playEvent('error')
       if (purchase.reason === 'insufficient-vp') {
         showNotice(`${purchase.item.name} 구매에 ${purchase.shortfall.toLocaleString()} VP가 부족합니다.`)
       } else if (purchase.reason === 'already-owned') {
@@ -439,6 +500,7 @@ function App() {
     storedItemInventory.current = purchase.inventory
     setVp(purchase.balance)
     setItemInventory(purchase.inventory)
+    gameAudioRef.current?.playEvent('purchase')
     showNotice(`${purchase.item.name}을(를) 구매했습니다. · 남은 ${purchase.balance.toLocaleString()} VP`)
   }
 
@@ -447,6 +509,7 @@ function App() {
     const equipResult = attemptItemEquip(boxPokemon, itemInventory, captureId, itemId)
 
     if (!equipResult.ok) {
+      gameAudioRef.current?.playEvent('error')
       if (equipResult.reason === 'item-unavailable') {
         showNotice(`${equipResult.item.name}은(는) 다른 포켓몬이 사용 중입니다.`)
       } else {
@@ -458,6 +521,7 @@ function App() {
     if (equipResult.unchanged || !targetPokemon) return
 
     setBoxPokemon(equipResult.pokemon)
+    gameAudioRef.current?.playEvent('equip')
     showNotice(
       equipResult.item
         ? `${targetPokemon.name}에게 ${equipResult.item.name}을(를) 지니게 했습니다.`
@@ -469,6 +533,7 @@ function App() {
     const targetPokemon = boxPokemon.find((pokemon) => pokemon.captureId === captureId)
 
     if (!targetPokemon || !TERA_TYPES.includes(teraType)) {
+      gameAudioRef.current?.playEvent('error')
       showNotice('선택할 수 없는 테라타입입니다.')
       return
     }
@@ -480,6 +545,7 @@ function App() {
         ? normalizePokemon({ ...pokemon, teraType })
         : pokemon
     )))
+    gameAudioRef.current?.playEvent('equip')
     showNotice(`${targetPokemon.name}의 테라타입을 ${teraType} 타입으로 설정했습니다.`)
   }
 
@@ -488,11 +554,13 @@ function App() {
     const requestedMode = DYNAMAX_MODES.find((mode) => mode.id === dynamaxMode)
 
     if (!targetPokemon || !requestedMode) {
+      gameAudioRef.current?.playEvent('error')
       showNotice('선택할 수 없는 다이맥스 설정입니다.')
       return
     }
 
     if (dynamaxMode === 'gigantamax' && !canGigantamax(targetPokemon.speciesId)) {
+      gameAudioRef.current?.playEvent('error')
       showNotice(`${targetPokemon.name}은 거다이맥스가 가능한 포켓몬이 아닙니다.`)
       return
     }
@@ -505,6 +573,7 @@ function App() {
         ? normalizePokemon({ ...pokemon, dynamaxMode: normalizedMode })
         : pokemon
     )))
+    gameAudioRef.current?.playEvent('equip')
     showNotice(`${targetPokemon.name}의 배틀 거대화 방식을 ${requestedMode.label}로 설정했습니다.`)
   }
 
@@ -519,6 +588,7 @@ function App() {
           ? { ...team, pokemonIds: team.pokemonIds.filter((id) => id !== captureId) }
           : team
       )))
+      gameAudioRef.current?.playEvent('team')
       showNotice(`${targetPokemon.name}을(를) ${activeTeam.name}에서 뺐습니다.`)
       return
     }
@@ -529,11 +599,13 @@ function App() {
       .find((pokemon) => pokemon && getPokemonEvolutionFamilyKey(pokemon) === targetFamilyKey)
 
     if (sameFamilyPokemon) {
+      gameAudioRef.current?.playEvent('error')
       showNotice(`${sameFamilyPokemon.name}과(와) 같은 진화 계열은 한 팀에 함께 편성할 수 없습니다.`)
       return
     }
 
     if (teamIds.length >= BATTLE_TEAM_SIZE) {
+      gameAudioRef.current?.playEvent('error')
       showNotice('배틀 팀은 최대 6마리까지 편성할 수 있습니다.')
       return
     }
@@ -543,20 +615,24 @@ function App() {
         ? { ...team, pokemonIds: [...team.pokemonIds, captureId] }
         : team
     )))
+    gameAudioRef.current?.playEvent('team')
     showNotice(`${targetPokemon.name}을(를) ${activeTeam.name}에 추가했습니다.`)
   }
 
   const confirmTeam = () => {
     if (teamIds.length === 0) {
+      gameAudioRef.current?.playEvent('error')
       showNotice(`${activeTeam?.name ?? '선택한 팀'}에 넣을 포켓몬을 선택해주세요.`)
       return
     }
 
+    gameAudioRef.current?.playEvent('save')
     showNotice(`${activeTeam.name}을(를) ${teamIds.length}마리 구성으로 저장했습니다.`)
   }
 
   const autoBuildTeam = () => {
     if (boxPokemon.length === 0) {
+      gameAudioRef.current?.playEvent('error')
       showNotice('자동 편성할 포켓몬이 없습니다.')
       return
     }
@@ -569,6 +645,7 @@ function App() {
         ? { ...team, pokemonIds: nextTeamIds }
         : team
     )))
+    gameAudioRef.current?.playEvent('team')
     showNotice(`${activeTeam?.name ?? '선택한 팀'}을(를) ${nextTeamIds.length}마리로 자동 편성했습니다.`)
   }
 
@@ -576,6 +653,7 @@ function App() {
     const profile = getSpeciesProfile(pokemon.speciesId)
 
     if (profile?.parentSpeciesId) {
+      gameAudioRef.current?.playEvent('error')
       showNotice('배틀 기믹 폼은 미리보기 전용입니다. 일반 형태로 돌아온 뒤 저장해주세요.')
       return
     }
@@ -585,6 +663,7 @@ function App() {
         ? normalizePokemon(pokemon)
         : entry
     )))
+    gameAudioRef.current?.playEvent('save')
     showNotice(`${pokemon.name}의 트레이닝 설정을 저장했습니다.`)
   }
 

@@ -1444,7 +1444,7 @@ function BattleScreen({
           effectsReady={moveAssetsReady}
           onPreview={previewBattleMenu}
           onStart={() => {
-            battleAudioRef.current?.start()
+            battleAudioRef.current?.start({ player: playerActive, opponent: opponentActive })
             setIntroVisible(false)
           }}
         />
