@@ -3100,27 +3100,6 @@
   outline: none;
 }
 
-.app-shell.battle-view .battle-pokemon-stage .battle-live-sprite-frame::before {
-  position: absolute;
-  inset: 10%;
-  z-index: 0;
-  border: 2px solid rgba(151, 245, 255, 0.86);
-  border-radius: 50%;
-  content: "";
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(circle, rgba(96, 224, 255, 0.2), transparent 66%);
-  box-shadow: 0 0 0 4px rgba(58, 111, 218, 0.22), 0 0 22px rgba(95, 231, 255, 0.62);
-  transform: scale(0.86);
-  transition: opacity 150ms ease, transform 150ms ease;
-}
-
-.app-shell.battle-view .battle-pokemon-stage.is-inspected .battle-live-sprite-frame::before,
-.app-shell.battle-view .battle-pokemon-stage:focus-visible .battle-live-sprite-frame::before {
-  opacity: 1;
-  transform: scale(1);
-}
-
 .app-shell.battle-view .battle-pokemon-stage:focus-visible .battle-live-sprite-frame {
   filter: drop-shadow(0 0 8px rgba(137, 241, 255, 0.82));
 }
@@ -3603,8 +3582,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-shell.battle-view .battle-pokemon-inspector,
-  .app-shell.battle-view .battle-pokemon-stage .battle-live-sprite-frame::before {
+  .app-shell.battle-view .battle-pokemon-inspector {
     transition: none;
   }
 }

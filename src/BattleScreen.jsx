@@ -1003,7 +1003,10 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
         <span>
           <small>{side === 'player' ? 'MY POKÉMON' : `${trainerName} · OPPONENT`}</small>
           <strong>{pokemon.name}</strong>
-          <em>Lv.{pokemon.level ?? 50} · {pokemon.nature ?? '노력'} 성격</em>
+          <em>
+            Lv.{pokemon.level ?? 50}
+            {side === 'player' ? ` · ${pokemon.nature ?? '노력'} 성격` : ''}
+          </em>
         </span>
         <b>STATUS</b>
       </header>
@@ -1023,26 +1026,28 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
         </span>
       </div>
 
-      <div className="battle-pokemon-inspector-meta">
-        <span>
-          <small>특성</small>
-          <strong>{pokemon.ability || '—'}</strong>
-          <em>{abilityInfo.trigger}</em>
-        </span>
-        <span>
-          <small>지닌 도구</small>
-          <strong>
-            {heldItem?.sprite && <img src={heldItem.sprite} alt="" draggable="false" />}
-            {heldItemName}
-          </strong>
-          <em>{heldItemName === '없음' ? '미장착' : pokemon.consumedItem ? '사용 완료' : '장착 중'}</em>
-        </span>
-        <span>
-          <small>테라스탈 타입</small>
-          <strong>{pokemon.teraType || '—'}</strong>
-          <em>{pokemon.teraActive ? '발동 중' : '대기'}</em>
-        </span>
-      </div>
+      {side === 'player' && (
+        <div className="battle-pokemon-inspector-meta">
+          <span>
+            <small>특성</small>
+            <strong>{pokemon.ability || '—'}</strong>
+            <em>{abilityInfo.trigger}</em>
+          </span>
+          <span>
+            <small>지닌 도구</small>
+            <strong>
+              {heldItem?.sprite && <img src={heldItem.sprite} alt="" draggable="false" />}
+              {heldItemName}
+            </strong>
+            <em>{heldItemName === '없음' ? '미장착' : pokemon.consumedItem ? '사용 완료' : '장착 중'}</em>
+          </span>
+          <span>
+            <small>테라스탈 타입</small>
+            <strong>{pokemon.teraType || '—'}</strong>
+            <em>{pokemon.teraActive ? '발동 중' : '대기'}</em>
+          </span>
+        </div>
+      )}
 
       <div className="battle-pokemon-inspector-state">
         <small>현재 전투 상태</small>
@@ -1062,18 +1067,20 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
         </span>
       </div>
 
-      <section className="battle-pokemon-inspector-moves">
-        <header><small>배틀 기술</small><span>현재 PP</span></header>
-        <div>
-          {pokemon.moves.map((move, index) => (
-            <span className="battle-pokemon-inspector-move" key={`${move.id}-${index}`}>
-              <i className={`type-${typeClassName(move.type)}`}>{move.type}</i>
-              <strong>{move.name}</strong>
-              <em>{move.currentPp}/{move.maxPp}</em>
-            </span>
-          ))}
-        </div>
-      </section>
+      {side === 'player' && (
+        <section className="battle-pokemon-inspector-moves">
+          <header><small>배틀 기술</small><span>현재 PP</span></header>
+          <div>
+            {pokemon.moves.map((move, index) => (
+              <span className="battle-pokemon-inspector-move" key={`${move.id}-${index}`}>
+                <i className={`type-${typeClassName(move.type)}`}>{move.type}</i>
+                <strong>{move.name}</strong>
+                <em>{move.currentPp}/{move.maxPp}</em>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
     </aside>
   )
 }
@@ -1539,7 +1546,7 @@ function BattleScreen({
           <div className="battle-platform player-platform" />
 
           <div
-            className={`${battleStageClassName('opponent', opponentActive, turnCue)}${inspectedPokemonSide === 'opponent' ? ' is-inspected' : ''}`}
+            className={battleStageClassName('opponent', opponentActive, turnCue)}
             key={`opponent-stage-${opponentActive.battleId}`}
             style={battleStageStyle(turnCue)}
             {...pokemonInspectorProps('opponent', opponentActive)}
@@ -1557,7 +1564,7 @@ function BattleScreen({
           </div>
 
           <div
-            className={`${battleStageClassName('player', playerActive, turnCue)}${inspectedPokemonSide === 'player' ? ' is-inspected' : ''}`}
+            className={battleStageClassName('player', playerActive, turnCue)}
             key={`player-stage-${playerActive.battleId}`}
             style={battleStageStyle(turnCue)}
             {...pokemonInspectorProps('player', playerActive)}
