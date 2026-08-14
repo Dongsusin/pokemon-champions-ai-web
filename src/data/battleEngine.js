@@ -375,6 +375,8 @@ function latestLogMessage(state, fallback) {
 
 function mechanicPokemonSnapshot(pokemon) {
   return {
+    speciesId: pokemon.speciesId,
+    originalSpeciesId: pokemon.originalSpeciesId,
     name: pokemon.name,
     types: [...pokemon.types],
     spriteFront: pokemon.spriteFront,
@@ -1174,6 +1176,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       sideId,
       targetSideId: sideId,
       actorName: mechanicAfter.name,
+      actorSpeciesId: mechanicAfter.speciesId,
+      actorOriginalSpeciesId: mechanicAfter.originalSpeciesId,
       actorPreviousName: mechanicBefore.name,
       mechanicId: action.gimmick,
       mechanicLabel: MECHANIC_LABELS[action.gimmick],
@@ -1202,7 +1206,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     sideId,
     targetSideId: move.target === 'self' ? sideId : targetSide.id,
     actorName: attacker.name,
+    actorSpeciesId: attacker.speciesId,
+    actorOriginalSpeciesId: attacker.originalSpeciesId,
     targetName: move.target === 'self' ? attacker.name : defender.name,
+    targetSpeciesId: move.target === 'self' ? attacker.speciesId : defender.speciesId,
+    targetOriginalSpeciesId: move.target === 'self' ? attacker.originalSpeciesId : defender.originalSpeciesId,
     moveId: move.id,
     moveName: move.name,
     moveType: move.type,
@@ -1486,6 +1494,8 @@ function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline
     sideId,
     targetSideId: sideId,
     actorName: current.name,
+    actorSpeciesId: current.speciesId,
+    actorOriginalSpeciesId: current.originalSpeciesId,
     targetName: target.name,
     message: sideId === 'player'
       ? `${current.name}, 돌아와!`
@@ -1525,6 +1535,8 @@ function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline
     sideId,
     targetSideId: sideId,
     actorName: target.name,
+    actorSpeciesId: target.speciesId,
+    actorOriginalSpeciesId: target.originalSpeciesId,
     message: latestLogMessage(state, `${target.name}이(가) 배틀에 나왔다!`),
   })
   return true
@@ -1610,15 +1622,22 @@ function settleFaints(state, timeline = null) {
     if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return
     pokemon.fainted = true
     appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
-    faintedPokemon.push({ sideId, name: pokemon.name })
+    faintedPokemon.push({
+      sideId,
+      name: pokemon.name,
+      speciesId: pokemon.speciesId,
+      originalSpeciesId: pokemon.originalSpeciesId,
+    })
   })
 
-  faintedPokemon.forEach(({ sideId, name }) => {
+  faintedPokemon.forEach(({ sideId, name, speciesId, originalSpeciesId }) => {
     pushTimelineStep(timeline, state, {
       phase: 'faint',
       sideId: sideId === 'player' ? 'opponent' : 'player',
       targetSideId: sideId,
       actorName: name,
+      actorSpeciesId: speciesId,
+      actorOriginalSpeciesId: originalSpeciesId,
       message: `${name}은(는) 쓰러졌다!`,
     })
   })

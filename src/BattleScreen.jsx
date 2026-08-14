@@ -1084,6 +1084,8 @@ function BattleScreen({
   useEffect(() => {
     let active = true
     let idleHandle = null
+    const battleRoster = [...battle.player.team, ...battle.opponent.team]
+    battleAudioRef.current?.preload(battleRoster)
     const activePokemon = [
       battle.player.team[battle.player.activeIndex],
       battle.opponent.team[battle.opponent.activeIndex],
@@ -1092,8 +1094,7 @@ function BattleScreen({
       ...getBattleSpriteAssets(pokemon),
       ...pokemon.moves.flatMap(getMoveAnimationAssets),
     ])
-    const allAssets = [...battle.player.team, ...battle.opponent.team]
-      .flatMap((pokemon) => [
+    const allAssets = battleRoster.flatMap((pokemon) => [
         ...getBattleSpriteAssets(pokemon),
         ...pokemon.moves.flatMap(getMoveAnimationAssets),
       ])
@@ -1243,6 +1244,8 @@ function BattleScreen({
         sideId: 'player',
         targetSideId: 'player',
         actorName: target.name,
+        actorSpeciesId: target.speciesId,
+        actorOriginalSpeciesId: target.originalSpeciesId,
         message: `${target.name}! 부탁해!`,
       }
 

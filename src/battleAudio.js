@@ -21,17 +21,25 @@ const TYPE_FREQUENCIES = {
   페어리: 392,
 }
 
-const MUSIC_PATTERN = [
-  [196, 247, 294, 392, 294, 247, 220, 277],
-  [174, 220, 262, 349, 262, 220, 196, 247],
-  [147, 196, 247, 294, 247, 196, 165, 220],
-  [165, 208, 262, 330, 294, 247, 208, 247],
-]
+const BATTLE_AUDIO_ROOT = '/assets/audio/battle'
+const BATTLE_MUSIC_PATH = `${BATTLE_AUDIO_ROOT}/battle-theme.ogg`
+const POKEMON_CRY_ROOT = 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon'
+const BATTLE_SAMPLE_PATHS = {
+  cursor: `${BATTLE_AUDIO_ROOT}/ui-cursor.ogg`,
+  select: `${BATTLE_AUDIO_ROOT}/ui-select.ogg`,
+  cancel: `${BATTLE_AUDIO_ROOT}/ui-cancel.ogg`,
+  hit: `${BATTLE_AUDIO_ROOT}/hit.wav`,
+  punch: `${BATTLE_AUDIO_ROOT}/punch.ogg`,
+  hurt: `${BATTLE_AUDIO_ROOT}/hurt.ogg`,
+  explosion: `${BATTLE_AUDIO_ROOT}/explosion.ogg`,
+  explosionHeavy: `${BATTLE_AUDIO_ROOT}/explosion-heavy.ogg`,
+  item: `${BATTLE_AUDIO_ROOT}/item.ogg`,
+}
 
 const BATTLE_MASTER_VOLUME = 0.96
-const BATTLE_EFFECTS_VOLUME = 0.46
-const BATTLE_MUSIC_VOLUME = 0.145
-const LOW_HP_MUSIC_VOLUME = 0.105
+const BATTLE_EFFECTS_VOLUME = 0.56
+const BATTLE_MUSIC_VOLUME = 0.34
+const LOW_HP_MUSIC_VOLUME = 0.25
 
 function audioContextConstructor() {
   if (typeof window === 'undefined') return null
@@ -44,12 +52,17 @@ export function createBattleAudio(initialEnabled = true) {
   let effectsGain = null
   let musicGain = null
   let compressor = null
-  let musicTimer = null
+  let musicElement = null
+  let musicSource = null
   let lowHpTimer = null
-  let musicPatternIndex = 0
-  let nextMusicPatternTime = 0
+  let sampleLoadPromise = null
+  const sampleBuffers = new Map()
+  const cryBuffers = new Map()
+  const cryLoadPromises = new Map()
+  const failedCryIds = new Set()
   let enabled = Boolean(initialEnabled)
   let battleStarted = false
+  let musicStarted = false
   let lowHpActive = false
   let lastCueId = null
 
@@ -79,7 +92,69 @@ export function createBattleAudio(initialEnabled = true) {
     musicGain.connect(masterGain)
     masterGain.connect(compressor)
     compressor.connect(context.destination)
+
+    musicElement = new Audio(BATTLE_MUSIC_PATH)
+    musicElement.loop = true
+    musicElement.preload = 'auto'
+    musicElement.volume = 1
+    musicSource = context.createMediaElementSource(musicElement)
+    musicSource.connect(musicGain)
     return context
+  }
+
+  const pokemonCryIds = (pokemon = {}) => [...new Set([
+    pokemon.speciesId,
+    pokemon.originalSpeciesId,
+  ].map(Number).filter((speciesId) => Number.isInteger(speciesId) && speciesId > 0))]
+
+  const preloadCry = (speciesId) => {
+    const audio = ensureContext()
+    const normalizedId = Number(speciesId)
+    if (!audio || !Number.isInteger(normalizedId) || normalizedId <= 0 || failedCryIds.has(normalizedId)) {
+      return Promise.resolve(null)
+    }
+    if (cryBuffers.has(normalizedId)) return Promise.resolve(cryBuffers.get(normalizedId))
+    if (cryLoadPromises.has(normalizedId)) return cryLoadPromises.get(normalizedId)
+
+    const loadPromise = (async () => {
+      for (const collection of ['legacy', 'latest']) {
+        try {
+          const response = await fetch(`${POKEMON_CRY_ROOT}/${collection}/${normalizedId}.ogg`, { cache: 'force-cache' })
+          if (!response.ok) continue
+          const encodedAudio = await response.arrayBuffer()
+          const decodedAudio = await audio.decodeAudioData(encodedAudio)
+          cryBuffers.set(normalizedId, decodedAudio)
+          return decodedAudio
+        } catch {}
+      }
+      failedCryIds.add(normalizedId)
+      return null
+    })().finally(() => cryLoadPromises.delete(normalizedId))
+
+    cryLoadPromises.set(normalizedId, loadPromise)
+    return loadPromise
+  }
+
+  const preload = (pokemonList = []) => {
+    const audio = ensureContext()
+    if (!audio) return Promise.resolve()
+    musicElement?.load()
+    if (!sampleLoadPromise) {
+      sampleLoadPromise = Promise.all(Object.entries(BATTLE_SAMPLE_PATHS).map(async ([name, path]) => {
+        try {
+          const response = await fetch(path)
+          if (!response.ok) throw new Error(`Failed to load ${path}`)
+          const encodedAudio = await response.arrayBuffer()
+          const decodedAudio = await audio.decodeAudioData(encodedAudio)
+          sampleBuffers.set(name, decodedAudio)
+        } catch {
+          sampleBuffers.delete(name)
+        }
+      }))
+    }
+
+    const cryIds = pokemonList.flatMap(pokemonCryIds)
+    return Promise.all([sampleLoadPromise, ...cryIds.map(preloadCry)]).then(() => undefined)
   }
 
   const tone = (frequency, start, duration, options = {}) => {
@@ -158,6 +233,76 @@ export function createBattleAudio(initialEnabled = true) {
     source.stop(start + duration + 0.02)
   }
 
+  const playSample = (name, start, options = {}) => {
+    if (!context || !enabled) return false
+    const buffer = sampleBuffers.get(name)
+    if (!buffer) return false
+    const source = context.createBufferSource()
+    const gain = context.createGain()
+    let lastNode = gain
+
+    source.buffer = buffer
+    source.playbackRate.value = Math.max(0.45, Math.min(2.25, options.rate ?? 1))
+    gain.gain.value = Math.max(0.0001, options.volume ?? 0.72)
+    source.connect(gain)
+
+    if (options.filter) {
+      const filter = context.createBiquadFilter()
+      filter.type = options.filter.type ?? 'lowpass'
+      filter.frequency.value = options.filter.frequency ?? 2600
+      filter.Q.value = options.filter.q ?? 0.7
+      lastNode.connect(filter)
+      lastNode = filter
+    }
+
+    if (context.createStereoPanner && options.pan !== undefined) {
+      const panner = context.createStereoPanner()
+      panner.pan.value = Math.max(-1, Math.min(1, options.pan))
+      lastNode.connect(panner)
+      lastNode = panner
+    }
+
+    lastNode.connect(effectsGain)
+    source.start(Math.max(context.currentTime, start), options.offset ?? 0)
+    return true
+  }
+
+  const playCryBuffer = (buffer, start, sideId, options = {}) => {
+    if (!context || !enabled || !buffer) return false
+    const source = context.createBufferSource()
+    const gain = context.createGain()
+    const highpass = context.createBiquadFilter()
+    const playbackRate = Math.max(0.55, Math.min(1.35, options.rate ?? 1))
+    const volume = Math.max(0.0001, options.volume ?? 0.58)
+    const playAt = Math.max(context.currentTime, start)
+    const endAt = playAt + buffer.duration / playbackRate
+
+    source.buffer = buffer
+    source.playbackRate.value = playbackRate
+    highpass.type = 'highpass'
+    highpass.frequency.value = 72
+    highpass.Q.value = 0.4
+    gain.gain.setValueAtTime(0.0001, playAt)
+    gain.gain.exponentialRampToValueAtTime(volume, playAt + 0.012)
+    gain.gain.setValueAtTime(volume, Math.max(playAt + 0.012, endAt - 0.055))
+    gain.gain.exponentialRampToValueAtTime(0.0001, endAt)
+    source.connect(highpass)
+    highpass.connect(gain)
+
+    if (context.createStereoPanner) {
+      const panner = context.createStereoPanner()
+      panner.pan.value = sidePan(sideId)
+      gain.connect(panner)
+      panner.connect(effectsGain)
+    } else {
+      gain.connect(effectsGain)
+    }
+
+    source.start(playAt)
+    source.stop(endAt + 0.02)
+    return true
+  }
+
   const sequence = (notes, options = {}) => {
     const audio = ensureContext()
     if (!audio || !enabled) return
@@ -168,75 +313,24 @@ export function createBattleAudio(initialEnabled = true) {
     })
   }
 
-  const scheduleMusicPattern = () => {
+  const startMusic = () => {
     if (!battleStarted || !enabled) return
     const audio = ensureContext()
-    if (!audio) return
-    if (nextMusicPatternTime > audio.currentTime + 0.42) return
-    const notes = MUSIC_PATTERN[musicPatternIndex % MUSIC_PATTERN.length]
-    const start = Math.max(audio.currentTime + 0.035, nextMusicPatternTime)
-    const step = 0.19
-
-    notes.forEach((frequency, index) => {
-      tone(frequency, start + index * step, 0.12, {
-        music: true,
-        volume: index % 4 === 0 ? 0.17 : 0.115,
-        wave: 'square',
-        pan: index % 2 === 0 ? -0.13 : 0.13,
-        filter: { frequency: 2500, q: 0.45 },
-      })
-      if (index % 2 === 0) {
-        tone(frequency / 2, start + index * step, 0.15, {
-          music: true,
-          volume: 0.115,
-          wave: 'triangle',
-          pan: -0.2,
-          filter: { frequency: 620, q: 0.5 },
-        })
-      }
-      if (index % 4 === 0) {
-        tone(72, start + index * step, 0.1, {
-          music: true,
-          volume: 0.15,
-          wave: 'sine',
-          slide: 42,
-        })
-      } else if (index % 4 === 2) {
-        noise(start + index * step, 0.075, {
-          music: true,
-          volume: 0.07,
-          frequency: 1900,
-          filterType: 'highpass',
-          pan: 0.18,
-        })
-      }
-      if (index % 4 === 3) {
-        tone(frequency * 1.5, start + index * step + 0.055, 0.07, {
-          music: true,
-          volume: 0.045,
-          wave: 'square',
-          pan: 0.3,
-        })
-      }
-    })
-
-    musicPatternIndex += 1
-    nextMusicPatternTime = start + notes.length * step
+    if (!audio || !musicElement) return
+    if (!musicStarted) {
+      musicElement.currentTime = 0
+      musicStarted = true
+    }
+    musicElement.play().catch(() => {})
   }
 
-  const startMusic = () => {
-    if (musicTimer || !battleStarted || !enabled) return
-    const audio = ensureContext()
-    if (!audio) return
-    nextMusicPatternTime = audio.currentTime + 0.05
-    scheduleMusicPattern()
-    musicTimer = window.setInterval(scheduleMusicPattern, 160)
-  }
-
-  const stopMusic = () => {
-    if (!musicTimer) return
-    window.clearInterval(musicTimer)
-    musicTimer = null
+  const stopMusic = (reset = false) => {
+    if (!musicElement) return
+    musicElement.pause()
+    if (reset) {
+      musicElement.currentTime = 0
+      musicStarted = false
+    }
   }
 
   const playLowHpPulse = () => {
@@ -265,14 +359,17 @@ export function createBattleAudio(initialEnabled = true) {
     if (!audio || !enabled) return
     const now = audio.currentTime + 0.005
     if (kind === 'cancel') {
+      if (playSample('cancel', now, { volume: 0.82 })) return
       tone(330, now, 0.05, { volume: 0.12 })
       tone(220, now + 0.055, 0.07, { volume: 0.11 })
       return
     }
     if (kind === 'cursor') {
+      if (playSample('cursor', now, { volume: 0.62, rate: 1.04 })) return
       tone(392, now, 0.035, { volume: 0.09 })
       return
     }
+    if (playSample('select', now, { volume: 0.74 })) return
     tone(440, now, 0.045, { volume: 0.12 })
     tone(660, now + 0.045, 0.065, { volume: 0.1 })
   }
@@ -284,13 +381,13 @@ export function createBattleAudio(initialEnabled = true) {
     0,
   )
 
-  const playCry = (name, sideId, delay = 0) => {
+  const playSynthCry = (name, sideId, delay = 0, rate = 1) => {
     const audio = ensureContext()
     if (!audio || !enabled || !name) return
     const seed = Math.abs(hashName(name))
     const start = audio.currentTime + delay
     const pan = sidePan(sideId)
-    const root = 145 + (seed % 170)
+    const root = (145 + (seed % 170)) * rate
     const upper = root * (1.35 + (seed % 9) * 0.04)
     const length = 0.2 + (seed % 5) * 0.035
 
@@ -315,6 +412,39 @@ export function createBattleAudio(initialEnabled = true) {
     })
   }
 
+  const playCry = ({
+    speciesId,
+    originalSpeciesId,
+    name,
+    sideId,
+    delay = 0,
+    rate = 1,
+    volume = 0.58,
+  }) => {
+    const audio = ensureContext()
+    if (!audio || !enabled) return
+    const cryIds = pokemonCryIds({ speciesId, originalSpeciesId })
+    const requestedAt = audio.currentTime
+    const scheduledAt = requestedAt + delay
+    const playLoadedCry = (start) => {
+      const buffer = cryIds.map((cryId) => cryBuffers.get(cryId)).find(Boolean)
+      return playCryBuffer(buffer, start, sideId, { rate, volume })
+    }
+
+    if (playLoadedCry(scheduledAt)) return
+    if (cryIds.length === 0 || cryIds.every((cryId) => failedCryIds.has(cryId))) {
+      playSynthCry(name, sideId, delay, rate)
+      return
+    }
+
+    Promise.all(cryIds.map(preloadCry)).then(() => {
+      if (!context || context !== audio || !enabled || audio.currentTime - requestedAt > 1.6) return
+      if (!playLoadedCry(Math.max(scheduledAt, audio.currentTime + 0.01))) {
+        playSynthCry(name, sideId, Math.max(0, scheduledAt - audio.currentTime), rate)
+      }
+    })
+  }
+
   const playMove = (cue) => {
     const audio = ensureContext()
     if (!audio || !enabled) return
@@ -328,6 +458,11 @@ export function createBattleAudio(initialEnabled = true) {
     const effectOptions = { pan, volume: 0.15 * volumeBoost }
 
     if (['punch', 'kick', 'strike', 'dash', 'barrage', 'bite'].includes(profile.archetype)) {
+      playSample('punch', now + 0.045, {
+        volume: 0.78 * volumeBoost,
+        rate: Math.max(0.78, Math.min(1.28, variation * (profile.archetype === 'barrage' ? 1.12 : 1))),
+        pan,
+      })
       tone(root * 0.58, now, 0.16, { ...effectOptions, wave: 'sawtooth', slide: root * 1.9 })
       noise(now + 0.055, 0.13, { volume: 0.16 * volumeBoost, frequency: 640 + intensity * 180, pan })
       tone(92, now + 0.07, 0.13, { volume: 0.14 * volumeBoost, wave: 'square', slide: 48, pan: -pan })
@@ -339,6 +474,7 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     if (['slash', 'whip', 'aerial', 'spin'].includes(profile.archetype)) {
+      playSample('hit', now + 0.055, { volume: 0.46, rate: 1.22 + (profile.seed % 5) * 0.04, pan })
       noise(now, 0.22, { volume: 0.13 * volumeBoost, frequency: 2600, q: 1.5, filterType: 'highpass', pan })
       tone(root * 0.8, now, 0.2, { ...effectOptions, wave: 'sawtooth', slide: root * 2.8 })
       tone(root * 2.4, now + 0.09, 0.12, { volume: 0.09, wave: 'triangle', slide: root * 0.95, pan: -pan })
@@ -346,6 +482,12 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     if (['explosion', 'eruption', 'quake', 'meteor'].includes(profile.archetype)) {
+      playSample(intensity >= 3 ? 'explosionHeavy' : 'explosion', now + 0.025, {
+        volume: 0.82,
+        rate: profile.archetype === 'quake' ? 0.72 : 0.9 + (profile.seed % 4) * 0.04,
+        pan,
+        filter: profile.archetype === 'quake' ? { type: 'lowpass', frequency: 1450, q: 0.6 } : null,
+      })
       tone(54 + intensity * 8, now, 0.48, { volume: 0.2, wave: 'sawtooth', slide: 34, pan })
       noise(now + 0.04, 0.42, { volume: 0.18 * volumeBoost, frequency: profile.archetype === 'quake' ? 190 : 520, q: 0.6, filterType: 'lowpass', pan })
       noise(now + 0.12, 0.25, { volume: 0.13, frequency: 1450, q: 0.8, pan: -pan })
@@ -393,6 +535,9 @@ export function createBattleAudio(initialEnabled = true) {
     }
 
     if (cue.moveCategory === 'status' || ['barrier', 'boost', 'dance', 'restore', 'sleep', 'terrain', 'weather', 'hazard'].includes(profile.archetype)) {
+      if (['barrier', 'boost', 'restore'].includes(profile.archetype)) {
+        playSample('item', now + 0.08, { volume: 0.42, rate: profile.archetype === 'restore' ? 1.22 : 0.96, pan })
+      }
       sequence([root, root * 1.25, root * 1.5, root * 2], {
         step: 0.075,
         duration: 0.12,
@@ -410,6 +555,7 @@ export function createBattleAudio(initialEnabled = true) {
       return
     }
 
+    if (cue.moveCategory === 'physical') playSample('punch', now + 0.045, { volume: 0.65, rate: variation, pan })
     tone(root, now, 0.32, { ...effectOptions, wave: cue.moveCategory === 'physical' ? 'sawtooth' : 'square', slide: root * 1.9 })
     noise(now + 0.09, 0.16, { volume: 0.11, frequency: 980, pan })
   }
@@ -420,12 +566,20 @@ export function createBattleAudio(initialEnabled = true) {
     const now = audio.currentTime + 0.005
     const pan = sidePan(cue.targetSideId)
     const strength = cue.effectiveness >= 2 ? 1.25 : cue.effectiveness > 0 && cue.effectiveness < 1 ? 0.72 : 1
-    noise(now, 0.17, { volume: 0.2 * strength, frequency: 720 * strength, q: 0.8, pan })
-    tone(120 * strength, now, 0.17, { volume: 0.18, slide: 58, wave: 'square', pan })
     if (cue.effectiveness === 0) {
       tone(220, now, 0.18, { volume: 0.1, wave: 'triangle', slide: 110, pan })
       return
     }
+    playSample('hit', now, {
+      volume: 0.46 * strength,
+      rate: cue.effectiveness >= 2 ? 0.9 : cue.effectiveness < 1 ? 1.2 : 1.04,
+      pan,
+    })
+    if (cue.critical || cue.effectiveness >= 2) {
+      playSample('hurt', now + 0.035, { volume: cue.critical ? 0.42 : 0.28, rate: cue.critical ? 0.86 : 1.08, pan })
+    }
+    noise(now, 0.17, { volume: 0.2 * strength, frequency: 720 * strength, q: 0.8, pan })
+    tone(120 * strength, now, 0.17, { volume: 0.18, slide: 58, wave: 'square', pan })
     if (cue.effectiveness >= 2) tone(1047, now + 0.045, 0.14, { volume: 0.105, wave: 'square', slide: 1568, pan: -pan })
     if (cue.critical) tone(880, now + 0.04, 0.18, { volume: 0.13, slide: 1760, pan: -pan })
   }
@@ -445,6 +599,7 @@ export function createBattleAudio(initialEnabled = true) {
 
     if (cue.mechanicId === 'mega') {
       duckMusicForGimmick(now, 3)
+      playSample('item', now + 0.12, { volume: 0.52, rate: 0.9, pan: sidePan(cue.sideId) })
       tone(98, now, 0.92, { volume: 0.13, slide: 392, wave: 'sawtooth' })
       sequence([262, 330, 392, 523, 659, 784, 1047], {
         delay: 0.12,
@@ -469,6 +624,7 @@ export function createBattleAudio(initialEnabled = true) {
 
     if (cue.mechanicId === 'zmove') {
       duckMusicForGimmick(now, 2.7)
+      playSample('item', now + 0.08, { volume: 0.55, rate: 1.15, pan: sidePan(cue.sideId) })
       sequence([196, 247, 294, 392], {
         step: 0.09,
         duration: 0.12,
@@ -498,6 +654,7 @@ export function createBattleAudio(initialEnabled = true) {
 
     if (cue.mechanicId === 'dynamax') {
       duckMusicForGimmick(now, 3.3)
+      playSample('explosionHeavy', now + 1.28, { volume: 0.6, rate: 0.62, pan: sidePan(cue.sideId), filter: { type: 'lowpass', frequency: 1700 } })
       tone(48, now, 1.85, { volume: 0.2, slide: 92, wave: 'sawtooth' })
       tone(73, now + 0.12, 1.6, { volume: 0.14, slide: 147, wave: 'triangle' })
       noise(now + 0.08, 1.62, { volume: 0.12, frequency: 210, q: 0.7, filterType: 'lowpass' })
@@ -524,6 +681,7 @@ export function createBattleAudio(initialEnabled = true) {
 
     if (cue.mechanicId === 'tera') {
       duckMusicForGimmick(now, 3.05)
+      playSample('item', now + 0.48, { volume: 0.52, rate: 1.34, pan: sidePan(cue.sideId) })
       sequence([523, 659, 784, 988, 1175, 1568], {
         step: 0.105,
         duration: 0.18,
@@ -553,6 +711,7 @@ export function createBattleAudio(initialEnabled = true) {
 
     if (cue.mechanicId === 'primal') {
       duckMusicForGimmick(now, 2.35)
+      playSample('explosion', now + 0.42, { volume: 0.58, rate: 0.72, pan: sidePan(cue.sideId), filter: { type: 'lowpass', frequency: 1900 } })
       tone(65, now, 1.05, { volume: 0.19, slide: 196, wave: 'sawtooth' })
       tone(78, now + 0.08, 1.05, { volume: 0.16, slide: 233, wave: 'triangle' })
       noise(now + 0.16, 0.82, { volume: 0.13, frequency: 340, q: 0.8 })
@@ -579,6 +738,17 @@ export function createBattleAudio(initialEnabled = true) {
 
     if (cue.phase === 'gimmick') {
       playGimmick(cue)
+      if (cue.mechanicId !== 'zmove') {
+        playCry({
+          speciesId: cue.actorSpeciesId,
+          originalSpeciesId: cue.actorOriginalSpeciesId,
+          name: cue.actorName,
+          sideId: cue.sideId,
+          delay: cue.mechanicId === 'dynamax' ? 1.45 : 1.05,
+          rate: cue.mechanicId === 'dynamax' ? 0.78 : 0.96,
+          volume: cue.mechanicId === 'dynamax' ? 0.68 : 0.54,
+        })
+      }
     } else if (cue.phase === 'announce') {
       const pan = sidePan(cue.sideId)
       const root = TYPE_FREQUENCIES[cue.moveType] ?? (cue.sideId === 'player' ? 523 : 392)
@@ -610,22 +780,41 @@ export function createBattleAudio(initialEnabled = true) {
       }
     } else if (cue.phase === 'switch-out') {
       const pan = sidePan(cue.sideId)
+      playSample('item', now, { volume: 0.42, rate: 0.72, pan })
       tone(1047, now, 0.36, { volume: 0.16, slide: 110, wave: 'sine', pan })
       noise(now + 0.04, 0.22, { volume: 0.09, frequency: 1800, pan })
     } else if (cue.phase === 'switch') {
       const pan = sidePan(cue.sideId)
+      playSample('item', now + 0.035, { volume: 0.55, rate: 1.08, pan })
       tone(165, now, 0.34, { volume: 0.16, slide: 990, wave: 'sine', pan })
       noise(now + 0.04, 0.16, { volume: 0.075, frequency: 2400, q: 2, pan })
       sequence([523, 659, 784], { delay: 0.2, step: 0.06, duration: 0.085, volume: 0.09, pan })
-      playCry(cue.actorName, cue.sideId, 0.32)
+      playCry({
+        speciesId: cue.actorSpeciesId,
+        originalSpeciesId: cue.actorOriginalSpeciesId,
+        name: cue.actorName,
+        sideId: cue.sideId,
+        delay: 0.32,
+        volume: 0.6,
+      })
     } else if (cue.phase === 'faint') {
-      const pan = sidePan(cue.sideId)
-      playCry(cue.actorName, cue.sideId)
+      const faintedSideId = cue.targetSideId ?? cue.sideId
+      const pan = sidePan(faintedSideId)
+      playSample('hurt', now, { volume: 0.36, rate: 0.68, pan })
+      playCry({
+        speciesId: cue.actorSpeciesId,
+        originalSpeciesId: cue.actorOriginalSpeciesId,
+        name: cue.actorName,
+        sideId: faintedSideId,
+        rate: 0.72,
+        volume: 0.52,
+      })
       sequence([392, 330, 262, 196, 147, 110], { delay: 0.12, step: 0.105, duration: 0.15, volume: 0.135, wave: 'square', pan })
     } else if (cue.phase === 'prompt') {
       sequence([392, 523], { step: 0.1, duration: 0.13, volume: 0.115 })
     } else if (cue.phase === 'result') {
-      stopMusic()
+      battleStarted = false
+      stopMusic(true)
       const victory = cue.sideId === 'player'
       sequence(victory
         ? [262, 330, 392, 523, 659, 784, 1047]
@@ -642,10 +831,13 @@ export function createBattleAudio(initialEnabled = true) {
     battleStarted = true
     const audio = ensureContext()
     if (!audio || !enabled) return
+    preload([encounter.player, encounter.opponent])
+    stopMusic(true)
     sequence([196, 262, 330, 392, 523, 659], { step: 0.075, duration: 0.115, volume: 0.145 })
+    playSample('select', audio.currentTime + 0.02, { volume: 0.62 })
     noise(audio.currentTime + 0.08, 0.22, { volume: 0.085, frequency: 1900, filterType: 'highpass' })
-    playCry(encounter.opponent?.name, 'opponent', 0.48)
-    playCry(encounter.player?.name, 'player', 0.86)
+    playCry({ ...encounter.opponent, sideId: 'opponent', delay: 0.48, volume: 0.62 })
+    playCry({ ...encounter.player, sideId: 'player', delay: 0.86, volume: 0.62 })
     window.setTimeout(startMusic, 760)
   }
 
@@ -679,15 +871,23 @@ export function createBattleAudio(initialEnabled = true) {
 
   const destroy = () => {
     battleStarted = false
-    stopMusic()
+    stopMusic(true)
     stopLowHpWarning()
     if (context && context.state !== 'closed') context.close().catch(() => {})
     context = null
     compressor = null
+    musicElement = null
+    musicSource = null
+    sampleBuffers.clear()
+    cryBuffers.clear()
+    cryLoadPromises.clear()
+    failedCryIds.clear()
+    sampleLoadPromise = null
   }
 
   return {
     destroy,
+    preload,
     playCue,
     playMenu,
     setEnabled,
