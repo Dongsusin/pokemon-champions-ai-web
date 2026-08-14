@@ -3337,16 +3337,6 @@
   image-rendering: pixelated;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-meta em {
-  overflow: hidden;
-  color: #777c9c;
-  font-size: 8px;
-  font-style: normal;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .app-shell.battle-view .battle-pokemon-inspector-state {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3562,8 +3552,7 @@
   }
 
   .app-shell.battle-view .battle-pokemon-inspector-header > b,
-  .app-shell.battle-view .battle-pokemon-inspector-header em,
-  .app-shell.battle-view .battle-pokemon-inspector-meta em {
+  .app-shell.battle-view .battle-pokemon-inspector-header em {
     display: none;
   }
 

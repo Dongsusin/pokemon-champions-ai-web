@@ -52,7 +52,7 @@ import {
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
 import { getBattleItem } from './data/shopData'
-import { getAbility, getBattleFormOptions, typeClassName } from './data/trainingData'
+import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
 const MOVE_REFERENCE_BADGES = {
   MAX_MOVE: 'MAX MOVE',
@@ -982,7 +982,6 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
   const conditions = battleConditionEntries(pokemon)
   const gimmicks = battleGimmickEntries(pokemon)
   const heldItem = getBattleItem(pokemon.heldItemId)
-  const abilityInfo = getAbility(pokemon.ability)
   const heldItemName = heldItem?.name || pokemon.heldItemName || '없음'
 
   return (
@@ -1031,7 +1030,6 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
           <span>
             <small>특성</small>
             <strong>{pokemon.ability || '—'}</strong>
-            <em>{abilityInfo.trigger}</em>
           </span>
           <span>
             <small>지닌 도구</small>
@@ -1039,12 +1037,10 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
               {heldItem?.sprite && <img src={heldItem.sprite} alt="" draggable="false" />}
               {heldItemName}
             </strong>
-            <em>{heldItemName === '없음' ? '미장착' : pokemon.consumedItem ? '사용 완료' : '장착 중'}</em>
           </span>
           <span>
             <small>테라스탈 타입</small>
             <strong>{pokemon.teraType || '—'}</strong>
-            <em>{pokemon.teraActive ? '발동 중' : '대기'}</em>
           </span>
         </div>
       )}
