@@ -493,9 +493,10 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
     : '선발 포켓몬 선택'
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
   const [isBracketOpen, setIsBracketOpen] = useState(false)
-  const [hoveredPokemonKey, setHoveredPokemonKey] = useState(null)
-  const [focusedPokemonKey, setFocusedPokemonKey] = useState(null)
-  const inspectedPokemonKey = hoveredPokemonKey ?? focusedPokemonKey
+  const [hoveredPokemonInspection, setHoveredPokemonInspection] = useState(null)
+  const [focusedPokemonInspection, setFocusedPokemonInspection] = useState(null)
+  const inspectedPokemon = hoveredPokemonInspection ?? focusedPokemonInspection
+  const inspectedPokemonKey = inspectedPokemon?.key ?? null
 
   useEffect(() => {
     setSelectedCaptureIds(competition.playerTeam
@@ -505,8 +506,8 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
 
   useEffect(() => {
     setIsBracketOpen(false)
-    setHoveredPokemonKey(null)
-    setFocusedPokemonKey(null)
+    setHoveredPokemonInspection(null)
+    setFocusedPokemonInspection(null)
   }, [competition.id, competition.round, competition.status])
 
   useEffect(() => {
@@ -535,22 +536,30 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
       'aria-describedby': `competition-${pokemonKey}-pokemon-status-tooltip`,
       'aria-expanded': inspectedPokemonKey === pokemonKey,
       onPointerEnter: (event) => {
-        if (event.pointerType === 'mouse') setHoveredPokemonKey(pokemonKey)
+        if (event.pointerType === 'mouse') {
+          setHoveredPokemonInspection({ key: pokemonKey, element: event.currentTarget })
+        }
       },
       onPointerLeave: (event) => {
         if (event.pointerType === 'mouse') {
-          setHoveredPokemonKey((currentKey) => (currentKey === pokemonKey ? null : currentKey))
+          setHoveredPokemonInspection((currentInspection) => (
+            currentInspection?.key === pokemonKey ? null : currentInspection
+          ))
         }
       },
       onFocus: (event) => {
-        if (event.currentTarget.matches(':focus-visible')) setFocusedPokemonKey(pokemonKey)
+        if (event.currentTarget.matches(':focus-visible')) {
+          setFocusedPokemonInspection({ key: pokemonKey, element: event.currentTarget })
+        }
       },
       onBlur: () => {
-        setFocusedPokemonKey((currentKey) => (currentKey === pokemonKey ? null : currentKey))
+        setFocusedPokemonInspection((currentInspection) => (
+          currentInspection?.key === pokemonKey ? null : currentInspection
+        ))
       },
       onKeyDown: (event) => {
         if (event.key === 'Escape') {
-          setFocusedPokemonKey(null)
+          setFocusedPokemonInspection(null)
           event.currentTarget.blur()
         }
       },
@@ -627,26 +636,6 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
               onToggle={toggleSelectedPokemon}
             />
           )}
-          {opponentPreviewPokemon.map((pokemon, index) => (
-            <BattlePokemonStatusTooltip
-              id={`competition-opponent-${index}-pokemon-status-tooltip`}
-              key={`competition-opponent-tooltip-${pokemon.battleId}`}
-              pokemon={pokemon}
-              side="opponent"
-              trainerName={opponent.name}
-              visible={inspectedPokemonKey === `opponent-${index}`}
-            />
-          ))}
-          {playerPreviewPokemon.map((pokemon, index) => (
-            <BattlePokemonStatusTooltip
-              id={`competition-player-${index}-pokemon-status-tooltip`}
-              key={`competition-player-tooltip-${pokemon.battleId}`}
-              pokemon={pokemon}
-              side="player"
-              trainerName="PLAYER_01"
-              visible={inspectedPokemonKey === `player-${index}`}
-            />
-          ))}
           <footer>
             <span><Sparkles size={15} /> {matchRules?.weather?.label} · {matchRules?.terrain?.label}</span>
             <button
@@ -661,6 +650,37 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
           </footer>
         </section>
       )}
+
+      {!isFinished && currentMatch && opponentPreviewPokemon.map((pokemon, index) => {
+        const pokemonKey = `opponent-${index}`
+        const visible = inspectedPokemonKey === pokemonKey
+        return (
+          <BattlePokemonStatusTooltip
+            anchorElement={visible ? inspectedPokemon.element : null}
+            id={`competition-${pokemonKey}-pokemon-status-tooltip`}
+            key={`competition-opponent-tooltip-${pokemon.battleId}`}
+            pokemon={pokemon}
+            side="opponent"
+            trainerName={opponent.name}
+            visible={visible}
+          />
+        )
+      })}
+      {!isFinished && currentMatch && playerPreviewPokemon.map((pokemon, index) => {
+        const pokemonKey = `player-${index}`
+        const visible = inspectedPokemonKey === pokemonKey
+        return (
+          <BattlePokemonStatusTooltip
+            anchorElement={visible ? inspectedPokemon.element : null}
+            id={`competition-${pokemonKey}-pokemon-status-tooltip`}
+            key={`competition-player-tooltip-${pokemon.battleId}`}
+            pokemon={pokemon}
+            side="player"
+            trainerName="PLAYER_01"
+            visible={visible}
+          />
+        )
+      })}
 
       {isFinished && (
         <section className={`competition-result-panel result-${competition.status}`}>

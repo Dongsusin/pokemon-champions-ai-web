@@ -3750,21 +3750,24 @@
   }
 }
 
-.app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector {
-  top: 48px;
-  bottom: auto;
+.app-shell.competition-view .competition-screen > .battle-pokemon-inspector {
   width: clamp(320px, 23vw, 380px);
-  max-height: calc(100% - 60px);
+  max-height: calc(100dvh - 24px);
 }
 
-.app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-player {
+.app-shell.competition-view .competition-screen > .battle-pokemon-inspector.is-anchored,
+.app-shell.competition-view .competition-screen > .battle-pokemon-inspector.is-anchored.side-player,
+.app-shell.competition-view .competition-screen > .battle-pokemon-inspector.is-anchored.side-opponent {
+  position: fixed;
+  top: var(--inspector-anchor-top, -10000px);
   right: auto;
-  left: clamp(24px, 16vw, 290px);
+  bottom: auto;
+  left: var(--inspector-anchor-left, -10000px);
+  transform-origin: center bottom;
 }
 
-.app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-opponent {
-  right: clamp(24px, 16vw, 290px);
-  left: auto;
+.app-shell.competition-view .competition-screen > .battle-pokemon-inspector.is-anchored.placement-below {
+  transform-origin: center top;
 }
 
 .app-shell.competition-view .competition-match-party > button {
@@ -3780,32 +3783,14 @@
 }
 
 @media (max-width: 1000px) {
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector {
-    width: min(350px, calc(100% - 32px));
-  }
-
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-player {
-    left: 18px;
-  }
-
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-opponent {
-    right: 18px;
+  .app-shell.competition-view .competition-screen > .battle-pokemon-inspector {
+    width: min(350px, calc(100vw - 24px));
   }
 }
 
 @media (max-width: 760px) {
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector,
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-player,
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-opponent {
-    top: 52px;
-    right: auto;
-    bottom: auto;
-    left: 50%;
-    transform: translate(-50%, 7px) scale(0.98);
-  }
-
-  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.is-visible {
-    transform: translate(-50%, 0) scale(1);
+  .app-shell.competition-view .competition-screen > .battle-pokemon-inspector {
+    width: min(370px, calc(100vw - 24px));
   }
 }
 

@@ -1,6 +1,14 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import PokemonSprite from './PokemonSprite'
 import { getBattleItem } from './data/shopData'
 import { typeClassName } from './data/trainingData'
+
+const TOOLTIP_VIEWPORT_MARGIN = 12
+const TOOLTIP_ANCHOR_GAP = 12
+
+function clamp(value, minimum, maximum) {
+  return Math.min(Math.max(value, minimum), maximum)
+}
 
 const BATTLE_STAT_STAGE_LABELS = [
   ['attack', '공격'],
@@ -65,20 +73,104 @@ function battleGimmickEntries(pokemon) {
   ].filter(Boolean)
 }
 
-function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible }) {
+function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible, anchorElement = null }) {
+  const tooltipRef = useRef(null)
+  const [anchorPosition, setAnchorPosition] = useState(null)
   const hpPercent = Math.ceil(hpRatio(pokemon))
   const statStages = battleStatStageEntries(pokemon)
   const conditions = battleConditionEntries(pokemon)
   const gimmicks = battleGimmickEntries(pokemon)
   const heldItem = getBattleItem(pokemon.heldItemId)
   const heldItemName = heldItem?.name || pokemon.heldItemName || '없음'
+  const isAnchored = Boolean(anchorElement)
+  const isPositioned = !isAnchored || anchorPosition?.anchorElement === anchorElement
+  const isShown = visible && isPositioned
+
+  useLayoutEffect(() => {
+    const tooltipElement = tooltipRef.current
+    if (!visible || !anchorElement || !tooltipElement || !anchorElement.isConnected) {
+      setAnchorPosition((currentPosition) => (currentPosition === null ? currentPosition : null))
+      return undefined
+    }
+
+    let animationFrameId = 0
+
+    const measurePosition = () => {
+      if (!anchorElement.isConnected || !tooltipElement.isConnected) return
+
+      const anchorRect = anchorElement.getBoundingClientRect()
+      const tooltipRect = tooltipElement.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const availableAbove = anchorRect.top - TOOLTIP_VIEWPORT_MARGIN
+      const availableBelow = viewportHeight - anchorRect.bottom - TOOLTIP_VIEWPORT_MARGIN
+      const placement = availableAbove >= tooltipRect.height + TOOLTIP_ANCHOR_GAP
+        || availableAbove >= availableBelow
+        ? 'above'
+        : 'below'
+      const maximumLeft = Math.max(
+        TOOLTIP_VIEWPORT_MARGIN,
+        viewportWidth - tooltipRect.width - TOOLTIP_VIEWPORT_MARGIN,
+      )
+      const maximumTop = Math.max(
+        TOOLTIP_VIEWPORT_MARGIN,
+        viewportHeight - tooltipRect.height - TOOLTIP_VIEWPORT_MARGIN,
+      )
+      const desiredLeft = anchorRect.left + ((anchorRect.width - tooltipRect.width) / 2)
+      const desiredTop = placement === 'above'
+        ? anchorRect.top - tooltipRect.height - TOOLTIP_ANCHOR_GAP
+        : anchorRect.bottom + TOOLTIP_ANCHOR_GAP
+      const nextPosition = {
+        anchorElement,
+        left: Math.round(clamp(desiredLeft, TOOLTIP_VIEWPORT_MARGIN, maximumLeft)),
+        top: Math.round(clamp(desiredTop, TOOLTIP_VIEWPORT_MARGIN, maximumTop)),
+        placement,
+      }
+
+      setAnchorPosition((currentPosition) => (
+        currentPosition?.anchorElement === nextPosition.anchorElement
+        && currentPosition.left === nextPosition.left
+        && currentPosition.top === nextPosition.top
+        && currentPosition.placement === nextPosition.placement
+          ? currentPosition
+          : nextPosition
+      ))
+    }
+
+    const scheduleMeasurement = () => {
+      window.cancelAnimationFrame(animationFrameId)
+      animationFrameId = window.requestAnimationFrame(measurePosition)
+    }
+
+    measurePosition()
+    window.addEventListener('resize', scheduleMeasurement)
+    window.addEventListener('scroll', scheduleMeasurement, true)
+
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(scheduleMeasurement)
+    resizeObserver?.observe(anchorElement)
+    resizeObserver?.observe(tooltipElement)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId)
+      window.removeEventListener('resize', scheduleMeasurement)
+      window.removeEventListener('scroll', scheduleMeasurement, true)
+      resizeObserver?.disconnect()
+    }
+  }, [anchorElement, visible])
 
   return (
     <aside
-      className={`battle-pokemon-inspector side-${side}${visible ? ' is-visible' : ''}`}
+      className={`battle-pokemon-inspector side-${side}${isAnchored ? ` is-anchored placement-${anchorPosition?.placement ?? 'below'}` : ''}${isShown ? ' is-visible' : ''}`}
       id={id}
+      ref={tooltipRef}
       role="tooltip"
-      aria-hidden={!visible}
+      aria-hidden={!isShown}
+      style={isAnchored ? {
+        '--inspector-anchor-left': `${isPositioned ? anchorPosition.left : -10000}px`,
+        '--inspector-anchor-top': `${isPositioned ? anchorPosition.top : -10000}px`,
+      } : undefined}
     >
       <header className="battle-pokemon-inspector-header">
         <PokemonSprite
