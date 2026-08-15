@@ -354,6 +354,10 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
   }
 }
 
+export function createBattlePreviewPokemon(entry, index = 0, teamGimmicks = []) {
+  return buildBattlePokemon(entry, index, teamGimmicks)
+}
+
 function reorderForLead(entries, leadName) {
   if (!leadName) return entries
   const leadIndex = entries.findIndex((entry) => entry.name === leadName)

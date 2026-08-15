@@ -2829,7 +2829,7 @@
   .shop-owned-artwork,
   .shop-item-icon,
   .evolution-choice-sprite,
-  .competition-match-party > span
+  .competition-match-party > button
 ) {
   min-width: 0;
   min-height: 0;
@@ -2852,7 +2852,7 @@
   .shop-owned-artwork,
   .shop-item-icon,
   .evolution-choice-sprite,
-  .competition-match-party > span
+  .competition-match-party > button
 ) > img {
   box-sizing: border-box;
   display: block;
@@ -2862,7 +2862,7 @@
   object-position: center;
 }
 
-.competition-match-party > span > img {
+.competition-match-party > button > img {
   width: 100%;
   height: 100%;
   padding: 2px;
@@ -3278,7 +3278,7 @@
   filter: drop-shadow(0 0 8px rgba(137, 241, 255, 0.82));
 }
 
-.app-shell.battle-view .battle-pokemon-inspector {
+.app-shell .battle-pokemon-inspector {
   --inspector-accent: #61e4f4;
   position: absolute;
   z-index: 74;
@@ -3304,25 +3304,25 @@
   transition: opacity 150ms ease, transform 170ms ease, visibility 0s linear 170ms;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector.side-opponent {
+.app-shell .battle-pokemon-inspector.side-opponent {
   top: clamp(74px, 14%, 108px);
   right: clamp(250px, 24vw, 450px);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector.side-player {
+.app-shell .battle-pokemon-inspector.side-player {
   bottom: clamp(24px, 7%, 58px);
   left: clamp(235px, 22vw, 420px);
   --inspector-accent: #bd8cff;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector.is-visible {
+.app-shell .battle-pokemon-inspector.is-visible {
   visibility: visible;
   opacity: 1;
   transform: translateY(0) scale(1);
   transition-delay: 0s;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header {
+.app-shell .battle-pokemon-inspector-header {
   position: relative;
   display: grid;
   min-width: 0;
@@ -3338,7 +3338,7 @@
   box-shadow: inset 0 -3px rgba(31, 24, 91, 0.34);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header::after {
+.app-shell .battle-pokemon-inspector-header::after {
   position: absolute;
   right: 17%;
   bottom: 0;
@@ -3348,7 +3348,7 @@
   background: linear-gradient(90deg, transparent, var(--inspector-accent), transparent);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-icon {
+.app-shell .battle-pokemon-inspector-icon {
   width: 46px;
   height: 46px;
   border: 1px solid rgba(224, 244, 255, 0.72);
@@ -3357,18 +3357,18 @@
   box-shadow: inset 0 0 15px rgba(83, 105, 197, 0.28), 0 3px 8px rgba(13, 15, 62, 0.3);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-icon img {
+.app-shell .battle-pokemon-inspector-icon img {
   padding: 3px;
   image-rendering: pixelated;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header > span {
+.app-shell .battle-pokemon-inspector-header > span {
   display: grid;
   min-width: 0;
   gap: 1px;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header small {
+.app-shell .battle-pokemon-inspector-header small {
   overflow: hidden;
   color: #baf5ff;
   font-size: 9px;
@@ -3378,7 +3378,7 @@
   white-space: nowrap;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header strong {
+.app-shell .battle-pokemon-inspector-header strong {
   overflow: hidden;
   font-size: clamp(15px, 1.25vw, 19px);
   font-weight: 950;
@@ -3388,14 +3388,14 @@
   white-space: nowrap;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header em {
+.app-shell .battle-pokemon-inspector-header em {
   color: rgba(241, 244, 255, 0.82);
   font-size: 9px;
   font-style: normal;
   font-weight: 800;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-header > b {
+.app-shell .battle-pokemon-inspector-header > b {
   align-self: start;
   padding: 3px 6px;
   border: 1px solid rgba(179, 239, 255, 0.64);
@@ -3406,7 +3406,7 @@
   background: rgba(16, 25, 89, 0.42);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-vitals {
+.app-shell .battle-pokemon-inspector-vitals {
   display: grid;
   gap: 7px;
   padding: 9px 12px 8px;
@@ -3414,14 +3414,14 @@
   background: linear-gradient(90deg, rgba(247, 249, 255, 0.94), rgba(225, 231, 255, 0.82));
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-types {
+.app-shell .battle-pokemon-inspector-types {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-types > b,
-.app-shell.battle-view .battle-pokemon-inspector-types > em {
+.app-shell .battle-pokemon-inspector-types > b,
+.app-shell .battle-pokemon-inspector-types > em {
   min-width: 42px;
   padding: 3px 7px;
   border-radius: 6px 2px 6px 2px;
@@ -3433,13 +3433,13 @@
   box-shadow: inset 0 -2px rgba(0, 0, 0, 0.14);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-types > em {
+.app-shell .battle-pokemon-inspector-types > em {
   margin-left: auto;
   color: #fff5d2;
   background: #795680;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-hp {
+.app-shell .battle-pokemon-inspector-hp {
   display: grid;
   min-width: 0;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3447,13 +3447,13 @@
   gap: 7px;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-hp > small {
+.app-shell .battle-pokemon-inspector-hp > small {
   color: #495c8e;
   font-size: 10px;
   font-weight: 950;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-hp > strong {
+.app-shell .battle-pokemon-inspector-hp > strong {
   min-width: 36px;
   color: #243965;
   font-size: 12px;
@@ -3461,7 +3461,7 @@
   text-align: right;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-meta {
+.app-shell .battle-pokemon-inspector-meta {
   display: grid;
   min-width: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3470,7 +3470,7 @@
   border-bottom: 1px solid rgba(86, 89, 167, 0.2);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-meta > span {
+.app-shell .battle-pokemon-inspector-meta > span {
   display: grid;
   min-width: 0;
   gap: 1px;
@@ -3481,16 +3481,16 @@
   box-shadow: inset 3px 0 var(--inspector-accent);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-meta small,
-.app-shell.battle-view .battle-pokemon-inspector-state > small,
-.app-shell.battle-view .battle-pokemon-inspector-moves header small {
+.app-shell .battle-pokemon-inspector-meta small,
+.app-shell .battle-pokemon-inspector-state > small,
+.app-shell .battle-pokemon-inspector-moves header small {
   color: #6b6b9b;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.03em;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-meta strong {
+.app-shell .battle-pokemon-inspector-meta strong {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -3503,7 +3503,7 @@
   white-space: nowrap;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-meta strong img {
+.app-shell .battle-pokemon-inspector-meta strong img {
   flex: 0 0 auto;
   width: 17px;
   height: 17px;
@@ -3511,7 +3511,7 @@
   image-rendering: pixelated;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state {
+.app-shell .battle-pokemon-inspector-state {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -3522,7 +3522,7 @@
   background: rgba(229, 232, 253, 0.7);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state > span {
+.app-shell .battle-pokemon-inspector-state > span {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -3531,8 +3531,8 @@
   overflow: hidden;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state b,
-.app-shell.battle-view .battle-pokemon-inspector-state .is-neutral {
+.app-shell .battle-pokemon-inspector-state b,
+.app-shell .battle-pokemon-inspector-state .is-neutral {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -3548,69 +3548,69 @@
   background: #d7daea;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state b > em {
+.app-shell .battle-pokemon-inspector-state b > em {
   font-size: 8px;
   font-style: normal;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state .is-raised,
-.app-shell.battle-view .battle-pokemon-inspector-state .condition-positive {
+.app-shell .battle-pokemon-inspector-state .is-raised,
+.app-shell .battle-pokemon-inspector-state .condition-positive {
   color: #176047;
   background: #bce9d7;
   box-shadow: inset 3px 0 #36ae7b;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state .is-lowered,
-.app-shell.battle-view .battle-pokemon-inspector-state .condition-danger {
+.app-shell .battle-pokemon-inspector-state .is-lowered,
+.app-shell .battle-pokemon-inspector-state .condition-danger {
   color: #852d3a;
   background: #f2c3cb;
   box-shadow: inset 3px 0 #d65667;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state .condition-status,
-.app-shell.battle-view .battle-pokemon-inspector-state .condition-warning {
+.app-shell .battle-pokemon-inspector-state .condition-status,
+.app-shell .battle-pokemon-inspector-state .condition-warning {
   color: #6a4c16;
   background: #f5df9e;
   box-shadow: inset 3px 0 #dca91d;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state .condition-accent {
+.app-shell .battle-pokemon-inspector-state .condition-accent {
   color: #26537d;
   background: #bce1f5;
   box-shadow: inset 3px 0 #45a5d3;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-state .is-gimmick {
+.app-shell .battle-pokemon-inspector-state .is-gimmick {
   color: #fff;
   background: linear-gradient(135deg, #7e58d8, #4c3aa7);
   box-shadow: inset 3px 0 var(--inspector-accent);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-moves {
+.app-shell .battle-pokemon-inspector-moves {
   display: grid;
   gap: 5px;
   padding: 7px 9px 9px;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-moves > header {
+.app-shell .battle-pokemon-inspector-moves > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-moves > header > span {
+.app-shell .battle-pokemon-inspector-moves > header > span {
   color: #7f82a7;
   font-size: 8px;
   font-weight: 900;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-moves > div {
+.app-shell .battle-pokemon-inspector-moves > div {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-move {
+.app-shell .battle-pokemon-inspector-move {
   display: grid;
   min-width: 0;
   grid-template-columns: 29px minmax(0, 1fr) auto;
@@ -3623,7 +3623,7 @@
   background: rgba(250, 250, 255, 0.86);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-move > i {
+.app-shell .battle-pokemon-inspector-move > i {
   display: grid;
   width: 29px;
   height: 25px;
@@ -3636,7 +3636,7 @@
   box-shadow: inset 0 -2px rgba(0, 0, 0, 0.16);
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-move > strong {
+.app-shell .battle-pokemon-inspector-move > strong {
   overflow: hidden;
   color: #273961;
   font-size: 10px;
@@ -3645,7 +3645,7 @@
   white-space: nowrap;
 }
 
-.app-shell.battle-view .battle-pokemon-inspector-move > em {
+.app-shell .battle-pokemon-inspector-move > em {
   color: #657099;
   font-size: 8px;
   font-style: normal;
@@ -3654,23 +3654,23 @@
 }
 
 @media (max-width: 1000px) {
-  .app-shell.battle-view .battle-pokemon-inspector {
+  .app-shell .battle-pokemon-inspector {
     width: min(350px, 46vw);
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector.side-opponent {
+  .app-shell .battle-pokemon-inspector.side-opponent {
     right: 19vw;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector.side-player {
+  .app-shell .battle-pokemon-inspector.side-player {
     left: 18vw;
   }
 }
 
 @media (max-width: 760px) {
-  .app-shell.battle-view .battle-pokemon-inspector,
-  .app-shell.battle-view .battle-pokemon-inspector.side-opponent,
-  .app-shell.battle-view .battle-pokemon-inspector.side-player {
+  .app-shell .battle-pokemon-inspector,
+  .app-shell .battle-pokemon-inspector.side-opponent,
+  .app-shell .battle-pokemon-inspector.side-player {
     top: 78px;
     right: auto;
     bottom: auto;
@@ -3680,73 +3680,132 @@
     transform: translate(-50%, 7px) scale(0.98);
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector.is-visible {
+  .app-shell .battle-pokemon-inspector.is-visible {
     transform: translate(-50%, 0) scale(1);
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-moves {
+  .app-shell .battle-pokemon-inspector-moves {
     display: none;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-header {
+  .app-shell .battle-pokemon-inspector-header {
     min-height: 52px;
     grid-template-columns: 40px minmax(0, 1fr) auto;
     padding: 5px 9px 6px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-icon {
+  .app-shell .battle-pokemon-inspector-icon {
     width: 38px;
     height: 38px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-vitals {
+  .app-shell .battle-pokemon-inspector-vitals {
     gap: 4px;
     padding: 6px 9px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-meta {
+  .app-shell .battle-pokemon-inspector-meta {
     padding: 5px 7px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-meta > span {
+  .app-shell .battle-pokemon-inspector-meta > span {
     padding: 4px 5px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-state {
+  .app-shell .battle-pokemon-inspector-state {
     padding: 5px 8px;
   }
 }
 
 @media (max-width: 560px) {
-  .app-shell.battle-view .battle-pokemon-inspector,
-  .app-shell.battle-view .battle-pokemon-inspector.side-opponent,
-  .app-shell.battle-view .battle-pokemon-inspector.side-player {
+  .app-shell .battle-pokemon-inspector,
+  .app-shell .battle-pokemon-inspector.side-opponent,
+  .app-shell .battle-pokemon-inspector.side-player {
     top: 70px;
     max-height: calc(100% - 50px);
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-header > b,
-  .app-shell.battle-view .battle-pokemon-inspector-header em {
+  .app-shell .battle-pokemon-inspector-header > b,
+  .app-shell .battle-pokemon-inspector-header em {
     display: none;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-meta {
+  .app-shell .battle-pokemon-inspector-meta {
     gap: 3px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-state {
+  .app-shell .battle-pokemon-inspector-state {
     grid-template-columns: 1fr;
     gap: 2px;
   }
 
-  .app-shell.battle-view .battle-pokemon-inspector-state > span {
+  .app-shell .battle-pokemon-inspector-state > span {
     justify-content: flex-start;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-shell.battle-view .battle-pokemon-inspector {
+  .app-shell .battle-pokemon-inspector {
     transition: none;
+  }
+}
+
+.app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector {
+  top: 48px;
+  bottom: auto;
+  width: clamp(320px, 23vw, 380px);
+  max-height: calc(100% - 60px);
+}
+
+.app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-player {
+  right: auto;
+  left: clamp(24px, 16vw, 290px);
+}
+
+.app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-opponent {
+  right: clamp(24px, 16vw, 290px);
+  left: auto;
+}
+
+.app-shell.competition-view .competition-match-party > button {
+  outline: none;
+  cursor: help;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.app-shell.competition-view .competition-match-party > button:is(:hover, :focus-visible) {
+  border-color: #dfff67;
+  box-shadow: 0 0 0 2px rgba(223, 255, 103, 0.18), 0 0 15px rgba(126, 230, 255, 0.28);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1000px) {
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector {
+    width: min(350px, calc(100% - 32px));
+  }
+
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-player {
+    left: 18px;
+  }
+
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-opponent {
+    right: 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector,
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-player,
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.side-opponent {
+    top: 52px;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    transform: translate(-50%, 7px) scale(0.98);
+  }
+
+  .app-shell.competition-view .competition-current-match-panel .battle-pokemon-inspector.is-visible {
+    transform: translate(-50%, 0) scale(1);
   }
 }
 

@@ -12,6 +12,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
+import BattlePokemonStatusTooltip from './BattlePokemonStatusTooltip'
 import TrainerSprite from './TrainerSprite'
 import {
   PLAYER_PARTICIPANT_ID,
@@ -20,6 +21,7 @@ import {
   getCurrentCompetitionMatch,
   getSortedLeagueStandings,
 } from './data/competitionData'
+import { createBattlePreviewPokemon } from './data/battleEngine'
 import { getTrainerTeam } from './data/trainerTeams'
 import { getSpeciesProfile } from './data/trainingData'
 import { getBattleRuleSummary, getPlayerBattleSelectionCount } from './data/battleRules'
@@ -57,7 +59,7 @@ function ParticipantCard({ participant, state, isOpponent = false, compact = fal
   )
 }
 
-function MatchTrainer({ participant, side, team }) {
+function MatchTrainer({ participant, side, team, getInspectorProps }) {
   return (
     <article className={`competition-match-trainer side-${side}`}>
       <span className="competition-match-trainer-tier">
@@ -73,16 +75,23 @@ function MatchTrainer({ participant, side, team }) {
         <h2>{participant.name}</h2>
       </div>
       <div className="competition-match-party" aria-label={`${participant.name} 포켓몬 팀`}>
-        {team.map((pokemon, index) => (
-          <span key={`${participant.id}-${pokemon.captureId ?? pokemon.speciesId}-${index}`}>
-            <img
-              src={pokemonIconSources(pokemon).primary}
-              alt={pokemon.name}
-              draggable="false"
-              onError={fallbackImageHandler(pokemonIconSources(pokemon).fallback)}
-            />
-          </span>
-        ))}
+        {team.map((pokemon, index) => {
+          const inspectorProps = getInspectorProps(side, index, pokemon)
+          return (
+            <button
+              {...inspectorProps}
+              type="button"
+              key={`${participant.id}-${pokemon.captureId ?? pokemon.speciesId}-${index}`}
+            >
+              <img
+                src={pokemonIconSources(pokemon).primary}
+                alt={pokemon.name}
+                draggable="false"
+                onError={fallbackImageHandler(pokemonIconSources(pokemon).fallback)}
+              />
+            </button>
+          )
+        })}
       </div>
     </article>
   )
@@ -101,7 +110,7 @@ function BattleRuleBoard({ rules }) {
   )
 }
 
-function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label, onToggle }) {
+function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label, getInspectorProps, onToggle }) {
   return (
     <section className="competition-team-selection" aria-label={label}>
       <header>
@@ -113,8 +122,10 @@ function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label
           const selectedIndex = selectedCaptureIds.indexOf(entry.captureId)
           const selected = selectedIndex >= 0
           const sources = pokemonIconSources(entry)
+          const inspectorProps = getInspectorProps('player', index, entry)
           return (
             <button
+              {...inspectorProps}
               className={selected ? 'selected' : ''}
               type="button"
               key={entry.captureId}
@@ -455,6 +466,16 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
   const player = getCompetitionParticipant(competition, PLAYER_PARTICIPANT_ID)
   const opponent = currentMatch?.opponent
   const opponentTeam = opponent ? getTrainerTeam(opponent.name, opponent.teamNumber) : null
+  const playerPreviewPokemon = useMemo(
+    () => competition.playerTeam.map((pokemon, index) => createBattlePreviewPokemon(pokemon, index)),
+    [competition.playerTeam],
+  )
+  const opponentPreviewPokemon = useMemo(
+    () => (opponentTeam?.pokemon ?? []).map((pokemon, index) => (
+      createBattlePreviewPokemon(pokemon, index, opponentTeam?.battleGimmicks ?? [])
+    )),
+    [opponentTeam],
+  )
   const isTournament = competition.mode === 'tournament'
   const ModeIcon = isTournament ? Trophy : UsersRound
   const roundLabel = getCompetitionRoundLabel(competition)
@@ -469,9 +490,12 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
   const requiresPokemonSelection = Boolean(matchRules && requiredPokemonCount > 0)
   const pokemonSelectionLabel = matchRules?.teamRule?.id === 'pick3'
     ? 'SELECT BATTLE TEAM'
-    : 'SELECT LEAD POKÉMON'
+    : '선발 포켓몬 선택'
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
   const [isBracketOpen, setIsBracketOpen] = useState(false)
+  const [hoveredPokemonKey, setHoveredPokemonKey] = useState(null)
+  const [focusedPokemonKey, setFocusedPokemonKey] = useState(null)
+  const inspectedPokemonKey = hoveredPokemonKey ?? focusedPokemonKey
 
   useEffect(() => {
     setSelectedCaptureIds(competition.playerTeam
@@ -481,6 +505,8 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
 
   useEffect(() => {
     setIsBracketOpen(false)
+    setHoveredPokemonKey(null)
+    setFocusedPokemonKey(null)
   }, [competition.id, competition.round, competition.status])
 
   useEffect(() => {
@@ -500,6 +526,35 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
       if (currentIds.length >= requiredPokemonCount) return [...currentIds.slice(1), captureId]
       return [...currentIds, captureId]
     })
+  }
+
+  const getInspectorProps = (side, index, pokemon) => {
+    const pokemonKey = `${side}-${index}`
+    return {
+      'aria-label': `${pokemon.name} 정보 보기`,
+      'aria-describedby': `competition-${pokemonKey}-pokemon-status-tooltip`,
+      'aria-expanded': inspectedPokemonKey === pokemonKey,
+      onPointerEnter: (event) => {
+        if (event.pointerType === 'mouse') setHoveredPokemonKey(pokemonKey)
+      },
+      onPointerLeave: (event) => {
+        if (event.pointerType === 'mouse') {
+          setHoveredPokemonKey((currentKey) => (currentKey === pokemonKey ? null : currentKey))
+        }
+      },
+      onFocus: (event) => {
+        if (event.currentTarget.matches(':focus-visible')) setFocusedPokemonKey(pokemonKey)
+      },
+      onBlur: () => {
+        setFocusedPokemonKey((currentKey) => (currentKey === pokemonKey ? null : currentKey))
+      },
+      onKeyDown: (event) => {
+        if (event.key === 'Escape') {
+          setFocusedPokemonKey(null)
+          event.currentTarget.blur()
+        }
+      },
+    }
   }
 
   return (
@@ -543,24 +598,55 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
             <strong>{roundLabel}</strong>
           </div>
           <div className="competition-matchup-stage">
-            <MatchTrainer participant={player} side="player" team={competition.playerTeam} />
+            <MatchTrainer
+              participant={player}
+              side="player"
+              team={playerPreviewPokemon}
+              getInspectorProps={getInspectorProps}
+            />
             <div className="competition-versus-mark">
               <small>MATCH</small>
               <strong>VS</strong>
               <span>{matchRules?.teamRule?.shortLabel} · {matchRules?.format?.shortLabel}</span>
             </div>
-            <MatchTrainer participant={opponent} side="opponent" team={opponentTeam.pokemon} />
+            <MatchTrainer
+              participant={opponent}
+              side="opponent"
+              team={opponentPreviewPokemon}
+              getInspectorProps={getInspectorProps}
+            />
           </div>
           <BattleRuleBoard rules={matchRules} />
           {requiresPokemonSelection && (
             <BattleTeamSelection
-              pokemon={competition.playerTeam}
+              pokemon={playerPreviewPokemon}
               selectedCaptureIds={selectedCaptureIds}
               requiredCount={requiredPokemonCount}
               label={pokemonSelectionLabel}
+              getInspectorProps={getInspectorProps}
               onToggle={toggleSelectedPokemon}
             />
           )}
+          {opponentPreviewPokemon.map((pokemon, index) => (
+            <BattlePokemonStatusTooltip
+              id={`competition-opponent-${index}-pokemon-status-tooltip`}
+              key={`competition-opponent-tooltip-${pokemon.battleId}`}
+              pokemon={pokemon}
+              side="opponent"
+              trainerName={opponent.name}
+              visible={inspectedPokemonKey === `opponent-${index}`}
+            />
+          ))}
+          {playerPreviewPokemon.map((pokemon, index) => (
+            <BattlePokemonStatusTooltip
+              id={`competition-player-${index}-pokemon-status-tooltip`}
+              key={`competition-player-tooltip-${pokemon.battleId}`}
+              pokemon={pokemon}
+              side="player"
+              trainerName="PLAYER_01"
+              visible={inspectedPokemonKey === `player-${index}`}
+            />
+          ))}
           <footer>
             <span><Sparkles size={15} /> {matchRules?.weather?.label} · {matchRules?.terrain?.label}</span>
             <button
