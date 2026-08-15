@@ -1,41 +1,55 @@
 export const BATTLE_WEATHERS = [
-  { id: 'clear', label: '맑음', shortLabel: '맑음' },
-  { id: 'sun', label: '쾌청', shortLabel: '쾌청' },
-  { id: 'rain', label: '비', shortLabel: '비' },
-  { id: 'sandstorm', label: '모래바람', shortLabel: '모래바람' },
-  { id: 'snow', label: '설경', shortLabel: '눈' },
-  { id: 'fog', label: '안개', shortLabel: '안개' },
+  { id: 'clear', label: '맑음', shortLabel: '맑음', description: '특별한 날씨 보정이 적용되지 않는 기본 상태입니다.' },
+  { id: 'sun', label: '쾌청', shortLabel: '쾌청', description: '불꽃타입 기술은 1.5배, 물타입 기술은 0.5배가 됩니다. 솔라빔과 솔라블레이드는 즉시 발동합니다.' },
+  { id: 'rain', label: '비', shortLabel: '비', description: '물타입 기술은 1.5배, 불꽃타입 기술은 0.5배가 됩니다. 번개와 폭풍은 반드시 명중합니다.' },
+  { id: 'sandstorm', label: '모래바람', shortLabel: '모래바람', description: '바위타입의 특수방어가 1.5배가 되며, 바위·땅·강철타입 이외의 포켓몬은 매 턴 피해를 입습니다.' },
+  { id: 'snow', label: '설경', shortLabel: '눈', description: '얼음타입의 방어가 1.5배가 되며, 눈보라는 반드시 명중합니다.' },
+  { id: 'fog', label: '안개', shortLabel: '안개', description: '대부분 기술의 명중률이 크게 낮아집니다.' },
 ]
 
 export const BATTLE_TERRAINS = [
-  { id: 'neutral', label: '일반 필드', shortLabel: '일반' },
-  { id: 'grassy', label: '그래스필드', shortLabel: '그래스' },
-  { id: 'electric', label: '일렉트릭필드', shortLabel: '일렉트릭' },
-  { id: 'psychic', label: '사이코필드', shortLabel: '사이코' },
-  { id: 'misty', label: '미스트필드', shortLabel: '미스트' },
+  { id: 'neutral', label: '일반 필드', shortLabel: '일반', description: '특별한 필드 보정이 적용되지 않는 기본 상태입니다.' },
+  { id: 'grassy', label: '그래스필드', shortLabel: '그래스', description: '땅에 있는 포켓몬의 풀타입 기술이 1.3배가 되고 매 턴 HP를 회복합니다. 일부 땅 기술의 위력은 절반이 됩니다.' },
+  { id: 'electric', label: '일렉트릭필드', shortLabel: '일렉트릭', description: '땅에 있는 포켓몬의 전기타입 기술이 1.3배가 되며 잠들지 않습니다.' },
+  { id: 'psychic', label: '사이코필드', shortLabel: '사이코', description: '땅에 있는 포켓몬의 에스퍼타입 기술이 1.3배가 되며 상대의 우선도 기술을 받지 않습니다.' },
+  { id: 'misty', label: '미스트필드', shortLabel: '미스트', description: '땅에 있는 포켓몬은 상태이상과 혼란에 걸리지 않으며 드래곤타입 기술의 피해를 절반만 받습니다.' },
 ]
 
 export const BATTLE_FORMATS = [
-  { id: 'single', label: '싱글배틀', shortLabel: '싱글', activeSlots: 1, actionSlots: 1 },
-  { id: 'double', label: '더블배틀', shortLabel: '더블', activeSlots: 2, actionSlots: 2 },
-  { id: 'triple', label: '트리플배틀', shortLabel: '트리플', activeSlots: 3, actionSlots: 3 },
-  { id: 'rotation', label: '로테이션배틀', shortLabel: '로테이션', activeSlots: 3, actionSlots: 1, rotation: true },
-  { id: 'inverse', label: '거꾸로배틀', shortLabel: '거꾸로', activeSlots: 1, actionSlots: 1, inverse: true },
+  { id: 'single', label: '싱글배틀', shortLabel: '싱글', activeSlots: 1, actionSlots: 1, description: '서로 포켓몬 1마리씩 내보내 대전합니다.' },
+  { id: 'double', label: '더블배틀', shortLabel: '더블', activeSlots: 2, actionSlots: 2, description: '서로 포켓몬 2마리씩 내보내며, 각 포켓몬의 행동과 대상을 선택합니다.' },
+  { id: 'triple', label: '트리플배틀', shortLabel: '트리플', activeSlots: 3, actionSlots: 3, description: '서로 포켓몬 3마리씩 내보내며, 각 포켓몬의 행동과 대상을 선택합니다.' },
+  { id: 'rotation', label: '로테이션배틀', shortLabel: '로테이션', activeSlots: 3, actionSlots: 1, rotation: true, description: '포켓몬 3마리를 내보낸 뒤 매 턴 전열을 회전하고, 앞에 선 포켓몬 1마리만 행동합니다.' },
+  { id: 'inverse', label: '거꾸로배틀', shortLabel: '거꾸로', activeSlots: 1, actionSlots: 1, inverse: true, description: '타입 상성이 반대로 적용됩니다. 효과가 굉장한 상성은 반감되고, 반감과 무효 상성은 약점이 됩니다.' },
 ]
 
 export const BATTLE_TEAM_RULES = [
-  { id: 'full', label: '6마리 전원전', shortLabel: '6 VS 6', battleSize: 6 },
-  { id: 'pick3', label: '6마리 중 3마리 선출', shortLabel: '6→3', battleSize: 3 },
+  { id: 'full', label: '6마리 전원전', shortLabel: '6 VS 6', battleSize: 6, description: '등록한 포켓몬 6마리를 모두 사용합니다.' },
+  { id: 'pick3', label: '6마리 중 3마리 선출', shortLabel: '6→3', battleSize: 3, description: '등록한 포켓몬 6마리 중 대전에 참가할 3마리를 선택합니다.' },
 ]
 
 export const BATTLE_GIMMICK_RESTRICTIONS = [
-  { id: null, label: '제한 없음', shortLabel: '기믹 제한 없음' },
-  { id: 'mega', label: '메가진화 사용 불가', shortLabel: '메가진화 금지' },
-  { id: 'zmove', label: 'Z기술 사용 불가', shortLabel: 'Z기술 금지' },
-  { id: 'dynamax', label: '다이맥스 사용 불가', shortLabel: '다이맥스 금지' },
-  { id: 'tera', label: '테라스탈 사용 불가', shortLabel: '테라스탈 금지' },
-  { id: 'primal', label: '원시회귀 사용 불가', shortLabel: '원시회귀 금지' },
+  { id: null, label: '제한 없음', shortLabel: '기믹 제한 없음', description: '이번 대전에서는 준비한 모든 배틀 기믹을 사용할 수 있습니다.' },
+  { id: 'mega', label: '메가진화 사용 불가', shortLabel: '메가진화 금지', description: '이번 대전에서는 메가진화를 사용할 수 없습니다. 다른 배틀 기믹은 사용할 수 있습니다.' },
+  { id: 'zmove', label: 'Z기술 사용 불가', shortLabel: 'Z기술 금지', description: '이번 대전에서는 Z기술을 사용할 수 없습니다. 다른 배틀 기믹은 사용할 수 있습니다.' },
+  { id: 'dynamax', label: '다이맥스 사용 불가', shortLabel: '다이맥스 금지', description: '이번 대전에서는 다이맥스와 거다이맥스를 사용할 수 없습니다. 다른 배틀 기믹은 사용할 수 있습니다.' },
+  { id: 'tera', label: '테라스탈 사용 불가', shortLabel: '테라스탈 금지', description: '이번 대전에서는 테라스탈을 사용할 수 없습니다. 다른 배틀 기믹은 사용할 수 있습니다.' },
+  { id: 'primal', label: '원시회귀 사용 불가', shortLabel: '원시회귀 금지', description: '이번 대전에서는 원시회귀를 사용할 수 없습니다. 다른 배틀 기믹은 사용할 수 있습니다.' },
 ]
+
+const BATTLE_RULE_COLLECTIONS = {
+  weather: BATTLE_WEATHERS,
+  terrain: BATTLE_TERRAINS,
+  format: BATTLE_FORMATS,
+  team: BATTLE_TEAM_RULES,
+  gimmick: BATTLE_GIMMICK_RESTRICTIONS,
+}
+
+export function getBattleRuleDescription(kind, rule) {
+  if (!rule) return ''
+  if (rule.description) return rule.description
+  return BATTLE_RULE_COLLECTIONS[kind]?.find((entry) => entry.id === rule.id)?.description ?? ''
+}
 
 function randomEntry(entries, random) {
   return entries[Math.floor(random() * entries.length)]

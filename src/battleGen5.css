@@ -1945,6 +1945,9 @@
   right: 0;
   left: 0;
   z-index: 80;
+  grid-template-columns: minmax(180px, 0.78fr) auto minmax(0, 1.5fr);
+  column-gap: clamp(8px, 1.2vw, 18px);
+  align-items: start;
   min-height: 0;
   padding: 10px clamp(13px, 2.2vw, 34px);
   border: 0;
@@ -1955,6 +1958,7 @@
 
 .app-shell.battle-view .battle-title-lockup,
 .app-shell.battle-view .battle-game-turn,
+.app-shell.battle-view .battle-header-cluster,
 .app-shell.battle-view .battle-header-actions {
   pointer-events: auto;
 }
@@ -1988,7 +1992,16 @@
   transform: translateY(2px);
 }
 
+.app-shell.battle-view .battle-header-cluster {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-self: end;
+  gap: 7px;
+}
+
 .app-shell.battle-view .battle-header-actions {
+  flex: 0 0 auto;
   justify-self: end;
   align-self: start;
   gap: 7px;
@@ -3855,30 +3868,184 @@
 }
 
 .app-shell.battle-view .battle-rule-hud {
-  position: absolute;
-  top: 58px;
-  right: 18px;
-  z-index: 54;
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: 4;
   display: flex;
-  max-width: 54%;
-  gap: 5px;
+  min-width: 0;
+  max-width: none;
+  align-items: stretch;
+  gap: 4px;
   transform: none;
 }
 
-.app-shell.battle-view .battle-rule-hud > span {
-  overflow: hidden;
-  padding: 5px 9px;
+.app-shell.battle-view .battle-rule-badge {
+  position: relative;
+  display: grid;
+  min-width: 58px;
+  max-width: 126px;
+  min-height: 34px;
+  align-content: center;
+  gap: 1px;
+  overflow: visible;
+  padding: 3px 8px 4px;
   border: 1px solid rgba(230, 245, 234, 0.66);
-  border-radius: 4px 10px;
+  border-radius: 4px 9px 4px 4px;
   color: #f8f8e5;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   background: rgba(10, 31, 48, 0.82);
   box-shadow: 2px 3px 0 rgba(4, 13, 26, 0.48);
   backdrop-filter: blur(5px);
+  cursor: help;
+}
+
+.app-shell.battle-view .battle-rule-badge::after {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 3px;
+  width: 2px;
+  border-radius: 2px;
+  content: "";
+  background: #75e8e7;
+}
+
+.app-shell.battle-view .battle-rule-badge.rule-terrain::after {
+  background: #9be466;
+}
+
+.app-shell.battle-view .battle-rule-badge.rule-format::after {
+  background: #ffd76c;
+}
+
+.app-shell.battle-view .battle-rule-badge.rule-gimmick::after {
+  background: #e58cff;
+}
+
+.app-shell.battle-view .battle-rule-badge-category {
+  overflow: hidden;
+  padding-left: 3px;
+  color: #84dfe4;
+  font-size: 6px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell.battle-view .battle-rule-badge > strong {
+  overflow: hidden;
+  padding-left: 3px;
+  color: #f8f8e5;
+  font-size: 8px;
+  font-weight: 950;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell.battle-view .battle-rule-badge:focus-visible {
+  outline: 2px solid #ecff7a;
+  outline-offset: 2px;
+}
+
+.app-shell.battle-view .battle-rule-tooltip {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  z-index: 120;
+  display: grid;
+  width: 238px;
+  max-width: calc(100vw - 24px);
+  gap: 4px;
+  visibility: hidden;
+  padding: 10px 12px 11px;
+  border: 2px solid rgba(235, 245, 226, 0.94);
+  outline: 2px solid rgba(22, 58, 76, 0.9);
+  border-radius: 5px 14px 5px 5px;
+  color: #eef6e9;
+  text-align: left;
+  opacity: 0;
+  background:
+    linear-gradient(135deg, rgba(39, 86, 105, 0.97), rgba(12, 32, 53, 0.98) 62%),
+    #10283c;
+  box-shadow: 5px 7px 0 rgba(4, 13, 26, 0.52), inset 0 0 0 1px rgba(117, 232, 231, 0.24);
+  pointer-events: none;
+  transform: translate(-50%, -5px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end;
+}
+
+.app-shell.battle-view .battle-rule-tooltip::before {
+  position: absolute;
+  top: -7px;
+  left: calc(50% - 6px);
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid rgba(235, 245, 226, 0.94);
+  border-left: 2px solid rgba(235, 245, 226, 0.94);
+  content: "";
+  background: #26556a;
+  transform: rotate(45deg);
+}
+
+.app-shell.battle-view .battle-rule-tooltip > small {
+  color: #7de8e6;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.app-shell.battle-view .battle-rule-tooltip > strong {
+  color: #fffde9;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.app-shell.battle-view .battle-rule-tooltip > span {
+  color: #d4e4df;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.app-shell.battle-view .battle-rule-badge:is(:hover, :focus-visible) .battle-rule-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 0s;
+}
+
+.app-shell.battle-view .battle-rule-badge:first-child .battle-rule-tooltip {
+  right: auto;
+  left: 0;
+  transform: translate(0, -5px);
+}
+
+.app-shell.battle-view .battle-rule-badge:first-child .battle-rule-tooltip::before {
+  left: 24px;
+}
+
+.app-shell.battle-view .battle-rule-badge:first-child:is(:hover, :focus-visible) .battle-rule-tooltip {
+  transform: translate(0, 0);
+}
+
+.app-shell.battle-view .battle-rule-badge:nth-last-child(-n+2) .battle-rule-tooltip {
+  right: 0;
+  left: auto;
+  transform: translate(0, -5px);
+}
+
+.app-shell.battle-view .battle-rule-badge:nth-last-child(-n+2) .battle-rule-tooltip::before {
+  right: 24px;
+  left: auto;
+}
+
+.app-shell.battle-view .battle-rule-badge:nth-last-child(-n+2):is(:hover, :focus-visible) .battle-rule-tooltip {
+  transform: translate(0, 0);
 }
 
 .app-shell.battle-view .battle-target-selector,
@@ -4061,11 +4228,17 @@
 
 @media (max-width: 980px) {
   .app-shell.battle-view .battle-rule-hud {
-    top: 52px;
-    max-width: 78%;
+    gap: 3px;
   }
 
-  .app-shell.battle-view .battle-rule-hud > span:nth-child(4) {
+  .app-shell.battle-view .battle-rule-badge {
+    min-width: 48px;
+    max-width: 94px;
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .app-shell.battle-view .battle-rule-badge-category {
     display: none;
   }
 
@@ -4075,8 +4248,27 @@
 }
 
 @media (max-width: 720px) {
-  .app-shell.battle-view .battle-rule-hud {
-    display: none;
+  .app-shell.battle-view .battle-header-cluster {
+    gap: 4px;
+  }
+
+  .app-shell.battle-view .battle-rule-badge {
+    min-width: 38px;
+    max-width: 72px;
+    min-height: 30px;
+    padding: 3px 5px;
+  }
+
+  .app-shell.battle-view .battle-rule-badge.rule-gimmick {
+    max-width: 86px;
+  }
+
+  .app-shell.battle-view .battle-rule-badge > strong {
+    font-size: 7px;
+  }
+
+  .app-shell.battle-view .battle-rule-tooltip {
+    width: 210px;
   }
 
   .app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-status-anchor.slot-1,

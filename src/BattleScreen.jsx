@@ -53,6 +53,7 @@ import {
   getMoveAnimationProfile,
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
+import { getBattleRuleDescription } from './data/battleRules'
 import { getBattleItem } from './data/shopData'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
@@ -730,6 +731,21 @@ function cueTone(cue) {
   if (cue.phase === 'faint' || cue.phase === 'impact') return cue.targetSideId === 'player' ? 'opponent' : 'player'
   if (cue.phase === 'gimmick') return 'gimmick'
   return cue.sideId ?? 'neutral'
+}
+
+function BattleRuleBadge({ id, category, label, description }) {
+  const tooltipId = `battle-rule-${id}-tooltip`
+  return (
+    <span className={`battle-rule-badge rule-${id}`} tabIndex={0} aria-describedby={tooltipId}>
+      <span className="battle-rule-badge-category">{category}</span>
+      <strong>{label}</strong>
+      <span className="battle-rule-tooltip" id={tooltipId} role="tooltip">
+        <small>{category}</small>
+        <strong>{label}</strong>
+        <span>{description}</span>
+      </span>
+    </span>
+  )
 }
 
 function BattleStatusPanel({ pokemon, side, trainerName }) {
@@ -1597,6 +1613,12 @@ function BattleScreen({
   const terrainTurns = battle.environment?.terrainTurns
   const baseWeatherLabel = battle.environment?.baseWeather?.label ?? battle.rules.weather.label
   const baseTerrainLabel = battle.environment?.baseTerrain?.label ?? battle.rules.terrain.label
+  const weatherDescription = `${getBattleRuleDescription('weather', battle.rules.weather)} ${Number.isFinite(weatherTurns)
+    ? `현재 임시 날씨이며 ${weatherTurns}턴 뒤 기본 날씨인 ${baseWeatherLabel} 상태로 돌아갑니다.`
+    : `이 대전의 기본 날씨는 ${baseWeatherLabel}입니다.`}`
+  const terrainDescription = `${getBattleRuleDescription('terrain', battle.rules.terrain)} ${Number.isFinite(terrainTurns)
+    ? `현재 임시 필드이며 ${terrainTurns}턴 뒤 기본 필드인 ${baseTerrainLabel} 상태로 돌아갑니다.`
+    : `이 대전의 기본 필드는 ${baseTerrainLabel}입니다.`}`
 
   return (
     <main className={`battle-game-screen cue-${turnCue?.phase ?? 'command'} actor-${turnCue?.sideId ?? 'none'} target-${turnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}>
@@ -1609,18 +1631,46 @@ function BattleScreen({
           <small>TURN</small>
           <strong>{Math.max(1, battle.turn)}</strong>
         </div>
-        <div className="battle-header-actions">
-          <span>{playerActive.name} VS {opponentActive.name}</span>
-          <button
-            type="button"
-            aria-label={soundEnabled ? '배틀 사운드 끄기' : '배틀 사운드 켜기'}
-            onClick={() => {
-              battleAudioRef.current?.playMenu('select')
-              onToggleSound?.()
-            }}
-          >
-            {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
-          </button>
+        <div className="battle-header-cluster">
+          <div className="battle-rule-hud" aria-label="현재 배틀 규칙">
+            <BattleRuleBadge
+              id="weather"
+              category="날씨"
+              label={`${battle.rules.weather.label}${Number.isFinite(weatherTurns) ? ` · ${weatherTurns}T` : ''}`}
+              description={weatherDescription}
+            />
+            <BattleRuleBadge
+              id="terrain"
+              category="필드"
+              label={`${battle.rules.terrain.label}${Number.isFinite(terrainTurns) ? ` · ${terrainTurns}T` : ''}`}
+              description={terrainDescription}
+            />
+            <BattleRuleBadge
+              id="format"
+              category="배틀"
+              label={battle.rules.format.label}
+              description={getBattleRuleDescription('format', battle.rules.format)}
+            />
+            <BattleRuleBadge
+              id="gimmick"
+              category="기믹"
+              label={battle.rules.gimmickRestriction.label}
+              description={getBattleRuleDescription('gimmick', battle.rules.gimmickRestriction)}
+            />
+          </div>
+          <div className="battle-header-actions">
+            <span>{playerActive.name} VS {opponentActive.name}</span>
+            <button
+              type="button"
+              aria-label={soundEnabled ? '배틀 사운드 끄기' : '배틀 사운드 켜기'}
+              onClick={() => {
+                battleAudioRef.current?.playMenu('select')
+                onToggleSound?.()
+              }}
+            >
+              {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1630,17 +1680,6 @@ function BattleScreen({
           if (event.pointerType !== 'mouse') setPinnedPokemonSide(null)
         }}
       >
-        <div className="battle-rule-hud" aria-label="현재 배틀 규칙">
-          <span title={`기본 날씨: ${baseWeatherLabel}`}>
-            {battle.rules.weather.label}{Number.isFinite(weatherTurns) ? ` · ${weatherTurns}T` : ''}
-          </span>
-          <span title={`기본 필드: ${baseTerrainLabel}`}>
-            {battle.rules.terrain.label}{Number.isFinite(terrainTurns) ? ` · ${terrainTurns}T` : ''}
-          </span>
-          <span>{battle.rules.format.label}</span>
-          <span>{battle.rules.gimmickRestriction.label}</span>
-        </div>
-
         {opponentActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('opponent', turnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
             <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} />
