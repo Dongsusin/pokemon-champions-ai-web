@@ -2987,6 +2987,31 @@
   transform: none !important;
 }
 
+.app-shell.battle-view .battle-overview-grid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  overflow-y: auto;
+  scrollbar-color: #7396a4 #10283c;
+}
+
+.app-shell.battle-view .battle-overview-grid.is-single {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.app-shell.battle-view .battle-overview-side {
+  display: grid;
+  grid-template-columns: repeat(var(--overview-columns), minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-shell.battle-view .battle-overview-grid.is-single .battle-overview-side {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .app-shell.battle-view .battle-overview-grid article {
   grid-template-rows: auto auto auto minmax(30px, 1fr);
   align-content: stretch;
@@ -2994,8 +3019,80 @@
   padding: 7px 9px;
 }
 
+.app-shell.battle-view .battle-overview-grid:not(.is-single) article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(25px, 1fr);
+  gap: 3px 5px;
+  padding: 5px 7px;
+}
+
+.app-shell.battle-view .battle-overview-grid:not(.is-single) .battle-overview-heading {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.app-shell.battle-view .battle-overview-grid:not(.is-single) .battle-overview-types {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.app-shell.battle-view .battle-overview-grid:not(.is-single) .battle-overview-types b {
+  min-width: 29px;
+  padding-right: 4px;
+  padding-left: 4px;
+  font-size: 6px;
+}
+
+.app-shell.battle-view .battle-overview-grid:not(.is-single) .battle-overview-hp-line {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.app-shell.battle-view .battle-overview-grid:not(.is-single) .battle-overview-stat-stages {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
 .app-shell.battle-view .battle-overview-heading {
+  position: relative;
   min-width: 0;
+}
+
+.app-shell.battle-view .battle-overview-heading > em {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #183541;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 1000;
+  letter-spacing: 0.05em;
+  background: #dfff6d;
+}
+
+.app-shell.battle-view .battle-overview-grid article.is-rotation-lead .battle-overview-heading {
+  padding-right: 42px;
+}
+
+.app-shell.battle-view .battle-overview-grid article.is-rotation-lead {
+  border-color: #edff9d;
+  box-shadow: 0 0 0 2px #36515e, 0 0 12px rgba(215, 255, 108, 0.32);
+}
+
+.app-shell.battle-view .battle-overview-empty {
+  display: grid;
+  min-height: 54px;
+  place-items: center;
+  border: 2px dashed rgba(205, 218, 211, 0.34);
+  border-radius: 5px 13px;
+  color: #9db3b7;
+  font-size: 8px;
+  font-weight: 900;
+  background: rgba(17, 47, 72, 0.55);
 }
 
 .app-shell.battle-view .battle-overview-hp-line {
@@ -3085,6 +3182,24 @@
 }
 
 @media (max-width: 560px) {
+  .app-shell.battle-view .battle-overview-grid,
+  .app-shell.battle-view .battle-overview-grid.is-single {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .app-shell.battle-view .battle-overview-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell.battle-view .battle-overview-side + .battle-overview-side {
+    margin-top: 5px;
+  }
+
+  .app-shell.battle-view .battle-overview-grid article {
+    min-height: 88px;
+  }
+
   .app-shell.battle-view .battle-overview-stat-stages {
     grid-template-columns: 1fr;
     gap: 2px;

@@ -1132,8 +1132,17 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible })
 }
 
 function BattleOverviewMenu({ battle, onBack, onPreview }) {
-  const player = getActivePokemon(battle, 'player')
-  const opponent = getActivePokemon(battle, 'opponent')
+  const sides = [
+    { id: 'player', label: '아군', side: battle.player },
+    { id: 'opponent', label: '상대', side: battle.opponent },
+  ].map((entry) => ({
+    ...entry,
+    remaining: entry.side.team.filter((member) => !member.fainted && member.hp > 0).length,
+    fieldPokemon: (entry.side.activeIndexes ?? [entry.side.activeIndex])
+      .map((teamIndex, fieldSlot) => ({ pokemon: entry.side.team[teamIndex], fieldSlot }))
+      .filter(({ pokemon }) => pokemon && !pokemon.fainted && pokemon.hp > 0),
+  }))
+  const overviewColumns = Math.max(1, ...sides.map(({ fieldPokemon }) => fieldPokemon.length))
 
   return (
     <section className="battle-overview-menu">
@@ -1141,46 +1150,53 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
         <button type="button" onPointerEnter={onPreview} onClick={onBack}><ChevronLeft size={17} /> 행동 선택</button>
         <span>TURN {Math.max(1, battle.turn)} · 배틀 현황</span>
       </header>
-      <div className="battle-overview-grid">
-        {[
-          { id: 'player', label: '아군', pokemon: player, remaining: battle.player.team.filter((member) => !member.fainted).length },
-          { id: 'opponent', label: '상대', pokemon: opponent, remaining: battle.opponent.team.filter((member) => !member.fainted).length },
-        ].map(({ id, label, pokemon, remaining }) => {
-          const hpPercent = Math.ceil(hpRatio(pokemon))
-          const statStages = battleStatStageEntries(pokemon)
+      <div
+        className={`battle-overview-grid${overviewColumns === 1 ? ' is-single' : ''}`}
+        style={{ '--overview-columns': overviewColumns }}
+      >
+        {sides.map(({ id, label, side, remaining, fieldPokemon }) => (
+          <div className={`battle-overview-side side-${id}`} role="list" aria-label={`${label} 출전 포켓몬`} key={id}>
+            {fieldPokemon.map(({ pokemon, fieldSlot }) => {
+              const hpPercent = Math.ceil(hpRatio(pokemon))
+              const statStages = battleStatStageEntries(pokemon)
+              const isRotationLead = battle.rules.format.rotation && fieldSlot === (side.rotationSlot ?? 0)
 
-          return (
-            <article className={`side-${id}`} key={id}>
-              <div className="battle-overview-heading">
-                <small>{label} · 남은 포켓몬 {remaining}</small>
-                <strong>{pokemon.name}</strong>
-              </div>
-              <span className="battle-overview-types">
-                {pokemon.types.map((type) => <b className={`type-${typeClassName(type)}`} key={type}>{type}</b>)}
-              </span>
-              <div className="battle-overview-hp-line">
-                <span className={`battle-overview-hp tone-${hpTone(pokemon)}`}>
-                  <i style={{ width: `${hpRatio(pokemon)}%` }} />
-                </span>
-                <em>HP {hpPercent}%{pokemon.status ? ` · ${pokemon.status.label}` : ''}</em>
-              </div>
-              <div className="battle-overview-stat-stages" aria-label={`${pokemon.name} 능력 변화`}>
-                <small>능력 변화</small>
-                <span>
-                  {statStages.length > 0 ? statStages.map(({ id: statId, label: statLabel, stage }) => (
-                    <b
-                      className={stage > 0 ? 'is-raised' : 'is-lowered'}
-                      key={statId}
-                      title={`${statLabel} ${Math.abs(stage)}단계 ${stage > 0 ? '상승' : '하락'}`}
-                    >
-                      {statLabel}<em>{stage > 0 ? '+' : ''}{stage}</em>
-                    </b>
-                  )) : <em className="is-neutral">변화 없음</em>}
-                </span>
-              </div>
-            </article>
-          )
-        })}
+              return (
+                <article className={isRotationLead ? 'is-rotation-lead' : ''} role="listitem" key={pokemon.battleId}>
+                  <div className="battle-overview-heading">
+                    <small>{label} · 출전 {fieldSlot + 1} · 잔여 {remaining}</small>
+                    <strong>{pokemon.name}</strong>
+                    {isRotationLead && <em>ACTIVE</em>}
+                  </div>
+                  <span className="battle-overview-types">
+                    {pokemon.types.map((type) => <b className={`type-${typeClassName(type)}`} key={type}>{type}</b>)}
+                  </span>
+                  <div className="battle-overview-hp-line">
+                    <span className={`battle-overview-hp tone-${hpTone(pokemon)}`}>
+                      <i style={{ width: `${hpRatio(pokemon)}%` }} />
+                    </span>
+                    <em>HP {hpPercent}%{pokemon.status ? ` · ${pokemon.status.label}` : ''}</em>
+                  </div>
+                  <div className="battle-overview-stat-stages" aria-label={`${pokemon.name} 능력 변화`}>
+                    <small>능력 변화</small>
+                    <span>
+                      {statStages.length > 0 ? statStages.map(({ id: statId, label: statLabel, stage }) => (
+                        <b
+                          className={stage > 0 ? 'is-raised' : 'is-lowered'}
+                          key={statId}
+                          title={`${statLabel} ${Math.abs(stage)}단계 ${stage > 0 ? '상승' : '하락'}`}
+                        >
+                          {statLabel}<em>{stage > 0 ? '+' : ''}{stage}</em>
+                        </b>
+                      )) : <em className="is-neutral">변화 없음</em>}
+                    </span>
+                  </div>
+                </article>
+              )
+            })}
+            {fieldPokemon.length === 0 && <span className="battle-overview-empty">교체 대기</span>}
+          </div>
+        ))}
       </div>
     </section>
   )
