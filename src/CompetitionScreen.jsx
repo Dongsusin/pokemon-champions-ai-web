@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ChevronRight,
@@ -21,6 +21,7 @@ import {
 } from './data/competitionData'
 import { getTrainerTeam } from './data/trainerTeams'
 import { getSpeciesProfile } from './data/trainingData'
+import { getBattleRuleSummary } from './data/battleRules'
 
 function pokemonIconSources(slot) {
   const profile = getSpeciesProfile(slot.speciesId)
@@ -83,6 +84,51 @@ function MatchTrainer({ participant, side, team }) {
         ))}
       </div>
     </article>
+  )
+}
+
+function BattleRuleBoard({ rules }) {
+  return (
+    <div className="competition-battle-rules" aria-label="이번 경기 규칙">
+      {getBattleRuleSummary(rules).map((rule) => (
+        <span className={`rule-${rule.id}`} key={rule.id}>
+          <small>{rule.id === 'environment' ? 'FIELD' : rule.id === 'format' ? 'FORMAT' : rule.id === 'gimmick' ? 'LIMIT' : 'ROSTER'}</small>
+          <strong>{rule.label}</strong>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, onToggle }) {
+  return (
+    <section className="competition-team-selection">
+      <header>
+        <span>SELECT BATTLE TEAM</span>
+        <strong>{selectedCaptureIds.length} / {requiredCount}</strong>
+      </header>
+      <div>
+        {pokemon.map((entry, index) => {
+          const selectedIndex = selectedCaptureIds.indexOf(entry.captureId)
+          const selected = selectedIndex >= 0
+          const sources = pokemonIconSources(entry)
+          return (
+            <button
+              className={selected ? 'selected' : ''}
+              type="button"
+              key={entry.captureId}
+              aria-pressed={selected}
+              onClick={() => onToggle(entry.captureId)}
+            >
+              <small>{String(index + 1).padStart(2, '0')}</small>
+              <img src={sources.primary} alt="" draggable="false" onError={fallbackImageHandler(sources.fallback)} />
+              <span>{entry.name}</span>
+              {selected && <b>{selectedIndex + 1}</b>}
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
@@ -407,6 +453,23 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
     ? getCompetitionParticipant(competition, competition.championId)
     : null
   const isFinished = competition.status !== 'active'
+  const matchRules = currentMatch?.rules
+  const requiredPokemonCount = matchRules?.teamRule?.battleSize ?? competition.playerTeam.length
+  const requiresTeamSelection = matchRules?.teamRule?.id === 'pick3'
+  const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
+
+  useEffect(() => {
+    const initialCount = matchRules?.teamRule?.battleSize ?? competition.playerTeam.length
+    setSelectedCaptureIds(competition.playerTeam.slice(0, initialCount).map((pokemon) => pokemon.captureId))
+  }, [competition.id, competition.round, matchRules?.id])
+
+  const toggleSelectedPokemon = (captureId) => {
+    setSelectedCaptureIds((currentIds) => {
+      if (currentIds.includes(captureId)) return currentIds.filter((id) => id !== captureId)
+      if (currentIds.length >= requiredPokemonCount) return [...currentIds.slice(1), captureId]
+      return [...currentIds, captureId]
+    })
+  }
 
   return (
     <main className="competition-screen">
@@ -439,16 +502,26 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
             <div className="competition-versus-mark">
               <small>MATCH</small>
               <strong>VS</strong>
-              <span>6 vs 6 SINGLE</span>
+              <span>{matchRules?.teamRule?.shortLabel} · {matchRules?.format?.shortLabel}</span>
             </div>
             <MatchTrainer participant={opponent} side="opponent" team={opponentTeam.pokemon} />
           </div>
+          <BattleRuleBoard rules={matchRules} />
+          {requiresTeamSelection && (
+            <BattleTeamSelection
+              pokemon={competition.playerTeam}
+              selectedCaptureIds={selectedCaptureIds}
+              requiredCount={requiredPokemonCount}
+              onToggle={toggleSelectedPokemon}
+            />
+          )}
           <footer>
-            <span>
-              <Sparkles size={15} />
-              AI 대전은 기술 선택과 교대를 직접 진행합니다.
-            </span>
-            <button type="button" onClick={onStartBattle}>
+            <span><Sparkles size={15} /> {matchRules?.weather?.label} · {matchRules?.terrain?.label}</span>
+            <button
+              type="button"
+              disabled={selectedCaptureIds.length !== requiredPokemonCount}
+              onClick={() => onStartBattle(selectedCaptureIds)}
+            >
               <Swords size={18} />
               {roundLabel} 배틀 시작
               <ChevronRight size={18} />

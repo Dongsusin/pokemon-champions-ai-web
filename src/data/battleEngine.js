@@ -295,17 +295,20 @@ function reorderForLead(entries, leadName) {
   return [entries[leadIndex], ...entries.slice(0, leadIndex), ...entries.slice(leadIndex + 1)]
 }
 
-function createSide(id, name, entries, teamGimmicks = [], leadName = '') {
+function createSide(id, name, entries, teamGimmicks = [], leadName = '', activeSlots = 1) {
   const team = reorderForLead(
     entries.map((entry, index) => buildBattlePokemon(entry, index, teamGimmicks)),
     leadName,
   )
+  const activeIndexes = team.slice(0, Math.min(activeSlots, team.length)).map((_, index) => index)
 
   return {
     id,
     name,
     team,
-    activeIndex: 0,
+    activeIndex: activeIndexes[0] ?? 0,
+    activeIndexes,
+    rotationSlot: 0,
     usedMechanics: {
       tera: false,
       dynamax: false,
@@ -347,6 +350,7 @@ function cloneSide(side) {
     ...side,
     team: side.team.map(clonePokemon),
     usedMechanics: { ...side.usedMechanics },
+    activeIndexes: [...(side.activeIndexes ?? [side.activeIndex])],
   }
 }
 
@@ -356,6 +360,7 @@ function cloneBattle(state) {
     player: cloneSide(state.player),
     opponent: cloneSide(state.opponent),
     log: [...state.log],
+    awaitingPlayerSwitchSlots: [...(state.awaitingPlayerSwitchSlots ?? [])],
     lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
   }
 }
@@ -394,15 +399,31 @@ function getOtherSide(state, sideId) {
   return sideId === 'player' ? state.opponent : state.player
 }
 
-export function getActivePokemon(state, sideId) {
+function activeSlotIndex(state, side, requestedSlot) {
+  if (requestedSlot != null) return Math.max(0, Math.min(side.activeIndexes.length - 1, requestedSlot))
+  return state?.rules?.format?.rotation ? side.rotationSlot ?? 0 : 0
+}
+
+export function getActivePokemon(state, sideId, requestedSlot) {
   const side = getSide(state, sideId)
-  return side.team[side.activeIndex]
+  const slot = activeSlotIndex(state, side, requestedSlot)
+  return side.team[side.activeIndexes?.[slot] ?? side.activeIndex]
+}
+
+export function getActivePokemonList(state, sideId) {
+  const side = getSide(state, sideId)
+  return (side.activeIndexes ?? [side.activeIndex]).map((teamIndex) => side.team[teamIndex]).filter(Boolean)
 }
 
 function availableIndexes(side) {
   return side.team
     .map((pokemon, index) => (!pokemon.fainted && pokemon.hp > 0 ? index : -1))
     .filter((index) => index >= 0)
+}
+
+function availableBenchIndexes(side) {
+  const activeIndexes = new Set(side.activeIndexes ?? [side.activeIndex])
+  return availableIndexes(side).filter((index) => !activeIndexes.has(index))
 }
 
 function remainingCount(side) {
@@ -446,6 +467,40 @@ export function getTypeEffectiveness(moveType, defenderTypes) {
   ), 1)
 }
 
+export function getBattleTypeEffectiveness(state, moveType, defenderTypes) {
+  const standardMultiplier = getTypeEffectiveness(moveType, defenderTypes)
+  if (!state?.rules?.format?.inverse) return standardMultiplier
+  if (standardMultiplier === 0) return 2
+  return 1 / standardMultiplier
+}
+
+function isGrounded(pokemon) {
+  return !pokemon.types.includes('비행') && pokemon.ability !== '부유'
+}
+
+function environmentMoveMultiplier(state, attacker, defender, move) {
+  let multiplier = 1
+  const weatherId = state.rules?.weather?.id
+  const terrainId = state.rules?.terrain?.id
+
+  if (weatherId === 'sun') {
+    if (move.type === '불꽃') multiplier *= 1.5
+    if (move.type === '물') multiplier *= 0.5
+  } else if (weatherId === 'rain') {
+    if (move.type === '물') multiplier *= 1.5
+    if (move.type === '불꽃') multiplier *= 0.5
+  }
+
+  if (isGrounded(attacker)) {
+    if (terrainId === 'electric' && move.type === '전기') multiplier *= 1.3
+    if (terrainId === 'grassy' && move.type === '풀') multiplier *= 1.3
+    if (terrainId === 'psychic' && move.type === '에스퍼') multiplier *= 1.3
+  }
+  if (isGrounded(defender) && terrainId === 'misty' && move.type === '드래곤') multiplier *= 0.5
+  if (isGrounded(defender) && terrainId === 'grassy' && ['earthquake', 'bulldoze', 'magnitude'].includes(move.id)) multiplier *= 0.5
+  return multiplier
+}
+
 function getMoveStab(pokemon, moveType) {
   if (!pokemon.teraActive) {
     return pokemon.types.includes(moveType)
@@ -469,25 +524,30 @@ function abilityImmunity(defender, moveType) {
   return null
 }
 
-function calculateDamage(attacker, defender, move, random, powerMultiplier = 1) {
+function calculateDamage(state, attacker, defender, move, random, powerMultiplier = 1) {
   const category = move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
   const attackKey = category === 'physical' ? 'attack' : 'specialAttack'
   const defenseKey = category === 'physical' ? 'defense' : 'specialDefense'
   const power = Math.max(1, Number(move.power) || 1) * powerMultiplier
   let attack = effectiveStat(attacker, attackKey)
-  const defense = effectiveStat(defender, defenseKey)
+  let defense = effectiveStat(defender, defenseKey)
 
   if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
   if (attacker.ability === '의욕' && category === 'physical') attack *= 1.5
   if (attacker.ability === '근성' && attacker.status) attack *= 1.5
-
+  if (state.rules?.weather?.id === 'snow' && category === 'physical' && defender.types.includes('얼음')) defense *= 1.5
+  if (state.rules?.weather?.id === 'sandstorm' && category === 'special' && defender.types.includes('바위')) defense *= 1.5
   const baseDamage = (((2 * 50) / 5 + 2) * power * attack / defense) / 50 + 2
-  const effectiveness = getTypeEffectiveness(move.type, defender.types)
+  const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
   const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
   const criticalStage = Math.max(0, Math.min(3, Number(move.critRatio ?? 0) + (attacker.ability === '대운' ? 1 : 0)))
   const critical = Boolean(move.willCrit) || random() < criticalRates[criticalStage]
   const randomFactor = 0.85 + random() * 0.15
-  let modifier = getMoveStab(attacker, move.type) * effectiveness * randomFactor * (critical ? 1.5 : 1)
+  let modifier = getMoveStab(attacker, move.type)
+    * effectiveness
+    * environmentMoveMultiplier(state, attacker, defender, move)
+    * randomFactor
+    * (critical ? 1.5 : 1)
 
   if (attacker.heldItemId === 'life-orb') modifier *= 1.3
   if (attacker.heldItemId === 'expert-belt' && effectiveness > 1) modifier *= 1.2
@@ -516,6 +576,8 @@ function setStatus(state, target, statusId, sourceName) {
   if (statusId === 'freeze' && target.types.includes('얼음')) return false
   if (statusId === 'freeze' && target.ability === '마그마의무장') return false
   if (statusId === 'sleep' && SLEEP_IMMUNE_ABILITIES.has(target.ability)) return false
+  if (isGrounded(target) && state.rules?.terrain?.id === 'misty') return false
+  if (isGrounded(target) && state.rules?.terrain?.id === 'electric' && statusId === 'sleep') return false
 
   target.status = {
     id: statusId,
@@ -837,10 +899,10 @@ function inferConfiguredMechanics(pokemon) {
   }).filter(Boolean)
 }
 
-export function getAvailableBattleMechanics(state, sideId = 'player') {
+export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot = null) {
   if (!state || state.winner) return []
   const side = getSide(state, sideId)
-  const pokemon = getActivePokemon(state, sideId)
+  const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted) return []
   const configured = sideId === 'opponent' ? inferConfiguredMechanics(pokemon) : []
   const available = []
@@ -874,15 +936,15 @@ export function getAvailableBattleMechanics(state, sideId = 'player') {
     available.push({ id: 'zmove', label: 'Z기술', shortLabel: 'Z-MOVE' })
   }
 
-  return available
+  return available.filter((mechanic) => mechanic.id !== state.rules?.disabledGimmickId)
 }
 
-function activateMechanic(state, sideId, mechanicId) {
+function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
   if (!mechanicId) return 1
-  const available = getAvailableBattleMechanics(state, sideId)
+  const available = getAvailableBattleMechanics(state, sideId, activeSlot)
   if (!available.some((mechanic) => mechanic.id === mechanicId)) return 1
   const side = getSide(state, sideId)
-  const pokemon = getActivePokemon(state, sideId)
+  const pokemon = getActivePokemon(state, sideId, activeSlot)
   const trainerName = sideId === 'player' ? '플레이어' : side.name
 
   if (mechanicId === 'tera') {
@@ -947,9 +1009,9 @@ function forcedActionForPokemon(pokemon) {
   return null
 }
 
-export function getForcedBattleAction(state, sideId = 'player') {
+export function getForcedBattleAction(state, sideId = 'player', activeSlot = null) {
   if (!state || state.winner || state.awaitingPlayerSwitch) return null
-  return forcedActionForPokemon(getActivePokemon(state, sideId))
+  return forcedActionForPokemon(getActivePokemon(state, sideId, activeSlot))
 }
 
 function clearChargeState(pokemon) {
@@ -972,15 +1034,19 @@ function semiInvulnerableInteraction(defender, move) {
   return { avoided: true, powerMultiplier: 1 }
 }
 
-function moveHits(attacker, defender, move, random) {
+function moveHits(state, attacker, defender, move, random) {
   if (move.accuracyLabel === '필중' || move.accuracy == null) return true
   if (attacker.ability === '노가드' || defender.ability === '노가드') return true
+  if (state.rules?.weather?.id === 'rain' && ['thunder', 'hurricane'].includes(move.id)) return true
+  if (state.rules?.weather?.id === 'snow' && move.id === 'blizzard') return true
 
   const baseAccuracy = Number(move.accuracy) || 100
   const stageModifier = accuracyStageMultiplier(attacker.statStages.accuracy ?? 0)
     / accuracyStageMultiplier(defender.statStages.evasion ?? 0)
   const hustleModifier = attacker.ability === '의욕' && move.categoryId === 'physical' ? 0.8 : 1
-  return random() * 100 < Math.min(100, baseAccuracy * stageModifier * hustleModifier)
+  let weatherModifier = state.rules?.weather?.id === 'fog' ? 0.8 : 1
+  if (state.rules?.weather?.id === 'sun' && ['thunder', 'hurricane'].includes(move.id)) weatherModifier *= 0.5
+  return random() * 100 < Math.min(100, baseAccuracy * stageModifier * hustleModifier * weatherModifier)
 }
 
 function chooseMultiHitCount(attacker, move, random) {
@@ -998,8 +1064,8 @@ function chooseMultiHitCount(attacker, move, random) {
   return minimum + Math.floor(random() * (maximum - minimum + 1))
 }
 
-function fixedDamageResult(attacker, defender, move) {
-  const effectiveness = getTypeEffectiveness(move.type, defender.types)
+function fixedDamageResult(state, attacker, defender, move) {
+  const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
   if (effectiveness === 0) return { damage: 0, effectiveness, critical: false }
   if (move.id === 'finalgambit') return { damage: attacker.hp, effectiveness, critical: false }
   if (move.ohko) return { damage: defender.hp, effectiveness, critical: false, ohko: true }
@@ -1108,25 +1174,25 @@ function handleLockedMove(state, attacker, move, moveIndex, action, random) {
   appendLog(state, `${attacker.name}은(는) ${move.name}을(를) 계속 사용한다!`, 'status')
 }
 
-function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder) {
+function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot = 0, targetSlot = 0) {
   const side = getSide(state, sideId)
   const targetSide = getOtherSide(state, sideId)
-  const attacker = side.team[side.activeIndex]
-  const defender = targetSide.team[targetSide.activeIndex]
+  const attacker = getActivePokemon(state, sideId, actorSlot)
+  const defender = getActivePokemon(state, targetSide.id, targetSlot)
 
   if (move.forceSwitch && defender?.hp > 0) {
-    const switchOptions = availableIndexes(targetSide).filter((index) => index !== targetSide.activeIndex)
+    const switchOptions = availableBenchIndexes(targetSide)
     if (switchOptions.length > 0) {
       const targetIndex = switchOptions[Math.floor(random() * switchOptions.length)]
-      performSwitch(state, targetSide.id, targetIndex, true, timeline, actionOrder)
+      performSwitch(state, targetSide.id, targetIndex, true, timeline, actionOrder, targetSlot)
     }
   }
 
   if (move.selfSwitch && attacker?.hp > 0) {
-    const switchOptions = availableIndexes(side).filter((index) => index !== side.activeIndex)
+    const switchOptions = availableBenchIndexes(side)
     if (switchOptions.length > 0) {
       const targetIndex = switchOptions[Math.floor(random() * switchOptions.length)]
-      performSwitch(state, sideId, targetIndex, true, timeline, actionOrder)
+      performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, actorSlot)
     }
   }
 }
@@ -1134,8 +1200,14 @@ function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder) 
 function executeMove(state, sideId, action, random, timeline = null, actionOrder = 0) {
   const side = getSide(state, sideId)
   const targetSide = getOtherSide(state, sideId)
-  const attacker = side.team[side.activeIndex]
-  const defender = targetSide.team[targetSide.activeIndex]
+  const actorSlot = Math.max(0, Math.min(side.activeIndexes.length - 1, Number(action.actorSlot) || 0))
+  let targetSlot = Math.max(0, Math.min(targetSide.activeIndexes.length - 1, Number(action.targetSlot) || 0))
+  const attacker = getActivePokemon(state, sideId, actorSlot)
+  let defender = getActivePokemon(state, targetSide.id, targetSlot)
+  if (!defender || defender.fainted || defender.hp <= 0) {
+    targetSlot = getActivePokemonList(state, targetSide.id).findIndex((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
+    defender = getActivePokemon(state, targetSide.id, Math.max(0, targetSlot))
+  }
   const move = attacker.moves[action.moveIndex]
   const moveCategory = move?.categoryId
     ?? (move?.category === '물리' ? 'physical' : move?.category === '변화' ? 'status' : 'special')
@@ -1167,7 +1239,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   const mechanicWasUsed = action.gimmick ? side.usedMechanics[action.gimmick] : false
   const mechanicBefore = action.gimmick ? mechanicPokemonSnapshot(attacker) : null
-  const powerMultiplier = activateMechanic(state, sideId, action.gimmick)
+  const powerMultiplier = activateMechanic(state, sideId, action.gimmick, actorSlot)
   if (action.gimmick && !mechanicWasUsed && side.usedMechanics[action.gimmick]) {
     const mechanicAfter = mechanicPokemonSnapshot(attacker)
     pushTimelineStep(timeline, state, {
@@ -1175,6 +1247,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       actionOrder,
       sideId,
       targetSideId: sideId,
+      actorSlot,
+      targetSlot: actorSlot,
       actorName: mechanicAfter.name,
       actorSpeciesId: mechanicAfter.speciesId,
       actorOriginalSpeciesId: mechanicAfter.originalSpeciesId,
@@ -1205,6 +1279,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     actionOrder,
     sideId,
     targetSideId: move.target === 'self' ? sideId : targetSide.id,
+    actorSlot,
+    targetSlot: move.target === 'self' ? actorSlot : targetSlot,
     actorName: attacker.name,
     actorSpeciesId: attacker.speciesId,
     actorOriginalSpeciesId: attacker.originalSpeciesId,
@@ -1235,6 +1311,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     && !isChargeContinuation
     && action.gimmick !== 'zmove'
     && !attacker.dynamaxActive
+    && !(state.rules?.weather?.id === 'sun' && ['solarbeam', 'solarblade'].includes(move.id))
   if (requiresCharge) {
     if (attacker.heldItemId === 'power-herb' && !attacker.consumedItem) {
       attacker.consumedItem = true
@@ -1275,6 +1352,22 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     }
   }
 
+  if (
+    state.rules?.terrain?.id === 'psychic'
+    && move.target !== 'self'
+    && Number(move.priority ?? 0) > 0
+    && isGrounded(defender)
+  ) {
+    appendLog(state, `사이코필드가 ${defender.name}을(를) 우선도 기술로부터 지켰다!`, 'field')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'blocked',
+      message: latestLogMessage(state, `${move.name}은(는) 사이코필드에 막혔다!`),
+    })
+    return
+  }
+
   const semiInvulnerable = semiInvulnerableInteraction(defender, move)
   if (semiInvulnerable.avoided) {
     appendLog(state, `${defender.name}은(는) 공격이 닿지 않는 곳에 있다!`, 'muted')
@@ -1288,7 +1381,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
-  if (!moveHits(attacker, defender, move, random)) {
+  if (!moveHits(state, attacker, defender, move, random)) {
     appendLog(state, `${attacker.name}의 공격은 빗나갔다!`, 'muted')
     applyFailedMoveConsequences(state, attacker, move)
     pushTimelineStep(timeline, state, {
@@ -1320,7 +1413,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       ...moveStep,
       message: latestLogMessage(state, `${move.name}의 효과가 발동했다!`),
     })
-    applyMoveSwitching(state, sideId, move, random, timeline, actionOrder)
+    applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
     return
   }
 
@@ -1359,8 +1452,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   let result = null
 
   for (let hitIndex = 0; hitIndex < hitCount && defender.hp > 0; hitIndex += 1) {
-    const hitResult = fixedDamageResult(attacker, defender, move)
-      ?? calculateDamage(attacker, defender, move, random, powerMultiplier * semiInvulnerable.powerMultiplier)
+    const hitResult = fixedDamageResult(state, attacker, defender, move)
+      ?? calculateDamage(state, attacker, defender, move, random, powerMultiplier * semiInvulnerable.powerMultiplier)
     if (!result) result = hitResult
     const hitDamage = applySurvivalEffects(state, defender, hitResult.damage, move)
     defender.hp = Math.max(0, defender.hp - hitDamage)
@@ -1370,7 +1463,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     if (hitResult.effectiveness === 0 || hitDamage === 0 && move.ohko) break
   }
 
-  result ??= { damage: 0, effectiveness: getTypeEffectiveness(move.type, defender.types), critical: false }
+  result ??= { damage: 0, effectiveness: getBattleTypeEffectiveness(state, move.type, defender.types), critical: false }
   state.lastEvent = {
     kind: 'hit',
     sideId,
@@ -1440,7 +1533,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     })
   }
 
-  if (damage > 0) applyMoveSwitching(state, sideId, move, random, timeline, actionOrder)
+  if (damage > 0) applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
 }
 
 function endDynamax(state, pokemon) {
@@ -1461,8 +1554,8 @@ function endDynamax(state, pokemon) {
   appendLog(state, `${pokemon.name}의 다이맥스가 풀렸다.`, 'muted')
 }
 
-function activateEntryAbility(state, sideId) {
-  const pokemon = getActivePokemon(state, sideId)
+function activateEntryAbility(state, sideId, activeSlot = null) {
+  const pokemon = getActivePokemon(state, sideId, activeSlot)
   const target = getActivePokemon(state, sideId === 'player' ? 'opponent' : 'player')
   if (!pokemon || !target || target.fainted) return
 
@@ -1488,17 +1581,29 @@ function clearSwitchVolatiles(pokemon) {
   if (pokemon.status?.id === 'toxic') pokemon.status.toxicCounter = 1
 }
 
-function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline = null, actionOrder = null) {
+function performSwitch(
+  state,
+  sideId,
+  targetIndex,
+  isAutomatic = false,
+  timeline = null,
+  actionOrder = null,
+  activeSlot = null,
+) {
   const side = getSide(state, sideId)
-  const current = side.team[side.activeIndex]
+  const resolvedSlot = activeSlot == null ? activeSlotIndex(state, side) : activeSlot
+  const currentTeamIndex = side.activeIndexes[resolvedSlot] ?? side.activeIndex
+  const current = side.team[currentTeamIndex]
   const target = side.team[targetIndex]
-  if (!target || target.fainted || target.hp <= 0 || targetIndex === side.activeIndex) return false
+  if (!target || target.fainted || target.hp <= 0 || side.activeIndexes.includes(targetIndex)) return false
 
   pushTimelineStep(timeline, state, {
     phase: 'switch-out',
     actionOrder,
     sideId,
     targetSideId: sideId,
+    actorSlot: resolvedSlot,
+    targetSlot: resolvedSlot,
     actorName: current.name,
     actorSpeciesId: current.speciesId,
     actorOriginalSpeciesId: current.originalSpeciesId,
@@ -1510,7 +1615,8 @@ function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline
 
   if (current.dynamaxActive) endDynamax(state, current)
   clearSwitchVolatiles(current)
-  side.activeIndex = targetIndex
+  side.activeIndexes[resolvedSlot] = targetIndex
+  side.activeIndex = side.activeIndexes[state.rules?.format?.rotation ? side.rotationSlot : 0] ?? targetIndex
   clearSwitchVolatiles(target)
   appendLog(
     state,
@@ -1533,13 +1639,15 @@ function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline
     )
     side.healingWishPending = null
   }
-  activateEntryAbility(state, sideId)
+  activateEntryAbility(state, sideId, resolvedSlot)
   state.lastEvent = { kind: 'switch', sideId, nonce: state.eventNonce += 1 }
   pushTimelineStep(timeline, state, {
     phase: 'switch',
     actionOrder,
     sideId,
     targetSideId: sideId,
+    actorSlot: resolvedSlot,
+    targetSlot: resolvedSlot,
     actorName: target.name,
     actorSpeciesId: target.speciesId,
     actorOriginalSpeciesId: target.originalSpeciesId,
@@ -1548,8 +1656,8 @@ function performSwitch(state, sideId, targetIndex, isAutomatic = false, timeline
   return true
 }
 
-function residualEffects(state, sideId, timeline = null) {
-  const pokemon = getActivePokemon(state, sideId)
+function residualEffects(state, sideId, timeline = null, activeSlot = null) {
+  const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
   const previousHp = pokemon.hp
   const previousMaxHp = pokemon.maxHp
@@ -1566,6 +1674,17 @@ function residualEffects(state, sideId, timeline = null) {
   if (damage > 0 && pokemon.ability !== '매직가드') {
     pokemon.hp = Math.max(0, pokemon.hp - damage)
     appendLog(state, `${pokemon.name}은(는) ${pokemon.status.label}의 데미지를 입었다.`, 'damage')
+  }
+
+  if (
+    pokemon.hp > 0
+    && state.rules?.weather?.id === 'sandstorm'
+    && !pokemon.types.some((type) => ['바위', '땅', '강철'].includes(type))
+    && pokemon.ability !== '매직가드'
+  ) {
+    const weatherDamage = Math.max(1, Math.floor(pokemon.maxHp / 16))
+    pokemon.hp = Math.max(0, pokemon.hp - weatherDamage)
+    appendLog(state, `${pokemon.name}은(는) 모래바람에 시달렸다.`, 'damage')
   }
 
   if (pokemon.hp > 0 && pokemon.yawnTurns > 0) {
@@ -1591,6 +1710,9 @@ function residualEffects(state, sideId, timeline = null) {
   if (pokemon.hp > 0 && pokemon.heldItemId === 'leftovers') {
     healPokemon(state, pokemon, pokemon.maxHp / 16, '먹다남은음식')
   }
+  if (pokemon.hp > 0 && state.rules?.terrain?.id === 'grassy' && isGrounded(pokemon)) {
+    healPokemon(state, pokemon, pokemon.maxHp / 16, '그래스필드')
+  }
   if (pokemon.hp > 0 && pokemon.heldItemId === 'black-sludge' && pokemon.types.includes('독')) {
     healPokemon(state, pokemon, pokemon.maxHp / 16, '검은오물')
   }
@@ -1614,6 +1736,8 @@ function residualEffects(state, sideId, timeline = null) {
       phase: 'residual',
       sideId,
       targetSideId: sideId,
+      actorSlot: activeSlot ?? activeSlotIndex(state, getSide(state, sideId)),
+      targetSlot: activeSlot ?? activeSlotIndex(state, getSide(state, sideId)),
       actorName: pokemon.name,
       damage: Math.max(0, previousHp - pokemon.hp),
       message: latestLogMessage(state, `${pokemon.name}에게 턴 종료 효과가 적용되었다.`),
@@ -1624,23 +1748,26 @@ function residualEffects(state, sideId, timeline = null) {
 function settleFaints(state, timeline = null) {
   const faintedPokemon = []
   ;['player', 'opponent'].forEach((sideId) => {
-    const pokemon = getActivePokemon(state, sideId)
-    if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return
-    pokemon.fainted = true
-    appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
-    faintedPokemon.push({
-      sideId,
-      name: pokemon.name,
-      speciesId: pokemon.speciesId,
-      originalSpeciesId: pokemon.originalSpeciesId,
+    getActivePokemonList(state, sideId).forEach((pokemon, activeSlot) => {
+      if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return
+      pokemon.fainted = true
+      appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
+      faintedPokemon.push({
+        sideId,
+        activeSlot,
+        name: pokemon.name,
+        speciesId: pokemon.speciesId,
+        originalSpeciesId: pokemon.originalSpeciesId,
+      })
     })
   })
 
-  faintedPokemon.forEach(({ sideId, name, speciesId, originalSpeciesId }) => {
+  faintedPokemon.forEach(({ sideId, activeSlot, name, speciesId, originalSpeciesId }) => {
     pushTimelineStep(timeline, state, {
       phase: 'faint',
       sideId: sideId === 'player' ? 'opponent' : 'player',
       targetSideId: sideId,
+      targetSlot: activeSlot,
       actorName: name,
       actorSpeciesId: speciesId,
       actorOriginalSpeciesId: originalSpeciesId,
@@ -1667,14 +1794,20 @@ function settleFaints(state, timeline = null) {
     return
   }
 
-  const opponentActive = getActivePokemon(state, 'opponent')
-  if (opponentActive.fainted) {
-    const nextIndex = availableIndexes(state.opponent)[0]
-    performSwitch(state, 'opponent', nextIndex, true, timeline)
-  }
+  const opponentFaintedSlots = getActivePokemonList(state, 'opponent')
+    .map((pokemon, slot) => (pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  opponentFaintedSlots.forEach((slot) => {
+    const nextIndex = availableBenchIndexes(state.opponent)[0]
+    if (nextIndex != null) performSwitch(state, 'opponent', nextIndex, true, timeline, null, slot)
+  })
 
-  const playerActive = getActivePokemon(state, 'player')
-  state.awaitingPlayerSwitch = playerActive.fainted
+  const playerFaintedSlots = getActivePokemonList(state, 'player')
+    .map((pokemon, slot) => (pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+    .slice(0, availableBenchIndexes(state.player).length)
+  state.awaitingPlayerSwitchSlots = playerFaintedSlots
+  state.awaitingPlayerSwitch = playerFaintedSlots.length > 0
   if (state.awaitingPlayerSwitch) {
     appendLog(state, '다음 포켓몬을 선택해 주세요.', 'prompt')
     pushTimelineStep(timeline, state, {
@@ -1689,26 +1822,26 @@ function settleFaints(state, timeline = null) {
 function actionPriority(state, sideId, action) {
   if (action.type === 'switch') return 10
   if (action.forcedReason === 'recharge') return 0
-  const pokemon = getActivePokemon(state, sideId)
+  const pokemon = getActivePokemon(state, sideId, action.actorSlot)
   const move = pokemon.moves[action.moveIndex]
   return Number(move?.priority ?? 0)
 }
 
-function orderedActions(state, playerAction, opponentAction, random) {
-  const first = { sideId: 'player', action: playerAction }
-  const second = { sideId: 'opponent', action: opponentAction }
-  const playerPriority = actionPriority(state, 'player', playerAction)
-  const opponentPriority = actionPriority(state, 'opponent', opponentAction)
-
-  if (playerPriority !== opponentPriority) return playerPriority > opponentPriority ? [first, second] : [second, first]
-
-  const playerSpeed = effectiveStat(getActivePokemon(state, 'player'), 'speed')
-  const opponentSpeed = effectiveStat(getActivePokemon(state, 'opponent'), 'speed')
-  if (playerSpeed !== opponentSpeed) return playerSpeed > opponentSpeed ? [first, second] : [second, first]
-  return random() < 0.5 ? [first, second] : [second, first]
+function orderedActions(state, playerActions, opponentActions, random) {
+  return [
+    ...playerActions.map((action) => ({ sideId: 'player', action, tieBreaker: random() })),
+    ...opponentActions.map((action) => ({ sideId: 'opponent', action, tieBreaker: random() })),
+  ].sort((first, second) => {
+    const priorityDifference = actionPriority(state, second.sideId, second.action)
+      - actionPriority(state, first.sideId, first.action)
+    if (priorityDifference) return priorityDifference
+    const firstSpeed = effectiveStat(getActivePokemon(state, first.sideId, first.action.actorSlot), 'speed')
+    const secondSpeed = effectiveStat(getActivePokemon(state, second.sideId, second.action.actorSlot), 'speed')
+    return secondSpeed - firstSpeed || first.tieBreaker - second.tieBreaker
+  })
 }
 
-function scoreMove(attacker, defender, move) {
+function scoreMove(state, attacker, defender, move) {
   if (move.currentPp <= 0) return -Infinity
   const isStatus = isStatusMove(move)
   if (isStatus) {
@@ -1718,48 +1851,90 @@ function scoreMove(attacker, defender, move) {
     return 32
   }
 
-  const effectiveness = getTypeEffectiveness(move.type, defender.types)
+  const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
+  const environmentMultiplier = environmentMoveMultiplier(state, attacker, defender, move)
   const category = move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
   const offense = category === 'physical' ? effectiveStat(attacker, 'attack') : effectiveStat(attacker, 'specialAttack')
   const defense = category === 'physical' ? effectiveStat(defender, 'defense') : effectiveStat(defender, 'specialDefense')
   const effectivePower = move.ohko ? defender.maxHp : move.damage === 'level' ? 50 : Number(move.damage ?? move.power) || 1
   const chargeModifier = move.flags?.includes('charge') && attacker.heldItemId !== 'power-herb' ? 0.65 : 1
-  return effectivePower * effectiveness * chargeModifier * (offense / Math.max(1, defense)) * ((move.accuracy ?? 100) / 100)
+  return effectivePower * effectiveness * environmentMultiplier * chargeModifier * (offense / Math.max(1, defense)) * ((move.accuracy ?? 100) / 100)
 }
 
-export function chooseAiAction(state, random = Math.random) {
-  const attacker = getActivePokemon(state, 'opponent')
-  const defender = getActivePokemon(state, 'player')
+export function chooseAiAction(state, random = Math.random, activeSlot = 0, targetSlot = 0) {
+  const attacker = getActivePokemon(state, 'opponent', activeSlot)
+  const defender = getActivePokemon(state, 'player', targetSlot)
+  const switchOptions = availableBenchIndexes(state.opponent)
   const scoredMoves = attacker.moves
-    .map((move, moveIndex) => ({ moveIndex, score: scoreMove(attacker, defender, move) + random() * 8 }))
+    .map((move, moveIndex) => ({ moveIndex, score: scoreMove(state, attacker, defender, move) + random() * 8 }))
     .sort((first, second) => second.score - first.score)
-  const availableMechanics = getAvailableBattleMechanics(state, 'opponent')
+  const availableMechanics = getAvailableBattleMechanics(state, 'opponent', activeSlot)
   const configuredMechanic = availableMechanics[0]
 
   if (
     attacker.hp < attacker.maxHp * 0.2
-    && remainingCount(state.opponent) > 1
+    && switchOptions.length > 0
     && random() < 0.12
   ) {
-    const switchOptions = availableIndexes(state.opponent).filter((index) => index !== state.opponent.activeIndex)
-    return { type: 'switch', targetIndex: switchOptions[Math.floor(random() * switchOptions.length)] }
+    return {
+      type: 'switch',
+      actorSlot: activeSlot,
+      targetIndex: switchOptions[Math.floor(random() * switchOptions.length)],
+    }
   }
 
   return {
     type: 'move',
+    actorSlot: activeSlot,
+    targetSlot,
     moveIndex: scoredMoves[0]?.moveIndex ?? 0,
     gimmick: configuredMechanic?.id ?? null,
   }
 }
 
-export function createBattle({ playerPokemon, opponent, opponentTeam }) {
-  const player = createSide('player', 'PLAYER_01', playerPokemon)
+function chooseAiActions(state, random) {
+  const opponentActive = getActivePokemonList(state, 'opponent')
+  const playerActive = getActivePokemonList(state, 'player')
+  const livingOpponentSlots = opponentActive
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  const livingPlayerSlots = playerActive
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  const actorSlots = state.rules?.format?.rotation
+    ? [livingOpponentSlots[Math.floor(random() * livingOpponentSlots.length)] ?? 0]
+    : livingOpponentSlots
+
+  return actorSlots.map((activeSlot, index) => chooseAiAction(
+    state,
+    random,
+    activeSlot,
+    livingPlayerSlots[index % Math.max(1, livingPlayerSlots.length)] ?? 0,
+  ))
+}
+
+export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null }) {
+  const battleRules = rules ?? {
+    weather: { id: 'clear', label: '맑음' },
+    terrain: { id: 'neutral', label: '일반 필드' },
+    format: { id: 'single', label: '싱글배틀', activeSlots: 1, actionSlots: 1 },
+    teamRule: { id: 'full', label: '6마리 전원전', battleSize: playerPokemon.length },
+    disabledGimmickId: null,
+    gimmickRestriction: { id: null, label: '제한 없음' },
+  }
+  const activeSlots = Math.max(1, Math.min(
+    battleRules.format.activeSlots ?? 1,
+    playerPokemon.length,
+    opponentTeam.pokemon.length,
+  ))
+  const player = createSide('player', 'PLAYER_01', playerPokemon, [], '', activeSlots)
   const opponentSide = createSide(
     'opponent',
     opponent.name,
     opponentTeam.pokemon,
     opponentTeam.battleGimmicks,
     opponentTeam.strategy?.lead,
+    activeSlots,
   )
   const state = {
     turn: 1,
@@ -1768,7 +1943,9 @@ export function createBattle({ playerPokemon, opponent, opponentTeam }) {
     opponent: opponentSide,
     opponentMeta: opponent,
     opponentStrategy: opponentTeam.strategy,
+    rules: battleRules,
     awaitingPlayerSwitch: false,
+    awaitingPlayerSwitchSlots: [],
     winner: null,
     log: [],
     lastEvent: null,
@@ -1776,10 +1953,15 @@ export function createBattle({ playerPokemon, opponent, opponentTeam }) {
   }
 
   appendLog(state, `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
-  appendLog(state, `${opponent.name}은(는) ${getActivePokemon(state, 'opponent').name}을(를) 내보냈다!`, 'opponent')
-  appendLog(state, `${getActivePokemon(state, 'player').name}! 너로 정했다!`, 'player')
-  activateEntryAbility(state, 'opponent')
-  activateEntryAbility(state, 'player')
+  appendLog(state, `${battleRules.weather.label} · ${battleRules.terrain.label} · ${battleRules.format.label}`, 'field')
+  appendLog(
+    state,
+    `${opponent.name}은(는) ${getActivePokemonList(state, 'opponent').map((pokemon) => pokemon.name).join(', ')}을(를) 내보냈다!`,
+    'opponent',
+  )
+  appendLog(state, `${getActivePokemonList(state, 'player').map((pokemon) => pokemon.name).join(', ')}! 너희로 정했다!`, 'player')
+  getActivePokemonList(state, 'opponent').forEach((_, slot) => activateEntryAbility(state, 'opponent', slot))
+  getActivePokemonList(state, 'player').forEach((_, slot) => activateEntryAbility(state, 'player', slot))
   return state
 }
 
@@ -1791,29 +1973,55 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline) {
   const nextState = cloneBattle(state)
   const timeline = captureTimeline ? [] : null
   nextState.lastEvent = null
-  getActivePokemon(nextState, 'player').protected = false
-  getActivePokemon(nextState, 'opponent').protected = false
-  getActivePokemon(nextState, 'player').flinched = false
-  getActivePokemon(nextState, 'opponent').flinched = false
-  const resolvedPlayerAction = forcedActionForPokemon(getActivePokemon(nextState, 'player')) ?? playerAction
-  const opponentAction = forcedActionForPokemon(getActivePokemon(nextState, 'opponent'))
-    ?? chooseAiAction(nextState, random)
-  const actions = orderedActions(nextState, resolvedPlayerAction, opponentAction, random)
+  ;['player', 'opponent'].forEach((sideId) => {
+    getActivePokemonList(nextState, sideId).forEach((pokemon) => {
+      pokemon.protected = false
+      pokemon.flinched = false
+    })
+  })
+  const requestedPlayerActions = (Array.isArray(playerAction) ? playerAction : [playerAction]).filter(Boolean)
+  const livingPlayerSlots = getActivePokemonList(nextState, 'player')
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  const playerActorSlots = nextState.rules?.format?.rotation
+    ? [requestedPlayerActions[0]?.actorSlot ?? nextState.player.rotationSlot ?? 0]
+    : livingPlayerSlots
+  const resolvedPlayerActions = playerActorSlots.map((actorSlot) => {
+    const forcedAction = forcedActionForPokemon(getActivePokemon(nextState, 'player', actorSlot))
+    const requestedAction = requestedPlayerActions.find((action) => (action.actorSlot ?? 0) === actorSlot)
+    return { ...(forcedAction ?? requestedAction ?? { type: 'move', moveIndex: 0 }), actorSlot }
+  })
+  const opponentActions = chooseAiActions(nextState, random).map((action) => {
+    const forcedAction = forcedActionForPokemon(getActivePokemon(nextState, 'opponent', action.actorSlot))
+    return forcedAction ? { ...forcedAction, actorSlot: action.actorSlot, targetSlot: action.targetSlot } : action
+  })
+  const actions = orderedActions(nextState, resolvedPlayerActions, opponentActions, random)
 
   for (const [actionOrder, { sideId, action }] of actions.entries()) {
     if (nextState.winner) break
-    const actor = getActivePokemon(nextState, sideId)
+    const actor = getActivePokemon(nextState, sideId, action.actorSlot)
     if (!actor || actor.fainted || actor.hp <= 0) continue
+    const actingSide = getSide(nextState, sideId)
+    if (nextState.rules?.format?.rotation) {
+      actingSide.rotationSlot = action.actorSlot ?? actingSide.rotationSlot
+      actingSide.activeIndex = actingSide.activeIndexes[actingSide.rotationSlot] ?? actingSide.activeIndex
+    }
 
     if (action.type === 'switch') {
-      performSwitch(nextState, sideId, action.targetIndex, false, timeline, actionOrder)
+      performSwitch(nextState, sideId, action.targetIndex, false, timeline, actionOrder, action.actorSlot)
     } else {
       executeMove(nextState, sideId, action, random, timeline, actionOrder)
     }
   }
 
-  residualEffects(nextState, 'player', timeline)
-  residualEffects(nextState, 'opponent', timeline)
+  const playerResidualSlots = nextState.rules?.format?.rotation
+    ? [nextState.player.rotationSlot]
+    : getActivePokemonList(nextState, 'player').map((_, slot) => slot)
+  const opponentResidualSlots = nextState.rules?.format?.rotation
+    ? [nextState.opponent.rotationSlot]
+    : getActivePokemonList(nextState, 'opponent').map((_, slot) => slot)
+  playerResidualSlots.forEach((slot) => residualEffects(nextState, 'player', timeline, slot))
+  opponentResidualSlots.forEach((slot) => residualEffects(nextState, 'opponent', timeline, slot))
   settleFaints(nextState, timeline)
   nextState.turn += 1
   return { state: nextState, timeline: timeline ?? [] }
@@ -1830,8 +2038,10 @@ export function playBattleTurn(state, playerAction, random = Math.random) {
 export function forcePlayerSwitch(state, targetIndex) {
   if (!state || state.winner || !state.awaitingPlayerSwitch) return state
   const nextState = cloneBattle(state)
-  if (!performSwitch(nextState, 'player', targetIndex, true)) return state
-  nextState.awaitingPlayerSwitch = false
+  const activeSlot = nextState.awaitingPlayerSwitchSlots?.[0] ?? 0
+  if (!performSwitch(nextState, 'player', targetIndex, true, null, null, activeSlot)) return state
+  nextState.awaitingPlayerSwitchSlots = nextState.awaitingPlayerSwitchSlots.slice(1)
+  nextState.awaitingPlayerSwitch = nextState.awaitingPlayerSwitchSlots.length > 0
   return nextState
 }
 

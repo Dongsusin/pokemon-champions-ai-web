@@ -41,10 +41,11 @@ import {
   createBattleTurnTimeline,
   forcePlayerSwitch,
   getActivePokemon,
+  getActivePokemonList,
   getAvailableBattleMechanics,
+  getBattleTypeEffectiveness,
   getBattleSummary,
   getForcedBattleAction,
-  getTypeEffectiveness,
 } from './data/battleEngine'
 import {
   getMoveAnimationAssets,
@@ -649,14 +650,16 @@ function BattleArenaEffects({ cue }) {
   )
 }
 
-function battleStageClassName(sideId, pokemon, cue) {
-  const classes = ['battle-pokemon-stage', sideId]
+function battleStageClassName(sideId, pokemon, cue, activeSlot = 0) {
+  const classes = ['battle-pokemon-stage', sideId, `slot-${activeSlot}`]
   if (pokemon.dynamaxActive) classes.push('is-dynamax')
   if (pokemon.teraActive) classes.push('is-terastal', `tera-${typeClassName(pokemon.teraType)}`)
   if (pokemon.fainted) classes.push('is-fainted')
   if (!cue) return classes.join(' ')
 
-  if (cue.sideId === sideId && cue.phase === 'attack') {
+  const isActor = cue.sideId === sideId && (cue.actorSlot == null || cue.actorSlot === activeSlot)
+  const isTarget = cue.targetSideId === sideId && (cue.targetSlot == null || cue.targetSlot === activeSlot)
+  if (isActor && cue.phase === 'attack') {
     const profile = getMoveAnimationProfile(cue)
     classes.push(
       'is-attacking',
@@ -665,17 +668,17 @@ function battleStageClassName(sideId, pokemon, cue) {
       `move-archetype-${profile.archetype}`,
     )
   }
-  if (cue.sideId === sideId && cue.phase === 'gimmick') {
+  if (isActor && cue.phase === 'gimmick') {
     classes.push('is-gimmicking', `gimmick-${cue.mechanicId}`)
   }
-  if (cue.sideId === sideId && cue.phase === 'switch-out') classes.push('is-switching-out')
-  if (cue.sideId === sideId && cue.phase === 'switch') classes.push('is-switching-in')
-  if (cue.targetSideId === sideId && cue.phase === 'attack' && cue.sideId !== sideId) classes.push('is-anticipating-hit')
-  if (cue.targetSideId === sideId && cue.phase === 'impact') classes.push('is-hit')
-  if (cue.targetSideId === sideId && cue.phase === 'resolve' && cue.result !== 'miss') classes.push('is-guarding')
-  if (cue.targetSideId === sideId && cue.phase === 'status') classes.push('is-status-pulse')
-  if (cue.targetSideId === sideId && cue.phase === 'residual') classes.push('is-residual-hit')
-  if (cue.targetSideId === sideId && cue.phase === 'faint') classes.push('is-fainting')
+  if (isActor && cue.phase === 'switch-out') classes.push('is-switching-out')
+  if (isActor && cue.phase === 'switch') classes.push('is-switching-in')
+  if (isTarget && cue.phase === 'attack' && cue.sideId !== sideId) classes.push('is-anticipating-hit')
+  if (isTarget && cue.phase === 'impact') classes.push('is-hit')
+  if (isTarget && cue.phase === 'resolve' && cue.result !== 'miss') classes.push('is-guarding')
+  if (isTarget && cue.phase === 'status') classes.push('is-status-pulse')
+  if (isTarget && cue.phase === 'residual') classes.push('is-residual-hit')
+  if (isTarget && cue.phase === 'faint') classes.push('is-fainting')
   return classes.join(' ')
 }
 
@@ -709,13 +712,15 @@ function PartyIndicators({ side }) {
   )
 }
 
-function statusAnchorClassName(sideId, cue) {
-  const classes = ['battle-status-anchor', `${sideId}-status-anchor`]
+function statusAnchorClassName(sideId, cue, activeSlot = 0) {
+  const classes = ['battle-status-anchor', `${sideId}-status-anchor`, `slot-${activeSlot}`]
   if (!cue) return classes.join(' ')
-  if (cue.sideId === sideId) classes.push('is-acting')
-  if (cue.targetSideId === sideId) classes.push('is-targeted')
-  if (cue.targetSideId === sideId && cue.phase === 'impact') classes.push('is-taking-damage')
-  if (cue.targetSideId === sideId && cue.phase === 'faint') classes.push('is-fainting')
+  const isActor = cue.sideId === sideId && (cue.actorSlot == null || cue.actorSlot === activeSlot)
+  const isTarget = cue.targetSideId === sideId && (cue.targetSlot == null || cue.targetSlot === activeSlot)
+  if (isActor) classes.push('is-acting')
+  if (isTarget) classes.push('is-targeted')
+  if (isTarget && cue.phase === 'impact') classes.push('is-taking-damage')
+  if (isTarget && cue.phase === 'faint') classes.push('is-fainting')
   return classes.join(' ')
 }
 
@@ -753,8 +758,9 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
   )
 }
 
-function PokemonPartyMenu({ battle, forced, onSelect, onBack, onPreview }) {
-  const activeIndex = battle.player.activeIndex
+function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, onPreview }) {
+  const activeIndexes = battle.player.activeIndexes ?? [battle.player.activeIndex]
+  const activeIndex = activeIndexes[activeSlot] ?? battle.player.activeIndex
 
   return (
     <section className="battle-party-menu">
@@ -767,11 +773,12 @@ function PokemonPartyMenu({ battle, forced, onSelect, onBack, onPreview }) {
       </header>
       <div className="battle-party-menu-grid">
         {battle.player.team.map((pokemon, index) => {
-          const isActive = index === activeIndex
+          const isActive = activeIndexes.includes(index)
+          const isSelectedSlot = index === activeIndex
           const isDisabled = pokemon.fainted || pokemon.hp <= 0 || isActive
           return (
             <button
-              className={`${isActive ? 'active' : ''}${pokemon.fainted ? ' fainted' : ''}`}
+              className={`${isActive ? 'active' : ''}${isSelectedSlot ? ' selected-slot' : ''}${pokemon.fainted ? ' fainted' : ''}`}
               type="button"
               disabled={isDisabled}
               key={pokemon.battleId}
@@ -788,7 +795,7 @@ function PokemonPartyMenu({ battle, forced, onSelect, onBack, onPreview }) {
               </span>
               <span>
                 <strong>{pokemon.name}</strong>
-                <small>{pokemon.fainted ? '기절' : isActive ? '배틀 중' : pokemon.status?.label ?? '정상'}</small>
+                <small>{pokemon.fainted ? '기절' : isSelectedSlot ? '교대 대상' : isActive ? '배틀 중' : pokemon.status?.label ?? '정상'}</small>
               </span>
               <span className={`battle-party-mini-hp tone-${hpTone(pokemon)}`}>
                 <i style={{ width: `${hpRatio(pokemon)}%` }} />
@@ -831,16 +838,59 @@ function BattleMoveTooltip({ id, move, opponent, presentation, visible }) {
   )
 }
 
-function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack, onPreview }) {
+function MoveMenu({
+  battle,
+  activeSlot = 0,
+  targetSlot = 0,
+  pendingGimmick,
+  onActiveSlot,
+  onTargetSlot,
+  onGimmick,
+  onMove,
+  onOpenParty,
+  onBack,
+  onPreview,
+}) {
   const [activeTooltipIndex, setActiveTooltipIndex] = useState(null)
-  const pokemon = getActivePokemon(battle, 'player')
-  const opponent = getActivePokemon(battle, 'opponent')
-  const mechanics = getAvailableBattleMechanics(battle, 'player')
+  const pokemon = getActivePokemon(battle, 'player', activeSlot)
+  const opponent = getActivePokemon(battle, 'opponent', targetSlot)
+  const playerActive = getActivePokemonList(battle, 'player')
+  const opponentActive = getActivePokemonList(battle, 'opponent')
+  const mechanics = getAvailableBattleMechanics(battle, 'player', activeSlot)
 
   return (
     <section className="battle-move-menu">
       <header>
         <button type="button" onPointerEnter={onPreview} onClick={onBack}><ChevronLeft size={17} /> 행동 선택</button>
+        <button className="battle-slot-switch-button" type="button" onPointerEnter={onPreview} onClick={onOpenParty}>
+          <ArrowLeftRight size={14} /> 교대
+        </button>
+        {battle.rules?.format?.rotation && (
+          <div className="battle-rotation-selector" aria-label="행동할 포켓몬">
+            {playerActive.map((entry, slot) => (
+              <button
+                className={activeSlot === slot ? 'selected' : ''}
+                type="button"
+                disabled={entry.fainted || entry.hp <= 0}
+                key={entry.battleId}
+                onClick={() => onActiveSlot(slot)}
+              >{entry.name}</button>
+            ))}
+          </div>
+        )}
+        {opponentActive.length > 1 && (
+          <div className="battle-target-selector" aria-label="공격 대상">
+            {opponentActive.map((entry, slot) => (
+              <button
+                className={targetSlot === slot ? 'selected' : ''}
+                type="button"
+                disabled={entry.fainted || entry.hp <= 0}
+                key={entry.battleId}
+                onClick={() => onTargetSlot(slot)}
+              >{entry.name}</button>
+            ))}
+          </div>
+        )}
         <div className="battle-gimmick-selector">
           {mechanics.map((mechanic) => (
             <button
@@ -864,7 +914,7 @@ function MoveMenu({ battle, pendingGimmick, onGimmick, onMove, onBack, onPreview
           const isDamagingMove = move.category !== '변화'
             && (Number(move.power) > 0 || move.ohko || move.damage !== undefined || move.id === 'finalgambit')
           const multiplier = isDamagingMove
-            ? getTypeEffectiveness(move.type, opponent.types)
+            ? getBattleTypeEffectiveness(battle, move.type, opponent.types)
             : null
           const presentation = effectivenessPresentation(multiplier)
           const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
@@ -1136,7 +1186,7 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
   )
 }
 
-function BattleIntro({ opponent, opponentTeam, playerTeam, effectsReady, onStart, onPreview }) {
+function BattleIntro({ opponent, opponentTeam, playerTeam, rules, effectsReady, onStart, onPreview }) {
   return (
     <section className={`battle-intro-overlay${effectsReady ? ' is-ready' : ' is-loading'}`}>
       <div className="battle-intro-streaks" />
@@ -1161,7 +1211,9 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, effectsReady, onStart
       <div className="battle-intro-versus">
         <Swords size={36} />
         <strong>VS</strong>
-        <small>6 POKÉMON SINGLE BATTLE</small>
+        <small>{rules.teamRule.shortLabel} · {rules.format.label}</small>
+        <span>{rules.weather.label} · {rules.terrain.label}</span>
+        <em>{rules.gimmickRestriction.label}</em>
       </div>
       <article className="battle-intro-trainer opponent">
         <TrainerSprite trainer={opponent} className="battle-intro-trainer-sprite" />
@@ -1193,14 +1245,18 @@ function BattleScreen({
   playerPokemon,
   opponent,
   opponentTeam,
+  rules,
   soundEnabled = true,
   onToggleSound,
   onComplete,
 }) {
-  const [battle, setBattle] = useState(() => createBattle({ playerPokemon, opponent, opponentTeam }))
+  const [battle, setBattle] = useState(() => createBattle({ playerPokemon, opponent, opponentTeam, rules }))
   const [introVisible, setIntroVisible] = useState(true)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
+  const [queuedActions, setQueuedActions] = useState([])
+  const [commandSlot, setCommandSlot] = useState(0)
+  const [targetSlot, setTargetSlot] = useState(0)
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
   const [moveAssetsReady, setMoveAssetsReady] = useState(false)
@@ -1215,6 +1271,8 @@ function BattleScreen({
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled)
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
+  const playerActivePokemon = getActivePokemonList(battle, 'player')
+  const opponentActivePokemon = getActivePokemonList(battle, 'opponent')
   const inspectedPokemonSide = hoveredPokemonSide ?? focusedPokemonSide ?? pinnedPokemonSide
   const summary = useMemo(() => getBattleSummary(battle), [battle])
   const currentLogEntry = battle.log.at(-1)
@@ -1231,9 +1289,9 @@ function BattleScreen({
     const battleRoster = [...battle.player.team, ...battle.opponent.team]
     battleAudioRef.current?.preload(battleRoster)
     const activePokemon = [
-      battle.player.team[battle.player.activeIndex],
-      battle.opponent.team[battle.opponent.activeIndex],
-    ].filter(Boolean)
+      ...getActivePokemonList(battle, 'player'),
+      ...getActivePokemonList(battle, 'opponent'),
+    ]
     const criticalAssets = activePokemon.flatMap((pokemon) => [
       ...getBattleSpriteAssets(pokemon),
       ...pokemon.moves.flatMap(getMoveAnimationAssets),
@@ -1310,6 +1368,7 @@ function BattleScreen({
     const steps = resolution.timeline
 
     setMenu('command')
+    setQueuedActions([])
     setIsTurnAnimating(steps.length > 0)
 
     const playStep = (stepIndex) => {
@@ -1349,6 +1408,7 @@ function BattleScreen({
       || isTurnAnimating
       || battle.winner
       || battle.awaitingPlayerSwitch
+      || (battle.rules?.format?.actionSlots ?? 1) > 1
       || !forcedReason
     ) return undefined
 
@@ -1371,9 +1431,37 @@ function BattleScreen({
     isTurnAnimating,
   ])
 
+  const livingPlayerActionSlots = playerActivePokemon
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  const livingOpponentTargetSlots = opponentActivePokemon
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+
+  const submitPlayerAction = (action) => {
+    const nextAction = { ...action, actorSlot: commandSlot, targetSlot }
+    if (battle.rules?.format?.rotation || livingPlayerActionSlots.length <= 1) {
+      startAnimatedTurn(nextAction)
+      return
+    }
+
+    const nextActions = [...queuedActions.filter((queued) => queued.actorSlot !== commandSlot), nextAction]
+    const nextSlot = livingPlayerActionSlots.find((slot) => !nextActions.some((queued) => queued.actorSlot === slot))
+    if (nextSlot == null) {
+      startAnimatedTurn(nextActions)
+      return
+    }
+
+    setQueuedActions(nextActions)
+    setCommandSlot(nextSlot)
+    setTargetSlot(livingOpponentTargetSlots[0] ?? 0)
+    setPendingGimmick(null)
+    setMenu('fight')
+  }
+
   const chooseMove = (moveIndex) => {
     battleAudioRef.current?.playMenu('select')
-    startAnimatedTurn({
+    submitPlayerAction({
       type: 'move',
       moveIndex,
       gimmick: pendingGimmick,
@@ -1385,6 +1473,7 @@ function BattleScreen({
     if (turnLockedRef.current) return
     battleAudioRef.current?.playMenu('select')
     if (battle.awaitingPlayerSwitch) {
+      const activeSlot = battle.awaitingPlayerSwitchSlots?.[0] ?? 0
       const nextBattle = forcePlayerSwitch(battle, targetIndex)
       if (nextBattle === battle) return
       const target = nextBattle.player.team[targetIndex]
@@ -1393,6 +1482,8 @@ function BattleScreen({
         phase: 'switch',
         sideId: 'player',
         targetSideId: 'player',
+        actorSlot: activeSlot,
+        targetSlot: activeSlot,
         actorName: target.name,
         actorSpeciesId: target.speciesId,
         actorOriginalSpeciesId: target.originalSpeciesId,
@@ -1410,7 +1501,7 @@ function BattleScreen({
         playbackTimerRef.current = null
       }, turnStepDuration(forcedSwitchCue))
     } else {
-      startAnimatedTurn({ type: 'switch', targetIndex })
+      submitPlayerAction({ type: 'switch', targetIndex })
     }
     setMenu('command')
   }
@@ -1426,13 +1517,24 @@ function BattleScreen({
 
   const openBattleMenu = (nextMenu) => {
     battleAudioRef.current?.playMenu('select')
+    const firstLivingSlot = livingPlayerActionSlots[0] ?? 0
+    setQueuedActions([])
+    setCommandSlot(battle.rules?.format?.rotation ? battle.player.rotationSlot ?? firstLivingSlot : firstLivingSlot)
+    setTargetSlot(livingOpponentTargetSlots[0] ?? 0)
     setMenu(nextMenu)
   }
 
   const returnToCommandMenu = () => {
     battleAudioRef.current?.playMenu('cancel')
     setPendingGimmick(null)
+    setQueuedActions([])
     setMenu('command')
+  }
+
+  const openPartyForCurrentSlot = () => {
+    battleAudioRef.current?.playMenu('select')
+    setPendingGimmick(null)
+    setMenu('party')
   }
 
   const previewBattleMenu = () => {
@@ -1477,7 +1579,7 @@ function BattleScreen({
   })
 
   return (
-    <main className={`battle-game-screen cue-${turnCue?.phase ?? 'command'} actor-${turnCue?.sideId ?? 'none'} target-${turnCue?.targetSideId ?? 'none'}`}>
+    <main className={`battle-game-screen cue-${turnCue?.phase ?? 'command'} actor-${turnCue?.sideId ?? 'none'} target-${turnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}>
       <header className="battle-game-header">
         <div className="battle-title-lockup">
           <span><Swords size={14} /> TRAINER BATTLE</span>
@@ -1503,36 +1605,56 @@ function BattleScreen({
       </header>
 
       <section
-        className={`battle-arena phase-${turnCue?.phase ?? 'command'}`}
+        className={`battle-arena phase-${turnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
         onPointerDown={(event) => {
           if (event.pointerType !== 'mouse') setPinnedPokemonSide(null)
         }}
       >
-        <div className={statusAnchorClassName('opponent', turnCue)}>
-          <BattleStatusPanel pokemon={opponentActive} side="opponent" trainerName={opponent.name} />
-          <PartyIndicators side={battle.opponent} />
-        </div>
-        <div className={statusAnchorClassName('player', turnCue)}>
-          <BattleStatusPanel pokemon={playerActive} side="player" trainerName="PLAYER_01" />
-          <PartyIndicators side={battle.player} />
+        <div className="battle-rule-hud" aria-label="현재 배틀 규칙">
+          <span>{battle.rules.weather.label}</span>
+          <span>{battle.rules.terrain.label}</span>
+          <span>{battle.rules.format.label}</span>
+          <span>{battle.rules.gimmickRestriction.label}</span>
         </div>
 
-        <BattlePokemonStatusTooltip
-          id="opponent-pokemon-status-tooltip"
-          pokemon={opponentActive}
-          side="opponent"
-          trainerName={opponent.name}
-          visible={!introVisible && inspectedPokemonSide === 'opponent'}
-        />
-        <BattlePokemonStatusTooltip
-          id="player-pokemon-status-tooltip"
-          pokemon={playerActive}
-          side="player"
-          trainerName="PLAYER_01"
-          visible={!introVisible && inspectedPokemonSide === 'player'}
-        />
+        {opponentActivePokemon.map((pokemon, slot) => (
+          <div className={statusAnchorClassName('opponent', turnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
+            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} />
+            {slot === 0 && <PartyIndicators side={battle.opponent} />}
+          </div>
+        ))}
+        {playerActivePokemon.map((pokemon, slot) => (
+          <div className={statusAnchorClassName('player', turnCue, slot)} key={`player-status-${pokemon.battleId}`}>
+            <BattleStatusPanel pokemon={pokemon} side="player" trainerName="PLAYER_01" />
+            {slot === 0 && <PartyIndicators side={battle.player} />}
+          </div>
+        ))}
+
+        {opponentActivePokemon.map((pokemon, slot) => (
+          <BattlePokemonStatusTooltip
+            id={`opponent-${slot}-pokemon-status-tooltip`}
+            key={`opponent-tooltip-${pokemon.battleId}`}
+            pokemon={pokemon}
+            side="opponent"
+            trainerName={opponent.name}
+            visible={!introVisible && inspectedPokemonSide === `opponent-${slot}`}
+          />
+        ))}
+        {playerActivePokemon.map((pokemon, slot) => (
+          <BattlePokemonStatusTooltip
+            id={`player-${slot}-pokemon-status-tooltip`}
+            key={`player-tooltip-${pokemon.battleId}`}
+            pokemon={pokemon}
+            side="player"
+            trainerName="PLAYER_01"
+            visible={!introVisible && inspectedPokemonSide === `player-${slot}`}
+          />
+        ))}
 
         <div className={battleCameraClassName(turnCue)} style={battleStageStyle(turnCue)}>
+          <div className="battle-environment-backdrop" />
+          <div className="battle-terrain-aura" />
+          <div className="battle-weather-layer" />
           <div className="battle-field-horizon" />
           <div className="battle-field-light battle-field-light-player" />
           <div className="battle-field-light battle-field-light-opponent" />
@@ -1541,41 +1663,45 @@ function BattleScreen({
           <div className="battle-platform opponent-platform" />
           <div className="battle-platform player-platform" />
 
-          <div
-            className={battleStageClassName('opponent', opponentActive, turnCue)}
-            key={`opponent-stage-${opponentActive.battleId}`}
-            style={battleStageStyle(turnCue)}
-            {...pokemonInspectorProps('opponent', opponentActive)}
-          >
-            <span className="battle-pokemon-shadow" aria-hidden="true" />
-            <PokemonSprite
-              animatedSrc={opponentActive.spriteFront}
-              fallbackSrc={opponentActive.spriteFrontFallback}
-              frameClassName="battle-live-sprite-frame opponent-sprite-frame"
-              className="battle-live-sprite"
-              decodingMode="async"
-              alt={opponentActive.name}
-            />
-            {opponentActive.teraActive && <TeraTypeJewel type={opponentActive.teraType} />}
-          </div>
+          {opponentActivePokemon.map((pokemon, slot) => (
+            <div
+              className={`${battleStageClassName('opponent', pokemon, turnCue, slot)}${battle.rules.format.rotation ? (battle.opponent.rotationSlot === slot ? ' is-rotation-active' : ' is-rotation-reserve') : ''}`}
+              key={`opponent-stage-${pokemon.battleId}`}
+              style={battleStageStyle(turnCue)}
+              {...pokemonInspectorProps(`opponent-${slot}`, pokemon)}
+            >
+              <span className="battle-pokemon-shadow" aria-hidden="true" />
+              <PokemonSprite
+                animatedSrc={pokemon.spriteFront}
+                fallbackSrc={pokemon.spriteFrontFallback}
+                frameClassName="battle-live-sprite-frame opponent-sprite-frame"
+                className="battle-live-sprite"
+                decodingMode="async"
+                alt={pokemon.name}
+              />
+              {pokemon.teraActive && <TeraTypeJewel type={pokemon.teraType} />}
+            </div>
+          ))}
 
-          <div
-            className={battleStageClassName('player', playerActive, turnCue)}
-            key={`player-stage-${playerActive.battleId}`}
-            style={battleStageStyle(turnCue)}
-            {...pokemonInspectorProps('player', playerActive)}
-          >
-            <span className="battle-pokemon-shadow" aria-hidden="true" />
-            <PokemonSprite
-              animatedSrc={playerActive.spriteBack}
-              fallbackSrc={playerActive.spriteBackFallback}
-              frameClassName="battle-live-sprite-frame player-sprite-frame"
-              className="battle-live-sprite"
-              decodingMode="async"
-              alt={playerActive.name}
-            />
-            {playerActive.teraActive && <TeraTypeJewel type={playerActive.teraType} />}
-          </div>
+          {playerActivePokemon.map((pokemon, slot) => (
+            <div
+              className={`${battleStageClassName('player', pokemon, turnCue, slot)}${battle.rules.format.rotation ? (battle.player.rotationSlot === slot ? ' is-rotation-active' : ' is-rotation-reserve') : ''}`}
+              key={`player-stage-${pokemon.battleId}`}
+              style={battleStageStyle(turnCue)}
+              {...pokemonInspectorProps(`player-${slot}`, pokemon)}
+            >
+              <span className="battle-pokemon-shadow" aria-hidden="true" />
+              <PokemonSprite
+                animatedSrc={pokemon.spriteBack}
+                fallbackSrc={pokemon.spriteBackFallback}
+                frameClassName="battle-live-sprite-frame player-sprite-frame"
+                className="battle-live-sprite"
+                decodingMode="async"
+                alt={pokemon.name}
+              />
+              {pokemon.teraActive && <TeraTypeJewel type={pokemon.teraType} />}
+            </div>
+          ))}
 
           <BattleArenaEffects cue={turnCue} />
         </div>
@@ -1608,6 +1734,7 @@ function BattleScreen({
             <PokemonPartyMenu
               battle={battle}
               forced={battle.awaitingPlayerSwitch}
+              activeSlot={battle.awaitingPlayerSwitch ? battle.awaitingPlayerSwitchSlots?.[0] ?? 0 : commandSlot}
               onSelect={chooseSwitch}
               onBack={returnToCommandMenu}
               onPreview={previewBattleMenu}
@@ -1615,9 +1742,14 @@ function BattleScreen({
           ) : !commandLocked && menu === 'fight' ? (
             <MoveMenu
               battle={battle}
+              activeSlot={commandSlot}
+              targetSlot={targetSlot}
               pendingGimmick={pendingGimmick}
+              onActiveSlot={setCommandSlot}
+              onTargetSlot={setTargetSlot}
               onGimmick={setPendingGimmick}
               onMove={chooseMove}
+              onOpenParty={openPartyForCurrentSlot}
               onBack={returnToCommandMenu}
               onPreview={previewBattleMenu}
             />
@@ -1653,6 +1785,7 @@ function BattleScreen({
           opponent={opponent}
           opponentTeam={{ ...opponentTeam, pokemon: battle.opponent.team }}
           playerTeam={playerPokemon}
+          rules={battle.rules}
           effectsReady={moveAssetsReady}
           onPreview={previewBattleMenu}
           onStart={() => {

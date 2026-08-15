@@ -1,4 +1,5 @@
 import { TRAINERS, getTrainerTeam } from './trainerTeams.js'
+import { createBattleMatchRules } from './battleRules.js'
 
 export const PLAYER_PARTICIPANT_ID = 'player'
 
@@ -83,6 +84,7 @@ export function createCompetition(mode, playerTeam, teamName, random = Math.rand
     roundHistory: [],
     status: 'active',
     championId: null,
+    currentMatchRules: createBattleMatchRules(random),
   }
 
   if (mode === 'league') {
@@ -129,6 +131,7 @@ export function getCurrentCompetitionMatch(competition) {
       player: getCompetitionParticipant(competition, PLAYER_PARTICIPANT_ID),
       opponent: getCompetitionParticipant(competition, opponentId),
       pairing,
+      rules: competition.currentMatchRules,
     }
   }
 
@@ -143,6 +146,7 @@ export function getCurrentCompetitionMatch(competition) {
     pairing: playerIndex % 2 === 0
       ? [PLAYER_PARTICIPANT_ID, opponentId]
       : [opponentId, PLAYER_PARTICIPANT_ID],
+    rules: competition.currentMatchRules,
   }
 }
 
@@ -291,9 +295,12 @@ export function resolveCompetitionMatch(
   random = Math.random,
 ) {
   if (!competition || competition.status !== 'active') return competition
-  return competition.mode === 'league'
+  const resolvedCompetition = competition.mode === 'league'
     ? leagueResult(competition, playerWon, random, battleSummary)
     : tournamentResult(competition, playerWon, random, battleSummary)
+  return resolvedCompetition.status === 'active'
+    ? { ...resolvedCompetition, currentMatchRules: createBattleMatchRules(random) }
+    : resolvedCompetition
 }
 
 export function getSortedLeagueStandings(competition) {

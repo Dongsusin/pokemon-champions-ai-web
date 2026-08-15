@@ -53,6 +53,10 @@ import {
   getCurrentCompetitionMatch,
   resolveCompetitionMatch,
 } from './data/competitionData'
+import {
+  selectOpponentBattlePokemon,
+  selectPlayerBattlePokemon,
+} from './data/battleRules'
 
 const BOX_STORAGE_KEY = 'champions-dex-v2'
 const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
@@ -435,7 +439,7 @@ function App() {
     showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 등록을 완료했습니다.`)
   }
 
-  const startCompetitionBattle = () => {
+  const startCompetitionBattle = (selectedCaptureIds = []) => {
     const currentMatch = getCurrentCompetitionMatch(competition)
     const opponentTeam = getCompetitionOpponentTeam(competition)
 
@@ -445,9 +449,15 @@ function App() {
       return
     }
 
+    const rules = currentMatch.rules
+    const playerTeam = selectPlayerBattlePokemon(competition.playerTeam, rules, selectedCaptureIds)
+    const selectedOpponentPokemon = selectOpponentBattlePokemon(opponentTeam.pokemon, rules)
+
     setBattleMatch({
       opponent: currentMatch.opponent,
-      opponentTeam,
+      opponentTeam: { ...opponentTeam, pokemon: selectedOpponentPokemon },
+      playerTeam,
+      rules,
       competitionLabel: `${competition.mode === 'league' ? '8인 리그전' : '128강 토너먼트'} · ${getCompetitionRoundLabel(competition)}`,
     })
     setScreen('battle')
@@ -787,9 +797,10 @@ function App() {
       ) : screen === 'battle' && competition && battleMatch ? (
         <BattleScreen
           competitionLabel={battleMatch.competitionLabel}
-          playerPokemon={competition.playerTeam}
+          playerPokemon={battleMatch.playerTeam}
           opponent={battleMatch.opponent}
           opponentTeam={battleMatch.opponentTeam}
+          rules={battleMatch.rules}
           soundEnabled={soundEnabled}
           onToggleSound={() => setSoundEnabled((enabled) => !enabled)}
           onComplete={finishCompetitionBattle}

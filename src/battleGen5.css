@@ -3575,3 +3575,361 @@
     transition: none;
   }
 }
+
+/* Match-specific battlefield environments and multi-Pokémon formats. */
+.app-shell.battle-view .battle-game-screen,
+.app-shell.battle-view .battle-arena,
+.app-shell.battle-view .battle-field-camera {
+  background-image: none !important;
+}
+
+.app-shell.battle-view .battle-environment-backdrop,
+.app-shell.battle-view .battle-terrain-aura,
+.app-shell.battle-view .battle-weather-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.app-shell.battle-view .battle-environment-backdrop {
+  z-index: 0;
+  background-position: center 54%;
+  background-size: cover;
+  transform: scale(1.012);
+}
+
+.app-shell.battle-view .terrain-neutral .battle-environment-backdrop {
+  background-image: url('/assets/battle-fields/neutral-stadium.png');
+}
+
+.app-shell.battle-view .terrain-grassy .battle-environment-backdrop {
+  background-image: url('/assets/battle-fields/grassy-stadium.png');
+}
+
+.app-shell.battle-view .terrain-electric .battle-environment-backdrop {
+  background-image: url('/assets/battle-fields/electric-stadium.png');
+}
+
+.app-shell.battle-view .terrain-psychic .battle-environment-backdrop {
+  background-image: url('/assets/battle-fields/psychic-stadium.png');
+}
+
+.app-shell.battle-view .terrain-misty .battle-environment-backdrop {
+  background-image: url('/assets/battle-fields/misty-stadium.png');
+}
+
+.app-shell.battle-view .battle-terrain-aura {
+  z-index: 2;
+  top: auto;
+  height: 48%;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  background: radial-gradient(ellipse at 50% 100%, var(--terrain-glow, rgba(100, 220, 210, 0.18)), transparent 67%);
+  animation: battle-terrain-breathe 4.8s ease-in-out infinite;
+}
+
+.app-shell.battle-view .terrain-neutral { --terrain-glow: rgba(112, 224, 221, 0.2); }
+.app-shell.battle-view .terrain-grassy { --terrain-glow: rgba(115, 255, 103, 0.34); }
+.app-shell.battle-view .terrain-electric { --terrain-glow: rgba(255, 229, 63, 0.4); }
+.app-shell.battle-view .terrain-psychic { --terrain-glow: rgba(224, 94, 255, 0.4); }
+.app-shell.battle-view .terrain-misty { --terrain-glow: rgba(255, 162, 234, 0.34); }
+
+.app-shell.battle-view .battle-weather-layer {
+  z-index: 4;
+  overflow: hidden;
+}
+
+.app-shell.battle-view .weather-clear .battle-weather-layer {
+  background: linear-gradient(180deg, rgba(81, 178, 255, 0.05), transparent 42%);
+}
+
+.app-shell.battle-view .weather-sun .battle-weather-layer {
+  opacity: 0.62;
+  background:
+    radial-gradient(circle at 74% 8%, rgba(255, 250, 184, 0.82) 0 3%, rgba(255, 190, 76, 0.26) 9%, transparent 27%),
+    linear-gradient(120deg, rgba(255, 218, 112, 0.2), transparent 45%);
+  mix-blend-mode: screen;
+  animation: battle-sun-pulse 3.2s ease-in-out infinite;
+}
+
+.app-shell.battle-view .weather-rain .battle-weather-layer {
+  opacity: 0.52;
+  background:
+    linear-gradient(180deg, rgba(9, 27, 57, 0.32), rgba(16, 72, 116, 0.14)),
+    repeating-linear-gradient(106deg, transparent 0 18px, rgba(185, 230, 255, 0.48) 19px 21px, transparent 22px 39px);
+  background-size: 100% 100%, 180px 210px;
+  animation: battle-rain-fall 520ms linear infinite;
+}
+
+.app-shell.battle-view .weather-sandstorm .battle-weather-layer {
+  opacity: 0.68;
+  background:
+    radial-gradient(circle at 15% 70%, rgba(255, 220, 137, 0.24) 0 1px, transparent 2px),
+    radial-gradient(circle at 65% 35%, rgba(255, 236, 177, 0.22) 0 2px, transparent 3px),
+    linear-gradient(110deg, rgba(121, 74, 32, 0.22), rgba(239, 189, 91, 0.18), rgba(93, 55, 26, 0.2));
+  background-size: 36px 31px, 58px 47px, 100% 100%;
+  mix-blend-mode: screen;
+  animation: battle-sand-drift 1.2s linear infinite;
+}
+
+.app-shell.battle-view .weather-snow .battle-weather-layer {
+  opacity: 0.72;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 2px, transparent 2.5px),
+    radial-gradient(circle, rgba(216, 247, 255, 0.72) 0 1px, transparent 1.8px),
+    linear-gradient(180deg, rgba(202, 240, 255, 0.18), transparent 46%);
+  background-position: 0 0, 28px 18px, 0 0;
+  background-size: 54px 58px, 42px 46px, 100% 100%;
+  animation: battle-snow-fall 3.8s linear infinite;
+}
+
+.app-shell.battle-view .weather-fog .battle-weather-layer {
+  opacity: 0.68;
+  background:
+    radial-gradient(ellipse at 18% 64%, rgba(234, 246, 250, 0.62), transparent 42%),
+    radial-gradient(ellipse at 78% 44%, rgba(223, 238, 247, 0.52), transparent 39%),
+    linear-gradient(180deg, rgba(207, 226, 238, 0.28), rgba(226, 240, 244, 0.16));
+  filter: blur(7px);
+  animation: battle-fog-drift 6s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .battle-rule-hud {
+  position: absolute;
+  top: 58px;
+  right: 18px;
+  z-index: 54;
+  display: flex;
+  max-width: 54%;
+  gap: 5px;
+  transform: none;
+}
+
+.app-shell.battle-view .battle-rule-hud > span {
+  overflow: hidden;
+  padding: 5px 9px;
+  border: 1px solid rgba(230, 245, 234, 0.66);
+  border-radius: 4px 10px;
+  color: #f8f8e5;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(10, 31, 48, 0.82);
+  box-shadow: 2px 3px 0 rgba(4, 13, 26, 0.48);
+  backdrop-filter: blur(5px);
+}
+
+.app-shell.battle-view .battle-target-selector,
+.app-shell.battle-view .battle-rotation-selector {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+}
+
+.app-shell.battle-view .battle-target-selector button,
+.app-shell.battle-view .battle-rotation-selector button {
+  max-width: 110px;
+  min-height: 25px;
+  overflow: hidden;
+  padding: 3px 8px;
+  border: 1px solid #718ba1;
+  border-radius: 4px 9px;
+  color: #cfe1e8;
+  font-size: 8px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #1d384c;
+}
+
+.app-shell.battle-view .battle-target-selector button.selected,
+.app-shell.battle-view .battle-rotation-selector button.selected {
+  border-color: #efff7e;
+  color: #1a2b35;
+  background: #dff367;
+  box-shadow: 0 0 10px rgba(218, 255, 91, 0.32);
+}
+
+.app-shell.battle-view .battle-intro-versus {
+  gap: 4px;
+  width: 184px;
+}
+
+.app-shell.battle-view .battle-intro-versus strong {
+  font-size: clamp(48px, 5.2vw, 76px);
+}
+
+.app-shell.battle-view .battle-intro-versus small,
+.app-shell.battle-view .battle-intro-versus > span,
+.app-shell.battle-view .battle-intro-versus > em {
+  width: 184px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.app-shell.battle-view .battle-intro-versus small {
+  color: #efffd2;
+  background: rgba(10, 31, 47, 0.58);
+}
+
+.app-shell.battle-view .battle-intro-versus > span {
+  color: #d9f8ff;
+  background: rgba(16, 54, 75, 0.72);
+}
+
+.app-shell.battle-view .battle-intro-versus > em {
+  color: #fff0bf;
+  background: rgba(78, 42, 77, 0.74);
+}
+
+.app-shell.battle-view .format-double .battle-pokemon-stage,
+.app-shell.battle-view .format-triple .battle-pokemon-stage,
+.app-shell.battle-view .format-rotation .battle-pokemon-stage {
+  width: clamp(92px, 9vw, 148px);
+  height: clamp(92px, 9vw, 148px);
+}
+
+.app-shell.battle-view .format-double .battle-pokemon-stage.player,
+.app-shell.battle-view .format-triple .battle-pokemon-stage.player,
+.app-shell.battle-view .format-rotation .battle-pokemon-stage.player {
+  width: clamp(122px, 12vw, 190px);
+  height: clamp(122px, 12vw, 190px);
+}
+
+.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-0 { left: 3%; bottom: -1%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-1 { left: 22%; bottom: 8%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-0 { right: 8%; bottom: 31%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-1 { right: 25%; bottom: 42%; }
+
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-0 { left: 1%; bottom: -2%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-1 { left: 17%; bottom: 6%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-2 { left: 32%; bottom: 14%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-0 { right: 6%; bottom: 29%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-1 { right: 21%; bottom: 39%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-2 { right: 36%; bottom: 49%; }
+
+.app-shell.battle-view .format-rotation .battle-pokemon-stage.is-rotation-reserve {
+  opacity: 0.58;
+  filter: saturate(0.72) brightness(0.78);
+  transform: scale(0.88);
+}
+
+.app-shell.battle-view .format-rotation .battle-pokemon-stage.is-rotation-active {
+  z-index: 8;
+  filter: drop-shadow(0 0 13px rgba(225, 255, 107, 0.46));
+}
+
+.app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-status-anchor {
+  width: clamp(170px, 17vw, 245px);
+}
+
+.app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-hp-panel,
+.app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-hp-panel.side-player {
+  gap: 2px;
+  padding: 5px 8px;
+  border-width: 2px;
+  outline-width: 2px;
+  box-shadow: 3px 4px 0 rgba(15, 31, 47, 0.48);
+}
+
+.app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-hp-panel header strong {
+  font-size: clamp(10px, 0.9vw, 14px);
+}
+
+.app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-hp-panel footer {
+  display: none;
+}
+
+.app-shell.battle-view .format-double .opponent-status-anchor.slot-0 { top: 78px; left: 2%; }
+.app-shell.battle-view .format-double .opponent-status-anchor.slot-1 { top: 78px; left: 20%; }
+.app-shell.battle-view .format-double .player-status-anchor.slot-0 { right: 2%; bottom: 4%; }
+.app-shell.battle-view .format-double .player-status-anchor.slot-1 { right: 20%; bottom: 4%; }
+
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-status-anchor {
+  width: clamp(145px, 14vw, 210px);
+}
+
+.app-shell.battle-view :is(.format-triple, .format-rotation) .opponent-status-anchor.slot-0 { top: 78px; left: 1%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .opponent-status-anchor.slot-1 { top: 78px; left: 15.5%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .opponent-status-anchor.slot-2 { top: 78px; left: 30%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .player-status-anchor.slot-0 { right: 1%; bottom: 3%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .player-status-anchor.slot-1 { right: 15.5%; bottom: 3%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .player-status-anchor.slot-2 { right: 30%; bottom: 3%; }
+
+.app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-status-anchor:not(.slot-0) .battle-party-indicators {
+  display: none;
+}
+
+@keyframes battle-terrain-breathe {
+  0%, 100% { opacity: 0.34; transform: scaleY(0.92); }
+  50% { opacity: 0.62; transform: scaleY(1.04); }
+}
+
+@keyframes battle-sun-pulse {
+  0%, 100% { opacity: 0.48; }
+  50% { opacity: 0.72; }
+}
+
+@keyframes battle-rain-fall {
+  from { background-position: 0 0, 0 -210px; }
+  to { background-position: 0 0, -45px 0; }
+}
+
+@keyframes battle-sand-drift {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 72px -22px, 116px -30px, 0 0; }
+}
+
+@keyframes battle-snow-fall {
+  from { background-position: 0 -58px, 28px -46px, 0 0; }
+  to { background-position: 24px 0, 2px 0, 0 0; }
+}
+
+@keyframes battle-fog-drift {
+  from { transform: translateX(-2%) scale(1.04); }
+  to { transform: translateX(2%) scale(1.08); }
+}
+
+@media (max-width: 980px) {
+  .app-shell.battle-view .battle-rule-hud {
+    top: 52px;
+    max-width: 78%;
+  }
+
+  .app-shell.battle-view .battle-rule-hud > span:nth-child(4) {
+    display: none;
+  }
+
+  .app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-status-anchor {
+    width: clamp(128px, 22vw, 180px);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell.battle-view .battle-rule-hud {
+    display: none;
+  }
+
+  .app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-status-anchor.slot-1,
+  .app-shell.battle-view :is(.format-triple, .format-rotation) .battle-status-anchor.slot-2 {
+    display: none;
+  }
+
+  .app-shell.battle-view .battle-target-selector button,
+  .app-shell.battle-view .battle-rotation-selector button {
+    max-width: 74px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.battle-view .battle-terrain-aura,
+  .app-shell.battle-view .battle-weather-layer {
+    animation: none;
+  }
+}
