@@ -22,7 +22,7 @@ import {
 } from './data/competitionData'
 import { getTrainerTeam } from './data/trainerTeams'
 import { getSpeciesProfile } from './data/trainingData'
-import { getBattleRuleSummary } from './data/battleRules'
+import { getBattleRuleSummary, getPlayerBattleSelectionCount } from './data/battleRules'
 
 function pokemonIconSources(slot) {
   const profile = getSpeciesProfile(slot.speciesId)
@@ -101,11 +101,11 @@ function BattleRuleBoard({ rules }) {
   )
 }
 
-function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, onToggle }) {
+function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label, onToggle }) {
   return (
-    <section className="competition-team-selection">
+    <section className="competition-team-selection" aria-label={label}>
       <header>
-        <span>SELECT BATTLE TEAM</span>
+        <span>{label}</span>
         <strong>{selectedCaptureIds.length} / {requiredCount}</strong>
       </header>
       <div>
@@ -465,15 +465,19 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
     : null
   const isFinished = competition.status !== 'active'
   const matchRules = currentMatch?.rules
-  const requiredPokemonCount = matchRules?.teamRule?.battleSize ?? competition.playerTeam.length
-  const requiresTeamSelection = matchRules?.teamRule?.id === 'pick3'
+  const requiredPokemonCount = getPlayerBattleSelectionCount(matchRules, competition.playerTeam.length)
+  const requiresPokemonSelection = Boolean(matchRules && requiredPokemonCount > 0)
+  const pokemonSelectionLabel = matchRules?.teamRule?.id === 'pick3'
+    ? 'SELECT BATTLE TEAM'
+    : 'SELECT LEAD POKÉMON'
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
   const [isBracketOpen, setIsBracketOpen] = useState(false)
 
   useEffect(() => {
-    const initialCount = matchRules?.teamRule?.battleSize ?? competition.playerTeam.length
-    setSelectedCaptureIds(competition.playerTeam.slice(0, initialCount).map((pokemon) => pokemon.captureId))
-  }, [competition.id, competition.round, matchRules?.id])
+    setSelectedCaptureIds(competition.playerTeam
+      .slice(0, requiredPokemonCount)
+      .map((pokemon) => pokemon.captureId))
+  }, [competition.id, competition.round, matchRules?.id, requiredPokemonCount])
 
   useEffect(() => {
     setIsBracketOpen(false)
@@ -548,11 +552,12 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
             <MatchTrainer participant={opponent} side="opponent" team={opponentTeam.pokemon} />
           </div>
           <BattleRuleBoard rules={matchRules} />
-          {requiresTeamSelection && (
+          {requiresPokemonSelection && (
             <BattleTeamSelection
               pokemon={competition.playerTeam}
               selectedCaptureIds={selectedCaptureIds}
               requiredCount={requiredPokemonCount}
+              label={pokemonSelectionLabel}
               onToggle={toggleSelectedPokemon}
             />
           )}

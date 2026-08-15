@@ -110,9 +110,32 @@ export function selectOpponentBattlePokemon(pokemon, rules) {
     .slice(0, rules.teamRule.battleSize)
 }
 
+export function getPlayerBattleSelectionCount(rules, pokemonCount = 0) {
+  const rosterSize = Math.max(0, Math.floor(Number(pokemonCount) || 0))
+  const battleSize = Math.min(
+    rosterSize,
+    Math.max(0, Math.floor(Number(rules?.teamRule?.battleSize) || rosterSize)),
+  )
+  if (rules?.teamRule?.id === 'pick3') return battleSize
+  return Math.min(
+    battleSize,
+    Math.max(1, Math.floor(Number(rules?.format?.activeSlots) || 1)),
+  )
+}
+
 export function selectPlayerBattlePokemon(pokemon, rules, selectedCaptureIds = []) {
-  if (!rules || rules.teamRule.id === 'full') return [...pokemon]
+  if (!rules) return [...pokemon]
   const pokemonByCaptureId = new Map(pokemon.map((entry) => [entry.captureId, entry]))
-  const selected = selectedCaptureIds.map((captureId) => pokemonByCaptureId.get(captureId)).filter(Boolean)
-  return selected.length === rules.teamRule.battleSize ? selected : pokemon.slice(0, rules.teamRule.battleSize)
+  const selected = [...new Set(selectedCaptureIds)]
+    .map((captureId) => pokemonByCaptureId.get(captureId))
+    .filter(Boolean)
+  const requiredCount = getPlayerBattleSelectionCount(rules, pokemon.length)
+
+  if (rules.teamRule.id === 'full') {
+    if (selected.length !== requiredCount) return [...pokemon]
+    const selectedIds = new Set(selected.map((entry) => entry.captureId))
+    return [...selected, ...pokemon.filter((entry) => !selectedIds.has(entry.captureId))]
+  }
+
+  return selected.length === requiredCount ? selected : pokemon.slice(0, rules.teamRule.battleSize)
 }
