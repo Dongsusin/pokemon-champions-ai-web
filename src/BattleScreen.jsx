@@ -1137,7 +1137,6 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
     { id: 'opponent', label: '상대', side: battle.opponent },
   ].map((entry) => ({
     ...entry,
-    remaining: entry.side.team.filter((member) => !member.fainted && member.hp > 0).length,
     fieldPokemon: (entry.side.activeIndexes ?? [entry.side.activeIndex])
       .map((teamIndex, fieldSlot) => ({ pokemon: entry.side.team[teamIndex], fieldSlot }))
       .filter(({ pokemon }) => pokemon && !pokemon.fainted && pokemon.hp > 0),
@@ -1154,7 +1153,7 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
         className={`battle-overview-grid${overviewColumns === 1 ? ' is-single' : ''}`}
         style={{ '--overview-columns': overviewColumns }}
       >
-        {sides.map(({ id, label, side, remaining, fieldPokemon }) => (
+        {sides.map(({ id, label, side, fieldPokemon }) => (
           <div className={`battle-overview-side side-${id}`} role="list" aria-label={`${label} 출전 포켓몬`} key={id}>
             {fieldPokemon.map(({ pokemon, fieldSlot }) => {
               const hpPercent = Math.ceil(hpRatio(pokemon))
@@ -1164,7 +1163,6 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
               return (
                 <article className={isRotationLead ? 'is-rotation-lead' : ''} role="listitem" key={pokemon.battleId}>
                   <div className="battle-overview-heading">
-                    <small>{label} · 출전 {fieldSlot + 1} · 잔여 {remaining}</small>
                     <strong>{pokemon.name}</strong>
                     {isRotationLead && <em>ACTIVE</em>}
                   </div>
