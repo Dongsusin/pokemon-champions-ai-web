@@ -10,6 +10,7 @@ import {
   Swords,
   Trophy,
   UsersRound,
+  X,
 } from 'lucide-react'
 import TrainerSprite from './TrainerSprite'
 import {
@@ -183,7 +184,7 @@ function createTournamentBracketLevels(competition) {
   })
 }
 
-function TournamentOverview({ competition, currentMatch }) {
+function TournamentOverview({ competition, currentMatch, onClose }) {
   const bracketViewportRef = useRef(null)
   const dragStateRef = useRef({ active: false, pointerId: null, startX: 0, scrollLeft: 0 })
   const hasCenteredRef = useRef(false)
@@ -256,11 +257,17 @@ function TournamentOverview({ competition, currentMatch }) {
   }
 
   return (
-    <section className="competition-roster-panel">
+    <section
+      id="tournament-bracket-popover"
+      className="competition-roster-panel competition-bracket-popover"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tournament-bracket-title"
+    >
       <header>
         <div>
           <span>TOURNAMENT ENTRANTS</span>
-          <h2>128강 토너먼트 대진표</h2>
+          <h2 id="tournament-bracket-title">128강 토너먼트 대진표</h2>
         </div>
         <div className="competition-roster-tools">
           <span className="tournament-scroll-hint">
@@ -271,6 +278,10 @@ function TournamentOverview({ competition, currentMatch }) {
             <strong>{activeCount}</strong>
             <span>현재 생존</span>
           </div>
+          <button className="competition-bracket-close" type="button" onClick={onClose} autoFocus>
+            <X size={17} />
+            <span>닫기</span>
+          </button>
         </div>
       </header>
 
@@ -457,11 +468,27 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
   const requiredPokemonCount = matchRules?.teamRule?.battleSize ?? competition.playerTeam.length
   const requiresTeamSelection = matchRules?.teamRule?.id === 'pick3'
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
+  const [isBracketOpen, setIsBracketOpen] = useState(false)
 
   useEffect(() => {
     const initialCount = matchRules?.teamRule?.battleSize ?? competition.playerTeam.length
     setSelectedCaptureIds(competition.playerTeam.slice(0, initialCount).map((pokemon) => pokemon.captureId))
   }, [competition.id, competition.round, matchRules?.id])
+
+  useEffect(() => {
+    setIsBracketOpen(false)
+  }, [competition.id, competition.round, competition.status])
+
+  useEffect(() => {
+    if (!isBracketOpen) return undefined
+
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setIsBracketOpen(false)
+    }
+
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [isBracketOpen])
 
   const toggleSelectedPokemon = (captureId) => {
     setSelectedCaptureIds((currentIds) => {
@@ -485,9 +512,23 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
             <h1>{isTournament ? '128강 토너먼트' : '8인 리그전'}</h1>
           </div>
         </div>
-        <div className="competition-round-chip">
-          <small>{isFinished ? 'COMPETITION RESULT' : 'CURRENT ROUND'}</small>
-          <strong>{isFinished ? '대회 종료' : roundLabel}</strong>
+        <div className="competition-round-actions">
+          {isTournament && (
+            <button
+              className={`competition-bracket-toggle${isBracketOpen ? ' is-open' : ''}`}
+              type="button"
+              aria-controls="tournament-bracket-popover"
+              aria-expanded={isBracketOpen}
+              onClick={() => setIsBracketOpen((isOpen) => !isOpen)}
+            >
+              <Trophy size={16} />
+              <span>{isBracketOpen ? '대진표 닫기' : '대진표 보기'}</span>
+            </button>
+          )}
+          <div className="competition-round-chip">
+            <small>{isFinished ? 'COMPETITION RESULT' : 'CURRENT ROUND'}</small>
+            <strong>{isFinished ? '대회 종료' : roundLabel}</strong>
+          </div>
         </div>
       </header>
 
@@ -556,9 +597,22 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
         </section>
       )}
 
-      {isTournament ? (
-        <TournamentOverview competition={competition} currentMatch={currentMatch} />
-      ) : (
+      {isTournament && isBracketOpen && (
+        <div
+          className="competition-bracket-popover-layer"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setIsBracketOpen(false)
+          }}
+        >
+          <TournamentOverview
+            competition={competition}
+            currentMatch={currentMatch}
+            onClose={() => setIsBracketOpen(false)}
+          />
+        </div>
+      )}
+
+      {!isTournament && (
         <LeagueOverview competition={competition} currentMatch={currentMatch} />
       )}
     </main>
