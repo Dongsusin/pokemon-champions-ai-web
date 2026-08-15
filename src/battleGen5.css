@@ -3752,8 +3752,10 @@
 }
 
 .app-shell.battle-view .battle-intro-versus {
+  grid-column: 2;
   gap: 4px;
   width: 184px;
+  justify-self: center;
 }
 
 .app-shell.battle-view .battle-intro-versus strong {
