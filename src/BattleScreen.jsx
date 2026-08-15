@@ -43,6 +43,7 @@ import {
   getActivePokemon,
   getActivePokemonList,
   getAvailableBattleMechanics,
+  getBattleMovePreview,
   getBattleTypeEffectiveness,
   getBattleSummary,
   getForcedBattleAction,
@@ -911,10 +912,11 @@ function MoveMenu({
       </header>
       <div className="battle-move-grid">
         {pokemon.moves.map((move, moveIndex) => {
-          const isDamagingMove = move.category !== '변화'
-            && (Number(move.power) > 0 || move.ohko || move.damage !== undefined || move.id === 'finalgambit')
+          const displayMove = getBattleMovePreview(battle, 'player', moveIndex, activeSlot, targetSlot) ?? move
+          const isDamagingMove = displayMove.category !== '변화'
+            && (Number(displayMove.power) > 0 || displayMove.ohko || displayMove.damage !== undefined || displayMove.id === 'finalgambit')
           const multiplier = isDamagingMove
-            ? getBattleTypeEffectiveness(battle, move.type, opponent.types)
+            ? getBattleTypeEffectiveness(battle, displayMove.type, opponent.types)
             : null
           const presentation = effectivenessPresentation(multiplier)
           const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
@@ -933,7 +935,7 @@ function MoveMenu({
               ))}
             >
               <button
-                className={`battle-move-button type-${typeClassName(move.type)} effectiveness-${presentation.tone}`}
+                className={`battle-move-button type-${typeClassName(displayMove.type)} effectiveness-${presentation.tone}`}
                 type="button"
                 disabled={move.currentPp <= 0}
                 aria-describedby={tooltipId}
@@ -943,10 +945,10 @@ function MoveMenu({
                 ))}
                 onClick={() => onMove(moveIndex)}
               >
-                <span className="battle-move-type">{move.type}</span>
+                <span className="battle-move-type">{displayMove.type}</span>
                 <span className="battle-move-name">
-                  <strong>{move.name}</strong>
-                  <small>{move.category}</small>
+                  <strong>{displayMove.name}</strong>
+                  <small>{displayMove.category}</small>
                 </span>
                 <span className="battle-move-pp">
                   <small>PP</small>
@@ -954,7 +956,7 @@ function MoveMenu({
                 </span>
                 <span className="battle-move-power">
                   <small>위력</small>
-                  <strong>{move.power || '—'}</strong>
+                  <strong>{displayMove.power || '—'}</strong>
                 </span>
                 <span className={`battle-move-effectiveness effectiveness-${presentation.tone}`}>
                   <small>상성</small>
@@ -963,7 +965,7 @@ function MoveMenu({
               </button>
               <BattleMoveTooltip
                 id={tooltipId}
-                move={move}
+                move={displayMove}
                 opponent={opponent}
                 presentation={presentation}
                 visible={isTooltipVisible}
@@ -1591,6 +1593,10 @@ function BattleScreen({
       }
     },
   })
+  const weatherTurns = battle.environment?.weatherTurns
+  const terrainTurns = battle.environment?.terrainTurns
+  const baseWeatherLabel = battle.environment?.baseWeather?.label ?? battle.rules.weather.label
+  const baseTerrainLabel = battle.environment?.baseTerrain?.label ?? battle.rules.terrain.label
 
   return (
     <main className={`battle-game-screen cue-${turnCue?.phase ?? 'command'} actor-${turnCue?.sideId ?? 'none'} target-${turnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}>
@@ -1625,8 +1631,12 @@ function BattleScreen({
         }}
       >
         <div className="battle-rule-hud" aria-label="현재 배틀 규칙">
-          <span>{battle.rules.weather.label}</span>
-          <span>{battle.rules.terrain.label}</span>
+          <span title={`기본 날씨: ${baseWeatherLabel}`}>
+            {battle.rules.weather.label}{Number.isFinite(weatherTurns) ? ` · ${weatherTurns}T` : ''}
+          </span>
+          <span title={`기본 필드: ${baseTerrainLabel}`}>
+            {battle.rules.terrain.label}{Number.isFinite(terrainTurns) ? ` · ${terrainTurns}T` : ''}
+          </span>
           <span>{battle.rules.format.label}</span>
           <span>{battle.rules.gimmickRestriction.label}</span>
         </div>

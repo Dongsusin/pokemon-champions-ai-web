@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T13:19:00.975Z",
+  "generatedAt": "2026-08-15T05:09:27.874Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
@@ -5237,7 +5237,8 @@
       "flags": [
         "metronome",
         "wind"
-      ]
+      ],
+      "weather": "Sandstorm"
     },
     {
       "id": "gigadrain",
@@ -6593,7 +6594,8 @@
       "description": "5턴 동안 비를 내리게 해서 물타입 기술의 위력을 올린다. 불꽃타입의 위력은 떨어진다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "weather": "RainDance"
     },
     {
       "id": "sunnyday",
@@ -6614,7 +6616,8 @@
       "description": "5턴 동안 햇살을 강하게 해서 불꽃타입 기술의 위력을 올린다. 물타입의 위력은 떨어진다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "weather": "sunnyday"
     },
     {
       "id": "crunch",
@@ -7056,7 +7059,8 @@
       "description": "5턴 동안 싸라기눈을 내리게 해서 얼음타입이 아닌 포켓몬 모두에게 데미지를 준다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "weather": "hail"
     },
     {
       "id": "torment",
@@ -15445,7 +15449,8 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "terrain": "grassyterrain"
     },
     {
       "id": "mistyterrain",
@@ -15467,7 +15472,8 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "terrain": "mistyterrain"
     },
     {
       "id": "electrify",
@@ -16059,7 +16065,8 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "terrain": "electricterrain"
     },
     {
       "id": "dazzlinggleam",
@@ -17006,7 +17013,8 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "terrain": "psychicterrain"
     },
     {
       "id": "lunge",
@@ -21303,7 +21311,8 @@
       "generation": 9,
       "description": "배틀의 흐름을 바꾸는 얼음타입 변화 기술이다.",
       "flags": [],
-      "selfSwitch": true
+      "selfSwitch": true,
+      "weather": "snowscape"
     },
     {
       "id": "tidyup",
@@ -21341,7 +21350,8 @@
       "target": "all",
       "generation": 9,
       "description": "배틀의 흐름을 바꾸는 얼음타입 변화 기술이다.",
-      "flags": []
+      "flags": [],
+      "weather": "snowscape"
     },
     {
       "id": "pounce",

@@ -172,6 +172,8 @@ const BATTLE_MECHANIC_FIELDS = [
   'hasCrashDamage',
   'forceSwitch',
   'selfSwitch',
+  'weather',
+  'terrain',
   'willCrit',
   'critRatio',
   'mindBlownRecoil',

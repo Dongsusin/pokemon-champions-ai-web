@@ -6,6 +6,7 @@ import {
   getSpeciesProfile,
   normalizePokemon,
 } from './trainingData.js'
+import { BATTLE_TERRAINS, BATTLE_WEATHERS } from './battleRules.js'
 
 const TYPE_CHART = {
   노말: { 바위: 0.5, 고스트: 0, 강철: 0.5 },
@@ -121,6 +122,71 @@ const DAMP_BLOCKED_MOVE_IDS = new Set([
 
 const RECOIL_IMMUNE_ABILITIES = new Set(['돌머리', '매직가드'])
 const SLEEP_IMMUNE_ABILITIES = new Set(['불면', '의기양양', '절대안깸'])
+const WEATHER_SUPPRESSING_ABILITIES = new Set(['날씨부정', '에어록'])
+const SANDSTORM_IMMUNE_ABILITIES = new Set(['매직가드', '방진', '모래숨기', '모래헤치기', '모래의힘'])
+const WEATHER_ENVIRONMENTS = new Map(BATTLE_WEATHERS.map((weather) => [weather.id, weather]))
+const TERRAIN_ENVIRONMENTS = new Map(BATTLE_TERRAINS.map((terrain) => [terrain.id, terrain]))
+const SHOWDOWN_WEATHER_IDS = {
+  hail: 'snow',
+  raindance: 'rain',
+  sandstorm: 'sandstorm',
+  snowscape: 'snow',
+  sunnyday: 'sun',
+}
+const SHOWDOWN_TERRAIN_IDS = {
+  electricterrain: 'electric',
+  grassyterrain: 'grassy',
+  mistyterrain: 'misty',
+  psychicterrain: 'psychic',
+}
+const ENTRY_WEATHER_ABILITIES = {
+  가뭄: 'sun',
+  끝의대지: 'sun',
+  눈퍼뜨리기: 'snow',
+  모래날림: 'sandstorm',
+  시작의바다: 'rain',
+  잔비: 'rain',
+  진홍빛고동: 'sun',
+}
+const ENTRY_TERRAIN_ABILITIES = {
+  그래스메이커: 'grassy',
+  미스트메이커: 'misty',
+  사이코메이커: 'psychic',
+  일렉트릭메이커: 'electric',
+  하드론엔진: 'electric',
+}
+const WEATHER_DURATION_ITEMS = {
+  rain: 'damp-rock',
+  sandstorm: 'smooth-rock',
+  snow: 'icy-rock',
+  sun: 'heat-rock',
+}
+const WEATHER_BALL_TYPES = {
+  rain: '물',
+  sandstorm: '바위',
+  snow: '얼음',
+  sun: '불꽃',
+}
+const TERRAIN_PULSE_TYPES = {
+  electric: '전기',
+  grassy: '풀',
+  misty: '페어리',
+  psychic: '에스퍼',
+}
+const MAX_MOVE_WEATHERS = {
+  물: 'rain',
+  바위: 'sandstorm',
+  불꽃: 'sun',
+  얼음: 'snow',
+}
+const MAX_MOVE_TERRAINS = {
+  에스퍼: 'psychic',
+  전기: 'electric',
+  페어리: 'misty',
+  풀: 'grassy',
+}
+const WEATHER_HEAL_MOVE_IDS = new Set(['morningsun', 'moonlight', 'synthesis'])
+const TERRAIN_CLEARING_MOVE_IDS = new Set(['icespinner', 'steelroller'])
 const SEMI_INVULNERABLE_MOVES = {
   dig: 'underground',
   dive: 'underwater',
@@ -329,6 +395,131 @@ function appendLog(state, message, tone = 'normal') {
   if (state.log.length > 80) state.log.splice(0, state.log.length - 80)
 }
 
+function cloneBattleRules(rules) {
+  return {
+    ...rules,
+    weather: { ...rules.weather },
+    terrain: { ...rules.terrain },
+    format: { ...rules.format },
+    teamRule: { ...rules.teamRule },
+    gimmickRestriction: { ...rules.gimmickRestriction },
+  }
+}
+
+function createEnvironmentState(rules) {
+  return {
+    baseWeather: { ...rules.weather },
+    baseTerrain: { ...rules.terrain },
+    weatherTurns: null,
+    terrainTurns: null,
+    weatherSource: null,
+    terrainSource: null,
+  }
+}
+
+function ensureEnvironmentState(state) {
+  if (!state.environment) state.environment = createEnvironmentState(state.rules)
+  return state.environment
+}
+
+function activePokemonHaveAbility(state, abilities) {
+  return ['player', 'opponent'].some((sideId) => (
+    getActivePokemonList(state, sideId).some((pokemon) => (
+      pokemon && !pokemon.fainted && pokemon.hp > 0 && abilities.has(pokemon.ability)
+    ))
+  ))
+}
+
+function effectiveWeatherId(state) {
+  if (activePokemonHaveAbility(state, WEATHER_SUPPRESSING_ABILITIES)) return 'clear'
+  return state.rules?.weather?.id ?? 'clear'
+}
+
+function environmentDuration(kind, environmentId, sourcePokemon) {
+  if (kind === 'terrain') return sourcePokemon?.heldItemId === 'terrain-extender' ? 8 : 5
+  return WEATHER_DURATION_ITEMS[environmentId] === sourcePokemon?.heldItemId ? 8 : 5
+}
+
+function environmentDefinition(kind, environmentId) {
+  const environments = kind === 'weather' ? WEATHER_ENVIRONMENTS : TERRAIN_ENVIRONMENTS
+  return environments.get(environmentId) ?? null
+}
+
+function setTemporaryEnvironment(state, kind, environmentId, sourceName, sourcePokemon) {
+  const environment = environmentDefinition(kind, environmentId)
+  if (!environment) return false
+  const environmentState = ensureEnvironmentState(state)
+  const duration = environmentDuration(kind, environmentId, sourcePokemon)
+  const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
+  const sourceKey = kind === 'weather' ? 'weatherSource' : 'terrainSource'
+
+  state.rules[kind] = { ...environment }
+  environmentState[turnsKey] = duration
+  environmentState[sourceKey] = sourceName
+  appendLog(
+    state,
+    kind === 'weather'
+      ? `${sourceName}의 효과로 날씨가 ${environment.label} 상태가 되었다! (${duration}턴)`
+      : `${sourceName}의 효과로 ${environment.label}가 펼쳐졌다! (${duration}턴)`,
+    'field',
+  )
+  state.lastEvent = {
+    kind: 'environment',
+    environmentKind: kind,
+    environmentId,
+    nonce: state.eventNonce += 1,
+  }
+  return true
+}
+
+function restoreBaseEnvironment(state, kind, sourceName = '') {
+  const environmentState = ensureEnvironmentState(state)
+  const baseKey = kind === 'weather' ? 'baseWeather' : 'baseTerrain'
+  const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
+  const sourceKey = kind === 'weather' ? 'weatherSource' : 'terrainSource'
+  const baseEnvironment = environmentState[baseKey]
+  const previousEnvironment = state.rules[kind]
+
+  state.rules[kind] = { ...baseEnvironment }
+  environmentState[turnsKey] = null
+  environmentState[sourceKey] = null
+  const restored = previousEnvironment?.id !== baseEnvironment.id
+  appendLog(
+    state,
+    sourceName
+      ? restored
+        ? `${sourceName}의 효과로 ${baseEnvironment.label} 상태로 돌아왔다.`
+        : `${sourceName}이(가) 환경 변화 효과를 해제했다.`
+      : restored
+        ? `임시 ${kind === 'weather' ? '날씨' : '필드'}가 끝나 ${baseEnvironment.label} 상태로 돌아왔다.`
+        : `${previousEnvironment?.label ?? baseEnvironment.label}의 임시 효과가 끝났다.`,
+    'field',
+  )
+  state.lastEvent = {
+    kind: 'environment',
+    environmentKind: kind,
+    environmentId: baseEnvironment.id,
+    nonce: state.eventNonce += 1,
+  }
+}
+
+function advanceEnvironmentTimers(state, timeline = null) {
+  const environmentState = ensureEnvironmentState(state)
+
+  ;['weather', 'terrain'].forEach((kind) => {
+    const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
+    if (!Number.isFinite(environmentState[turnsKey])) return
+    environmentState[turnsKey] -= 1
+    if (environmentState[turnsKey] > 0) return
+
+    restoreBaseEnvironment(state, kind)
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      message: latestLogMessage(state, '배틀 환경이 원래 상태로 돌아왔다.'),
+    })
+  })
+}
+
 function clonePokemon(pokemon) {
   return {
     ...pokemon,
@@ -357,6 +548,12 @@ function cloneSide(side) {
 function cloneBattle(state) {
   return {
     ...state,
+    rules: cloneBattleRules(state.rules),
+    environment: state.environment ? {
+      ...state.environment,
+      baseWeather: { ...state.environment.baseWeather },
+      baseTerrain: { ...state.environment.baseTerrain },
+    } : null,
     player: cloneSide(state.player),
     opponent: cloneSide(state.opponent),
     log: [...state.log],
@@ -449,14 +646,25 @@ function normalizedStageChanges(boosts = {}) {
   }))
 }
 
-function effectiveStat(pokemon, statKey) {
+function effectiveStat(state, pokemon, statKey) {
   let value = pokemon.stats[statKey] * stageMultiplier(pokemon.statStages[statKey] ?? 0)
+  const weatherId = effectiveWeatherId(state)
+  const terrainId = state.rules?.terrain?.id
 
   if (statKey === 'speed' && pokemon.status?.id === 'paralysis') value *= 0.5
   if (statKey === 'speed' && pokemon.heldItemId === 'choice-scarf') value *= 1.5
+  if (statKey === 'speed' && weatherId === 'sun' && pokemon.ability === '엽록소') value *= 2
+  if (statKey === 'speed' && weatherId === 'rain' && pokemon.ability === '쓱쓱') value *= 2
+  if (statKey === 'speed' && weatherId === 'sandstorm' && pokemon.ability === '모래헤치기') value *= 2
+  if (statKey === 'speed' && weatherId === 'snow' && pokemon.ability === '눈치우기') value *= 2
+  if (statKey === 'speed' && terrainId === 'electric' && pokemon.ability === '서핑테일') value *= 2
   if (statKey === 'attack' && pokemon.heldItemId === 'choice-band') value *= 1.5
+  if (statKey === 'attack' && weatherId === 'sun' && pokemon.ability === '진홍빛고동') value *= 4 / 3
   if (statKey === 'specialAttack' && pokemon.heldItemId === 'choice-specs') value *= 1.5
+  if (statKey === 'specialAttack' && weatherId === 'sun' && pokemon.ability === '선파워') value *= 1.5
+  if (statKey === 'specialAttack' && terrainId === 'electric' && pokemon.ability === '하드론엔진') value *= 4 / 3
   if (statKey === 'specialDefense' && pokemon.heldItemId === 'assault-vest') value *= 1.5
+  if (statKey === 'defense' && terrainId === 'grassy' && pokemon.ability === '풀모피') value *= 1.5
 
   return Math.max(1, value)
 }
@@ -475,17 +683,60 @@ export function getBattleTypeEffectiveness(state, moveType, defenderTypes) {
 }
 
 function isGrounded(pokemon) {
-  return !pokemon.types.includes('비행') && pokemon.ability !== '부유'
+  return !pokemon.semiInvulnerable && !pokemon.types.includes('비행') && pokemon.ability !== '부유'
+}
+
+function resolveEnvironmentMove(state, attacker, defender, move) {
+  const resolvedMove = { ...move }
+  const weatherId = effectiveWeatherId(state)
+  const terrainId = state.rules?.terrain?.id
+
+  if (move.id === 'weatherball' && WEATHER_BALL_TYPES[weatherId]) {
+    resolvedMove.type = WEATHER_BALL_TYPES[weatherId]
+    resolvedMove.power = Math.max(1, Number(move.power) || 50) * 2
+  }
+
+  if (move.id === 'terrainpulse' && isGrounded(attacker) && TERRAIN_PULSE_TYPES[terrainId]) {
+    resolvedMove.type = TERRAIN_PULSE_TYPES[terrainId]
+    resolvedMove.power = Math.max(1, Number(move.power) || 50) * 2
+  }
+
+  if (['solarbeam', 'solarblade'].includes(move.id) && !['clear', 'sun'].includes(weatherId)) {
+    resolvedMove.power = Math.max(1, Number(move.power) || 1) * 0.5
+  }
+  if (move.id === 'risingvoltage' && terrainId === 'electric' && isGrounded(defender)) {
+    resolvedMove.power = Math.max(1, Number(move.power) || 1) * 2
+  }
+  if (move.id === 'expandingforce' && terrainId === 'psychic' && isGrounded(attacker)) {
+    resolvedMove.power = Math.max(1, Number(move.power) || 1) * 1.5
+  }
+  if (move.id === 'mistyexplosion' && terrainId === 'misty' && isGrounded(attacker)) {
+    resolvedMove.power = Math.max(1, Number(move.power) || 1) * 1.5
+  }
+  if (move.id === 'growth' && weatherId === 'sun') {
+    resolvedMove.boosts = { atk: 2, spa: 2 }
+  }
+
+  return resolvedMove
+}
+
+function environmentMovePriority(state, attacker, move) {
+  let priority = Number(move?.priority ?? 0)
+  if (attacker.ability === '짓궂은마음' && isStatusMove(move)) priority += 1
+  if (move?.id === 'grassyglide' && state.rules?.terrain?.id === 'grassy' && isGrounded(attacker)) {
+    priority += 1
+  }
+  return priority
 }
 
 function environmentMoveMultiplier(state, attacker, defender, move) {
   let multiplier = 1
-  const weatherId = state.rules?.weather?.id
+  const weatherId = effectiveWeatherId(state)
   const terrainId = state.rules?.terrain?.id
 
   if (weatherId === 'sun') {
     if (move.type === '불꽃') multiplier *= 1.5
-    if (move.type === '물') multiplier *= 0.5
+    if (move.type === '물') multiplier *= move.id === 'hydrosteam' ? 1.5 : 0.5
   } else if (weatherId === 'rain') {
     if (move.type === '물') multiplier *= 1.5
     if (move.type === '불꽃') multiplier *= 0.5
@@ -498,6 +749,11 @@ function environmentMoveMultiplier(state, attacker, defender, move) {
   }
   if (isGrounded(defender) && terrainId === 'misty' && move.type === '드래곤') multiplier *= 0.5
   if (isGrounded(defender) && terrainId === 'grassy' && ['earthquake', 'bulldoze', 'magnitude'].includes(move.id)) multiplier *= 0.5
+  if (
+    weatherId === 'sandstorm'
+    && attacker.ability === '모래의힘'
+    && ['바위', '땅', '강철'].includes(move.type)
+  ) multiplier *= 1.3
   return multiplier
 }
 
@@ -529,14 +785,14 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   const attackKey = category === 'physical' ? 'attack' : 'specialAttack'
   const defenseKey = category === 'physical' ? 'defense' : 'specialDefense'
   const power = Math.max(1, Number(move.power) || 1) * powerMultiplier
-  let attack = effectiveStat(attacker, attackKey)
-  let defense = effectiveStat(defender, defenseKey)
+  let attack = effectiveStat(state, attacker, attackKey)
+  let defense = effectiveStat(state, defender, defenseKey)
 
   if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
   if (attacker.ability === '의욕' && category === 'physical') attack *= 1.5
   if (attacker.ability === '근성' && attacker.status) attack *= 1.5
-  if (state.rules?.weather?.id === 'snow' && category === 'physical' && defender.types.includes('얼음')) defense *= 1.5
-  if (state.rules?.weather?.id === 'sandstorm' && category === 'special' && defender.types.includes('바위')) defense *= 1.5
+  if (effectiveWeatherId(state) === 'snow' && category === 'physical' && defender.types.includes('얼음')) defense *= 1.5
+  if (effectiveWeatherId(state) === 'sandstorm' && category === 'special' && defender.types.includes('바위')) defense *= 1.5
   const baseDamage = (((2 * 50) / 5 + 2) * power * attack / defense) / 50 + 2
   const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
   const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
@@ -556,6 +812,7 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   if (attacker.ability === '급류' && attacker.hp <= attacker.maxHp / 3 && move.type === '물') modifier *= 1.5
   if (defender.ability === '멀티스케일' && defender.hp === defender.maxHp) modifier *= 0.5
   if (defender.ability === '두꺼운지방' && ['불꽃', '얼음'].includes(move.type)) modifier *= 0.5
+  if (defender.ability === '건조피부' && move.type === '불꽃') modifier *= 1.25
 
   return {
     damage: effectiveness === 0 ? 0 : Math.max(1, Math.floor(baseDamage * modifier)),
@@ -567,6 +824,7 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
 function setStatus(state, target, statusId, sourceName) {
   if (!STATUS_LABELS[statusId] || target.status || target.fainted || target.hp <= 0) return false
   if (target.ability === '정화의소금') return false
+  if (target.ability === '리프가드' && effectiveWeatherId(state) === 'sun') return false
   if (statusId === 'burn' && target.types.includes('불꽃')) return false
   if (statusId === 'burn' && ['수의베일', '수포'].includes(target.ability)) return false
   if ((statusId === 'poison' || statusId === 'toxic') && target.types.some((type) => ['독', '강철'].includes(type))) return false
@@ -575,6 +833,7 @@ function setStatus(state, target, statusId, sourceName) {
   if (statusId === 'paralysis' && target.ability === '유연') return false
   if (statusId === 'freeze' && target.types.includes('얼음')) return false
   if (statusId === 'freeze' && target.ability === '마그마의무장') return false
+  if (statusId === 'freeze' && effectiveWeatherId(state) === 'sun') return false
   if (statusId === 'sleep' && SLEEP_IMMUNE_ABILITIES.has(target.ability)) return false
   if (isGrounded(target) && state.rules?.terrain?.id === 'misty') return false
   if (isGrounded(target) && state.rules?.terrain?.id === 'electric' && statusId === 'sleep') return false
@@ -618,6 +877,7 @@ function applyVolatileEffect(state, target, volatileStatus, sourceName, random) 
 
   if (volatileStatus === 'confusion') {
     if (target.confusionTurns > 0 || target.ability === '마이페이스') return false
+    if (isGrounded(target) && state.rules?.terrain?.id === 'misty') return false
     target.confusionTurns = 2 + Math.floor(random() * 4)
     appendLog(state, `${target.name}은(는) 혼란에 빠졌다!`, 'status')
     return true
@@ -632,6 +892,7 @@ function applyVolatileEffect(state, target, volatileStatus, sourceName, random) 
 
   if (volatileStatus === 'yawn') {
     if (target.status || target.yawnTurns > 0 || SLEEP_IMMUNE_ABILITIES.has(target.ability)) return false
+    if (isGrounded(target) && ['electric', 'misty'].includes(state.rules?.terrain?.id)) return false
     target.yawnTurns = 2
     appendLog(state, `${target.name}은(는) 졸음이 쏟아지기 시작했다!`, 'status')
     return true
@@ -679,6 +940,66 @@ function applyPrimaryMoveEffects(state, attacker, defender, move, random) {
   return applied || selfApplied
 }
 
+function applyEnvironmentFromMove(state, attacker, move) {
+  const weatherId = SHOWDOWN_WEATHER_IDS[String(move.weather ?? move.id).toLowerCase()]
+  const terrainId = SHOWDOWN_TERRAIN_IDS[String(move.terrain ?? move.id).toLowerCase()]
+  let applied = false
+
+  if (weatherId) applied = setTemporaryEnvironment(state, 'weather', weatherId, move.name, attacker) || applied
+  if (terrainId) applied = setTemporaryEnvironment(state, 'terrain', terrainId, move.name, attacker) || applied
+
+  if (move.id === 'defog') {
+    const environmentState = ensureEnvironmentState(state)
+    if (state.rules?.terrain?.id !== 'neutral' || environmentState.terrainTurns != null) {
+      restoreBaseEnvironment(state, 'terrain', move.name)
+      applied = true
+    }
+    if (state.rules?.weather?.id === 'fog' || environmentState.weatherTurns != null && effectiveWeatherId(state) === 'fog') {
+      restoreBaseEnvironment(state, 'weather', move.name)
+      applied = true
+    }
+  }
+
+  return applied
+}
+
+function applyEnvironmentAfterDamagingMove(state, attacker, defender, move) {
+  let applied = false
+
+  if (attacker.dynamaxActive && attacker.dynamaxMode !== 'gigantamax') {
+    const weatherId = MAX_MOVE_WEATHERS[move.type]
+    const terrainId = MAX_MOVE_TERRAINS[move.type]
+    if (weatherId) {
+      applied = setTemporaryEnvironment(state, 'weather', weatherId, '다이맥스 기술', attacker) || applied
+    }
+    if (terrainId) {
+      applied = setTemporaryEnvironment(state, 'terrain', terrainId, '다이맥스 기술', attacker) || applied
+    }
+  }
+
+  if (!defender.fainted && defender.ability === '모래뿜기') {
+    appendLog(state, `${defender.name}의 모래뿜기!`, 'ability')
+    applied = setTemporaryEnvironment(state, 'weather', 'sandstorm', '모래뿜기', defender) || applied
+  }
+  if (!defender.fainted && defender.ability === '넘치는씨') {
+    appendLog(state, `${defender.name}의 넘치는씨!`, 'ability')
+    applied = setTemporaryEnvironment(state, 'terrain', 'grassy', '넘치는씨', defender) || applied
+  }
+
+  return applied
+}
+
+function healingMoveFraction(state, move) {
+  const weatherId = effectiveWeatherId(state)
+  if (WEATHER_HEAL_MOVE_IDS.has(move.id)) {
+    if (weatherId === 'sun') return [2, 3]
+    if (weatherId !== 'clear') return [1, 4]
+    return [1, 2]
+  }
+  if (move.id === 'shoreup') return weatherId === 'sandstorm' ? [2, 3] : [1, 2]
+  return move.heal ?? [1, 2]
+}
+
 function applyStatusMove(state, attacker, defender, move, random) {
   if (PROTECT_MOVE_IDS.has(move.id)) {
     const successRate = 1 / Math.max(1, 3 ** attacker.protectChain)
@@ -694,10 +1015,17 @@ function applyStatusMove(state, attacker, defender, move, random) {
   }
 
   attacker.protectChain = 0
+  const environmentApplied = applyEnvironmentFromMove(state, attacker, move)
 
   if (move.id === 'rest') {
+    const previousStatus = attacker.status
+    attacker.status = null
+    if (!setStatus(state, attacker, 'sleep', move.name)) {
+      attacker.status = previousStatus
+      appendLog(state, `${attacker.name}은(는) 잠들 수 없어 잠자기에 실패했다!`, 'muted')
+      return true
+    }
     attacker.hp = attacker.maxHp
-    attacker.status = { id: 'sleep', label: STATUS_LABELS.sleep, counter: 2, toxicCounter: 0 }
     appendLog(state, `${attacker.name}은(는) 푹 잠들어 HP를 모두 회복했다.`, 'heal')
     return true
   }
@@ -718,7 +1046,7 @@ function applyStatusMove(state, attacker, defender, move, random) {
   }
 
   if (move.heal || HEAL_MOVE_IDS.has(move.id)) {
-    const [numerator, denominator] = move.heal ?? [1, 2]
+    const [numerator, denominator] = healingMoveFraction(state, move)
     healPokemon(state, attacker, attacker.maxHp * numerator / denominator, move.name)
     return true
   }
@@ -729,6 +1057,7 @@ function applyStatusMove(state, attacker, defender, move, random) {
   if (scriptedEffect?.self) changeStages(state, attacker, scriptedEffect.self)
   if (scriptedEffect?.target) changeStages(state, defender, scriptedEffect.target)
   if (scriptedEffect) return true
+  if (environmentApplied) return true
 
   appendLog(state, `${move.name}의 전술 효과가 전개되었다.`, 'status')
   return true
@@ -766,9 +1095,9 @@ function applyMoveSecondaries(state, attacker, defender, move, random) {
   return applied
 }
 
-function confusionSelfDamage(pokemon, random) {
-  const attack = effectiveStat(pokemon, 'attack')
-  const defense = effectiveStat(pokemon, 'defense')
+function confusionSelfDamage(state, pokemon, random) {
+  const attack = effectiveStat(state, pokemon, 'attack')
+  const defense = effectiveStat(state, pokemon, 'defense')
   const baseDamage = (((2 * 50) / 5 + 2) * 40 * attack / defense) / 50 + 2
   return Math.max(1, Math.floor(baseDamage * (0.85 + random() * 0.15)))
 }
@@ -819,7 +1148,7 @@ function canPokemonAct(state, pokemon, random, move) {
     const finalConfusionTurn = pokemon.confusionTurns === 1
     pokemon.confusionTurns -= 1
     if (random() < 0.5) {
-      const damage = Math.min(pokemon.hp, confusionSelfDamage(pokemon, random))
+      const damage = Math.min(pokemon.hp, confusionSelfDamage(state, pokemon, random))
       pokemon.hp = Math.max(0, pokemon.hp - damage)
       appendLog(state, `${pokemon.name}은(는) 영문도 모른 채 자신을 공격했다!`, 'damage')
       return false
@@ -969,6 +1298,7 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
     if (transformPokemon(state, pokemon, pokemon.gimmickFormId, mechanicId)) {
       side.usedMechanics[mechanicId] = true
       appendLog(state, `${trainerName}의 ${pokemon.name}! ${MECHANIC_LABELS[mechanicId]} 성공!`, 'gimmick')
+      activateEntryAbility(state, sideId, activeSlot)
     }
   } else if (mechanicId === 'zmove') {
     side.usedMechanics.zmove = true
@@ -1014,6 +1344,25 @@ export function getForcedBattleAction(state, sideId = 'player', activeSlot = nul
   return forcedActionForPokemon(getActivePokemon(state, sideId, activeSlot))
 }
 
+export function getBattleMovePreview(
+  state,
+  sideId = 'player',
+  moveIndex = 0,
+  activeSlot = 0,
+  targetSlot = 0,
+) {
+  if (!state) return null
+  const attacker = getActivePokemon(state, sideId, activeSlot)
+  const defender = getActivePokemon(state, sideId === 'player' ? 'opponent' : 'player', targetSlot)
+  const move = attacker?.moves?.[moveIndex]
+  if (!attacker || !defender || !move) return move ?? null
+  const resolvedMove = resolveEnvironmentMove(state, attacker, defender, move)
+  return {
+    ...resolvedMove,
+    priority: environmentMovePriority(state, attacker, resolvedMove),
+  }
+}
+
 function clearChargeState(pokemon) {
   pokemon.chargingMove = null
   pokemon.semiInvulnerable = null
@@ -1037,15 +1386,18 @@ function semiInvulnerableInteraction(defender, move) {
 function moveHits(state, attacker, defender, move, random) {
   if (move.accuracyLabel === '필중' || move.accuracy == null) return true
   if (attacker.ability === '노가드' || defender.ability === '노가드') return true
-  if (state.rules?.weather?.id === 'rain' && ['thunder', 'hurricane'].includes(move.id)) return true
-  if (state.rules?.weather?.id === 'snow' && move.id === 'blizzard') return true
+  const weatherId = effectiveWeatherId(state)
+  if (weatherId === 'rain' && ['thunder', 'hurricane'].includes(move.id)) return true
+  if (weatherId === 'snow' && move.id === 'blizzard') return true
 
   const baseAccuracy = Number(move.accuracy) || 100
   const stageModifier = accuracyStageMultiplier(attacker.statStages.accuracy ?? 0)
     / accuracyStageMultiplier(defender.statStages.evasion ?? 0)
   const hustleModifier = attacker.ability === '의욕' && move.categoryId === 'physical' ? 0.8 : 1
-  let weatherModifier = state.rules?.weather?.id === 'fog' ? 0.8 : 1
-  if (state.rules?.weather?.id === 'sun' && ['thunder', 'hurricane'].includes(move.id)) weatherModifier *= 0.5
+  let weatherModifier = weatherId === 'fog' ? 0.6 : 1
+  if (weatherId === 'sun' && ['thunder', 'hurricane'].includes(move.id)) weatherModifier *= 0.5
+  if (weatherId === 'sandstorm' && defender.ability === '모래숨기') weatherModifier *= 0.8
+  if (weatherId === 'snow' && defender.ability === '눈숨기') weatherModifier *= 0.8
   return random() * 100 < Math.min(100, baseAccuracy * stageModifier * hustleModifier * weatherModifier)
 }
 
@@ -1208,11 +1560,12 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     targetSlot = getActivePokemonList(state, targetSide.id).findIndex((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
     defender = getActivePokemon(state, targetSide.id, Math.max(0, targetSlot))
   }
-  const move = attacker.moves[action.moveIndex]
-  const moveCategory = move?.categoryId
-    ?? (move?.category === '물리' ? 'physical' : move?.category === '변화' ? 'status' : 'special')
+  const moveSlot = attacker.moves[action.moveIndex]
+  let move = moveSlot
+  const moveCategory = moveSlot?.categoryId
+    ?? (moveSlot?.category === '물리' ? 'physical' : moveSlot?.category === '변화' ? 'status' : 'special')
 
-  if (!move || attacker.fainted || attacker.hp <= 0 || defender.fainted || defender.hp <= 0) return
+  if (!moveSlot || attacker.fainted || attacker.hp <= 0 || defender.fainted || defender.hp <= 0) return
   const isChargeContinuation = action.forcedReason === 'charge'
   const isLockedContinuation = action.forcedReason === 'locked'
   if (attacker.destinyBondActive && move.id !== 'destinybond') attacker.destinyBondActive = false
@@ -1232,14 +1585,15 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
-  if (!isChargeContinuation && !isLockedContinuation && move.currentPp <= 0) {
-    appendLog(state, `${move.name}의 PP가 남아 있지 않다!`, 'muted')
+  if (!isChargeContinuation && !isLockedContinuation && moveSlot.currentPp <= 0) {
+    appendLog(state, `${moveSlot.name}의 PP가 남아 있지 않다!`, 'muted')
     return
   }
 
   const mechanicWasUsed = action.gimmick ? side.usedMechanics[action.gimmick] : false
   const mechanicBefore = action.gimmick ? mechanicPokemonSnapshot(attacker) : null
   const powerMultiplier = activateMechanic(state, sideId, action.gimmick, actorSlot)
+  move = resolveEnvironmentMove(state, attacker, defender, moveSlot)
   if (action.gimmick && !mechanicWasUsed && side.usedMechanics[action.gimmick]) {
     const mechanicAfter = mechanicPokemonSnapshot(attacker)
     pushTimelineStep(timeline, state, {
@@ -1266,12 +1620,12 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       spriteAfterBack: mechanicAfter.spriteBack,
       spriteAfterFrontFallback: mechanicAfter.spriteFrontFallback,
       spriteAfterBackFallback: mechanicAfter.spriteBackFallback,
-      message: latestLogMessage(state, `${attacker.name}의 배틀 기믹이 발동했다!`),
+      message: `${attacker.name}의 ${MECHANIC_LABELS[action.gimmick]}이(가) 발동했다!`,
     })
   }
 
   if (isChargeContinuation) clearChargeState(attacker)
-  if (!isChargeContinuation && !isLockedContinuation) move.currentPp = Math.max(0, move.currentPp - 1)
+  if (!isChargeContinuation && !isLockedContinuation) moveSlot.currentPp = Math.max(0, moveSlot.currentPp - 1)
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
   const animationMetadata = moveAnimationMetadata(attacker, move, action, moveCategory)
 
@@ -1293,7 +1647,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     moveCategory,
     moveGeneration: move.generation,
     movePower: Number(move.power) || 0,
-    movePriority: Number(move.priority) || 0,
+    movePriority: environmentMovePriority(state, attacker, move),
     moveMultihit: Array.isArray(move.multihit) ? [...move.multihit] : move.multihit ?? null,
     moveDrain: Array.isArray(move.drain) ? [...move.drain] : move.drain ?? null,
     moveRecoil: Array.isArray(move.recoil) ? [...move.recoil] : move.recoil ?? null,
@@ -1311,7 +1665,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     && !isChargeContinuation
     && action.gimmick !== 'zmove'
     && !attacker.dynamaxActive
-    && !(state.rules?.weather?.id === 'sun' && ['solarbeam', 'solarblade'].includes(move.id))
+    && !(effectiveWeatherId(state) === 'sun' && ['solarbeam', 'solarblade'].includes(move.id))
+    && !(effectiveWeatherId(state) === 'rain' && move.id === 'electroshot')
   if (requiresCharge) {
     if (attacker.heldItemId === 'power-herb' && !attacker.consumedItem) {
       attacker.consumedItem = true
@@ -1352,10 +1707,21 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     }
   }
 
+  if (move.id === 'steelroller' && state.rules?.terrain?.id === 'neutral') {
+    appendLog(state, '필드가 펼쳐져 있지 않아 아이언롤러는 실패했다!', 'muted')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'failed',
+      message: latestLogMessage(state, '아이언롤러는 실패했다!'),
+    })
+    return
+  }
+
   if (
     state.rules?.terrain?.id === 'psychic'
     && move.target !== 'self'
-    && Number(move.priority ?? 0) > 0
+    && environmentMovePriority(state, attacker, move) > 0
     && isGrounded(defender)
   ) {
     appendLog(state, `사이코필드가 ${defender.name}을(를) 우선도 기술로부터 지켰다!`, 'field')
@@ -1492,6 +1858,13 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   })
 
   const postEffectLogLength = state.log.length
+  if (landedHits > 0) applyEnvironmentAfterDamagingMove(state, attacker, defender, move)
+  if (landedHits > 0 && !attacker.dynamaxActive && TERRAIN_CLEARING_MOVE_IDS.has(move.id)) {
+    const environmentState = ensureEnvironmentState(state)
+    if (state.rules?.terrain?.id !== 'neutral' || environmentState.terrainTurns != null) {
+      restoreBaseEnvironment(state, 'terrain', move.name)
+    }
+  }
   if (damage > 0 && move.drain) {
     const [numerator, denominator] = move.drain
     healPokemon(state, attacker, damage * numerator / denominator, move.name)
@@ -1556,11 +1929,18 @@ function endDynamax(state, pokemon) {
 
 function activateEntryAbility(state, sideId, activeSlot = null) {
   const pokemon = getActivePokemon(state, sideId, activeSlot)
-  const target = getActivePokemon(state, sideId === 'player' ? 'opponent' : 'player')
-  if (!pokemon || !target || target.fainted) return
+  if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
+
+  const weatherId = ENTRY_WEATHER_ABILITIES[pokemon.ability]
+  const terrainId = ENTRY_TERRAIN_ABILITIES[pokemon.ability]
+  if (weatherId || terrainId) appendLog(state, `${pokemon.name}의 ${pokemon.ability}!`, 'ability')
+  if (weatherId) setTemporaryEnvironment(state, 'weather', weatherId, pokemon.ability, pokemon)
+  if (terrainId) setTemporaryEnvironment(state, 'terrain', terrainId, pokemon.ability, pokemon)
 
   if (pokemon.ability === '위협') {
-    changeStages(state, target, { attack: -1 })
+    getActivePokemonList(state, sideId === 'player' ? 'opponent' : 'player')
+      .filter((target) => target && !target.fainted && target.hp > 0)
+      .forEach((target) => changeStages(state, target, { attack: -1 }))
     appendLog(state, `${pokemon.name}의 위협!`, 'ability')
   }
 }
@@ -1662,6 +2042,12 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null) {
   const previousHp = pokemon.hp
   const previousMaxHp = pokemon.maxHp
   const previousLogLength = state.log.length
+  const weatherId = effectiveWeatherId(state)
+
+  if (pokemon.hp > 0 && weatherId === 'rain' && pokemon.ability === '촉촉바디' && pokemon.status) {
+    pokemon.status = null
+    appendLog(state, `${pokemon.name}의 촉촉바디가 상태 이상을 회복했다!`, 'ability')
+  }
 
   let damage = 0
   if (pokemon.status?.id === 'burn') damage = Math.max(1, Math.floor(pokemon.maxHp / 16))
@@ -1678,13 +2064,32 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null) {
 
   if (
     pokemon.hp > 0
-    && state.rules?.weather?.id === 'sandstorm'
+    && weatherId === 'sandstorm'
     && !pokemon.types.some((type) => ['바위', '땅', '강철'].includes(type))
-    && pokemon.ability !== '매직가드'
+    && !SANDSTORM_IMMUNE_ABILITIES.has(pokemon.ability)
   ) {
     const weatherDamage = Math.max(1, Math.floor(pokemon.maxHp / 16))
     pokemon.hp = Math.max(0, pokemon.hp - weatherDamage)
     appendLog(state, `${pokemon.name}은(는) 모래바람에 시달렸다.`, 'damage')
+  }
+
+  if (pokemon.hp > 0 && weatherId === 'rain' && pokemon.ability === '젖은접시') {
+    healPokemon(state, pokemon, pokemon.maxHp / 16, '젖은접시')
+  }
+  if (pokemon.hp > 0 && weatherId === 'rain' && pokemon.ability === '건조피부') {
+    healPokemon(state, pokemon, pokemon.maxHp / 8, '건조피부')
+  }
+  if (pokemon.hp > 0 && weatherId === 'snow' && pokemon.ability === '아이스바디') {
+    healPokemon(state, pokemon, pokemon.maxHp / 16, '아이스바디')
+  }
+  if (
+    pokemon.hp > 0
+    && weatherId === 'sun'
+    && ['건조피부', '선파워'].includes(pokemon.ability)
+  ) {
+    const weatherDamage = Math.max(1, Math.floor(pokemon.maxHp / 8))
+    pokemon.hp = Math.max(0, pokemon.hp - weatherDamage)
+    appendLog(state, `${pokemon.name}은(는) 강한 햇살에 HP가 줄었다.`, 'ability')
   }
 
   if (pokemon.hp > 0 && pokemon.yawnTurns > 0) {
@@ -1824,7 +2229,7 @@ function actionPriority(state, sideId, action) {
   if (action.forcedReason === 'recharge') return 0
   const pokemon = getActivePokemon(state, sideId, action.actorSlot)
   const move = pokemon.moves[action.moveIndex]
-  return Number(move?.priority ?? 0)
+  return environmentMovePriority(state, pokemon, move)
 }
 
 function orderedActions(state, playerActions, opponentActions, random) {
@@ -1835,30 +2240,52 @@ function orderedActions(state, playerActions, opponentActions, random) {
     const priorityDifference = actionPriority(state, second.sideId, second.action)
       - actionPriority(state, first.sideId, first.action)
     if (priorityDifference) return priorityDifference
-    const firstSpeed = effectiveStat(getActivePokemon(state, first.sideId, first.action.actorSlot), 'speed')
-    const secondSpeed = effectiveStat(getActivePokemon(state, second.sideId, second.action.actorSlot), 'speed')
+    const firstSpeed = effectiveStat(state, getActivePokemon(state, first.sideId, first.action.actorSlot), 'speed')
+    const secondSpeed = effectiveStat(state, getActivePokemon(state, second.sideId, second.action.actorSlot), 'speed')
     return secondSpeed - firstSpeed || first.tieBreaker - second.tieBreaker
   })
 }
 
 function scoreMove(state, attacker, defender, move) {
   if (move.currentPp <= 0) return -Infinity
-  const isStatus = isStatusMove(move)
+  const resolvedMove = resolveEnvironmentMove(state, attacker, defender, move)
+  const isStatus = isStatusMove(resolvedMove)
   if (isStatus) {
-    if (PROTECT_MOVE_IDS.has(move.id) && attacker.hp < attacker.maxHp * 0.4) return 55
-    if ((HEAL_MOVE_IDS.has(move.id) || move.flags?.includes('heal')) && attacker.hp < attacker.maxHp * 0.55) return 90
-    if (STATUS_MOVE_EFFECTS[move.id]) return 48
+    const weatherId = SHOWDOWN_WEATHER_IDS[String(resolvedMove.weather ?? resolvedMove.id).toLowerCase()]
+    const terrainId = SHOWDOWN_TERRAIN_IDS[String(resolvedMove.terrain ?? resolvedMove.id).toLowerCase()]
+    if (weatherId) {
+      const sameWeatherHasTime = state.rules?.weather?.id === weatherId
+        && (state.environment?.weatherTurns ?? 5) > 1
+      return sameWeatherHasTime ? 18 : 72
+    }
+    if (terrainId) {
+      const sameTerrainHasTime = state.rules?.terrain?.id === terrainId
+        && (state.environment?.terrainTurns ?? 5) > 1
+      return sameTerrainHasTime ? 18 : 72
+    }
+    if (PROTECT_MOVE_IDS.has(resolvedMove.id) && attacker.hp < attacker.maxHp * 0.4) return 55
+    if ((HEAL_MOVE_IDS.has(resolvedMove.id) || resolvedMove.flags?.includes('heal')) && attacker.hp < attacker.maxHp * 0.55) return 90
+    if (STATUS_MOVE_EFFECTS[resolvedMove.id]) return 48
     return 32
   }
 
-  const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
-  const environmentMultiplier = environmentMoveMultiplier(state, attacker, defender, move)
-  const category = move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
-  const offense = category === 'physical' ? effectiveStat(attacker, 'attack') : effectiveStat(attacker, 'specialAttack')
-  const defense = category === 'physical' ? effectiveStat(defender, 'defense') : effectiveStat(defender, 'specialDefense')
-  const effectivePower = move.ohko ? defender.maxHp : move.damage === 'level' ? 50 : Number(move.damage ?? move.power) || 1
-  const chargeModifier = move.flags?.includes('charge') && attacker.heldItemId !== 'power-herb' ? 0.65 : 1
-  return effectivePower * effectiveness * environmentMultiplier * chargeModifier * (offense / Math.max(1, defense)) * ((move.accuracy ?? 100) / 100)
+  if (resolvedMove.id === 'steelroller' && state.rules?.terrain?.id === 'neutral') return -Infinity
+  const effectiveness = getBattleTypeEffectiveness(state, resolvedMove.type, defender.types)
+  const environmentMultiplier = environmentMoveMultiplier(state, attacker, defender, resolvedMove)
+  const category = resolvedMove.categoryId ?? (resolvedMove.category === '물리' ? 'physical' : 'special')
+  const offense = category === 'physical'
+    ? effectiveStat(state, attacker, 'attack')
+    : effectiveStat(state, attacker, 'specialAttack')
+  const defense = category === 'physical'
+    ? effectiveStat(state, defender, 'defense')
+    : effectiveStat(state, defender, 'specialDefense')
+  const effectivePower = resolvedMove.ohko
+    ? defender.maxHp
+    : resolvedMove.damage === 'level' ? 50 : Number(resolvedMove.damage ?? resolvedMove.power) || 1
+  const skipsCharge = effectiveWeatherId(state) === 'sun' && ['solarbeam', 'solarblade'].includes(resolvedMove.id)
+    || effectiveWeatherId(state) === 'rain' && resolvedMove.id === 'electroshot'
+  const chargeModifier = resolvedMove.flags?.includes('charge') && attacker.heldItemId !== 'power-herb' && !skipsCharge ? 0.65 : 1
+  return effectivePower * effectiveness * environmentMultiplier * chargeModifier * (offense / Math.max(1, defense)) * ((resolvedMove.accuracy ?? 100) / 100)
 }
 
 export function chooseAiAction(state, random = Math.random, activeSlot = 0, targetSlot = 0) {
@@ -1922,8 +2349,9 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     disabledGimmickId: null,
     gimmickRestriction: { id: null, label: '제한 없음' },
   }
+  const resolvedRules = cloneBattleRules(battleRules)
   const activeSlots = Math.max(1, Math.min(
-    battleRules.format.activeSlots ?? 1,
+    resolvedRules.format.activeSlots ?? 1,
     playerPokemon.length,
     opponentTeam.pokemon.length,
   ))
@@ -1943,7 +2371,8 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     opponent: opponentSide,
     opponentMeta: opponent,
     opponentStrategy: opponentTeam.strategy,
-    rules: battleRules,
+    rules: resolvedRules,
+    environment: createEnvironmentState(resolvedRules),
     awaitingPlayerSwitch: false,
     awaitingPlayerSwitchSlots: [],
     winner: null,
@@ -1953,7 +2382,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   }
 
   appendLog(state, `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
-  appendLog(state, `${battleRules.weather.label} · ${battleRules.terrain.label} · ${battleRules.format.label}`, 'field')
+  appendLog(state, `${resolvedRules.weather.label} · ${resolvedRules.terrain.label} · ${resolvedRules.format.label}`, 'field')
   appendLog(
     state,
     `${opponent.name}은(는) ${getActivePokemonList(state, 'opponent').map((pokemon) => pokemon.name).join(', ')}을(를) 내보냈다!`,
@@ -2022,6 +2451,7 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline) {
     : getActivePokemonList(nextState, 'opponent').map((_, slot) => slot)
   playerResidualSlots.forEach((slot) => residualEffects(nextState, 'player', timeline, slot))
   opponentResidualSlots.forEach((slot) => residualEffects(nextState, 'opponent', timeline, slot))
+  advanceEnvironmentTimers(nextState, timeline)
   settleFaints(nextState, timeline)
   nextState.turn += 1
   return { state: nextState, timeline: timeline ?? [] }
