@@ -542,7 +542,10 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                         <ChevronDown size={14} />
                       </button>
                     </div>
-                    <div className="training-picker-field training-tooltip-anchor ability-picker-field">
+                    <div
+                      className="training-picker-field training-tooltip-anchor ability-picker-field"
+                      {...tooltipAnchorProps(`ability-select-tooltip-${selectedPokemon.captureId}`)}
+                    >
                       <span>
                         특성
                         <button
@@ -550,7 +553,6 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                           type="button"
                           aria-label={`${selectedPokemon.ability} 특성 설명`}
                           aria-describedby={`ability-select-tooltip-${selectedPokemon.captureId}`}
-                          {...tooltipAnchorProps(`ability-select-tooltip-${selectedPokemon.captureId}`)}
                         >
                           <Info size={11} />
                         </button>
@@ -715,7 +717,10 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                       )
                     })}
                   </div>
-                  <div className="training-ability-preview training-tooltip-anchor">
+                  <div
+                    className="training-ability-preview training-tooltip-anchor"
+                    {...tooltipAnchorProps(`ability-preview-tooltip-${selectedPokemon.captureId}`)}
+                  >
                     <span>특성</span>
                     <strong>{selectedPokemon.ability}</strong>
                     <small>{selectedAbility.trigger}</small>
@@ -724,7 +729,6 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                       type="button"
                       aria-label={`${selectedPokemon.ability} 특성 설명`}
                       aria-describedby={`ability-preview-tooltip-${selectedPokemon.captureId}`}
-                      {...tooltipAnchorProps(`ability-preview-tooltip-${selectedPokemon.captureId}`)}
                     >
                       <Info size={13} />
                     </button>
