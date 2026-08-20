@@ -288,7 +288,11 @@ function moveRuntime(move, fallbackIndex) {
 }
 
 function buildBattlePokemon(entry, index, teamGimmicks = []) {
-  const resolvedMoves = Array.from({ length: 4 }, (_, moveIndex) => (
+  const configuredMoveCount = Math.min(4, Math.max(
+    entry.moveIds?.length ?? 0,
+    entry.moves?.length ?? 0,
+  ))
+  const resolvedMoves = Array.from({ length: configuredMoveCount }, (_, moveIndex) => (
     getMoveById(entry.moveIds?.[moveIndex])
       ?? getMove(entry.moves?.[moveIndex])
   ))
@@ -297,6 +301,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     captureId: entry.captureId ?? `ai-${entry.speciesId}-${index}`,
     moves: resolvedMoves.map((move) => move.name),
   })
+  const normalizedMoves = normalized.moves.map((moveName) => getMove(moveName))
   const profile = getSpeciesProfile(normalized.speciesId)
   const stats = statObject(normalized)
   const matchingGimmick = teamGimmicks.find((gimmick) => (
@@ -315,7 +320,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     maxHp: stats.hp,
     originalMaxHp: stats.hp,
     hp: stats.hp,
-    moves: resolvedMoves.map(moveRuntime),
+    moves: normalizedMoves.map(moveRuntime),
     fainted: false,
     status: null,
     statStages: {

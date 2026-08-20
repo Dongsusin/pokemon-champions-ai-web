@@ -188,6 +188,11 @@ async function mapConcurrent(items, worker, concurrency = CONCURRENCY) {
 
 function pokemonProfile(pokemon, abilityNames) {
   const statsByName = Object.fromEntries(pokemon.stats.map((entry) => [entry.stat.name, entry.base_stat]))
+  const learnsetMoveIds = [...new Set(
+    pokemon.moves
+      .map((entry) => idFromUrl(entry.move.url))
+      .filter(Number.isFinite),
+  )].sort((left, right) => left - right)
 
   return {
     types: pokemon.types
@@ -206,6 +211,7 @@ function pokemonProfile(pokemon, abilityNames) {
       statsByName['special-defense'],
       statsByName.speed,
     ],
+    learnsetMoveIds,
   }
 }
 
@@ -343,6 +349,8 @@ async function main() {
 
   const output = {
     generatedAt: new Date().toISOString(),
+    learnsetSource: `${API_ROOT}/pokemon`,
+    learnsetScope: 'all-version-groups',
     speciesCount: species.length,
     formCount: forms.length,
     species,

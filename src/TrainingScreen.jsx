@@ -22,13 +22,14 @@ import PokemonSprite from './PokemonSprite'
 import { getTrainingRosterPokemon } from './data/pokemonPool'
 import {
   BATTLE_LEVEL,
+  canPokemonLearnMove,
   calculateStats,
   getAbility,
   getBattleFormOptions,
   getEvolutionOptions,
+  getLearnableMoves,
   getMove,
   getSpeciesProfile,
-  MOVE_CATALOG,
   NATURE_OPTIONS,
   normalizePokemon,
   STAT_META,
@@ -175,11 +176,15 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const activePickerMove = movePickerSlot !== null && selectedPokemon
     ? getMove(selectedPokemon.moves[movePickerSlot])
     : null
+  const learnableMoves = useMemo(
+    () => (selectedPokemon ? getLearnableMoves(selectedPokemon.speciesId) : []),
+    [selectedPokemon?.speciesId],
+  )
   const filteredMoves = useMemo(() => {
     const query = moveSearch.trim().toLocaleLowerCase('ko-KR')
     const activeMoveName = activePickerMove?.name ?? ''
 
-    return MOVE_CATALOG.filter((move) => {
+    return learnableMoves.filter((move) => {
       const matchesCategory = moveCategory === '전체' || move.category === moveCategory
       const matchesSearch = !query
         || move.name.toLocaleLowerCase('ko-KR').includes(query)
@@ -189,7 +194,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     }).sort((firstMove, secondMove) => (
       Number(secondMove.name === activeMoveName) - Number(firstMove.name === activeMoveName)
     ))
-  }, [activePickerMove?.name, moveCategory, moveSearch])
+  }, [activePickerMove?.name, learnableMoves, moveCategory, moveSearch])
 
   const writeSelected = (updates) => {
     if (!editablePokemon) return
@@ -221,7 +226,11 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   }
 
   const chooseMove = (moveName) => {
-    if (movePickerSlot === null) return
+    if (
+      movePickerSlot === null
+      || !selectedPokemon
+      || !canPokemonLearnMove(selectedPokemon.speciesId, moveName)
+    ) return
     updateMove(movePickerSlot, moveName)
     setMovePickerSlot(null)
   }
@@ -762,8 +771,8 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                       </span>
                       <div>
                         <small>MOVE LIBRARY · SLOT 0{movePickerSlot + 1}</small>
-                        <h3 id="move-picker-title">전체 기술 목록</h3>
-                        <p>배틀에 사용할 기술을 선택하세요.</p>
+                        <h3 id="move-picker-title">배울 수 있는 기술</h3>
+                        <p>{selectedPokemon.name}가 실제 게임에서 배울 수 있는 기술만 표시됩니다.</p>
                       </div>
                       <button type="button" aria-label="기술 목록 닫기" onClick={() => setMovePickerSlot(null)}>
                         <X size={18} />
@@ -800,10 +809,10 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                           </button>
                         ))}
                       </div>
-                      <strong className="move-picker-count">{filteredMoves.length}<em>/{MOVE_CATALOG.length}</em></strong>
+                      <strong className="move-picker-count">{filteredMoves.length}<em>/{learnableMoves.length}</em></strong>
                     </div>
 
-                    <div className="move-picker-list" role="listbox" aria-label="전체 기술 목록">
+                    <div className="move-picker-list" role="listbox" aria-label={`${selectedPokemon.name}가 배울 수 있는 기술 목록`}>
                       {filteredMoves.map((option) => {
                         const optionAccuracy = option.accuracyLabel ?? option.accuracy ?? '—'
                         const optionCategory = option.category === '물리'
@@ -852,7 +861,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                     </div>
 
                     <footer className="move-picker-footer">
-                      <span>이미 장착한 기술은 다른 슬롯에 중복 등록할 수 없습니다.</span>
+                      <span>실제 게임에서 배울 수 있는 기술만 선택할 수 있으며 중복 등록은 불가능합니다.</span>
                       <strong>ESC 닫기</strong>
                     </footer>
                   </section>

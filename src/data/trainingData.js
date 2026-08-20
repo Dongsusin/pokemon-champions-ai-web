@@ -367,6 +367,7 @@ export const ABILITY_CATALOG = {
 
 const MOVE_BY_NAME = Object.fromEntries(MOVE_CATALOG.map((move) => [move.name, move]))
 const MOVE_BY_ID = Object.fromEntries(MOVE_CATALOG.map((move) => [move.id, move]))
+const MOVE_BY_NUMBER = Object.fromEntries(MOVE_CATALOG.map((move) => [move.number, move]))
 
 const TYPE_DEFAULT_MOVES = {
   노말: ['몸통박치기', '전광석화', '누르기', '파괴광선'],
@@ -448,6 +449,37 @@ export function getMoveById(moveId) {
   return MOVE_BY_ID[moveId] ?? null
 }
 
+const LEARNABLE_MOVES_BY_PROFILE_ID = new Map()
+
+export function getLearnableMoves(speciesId) {
+  const profileId = Number(speciesId)
+  if (LEARNABLE_MOVES_BY_PROFILE_ID.has(profileId)) {
+    return LEARNABLE_MOVES_BY_PROFILE_ID.get(profileId)
+  }
+
+  const species = getSpeciesProfile(profileId)
+  if (!species) return []
+
+  const fallbackSpecies = species.parentSpeciesId
+    ? getSpeciesProfile(species.parentSpeciesId)
+    : null
+  const learnsetMoveIds = species.learnsetMoveIds?.length > 0
+    ? species.learnsetMoveIds
+    : fallbackSpecies?.learnsetMoveIds ?? []
+  const learnableMoves = learnsetMoveIds
+    .map((moveNumber) => MOVE_BY_NUMBER[moveNumber])
+    .filter(Boolean)
+
+  LEARNABLE_MOVES_BY_PROFILE_ID.set(profileId, learnableMoves)
+  return learnableMoves
+}
+
+export function canPokemonLearnMove(speciesId, moveName) {
+  const move = MOVE_BY_NAME[moveName]
+  if (!move) return false
+  return getLearnableMoves(speciesId).some((learnableMove) => learnableMove.id === move.id)
+}
+
 export function getAbility(abilityName) {
   return ABILITY_CATALOG[abilityName] ?? {
     trigger: '배틀 중',
@@ -457,11 +489,36 @@ export function getAbility(abilityName) {
 
 export function getDefaultMoves(speciesId) {
   const species = getSpeciesProfile(speciesId)
+  const learnableMoves = getLearnableMoves(speciesId)
+  const learnableMoveNames = new Set(learnableMoves.map((move) => move.name))
   const primaryMoves = TYPE_DEFAULT_MOVES[species?.types[0]] ?? TYPE_DEFAULT_MOVES.노말
   const secondaryMoves = TYPE_DEFAULT_MOVES[species?.types[1]] ?? []
-  const preferredMoves = [primaryMoves[0], primaryMoves[1], secondaryMoves[1], primaryMoves[2], secondaryMoves[2], primaryMoves[3], '방어']
+  const preferredMoves = [
+    primaryMoves[0],
+    primaryMoves[1],
+    secondaryMoves[1],
+    primaryMoves[2],
+    secondaryMoves[2],
+    primaryMoves[3],
+    '방어',
+  ].filter((moveName) => learnableMoveNames.has(moveName))
+  const rankedMoves = learnableMoves.slice().sort((firstMove, secondMove) => {
+    const scoreMove = (move) => {
+      const sameTypeBonus = species?.types.includes(move.type) ? 1000 : 0
+      const damagingBonus = move.category === '변화' ? 0 : 300
+      const powerScore = Math.max(0, Number(move.power) || 0)
+      const accuracyScore = typeof move.accuracy === 'number' ? move.accuracy / 10 : 10
+      return sameTypeBonus + damagingBonus + powerScore + accuracyScore
+    }
 
-  return [...new Set(preferredMoves.filter(Boolean))].slice(0, 4)
+    return scoreMove(secondMove) - scoreMove(firstMove)
+      || secondMove.number - firstMove.number
+  })
+
+  return [...new Set([
+    ...preferredMoves,
+    ...rankedMoves.map((move) => move.name),
+  ])].slice(0, Math.min(4, learnableMoves.length))
 }
 
 function getDefaultTrainingPoints(species) {
@@ -482,9 +539,12 @@ export function normalizePokemon(pokemon) {
   if (!species) return { ...pokemon, level: BATTLE_LEVEL }
 
   const defaultMoves = getDefaultMoves(species.id)
-  const moves = Array.from({ length: 4 }, (_, index) => (
-    MOVE_BY_NAME[pokemon.moves?.[index]] ? pokemon.moves[index] : defaultMoves[index]
-  ))
+  const learnableMoveNames = new Set(getLearnableMoves(species.id).map((move) => move.name))
+  const requestedMoves = Array.isArray(pokemon.moves) ? pokemon.moves : []
+  const moves = [...new Set([
+    ...requestedMoves.filter((moveName) => learnableMoveNames.has(moveName)),
+    ...defaultMoves,
+  ])].slice(0, 4)
   const defaultTrainingPoints = getDefaultTrainingPoints(species)
   const trainingPoints = Object.fromEntries(STAT_META.map(({ key }) => [
     key,
