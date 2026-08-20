@@ -65,6 +65,7 @@ const TEAM_STORAGE_KEY = 'champions-team-v2'
 const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
+const TEST_VP_BALANCE = 99_999
 
 function interactiveSoundKind(element) {
   const label = `${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`.toLowerCase()
@@ -154,7 +155,7 @@ function removeEvolutionFamilyDuplicates(teams, collection) {
 
 function loadStoredVp() {
   const storedVp = Math.floor(Number(window.localStorage.getItem(VP_STORAGE_KEY)) || 0)
-  return Math.max(0, storedVp)
+  return Math.max(TEST_VP_BALANCE, storedVp)
 }
 
 function loadStoredItems() {
