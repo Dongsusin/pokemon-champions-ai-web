@@ -66,6 +66,48 @@ function BattleItemArtwork({ item, compact = false }) {
   )
 }
 
+function ItemEquipTooltip({ tooltip }) {
+  if (!tooltip) return null
+
+  const { item, categoryMeta, tooltipId, left, top } = tooltip
+
+  return (
+    <span
+      className={`item-equip-tooltip category-${item.category}`}
+      id={tooltipId}
+      role="tooltip"
+      style={{ left, top }}
+    >
+      <span className="item-equip-tooltip-eyebrow">
+        {categoryMeta?.eyebrow ?? 'BATTLE ITEM'}
+      </span>
+      <strong>{item.name}</strong>
+      <span className="item-equip-tooltip-description">
+        {item.description ?? item.effect}
+      </span>
+      <span className="item-equip-tooltip-effect">
+        <small>배틀 효과</small>
+        <b>{item.effect}</b>
+      </span>
+      <span className="item-equip-tooltip-meta">
+        <span>
+          <small>분류</small>
+          <b>{categoryMeta?.label ?? '배틀 아이템'}</b>
+        </span>
+        <span>
+          <small>등급</small>
+          <b>{item.grade ?? '일반'}</b>
+        </span>
+        <span>
+          <small>등장</small>
+          <b>{item.generation ? `${item.generation}세대` : '-'}</b>
+        </span>
+      </span>
+      <em>ITEM INFO</em>
+    </span>
+  )
+}
+
 function fallbackImageHandler(fallback) {
   return (event) => {
     if (!fallback || event.currentTarget.dataset.fallbackApplied) return
@@ -99,6 +141,7 @@ function BoxScreen({
   const [teamFilter, setTeamFilter] = useState('all')
   const [showShiny, setShowShiny] = useState(false)
   const [itemPickerOpen, setItemPickerOpen] = useState(false)
+  const [itemTooltip, setItemTooltip] = useState(null)
   const [teraPickerOpen, setTeraPickerOpen] = useState(false)
   const [dynamaxPickerOpen, setDynamaxPickerOpen] = useState(false)
   const [itemSearch, setItemSearch] = useState('')
@@ -201,6 +244,7 @@ function BoxScreen({
   useEffect(() => {
     setShowShiny(false)
     setItemPickerOpen(false)
+    setItemTooltip(null)
     setTeraPickerOpen(false)
     setDynamaxPickerOpen(false)
   }, [selectedCaptureId])
@@ -211,6 +255,7 @@ function BoxScreen({
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') {
         setItemPickerOpen(false)
+        setItemTooltip(null)
         setTeraPickerOpen(false)
         setDynamaxPickerOpen(false)
       }
@@ -229,6 +274,7 @@ function BoxScreen({
   const openItemPicker = () => {
     setItemSearch('')
     setItemCategory('all')
+    setItemTooltip(null)
     setTeraPickerOpen(false)
     setDynamaxPickerOpen(false)
     setItemPickerOpen(true)
@@ -237,10 +283,60 @@ function BoxScreen({
   const chooseHeldItem = (itemId) => {
     if (!selectedPokemon) return
     onEquipItem(selectedPokemon.captureId, itemId)
+    setItemTooltip(null)
     setItemPickerOpen(false)
   }
 
+  const closeItemPicker = () => {
+    setItemTooltip(null)
+    setItemPickerOpen(false)
+  }
+
+  const showItemTooltip = (event, item, categoryMeta, tooltipId) => {
+    const panel = event.currentTarget.closest('.item-equip-panel')
+    if (!panel) return
+
+    const anchorRect = event.currentTarget.getBoundingClientRect()
+    const panelRect = panel.getBoundingClientRect()
+    const tooltipWidth = Math.min(320, panelRect.width - 20)
+    const gap = 10
+    const availableLeft = anchorRect.left - panelRect.left
+    const availableRight = panelRect.right - anchorRect.right
+    const openRight = availableRight >= tooltipWidth + gap || availableRight >= availableLeft
+    const requestedLeft = openRight
+      ? anchorRect.right - panelRect.left + gap
+      : anchorRect.left - panelRect.left - tooltipWidth - gap
+    const left = Math.max(10, Math.min(requestedLeft, panelRect.width - tooltipWidth - 10))
+    const anchorCenter = anchorRect.top - panelRect.top + (anchorRect.height / 2)
+    const top = Math.max(96, Math.min(anchorCenter, panelRect.height - 96))
+
+    setItemTooltip({ item, categoryMeta, tooltipId, left, top })
+  }
+
+  const hideItemTooltip = (tooltipId) => {
+    setItemTooltip((currentTooltip) => (
+      currentTooltip?.tooltipId === tooltipId ? null : currentTooltip
+    ))
+  }
+
+  const itemTooltipAnchorProps = (item, categoryMeta, tooltipId) => ({
+    onMouseEnter: (event) => showItemTooltip(event, item, categoryMeta, tooltipId),
+    onMouseLeave: () => hideItemTooltip(tooltipId),
+    onPointerCancel: () => hideItemTooltip(tooltipId),
+    onFocus: (event) => showItemTooltip(event, item, categoryMeta, tooltipId),
+    onBlur: (event) => {
+      if (event.currentTarget.contains(event.relatedTarget)) return
+      hideItemTooltip(tooltipId)
+    },
+    onKeyDown: (event) => {
+      if (event.key !== 'Escape') return
+      hideItemTooltip(tooltipId)
+      event.target.blur?.()
+    },
+  })
+
   const openTeraPicker = () => {
+    setItemTooltip(null)
     setItemPickerOpen(false)
     setDynamaxPickerOpen(false)
     setTeraPickerOpen(true)
@@ -253,6 +349,7 @@ function BoxScreen({
   }
 
   const openDynamaxPicker = () => {
+    setItemTooltip(null)
     setItemPickerOpen(false)
     setTeraPickerOpen(false)
     setDynamaxPickerOpen(true)
@@ -662,7 +759,7 @@ function BoxScreen({
         <div
           className="item-equip-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setItemPickerOpen(false)
+            if (event.target === event.currentTarget) closeItemPicker()
           }}
         >
           <section
@@ -678,7 +775,7 @@ function BoxScreen({
                 <h2 id="item-equip-title">{selectedPokemon.name}의 지닌 도구</h2>
                 <p>보유한 배틀 아이템은 포켓몬 한 마리에게만 장착할 수 있습니다.</p>
               </div>
-              <button type="button" aria-label="지닌 도구 선택창 닫기" onClick={() => setItemPickerOpen(false)}>
+              <button type="button" aria-label="지닌 도구 선택창 닫기" onClick={closeItemPicker}>
                 <X size={20} />
               </button>
             </header>
@@ -703,10 +800,20 @@ function BoxScreen({
                   value={itemSearch}
                   placeholder="보유 아이템 검색"
                   aria-label="보유 아이템 검색"
-                  onChange={(event) => setItemSearch(event.target.value)}
+                  onChange={(event) => {
+                    setItemTooltip(null)
+                    setItemSearch(event.target.value)
+                  }}
                 />
                 {itemSearch && (
-                  <button type="button" aria-label="아이템 검색어 지우기" onClick={() => setItemSearch('')}>
+                  <button
+                    type="button"
+                    aria-label="아이템 검색어 지우기"
+                    onClick={() => {
+                      setItemTooltip(null)
+                      setItemSearch('')
+                    }}
+                  >
                     <X size={13} />
                   </button>
                 )}
@@ -718,7 +825,10 @@ function BoxScreen({
                     className={itemCategory === category.id ? 'active' : ''}
                     type="button"
                     key={category.id}
-                    onClick={() => setItemCategory(category.id)}
+                    onClick={() => {
+                      setItemTooltip(null)
+                      setItemCategory(category.id)
+                    }}
                   >
                     <small>{category.eyebrow}</small>
                     <strong>{category.label}</strong>
@@ -728,38 +838,50 @@ function BoxScreen({
               </div>
             </div>
 
-            <div className="item-equip-grid" role="listbox" aria-label="보유 배틀 아이템">
+            <div
+              className="item-equip-grid"
+              role="listbox"
+              aria-label="보유 배틀 아이템"
+              onScroll={() => setItemTooltip(null)}
+            >
               {filteredOwnedItems.map((item) => {
                 const available = availableItemQuantity(item.id)
                 const isSelected = selectedHeldItem?.id === item.id
                 const isUnavailable = !isSelected && available <= 0
                 const categoryMeta = ITEM_CATEGORY_BY_ID.get(item.category)
+                const tooltipId = `item-equip-tooltip-${item.id}`
 
                 return (
-                  <button
-                    className={`item-equip-card category-${item.category}${isSelected ? ' selected' : ''}${isUnavailable ? ' unavailable' : ''}`}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    disabled={isUnavailable}
+                  <div
+                    className={`item-equip-card-shell category-${item.category}`}
                     key={item.id}
-                    onClick={() => chooseHeldItem(item.id)}
+                    {...itemTooltipAnchorProps(item, categoryMeta, tooltipId)}
                   >
-                    <BattleItemArtwork item={item} />
-                    <span className="item-equip-card-copy">
-                      <small>{categoryMeta?.eyebrow}</small>
-                      <strong>{item.name}</strong>
-                      <em>{item.effect}</em>
-                    </span>
-                    <span className="item-equip-possession">
-                      <small>소유 상태</small>
-                      <strong>보유</strong>
-                      <em>{isSelected ? '현재 장착' : isUnavailable ? '다른 포켓몬 사용 중' : '장착 가능'}</em>
-                    </span>
-                    <span className="item-equip-state">
-                      {isSelected ? <><Check size={14} /> 장착 중</> : isUnavailable ? '사용 중' : '선택'}
-                    </span>
-                  </button>
+                    <button
+                      className={`item-equip-card category-${item.category}${isSelected ? ' selected' : ''}${isUnavailable ? ' unavailable' : ''}`}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      aria-describedby={tooltipId}
+                      disabled={isUnavailable}
+                      onClick={() => chooseHeldItem(item.id)}
+                    >
+                      <BattleItemArtwork item={item} />
+                      <span className="item-equip-card-copy">
+                        <small>{categoryMeta?.eyebrow}</small>
+                        <strong>{item.name}</strong>
+                        <em>{item.effect}</em>
+                      </span>
+                      <span className="item-equip-possession">
+                        <small>소유 상태</small>
+                        <strong>보유</strong>
+                        <em>{isSelected ? '현재 장착' : isUnavailable ? '다른 포켓몬 사용 중' : '장착 가능'}</em>
+                      </span>
+                      <span className="item-equip-state">
+                        {isSelected ? <><Check size={14} /> 장착 중</> : isUnavailable ? '사용 중' : '선택'}
+                      </span>
+                    </button>
+                  </div>
                 )
               })}
 
@@ -783,6 +905,8 @@ function BoxScreen({
               <span>팀에서 빼더라도 장착한 아이템은 그대로 유지됩니다.</span>
               <button type="button" onClick={onOpenShop}><ShoppingBag size={15} /> 상점 열기</button>
             </footer>
+
+            <ItemEquipTooltip tooltip={itemTooltip} />
           </section>
         </div>
       )}
