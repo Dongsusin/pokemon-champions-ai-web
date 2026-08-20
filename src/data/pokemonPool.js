@@ -23,7 +23,22 @@ function classificationFor(profile) {
   return 'standard'
 }
 
-export const POKEMON_POOL = NATIONAL_DEX.map((profile) => {
+const NATIONAL_DEX_IDS = new Set(NATIONAL_DEX.map((profile) => profile.id))
+const EVOLUTION_PARENT_IDS = new Set(
+  NATIONAL_DEX
+    .map((profile) => profile.evolvesFrom)
+    .filter((speciesId) => Number.isInteger(speciesId) && speciesId > 0),
+)
+
+export function isFinalEvolutionSpecies(speciesId) {
+  const normalizedSpeciesId = Number(speciesId)
+  return NATIONAL_DEX_IDS.has(normalizedSpeciesId)
+    && !EVOLUTION_PARENT_IDS.has(normalizedSpeciesId)
+}
+
+export const POKEMON_POOL = NATIONAL_DEX.filter((profile) => (
+  isFinalEvolutionSpecies(profile.id)
+)).map((profile) => {
   const rarity = classificationFor(profile)
   return {
     ...profile,

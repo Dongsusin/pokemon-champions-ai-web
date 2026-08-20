@@ -38,7 +38,7 @@ function HatchScreen({ results, onBack, onOpenBox, onReset }) {
         <div className="draw-title">
           <span>PARTNER DISCOVERY</span>
           <h1>포켓몬 뽑기</h1>
-          <p>전설·환상을 포함한 전국도감 {POKEMON_POOL.length.toLocaleString()}종이 모두 같은 확률로 등장합니다.</p>
+          <p>전설·환상을 포함한 최종 진화형 {POKEMON_POOL.length.toLocaleString()}종이 모두 같은 확률로 등장합니다.</p>
         </div>
 
         <div className="draw-count" aria-label={`${results.length}마리 획득, 이로치 ${shinyCount}마리`}>
@@ -148,7 +148,7 @@ function HatchScreen({ results, onBack, onOpenBox, onReset }) {
           <div className="draw-guide">
             <Sparkles size={16} />
             <span>
-              각 포켓몬은 1/{POKEMON_POOL.length.toLocaleString()}로 동일합니다. 이로치는 기본 1/{BASE_SHINY_ODDS.toLocaleString()}, 같은 종을 직접 뽑을 때만 조금씩 상승합니다.
+              각 최종 진화형은 1/{POKEMON_POOL.length.toLocaleString()}로 동일합니다. 이로치는 기본 1/{BASE_SHINY_ODDS.toLocaleString()}, 같은 종을 직접 뽑을 때만 조금씩 상승합니다.
             </span>
           </div>
           <div className="draw-actions">
