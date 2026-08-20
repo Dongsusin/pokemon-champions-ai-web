@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ArrowDownAZ,
   ArrowLeft,
   Backpack,
   Check,
@@ -137,6 +138,7 @@ function BoxScreen({
   const trainingPokemon = useMemo(() => getTrainingRosterPokemon(pokemon), [pokemon])
   const [selectedCaptureId, setSelectedCaptureId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [search, setSearch] = useState('')
+  const [rosterSort, setRosterSort] = useState('obtained')
   const [typeFilter, setTypeFilter] = useState('all')
   const [teamFilter, setTeamFilter] = useState('all')
   const [showShiny, setShowShiny] = useState(false)
@@ -166,7 +168,7 @@ function BoxScreen({
   const filteredRoster = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('ko-KR')
 
-    return trainingPokemon.filter((entry) => {
+    const matchingRoster = trainingPokemon.filter((entry) => {
       const profile = getSpeciesProfile(entry.speciesId)
       const teamMember = teamPokemonByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? null
       const teamMemberProfile = teamMember ? getSpeciesProfile(teamMember.speciesId) : null
@@ -183,7 +185,14 @@ function BoxScreen({
 
       return searchMatches && typeMatches && teamMatches
     })
-  }, [search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
+
+    if (rosterSort === 'obtained') return matchingRoster
+    return [...matchingRoster].sort((left, right) => {
+      const leftNumber = Number(left.dexSpeciesId ?? left.speciesId ?? Number.MAX_SAFE_INTEGER)
+      const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
+      return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
+    })
+  }, [rosterSort, search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
 
   const selectedSourcePokemon = trainingPokemon.find((entry) => entry.captureId === selectedCaptureId)
     ?? pokemon.find((entry) => entry.captureId === selectedCaptureId)
@@ -572,7 +581,26 @@ function BoxScreen({
           </div>
 
           <div className="team-box-result-bar">
-            <span>트레이닝과 동일한 진화 계열 대표 목록 · 입수순</span>
+            <span className="team-box-result-note">트레이닝과 동일한 진화 계열 대표 목록</span>
+            <div className="team-box-sort-control" role="group" aria-label="포켓몬 정렬 기준">
+              <ArrowDownAZ size={13} aria-hidden="true" />
+              <button
+                className={rosterSort === 'obtained' ? 'active' : ''}
+                type="button"
+                aria-pressed={rosterSort === 'obtained'}
+                onClick={() => setRosterSort('obtained')}
+              >
+                입수순
+              </button>
+              <button
+                className={rosterSort === 'number' ? 'active' : ''}
+                type="button"
+                aria-pressed={rosterSort === 'number'}
+                onClick={() => setRosterSort('number')}
+              >
+                번호순
+              </button>
+            </div>
             <strong>{filteredRoster.length}<em>마리 표시</em></strong>
           </div>
 
