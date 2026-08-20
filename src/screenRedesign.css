@@ -1279,17 +1279,49 @@
   margin-bottom: 10px;
 }
 
-.training-filter-row span {
-  display: inline-flex;
+.training-sort-control {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 4px;
   align-items: center;
-  gap: 6px;
+  min-width: 0;
   min-height: 28px;
-  padding: 0 10px;
+  padding: 3px 4px 3px 8px;
   border-radius: 8px;
   color: #fff;
-  font-size: 8px;
-  font-weight: 800;
   background: linear-gradient(90deg, #6752bf, #7864cf);
+}
+
+.training-sort-control > svg {
+  margin-right: 2px;
+  opacity: 0.82;
+}
+
+.training-sort-control > button {
+  min-width: 0;
+  min-height: 22px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 7px;
+  font-weight: 850;
+  background: transparent;
+  cursor: pointer;
+  transition: color 130ms ease, background 130ms ease, box-shadow 130ms ease;
+}
+
+.training-sort-control > button:hover,
+.training-sort-control > button:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.13);
+  outline: none;
+}
+
+.training-sort-control > button.active {
+  color: #493c91;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(39, 29, 100, 0.18);
 }
 
 .training-roster-search {
@@ -3584,7 +3616,8 @@
   font-size: 10px;
 }
 
-.training-filter-row span {
+.training-sort-control > button,
+.training-roster-search input {
   font-size: 10px;
 }
 

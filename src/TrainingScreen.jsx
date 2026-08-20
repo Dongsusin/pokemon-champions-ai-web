@@ -116,6 +116,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const trainingPokemon = useMemo(() => getTrainingRosterPokemon(pokemon), [pokemon])
   const [selectedId, setSelectedId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [pokemonSearch, setPokemonSearch] = useState('')
+  const [pokemonSort, setPokemonSort] = useState('obtained')
   const [draftPokemonById, setDraftPokemonById] = useState({})
   const [spriteSide, setSpriteSide] = useState('front')
   const [movePickerSlot, setMovePickerSlot] = useState(null)
@@ -128,11 +129,17 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
   const filteredTrainingPokemon = useMemo(() => {
     const query = pokemonSearch.trim().toLocaleLowerCase('ko-KR')
-    if (!query) return trainingPokemon
-    return trainingPokemon.filter((entry) => (
+    const matchingPokemon = query ? trainingPokemon.filter((entry) => (
       entry.name.toLocaleLowerCase('ko-KR').includes(query)
-    ))
-  }, [pokemonSearch, trainingPokemon])
+    )) : trainingPokemon
+
+    if (pokemonSort === 'obtained') return matchingPokemon
+    return [...matchingPokemon].sort((left, right) => {
+      const leftNumber = Number(left.dexSpeciesId ?? left.speciesId ?? Number.MAX_SAFE_INTEGER)
+      const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
+      return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
+    })
+  }, [pokemonSearch, pokemonSort, trainingPokemon])
 
   useEffect(() => {
     if (!trainingPokemon.some((entry) => entry.captureId === selectedId)) {
@@ -456,7 +463,25 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
           </div>
 
           <div className="training-filter-row">
-            <span><ArrowDownAZ size={14} /> 입수순</span>
+            <div className="training-sort-control" role="group" aria-label="포켓몬 정렬 기준">
+              <ArrowDownAZ size={14} aria-hidden="true" />
+              <button
+                className={pokemonSort === 'obtained' ? 'active' : ''}
+                type="button"
+                aria-pressed={pokemonSort === 'obtained'}
+                onClick={() => setPokemonSort('obtained')}
+              >
+                입수순
+              </button>
+              <button
+                className={pokemonSort === 'number' ? 'active' : ''}
+                type="button"
+                aria-pressed={pokemonSort === 'number'}
+                onClick={() => setPokemonSort('number')}
+              >
+                번호순
+              </button>
+            </div>
             <label className="training-roster-search">
               <Search size={14} aria-hidden="true" />
               <input
