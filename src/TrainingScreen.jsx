@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Dna,
   Eye,
-  Filter,
   Gauge,
   Info,
   LockKeyhole,
@@ -116,6 +115,7 @@ function BattleTooltip({
 function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const trainingPokemon = useMemo(() => getTrainingRosterPokemon(pokemon), [pokemon])
   const [selectedId, setSelectedId] = useState(trainingPokemon[0]?.captureId ?? null)
+  const [pokemonSearch, setPokemonSearch] = useState('')
   const [draftPokemonById, setDraftPokemonById] = useState({})
   const [spriteSide, setSpriteSide] = useState('front')
   const [movePickerSlot, setMovePickerSlot] = useState(null)
@@ -126,6 +126,13 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const [movePickerTooltip, setMovePickerTooltip] = useState(null)
   const [abilityPickerTooltip, setAbilityPickerTooltip] = useState(null)
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
+  const filteredTrainingPokemon = useMemo(() => {
+    const query = pokemonSearch.trim().toLocaleLowerCase('ko-KR')
+    if (!query) return trainingPokemon
+    return trainingPokemon.filter((entry) => (
+      entry.name.toLocaleLowerCase('ko-KR').includes(query)
+    ))
+  }, [pokemonSearch, trainingPokemon])
 
   useEffect(() => {
     if (!trainingPokemon.some((entry) => entry.captureId === selectedId)) {
@@ -442,16 +449,33 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
               <span>BOX POKÉMON</span>
               <h2>포켓몬 선택</h2>
             </div>
-            <strong>{trainingPokemon.length}<em>계열</em></strong>
+            <strong aria-live="polite">
+              {filteredTrainingPokemon.length}
+              <em>{pokemonSearch.trim() ? ` / ${trainingPokemon.length}계열` : '계열'}</em>
+            </strong>
           </div>
 
-          <div className="training-filter-row" aria-hidden="true">
+          <div className="training-filter-row">
             <span><ArrowDownAZ size={14} /> 입수순</span>
-            <span><Filter size={14} /> 필터 OFF</span>
+            <label className="training-roster-search">
+              <Search size={14} aria-hidden="true" />
+              <input
+                type="search"
+                value={pokemonSearch}
+                aria-label="포켓몬 이름 검색"
+                placeholder="포켓몬 이름 검색"
+                onChange={(event) => setPokemonSearch(event.target.value)}
+              />
+              {pokemonSearch && (
+                <button type="button" aria-label="포켓몬 검색어 지우기" onClick={() => setPokemonSearch('')}>
+                  <X size={12} />
+                </button>
+              )}
+            </label>
           </div>
 
           <div className="training-roster-grid">
-            {trainingPokemon.map((entry) => (
+            {filteredTrainingPokemon.map((entry) => (
               <button
                 className={`training-roster-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedId ? ' selected' : ''}`}
                 key={entry.captureId}
@@ -475,6 +499,14 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                 <span className="training-card-types">{entry.types.join(' · ')}</span>
               </button>
             ))}
+            {trainingPokemon.length > 0 && filteredTrainingPokemon.length === 0 && (
+              <div className="training-roster-no-results" role="status">
+                <Search size={26} />
+                <strong>검색 결과가 없습니다.</strong>
+                <span>다른 포켓몬 이름을 입력해 보세요.</span>
+                <button type="button" onClick={() => setPokemonSearch('')}>검색 초기화</button>
+              </div>
+            )}
           </div>
 
           {trainingPokemon.length === 0 && (

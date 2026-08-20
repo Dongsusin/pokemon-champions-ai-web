@@ -1292,6 +1292,64 @@
   background: linear-gradient(90deg, #6752bf, #7864cf);
 }
 
+.training-roster-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(102, 82, 191, 0.32);
+  border-radius: 8px;
+  color: #6250b6;
+  background: rgba(248, 247, 255, 0.82);
+  transition: border-color 130ms ease, box-shadow 130ms ease, background 130ms ease;
+}
+
+.training-roster-search:focus-within {
+  border-color: #7864cf;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(103, 82, 191, 0.14);
+}
+
+.training-roster-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: #33456f;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  background: transparent;
+}
+
+.training-roster-search input::placeholder {
+  color: #858db0;
+}
+
+.training-roster-search > button {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: #6654bd;
+  background: rgba(103, 82, 191, 0.1);
+  cursor: pointer;
+}
+
+.training-roster-search > button:hover,
+.training-roster-search > button:focus-visible {
+  color: #fff;
+  background: #6752bf;
+  outline: none;
+}
+
 .training-roster-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1302,6 +1360,44 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(98, 79, 181, 0.4) transparent;
+}
+
+.training-roster-no-results {
+  display: grid;
+  grid-column: 1 / -1;
+  min-height: 170px;
+  place-content: center;
+  place-items: center;
+  gap: 7px;
+  padding: 20px;
+  border: 1px dashed rgba(103, 82, 191, 0.32);
+  border-radius: 12px;
+  color: #6654bd;
+  text-align: center;
+  background: rgba(248, 247, 255, 0.52);
+}
+
+.training-roster-no-results strong {
+  color: #34466f;
+  font-size: 12px;
+}
+
+.training-roster-no-results span {
+  color: #747fa4;
+  font-size: 8px;
+}
+
+.training-roster-no-results button {
+  min-height: 30px;
+  margin-top: 3px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 850;
+  background: linear-gradient(90deg, #6752bf, #7864cf);
+  cursor: pointer;
 }
 
 .training-roster-card {
