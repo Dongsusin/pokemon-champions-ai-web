@@ -177,6 +177,17 @@ function effectivenessPresentation(multiplier) {
   return { value: 'X1', label: '보통 효과', tone: 'neutral' }
 }
 
+const MANUAL_OPPONENT_TARGETS = new Set(['normal', 'adjacentFoe', 'any'])
+
+function moveDealsDirectDamage(move) {
+  return move?.category !== '변화'
+    && (Number(move?.power) > 0 || move?.ohko || move?.damage !== undefined || move?.id === 'finalgambit')
+}
+
+function needsOpponentTargetSelection(move, availableTargetCount) {
+  return availableTargetCount > 1 && MANUAL_OPPONENT_TARGETS.has(move?.moveTarget ?? move?.target)
+}
+
 const TURN_STEP_DURATIONS = {
   gimmick: 2100,
   announce: 380,
@@ -953,7 +964,6 @@ function MoveMenu({
   targetSlot = 0,
   pendingGimmick,
   onActiveSlot,
-  onTargetSlot,
   onGimmick,
   onMove,
   onOpenParty,
@@ -964,7 +974,6 @@ function MoveMenu({
   const pokemon = getActivePokemon(battle, 'player', activeSlot)
   const opponent = getActivePokemon(battle, 'opponent', targetSlot)
   const playerActive = getActivePokemonList(battle, 'player')
-  const opponentActive = getActivePokemonList(battle, 'opponent')
   const mechanics = getAvailableBattleMechanics(battle, 'player', activeSlot)
 
   return (
@@ -983,19 +992,6 @@ function MoveMenu({
                 disabled={entry.fainted || entry.hp <= 0}
                 key={entry.battleId}
                 onClick={() => onActiveSlot(slot)}
-              >{entry.name}</button>
-            ))}
-          </div>
-        )}
-        {opponentActive.length > 1 && (
-          <div className="battle-target-selector" aria-label="공격 대상">
-            {opponentActive.map((entry, slot) => (
-              <button
-                className={targetSlot === slot ? 'selected' : ''}
-                type="button"
-                disabled={entry.fainted || entry.hp <= 0}
-                key={entry.battleId}
-                onClick={() => onTargetSlot(slot)}
               >{entry.name}</button>
             ))}
           </div>
@@ -1021,9 +1017,7 @@ function MoveMenu({
       <div className="battle-move-grid">
         {pokemon.moves.map((move, moveIndex) => {
           const displayMove = getBattleMovePreview(battle, 'player', moveIndex, activeSlot, targetSlot) ?? move
-          const isDamagingMove = displayMove.category !== '변화'
-            && (Number(displayMove.power) > 0 || displayMove.ohko || displayMove.damage !== undefined || displayMove.id === 'finalgambit')
-          const multiplier = isDamagingMove
+          const multiplier = moveDealsDirectDamage(displayMove)
             ? getBattleTypeEffectiveness(battle, displayMove.type, opponent.types)
             : null
           const presentation = effectivenessPresentation(multiplier)
@@ -1079,6 +1073,91 @@ function MoveMenu({
                 visible={isTooltipVisible}
               />
             </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function MoveTargetMenu({
+  battle,
+  activeSlot = 0,
+  moveIndex = 0,
+  pendingGimmick,
+  onSelect,
+  onBack,
+  onPreview,
+}) {
+  const pokemon = getActivePokemon(battle, 'player', activeSlot)
+  const move = pokemon?.moves?.[moveIndex]
+  const targets = getActivePokemonList(battle, 'opponent')
+    .map((target, slot) => ({ target, slot }))
+    .filter(({ target }) => target.hp > 0 && !target.fainted)
+  const selectedMechanic = getAvailableBattleMechanics(battle, 'player', activeSlot)
+    .find((mechanic) => mechanic.id === pendingGimmick)
+
+  if (!pokemon || !move) return null
+
+  return (
+    <section className="battle-target-menu">
+      <header>
+        <button type="button" onPointerEnter={onPreview} onClick={onBack}>
+          <ChevronLeft size={17} /> 기술 선택
+        </button>
+        <div className="battle-target-title">
+          <small>SELECT TARGET</small>
+          <strong>공격 대상 선택</strong>
+        </div>
+        <div className="battle-target-move-summary">
+          <span className={`type-${typeClassName(move.type)}`}>{move.type}</span>
+          <strong>{move.name}</strong>
+          {selectedMechanic && <em>{selectedMechanic.shortLabel}</em>}
+        </div>
+      </header>
+      <div
+        className="battle-target-grid"
+        style={{ '--battle-target-columns': Math.max(1, targets.length) }}
+      >
+        {targets.map(({ target, slot }) => {
+          const displayMove = getBattleMovePreview(battle, 'player', moveIndex, activeSlot, slot) ?? move
+          const multiplier = moveDealsDirectDamage(displayMove)
+            ? getBattleTypeEffectiveness(battle, displayMove.type, target.types)
+            : null
+          const presentation = effectivenessPresentation(multiplier)
+
+          return (
+            <button
+              className={`battle-target-card effectiveness-${presentation.tone}`}
+              type="button"
+              aria-label={`${target.name}을 공격 대상으로 선택`}
+              key={target.battleId}
+              onPointerEnter={onPreview}
+              onClick={() => onSelect(slot)}
+            >
+              <span className="battle-target-number">TARGET {String(slot + 1).padStart(2, '0')}</span>
+              <span className="battle-target-icon">
+                <img
+                  src={target.icon}
+                  alt=""
+                  draggable="false"
+                  onError={fallbackImageHandler(target.iconFallback)}
+                />
+              </span>
+              <span className="battle-target-info">
+                <strong>{target.name}</strong>
+                <small>Lv.50 · {target.types.join(' / ')}</small>
+                <span className={`battle-target-hp tone-${hpTone(target)}`}>
+                  <i style={{ width: `${hpRatio(target)}%` }} />
+                </span>
+                <em>HP {Math.round(hpRatio(target))}%</em>
+              </span>
+              <span className={`battle-target-effectiveness effectiveness-${presentation.tone}`}>
+                <small>상성</small>
+                <strong>{presentation.value}</strong>
+                <em>{presentation.label}</em>
+              </span>
+            </button>
           )
         })}
       </div>
@@ -1226,6 +1305,7 @@ function BattleScreen({
   const [queuedActions, setQueuedActions] = useState([])
   const [commandSlot, setCommandSlot] = useState(0)
   const [targetSlot, setTargetSlot] = useState(0)
+  const [pendingMoveIndex, setPendingMoveIndex] = useState(null)
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
   const [moveAssetsReady, setMoveAssetsReady] = useState(false)
@@ -1338,6 +1418,7 @@ function BattleScreen({
 
     setMenu('command')
     setQueuedActions([])
+    setPendingMoveIndex(null)
     setIsTurnAnimating(steps.length > 0)
 
     const playStep = (stepIndex) => {
@@ -1408,7 +1489,11 @@ function BattleScreen({
     .filter((slot) => slot >= 0)
 
   const submitPlayerAction = (action) => {
-    const nextAction = { ...action, actorSlot: commandSlot, targetSlot }
+    const nextAction = {
+      ...action,
+      actorSlot: commandSlot,
+      targetSlot: action.targetSlot ?? targetSlot,
+    }
     if (battle.rules?.format?.rotation || livingPlayerActionSlots.length <= 1) {
       startAnimatedTurn(nextAction)
       return
@@ -1425,16 +1510,45 @@ function BattleScreen({
     setCommandSlot(nextSlot)
     setTargetSlot(livingOpponentTargetSlots[0] ?? 0)
     setPendingGimmick(null)
+    setPendingMoveIndex(null)
     setMenu('fight')
   }
 
   const chooseMove = (moveIndex) => {
     battleAudioRef.current?.playMenu('select')
+    const pokemon = getActivePokemon(battle, 'player', commandSlot)
+    const move = pokemon?.moves?.[moveIndex]
+    if (needsOpponentTargetSelection(move, livingOpponentTargetSlots.length)) {
+      setPendingMoveIndex(moveIndex)
+      setTargetSlot((currentSlot) => (
+        livingOpponentTargetSlots.includes(currentSlot)
+          ? currentSlot
+          : livingOpponentTargetSlots[0] ?? 0
+      ))
+      setMenu('target')
+      return
+    }
+
     submitPlayerAction({
       type: 'move',
       moveIndex,
       gimmick: pendingGimmick,
     })
+    setPendingMoveIndex(null)
+    setPendingGimmick(null)
+  }
+
+  const chooseMoveTarget = (selectedTargetSlot) => {
+    if (pendingMoveIndex == null || !livingOpponentTargetSlots.includes(selectedTargetSlot)) return
+    battleAudioRef.current?.playMenu('select')
+    setTargetSlot(selectedTargetSlot)
+    submitPlayerAction({
+      type: 'move',
+      moveIndex: pendingMoveIndex,
+      gimmick: pendingGimmick,
+      targetSlot: selectedTargetSlot,
+    })
+    setPendingMoveIndex(null)
     setPendingGimmick(null)
   }
 
@@ -1472,6 +1586,7 @@ function BattleScreen({
     } else {
       submitPlayerAction({ type: 'switch', targetIndex })
     }
+    setPendingMoveIndex(null)
     setMenu('command')
   }
 
@@ -1490,6 +1605,7 @@ function BattleScreen({
     setQueuedActions([])
     setCommandSlot(battle.rules?.format?.rotation ? battle.player.rotationSlot ?? firstLivingSlot : firstLivingSlot)
     setTargetSlot(livingOpponentTargetSlots[0] ?? 0)
+    setPendingMoveIndex(null)
     setMenu(nextMenu)
   }
 
@@ -1497,12 +1613,20 @@ function BattleScreen({
     battleAudioRef.current?.playMenu('cancel')
     setPendingGimmick(null)
     setQueuedActions([])
+    setPendingMoveIndex(null)
     setMenu('command')
+  }
+
+  const returnToMoveMenu = () => {
+    battleAudioRef.current?.playMenu('cancel')
+    setPendingMoveIndex(null)
+    setMenu('fight')
   }
 
   const openPartyForCurrentSlot = () => {
     battleAudioRef.current?.playMenu('select')
     setPendingGimmick(null)
+    setPendingMoveIndex(null)
     setMenu('party')
   }
 
@@ -1739,6 +1863,16 @@ function BattleScreen({
               onBack={returnToCommandMenu}
               onPreview={previewBattleMenu}
             />
+          ) : !commandLocked && menu === 'target' && pendingMoveIndex != null ? (
+            <MoveTargetMenu
+              battle={battle}
+              activeSlot={commandSlot}
+              moveIndex={pendingMoveIndex}
+              pendingGimmick={pendingGimmick}
+              onSelect={chooseMoveTarget}
+              onBack={returnToMoveMenu}
+              onPreview={previewBattleMenu}
+            />
           ) : !commandLocked && menu === 'fight' ? (
             <MoveMenu
               battle={battle}
@@ -1746,7 +1880,6 @@ function BattleScreen({
               targetSlot={targetSlot}
               pendingGimmick={pendingGimmick}
               onActiveSlot={setCommandSlot}
-              onTargetSlot={setTargetSlot}
               onGimmick={setPendingGimmick}
               onMove={chooseMove}
               onOpenParty={openPartyForCurrentSlot}
