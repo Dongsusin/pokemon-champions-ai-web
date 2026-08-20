@@ -13,12 +13,13 @@ import {
   Plus,
   RotateCcw,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   X,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
-import { getTrainingRosterPokemon } from './data/pokemonPool'
+import { getPokemonEvolutionFamilyKey, getTrainingRosterPokemon } from './data/pokemonPool'
 import {
   BATTLE_LEVEL,
   canPokemonLearnMove,
@@ -112,7 +113,7 @@ function BattleTooltip({
   )
 }
 
-function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
+function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onOpenHatch }) {
   const trainingPokemon = useMemo(() => getTrainingRosterPokemon(pokemon), [pokemon])
   const [selectedId, setSelectedId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [pokemonSearch, setPokemonSearch] = useState('')
@@ -127,6 +128,23 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const [movePickerTooltip, setMovePickerTooltip] = useState(null)
   const [abilityPickerTooltip, setAbilityPickerTooltip] = useState(null)
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
+  const teamMembershipByFamily = useMemo(() => {
+    const pokemonByCaptureId = new Map(pokemon.map((entry) => [entry.captureId, entry]))
+    const membershipMap = new Map()
+
+    teams.forEach((team) => {
+      (team.pokemonIds ?? []).forEach((captureId) => {
+        const teamPokemon = pokemonByCaptureId.get(captureId)
+        if (!teamPokemon) return
+        const familyKey = getPokemonEvolutionFamilyKey(teamPokemon)
+        const memberships = membershipMap.get(familyKey) ?? []
+        memberships.push({ id: team.id, name: team.name })
+        membershipMap.set(familyKey, memberships)
+      })
+    })
+
+    return membershipMap
+  }, [pokemon, teams])
   const filteredTrainingPokemon = useMemo(() => {
     const query = pokemonSearch.trim().toLocaleLowerCase('ko-KR')
     const matchingPokemon = query ? trainingPokemon.filter((entry) => (
@@ -500,30 +518,48 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
           </div>
 
           <div className="training-roster-grid">
-            {filteredTrainingPokemon.map((entry) => (
-              <button
-                className={`training-roster-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedId ? ' selected' : ''}`}
-                key={entry.captureId}
-                type="button"
-                aria-label={`${entry.isShiny ? '이로치 ' : ''}${entry.name}, 레벨 ${BATTLE_LEVEL} 트레이닝`}
-                aria-pressed={entry.captureId === selectedId}
-                onClick={() => selectPokemon(entry.captureId)}
-              >
-                <span className="training-card-level">Lv.{BATTLE_LEVEL}</span>
-                {entry.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
-                <span className="pokemon-icon-frame training-roster-sprite-frame" aria-hidden="true">
-                  <img
-                    className="pokemon-box-icon"
-                    src={entry.icon}
-                    alt=""
-                    draggable="false"
-                    onError={fallbackImageHandler(entry.iconFallback)}
-                  />
-                </span>
-                <strong>{entry.name}</strong>
-                <span className="training-card-types">{entry.types.join(' · ')}</span>
-              </button>
-            ))}
+            {filteredTrainingPokemon.map((entry) => {
+              const teamMemberships = teamMembershipByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? []
+              const isInTeam = teamMemberships.length > 0
+              const isInActiveTeam = teamMemberships.some((membership) => membership.id === activeTeamId)
+              const teamLabel = isInTeam
+                ? `${teamMemberships.map((membership) => membership.name).join(', ')} 편성 중`
+                : ''
+
+              return (
+                <button
+                  className={`training-roster-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedId ? ' selected' : ''}${isInTeam ? ' in-team' : ''}${isInActiveTeam ? ' in-active-team' : ''}`}
+                  key={entry.captureId}
+                  type="button"
+                  aria-label={`${entry.isShiny ? '이로치 ' : ''}${entry.name}, 레벨 ${BATTLE_LEVEL} 트레이닝${teamLabel ? `, ${teamLabel}` : ''}`}
+                  aria-pressed={entry.captureId === selectedId}
+                  onClick={() => selectPokemon(entry.captureId)}
+                >
+                  <span className="training-card-level">Lv.{BATTLE_LEVEL}</span>
+                  {isInTeam && (
+                    <span
+                      className={`training-team-badge${isInActiveTeam ? ' active' : ''}`}
+                      title={teamLabel}
+                      aria-hidden="true"
+                    >
+                      <ShieldCheck size={11} />
+                    </span>
+                  )}
+                  {entry.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
+                  <span className="pokemon-icon-frame training-roster-sprite-frame" aria-hidden="true">
+                    <img
+                      className="pokemon-box-icon"
+                      src={entry.icon}
+                      alt=""
+                      draggable="false"
+                      onError={fallbackImageHandler(entry.iconFallback)}
+                    />
+                  </span>
+                  <strong>{entry.name}</strong>
+                  <span className="training-card-types">{entry.types.join(' · ')}</span>
+                </button>
+              )
+            })}
             {trainingPokemon.length > 0 && filteredTrainingPokemon.length === 0 && (
               <div className="training-roster-no-results" role="status">
                 <Search size={26} />

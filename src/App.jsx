@@ -822,6 +822,8 @@ function App() {
       ) : screen === 'training' ? (
         <TrainingScreen
           pokemon={boxPokemon}
+          teams={teams}
+          activeTeamId={activeTeam?.id}
           onBack={returnToLobby}
           onSave={saveTraining}
           onOpenHatch={enterHatchScreen}

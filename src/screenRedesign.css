@@ -1489,6 +1489,36 @@
   font-weight: 850;
 }
 
+.training-team-badge {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  z-index: 5;
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #8066dd, #5648ac);
+  box-shadow: 0 3px 8px rgba(63, 49, 137, 0.28);
+}
+
+.training-team-badge.active {
+  color: #27375f;
+  background: linear-gradient(145deg, #e8ff72, #b9e52f);
+  box-shadow: 0 0 0 2px rgba(202, 241, 58, 0.2), 0 3px 8px rgba(73, 93, 34, 0.2);
+}
+
+.training-roster-card.in-team .pokemon-shiny-mark {
+  top: 29px;
+  right: 7px;
+  width: 16px;
+  height: 16px;
+  font-size: 7px;
+}
+
 .training-card-types {
   width: 100%;
   margin-top: 3px;
