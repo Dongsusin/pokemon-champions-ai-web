@@ -86,13 +86,16 @@ function BattleTooltip({
   label = '기술 정보',
   side = 'left',
   accentClass = '',
+  className = '',
+  style,
 }) {
   return (
     <span
-      className={`battle-tooltip tooltip-${side} ${accentClass}${visible ? ' is-visible' : ''}`}
+      className={`battle-tooltip tooltip-${side} ${accentClass} ${className}${visible ? ' is-visible' : ''}`}
       id={id}
       role="tooltip"
       aria-hidden={!visible}
+      style={style}
     >
       <span className="battle-tooltip-eyebrow">{eyebrow}</span>
       <strong>{title}</strong>
@@ -120,6 +123,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const [moveCategory, setMoveCategory] = useState('전체')
   const [profilePicker, setProfilePicker] = useState(null)
   const [activeTooltipId, setActiveTooltipId] = useState(null)
+  const [movePickerTooltip, setMovePickerTooltip] = useState(null)
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
 
   useEffect(() => {
@@ -136,6 +140,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
       setMovePickerSlot(null)
       setProfilePicker(null)
       setActiveTooltipId(null)
+      setMovePickerTooltip(null)
     }
 
     window.addEventListener('keydown', closeOnEscape)
@@ -219,6 +224,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const openMovePicker = (slotIndex) => {
     if (isPreviewForm) return
     setActiveTooltipId(null)
+    setMovePickerTooltip(null)
     setProfilePicker(null)
     setMovePickerSlot(slotIndex)
     setMoveSearch('')
@@ -233,11 +239,13 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     ) return
     updateMove(movePickerSlot, moveName)
     setMovePickerSlot(null)
+    setMovePickerTooltip(null)
   }
 
   const openProfilePicker = (picker) => {
     if (isPreviewForm && !['evolution', 'battle-form'].includes(picker)) return
     setActiveTooltipId(null)
+    setMovePickerTooltip(null)
     setMovePickerSlot(null)
     setProfilePicker(picker)
   }
@@ -263,25 +271,66 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     setProfilePicker(null)
   }
 
-  const tooltipAnchorProps = (tooltipId) => ({
-    onMouseEnter: () => setActiveTooltipId(tooltipId),
-    onMouseLeave: () => setActiveTooltipId((currentId) => (
-      currentId === tooltipId ? null : currentId
-    )),
-    onPointerCancel: () => setActiveTooltipId((currentId) => (
-      currentId === tooltipId ? null : currentId
-    )),
-    onFocus: () => setActiveTooltipId(tooltipId),
+  const tooltipAnchorProps = (tooltipId, callbacks = {}) => ({
+    onMouseEnter: (event) => {
+      setActiveTooltipId(tooltipId)
+      callbacks.onShow?.(event)
+    },
+    onMouseLeave: (event) => {
+      setActiveTooltipId((currentId) => (
+        currentId === tooltipId ? null : currentId
+      ))
+      callbacks.onHide?.(event)
+    },
+    onPointerCancel: (event) => {
+      setActiveTooltipId((currentId) => (
+        currentId === tooltipId ? null : currentId
+      ))
+      callbacks.onHide?.(event)
+    },
+    onFocus: (event) => {
+      setActiveTooltipId(tooltipId)
+      callbacks.onShow?.(event)
+    },
     onBlur: (event) => {
       if (event.currentTarget.contains(event.relatedTarget)) return
       setActiveTooltipId((currentId) => (currentId === tooltipId ? null : currentId))
+      callbacks.onHide?.(event)
     },
     onKeyDown: (event) => {
       if (event.key !== 'Escape') return
       setActiveTooltipId(null)
+      callbacks.onHide?.(event)
       event.currentTarget.blur()
     },
   })
+
+  const showMovePickerTooltip = (event, option, tooltipId) => {
+    const panel = event.currentTarget.closest('.move-picker-panel')
+    if (!panel) return
+
+    const anchorRect = event.currentTarget.getBoundingClientRect()
+    const panelRect = panel.getBoundingClientRect()
+    const tooltipWidth = Math.min(292, panelRect.width - 20)
+    const gap = 10
+    const availableLeft = anchorRect.left - panelRect.left
+    const availableRight = panelRect.right - anchorRect.right
+    const openRight = availableRight >= tooltipWidth + gap || availableRight >= availableLeft
+    const requestedLeft = openRight
+      ? anchorRect.right - panelRect.left + gap
+      : anchorRect.left - panelRect.left - tooltipWidth - gap
+    const left = Math.max(10, Math.min(requestedLeft, panelRect.width - tooltipWidth - 10))
+    const anchorCenter = anchorRect.top - panelRect.top + (anchorRect.height / 2)
+    const top = Math.max(82, Math.min(anchorCenter, panelRect.height - 82))
+
+    setMovePickerTooltip({ option, tooltipId, left, top })
+  }
+
+  const hideMovePickerTooltip = (tooltipId) => {
+    setMovePickerTooltip((currentTooltip) => (
+      currentTooltip?.tooltipId === tooltipId ? null : currentTooltip
+    ))
+  }
 
   const setTrainingPoint = (statKey, requestedValue) => {
     if (!selectedPokemon || isPreviewForm) return
@@ -331,6 +380,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     setMovePickerSlot(null)
     setProfilePicker(null)
     setActiveTooltipId(null)
+    setMovePickerTooltip(null)
   }
 
   const isEvolutionPicker = profilePicker === 'evolution'
@@ -822,37 +872,47 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                         const optionCategory = option.category === '물리'
                           ? 'physical'
                           : option.category === '특수' ? 'special' : 'status'
+                        const optionTooltipId = `move-picker-tooltip-${selectedPokemon.captureId}-${option.id}`
                         const isSelected = selectedPokemon.moves[movePickerSlot] === option.name
                         const usedInOtherSlot = selectedPokemon.moves.some(
                           (moveName, slotIndex) => slotIndex !== movePickerSlot && moveName === option.name,
                         )
 
                         return (
-                          <button
-                            className={`move-picker-choice move-type-${typeClassName(option.type)}${isSelected ? ' selected' : ''}`}
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            disabled={usedInOtherSlot}
+                          <div
+                            className="move-picker-choice-shell training-tooltip-anchor"
                             key={option.id}
-                            onClick={() => chooseMove(option.name)}
+                            {...tooltipAnchorProps(optionTooltipId, {
+                              onShow: (event) => showMovePickerTooltip(event, option, optionTooltipId),
+                              onHide: () => hideMovePickerTooltip(optionTooltipId),
+                            })}
                           >
-                            <span className={`move-picker-choice-type type-${typeClassName(option.type)}`}>{option.type}</span>
-                            <span className="move-picker-choice-name">
-                              <strong>{option.name}</strong>
-                              <small>{option.description}</small>
-                            </span>
-                            <span className="move-picker-choice-state">
-                              {isSelected && <><Check size={12} /> 선택됨</>}
-                              {usedInOtherSlot && '장착중'}
-                            </span>
-                            <span className="move-picker-choice-stats">
-                              <em className={`category-${optionCategory}`}>{option.category}</em>
-                              <span><small>위력</small><b>{option.power || '—'}</b></span>
-                              <span><small>명중</small><b>{optionAccuracy}</b></span>
-                              <span><small>PP</small><b>{option.pp}</b></span>
-                            </span>
-                          </button>
+                            <button
+                              className={`move-picker-choice move-type-${typeClassName(option.type)}${isSelected ? ' selected' : ''}`}
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              aria-describedby={optionTooltipId}
+                              disabled={usedInOtherSlot}
+                              onClick={() => chooseMove(option.name)}
+                            >
+                              <span className={`move-picker-choice-type type-${typeClassName(option.type)}`}>{option.type}</span>
+                              <span className="move-picker-choice-name">
+                                <strong>{option.name}</strong>
+                                <small>{option.description}</small>
+                              </span>
+                              <span className="move-picker-choice-state">
+                                {isSelected && <><Check size={12} /> 선택됨</>}
+                                {usedInOtherSlot && '장착중'}
+                              </span>
+                              <span className="move-picker-choice-stats">
+                                <em className={`category-${optionCategory}`}>{option.category}</em>
+                                <span><small>위력</small><b>{option.power || '—'}</b></span>
+                                <span><small>명중</small><b>{optionAccuracy}</b></span>
+                                <span><small>PP</small><b>{option.pp}</b></span>
+                              </span>
+                            </button>
+                          </div>
                         )
                       })}
                       {filteredMoves.length === 0 && (
@@ -868,6 +928,29 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                       <span>실제 게임에서 배울 수 있는 기술만 선택할 수 있으며 중복 등록은 불가능합니다.</span>
                       <strong>ESC 닫기</strong>
                     </footer>
+                    {movePickerTooltip && (
+                      <BattleTooltip
+                        id={movePickerTooltip.tooltipId}
+                        eyebrow={`${movePickerTooltip.option.type}타입 · ${movePickerTooltip.option.category}`}
+                        title={movePickerTooltip.option.name}
+                        description={movePickerTooltip.option.description}
+                        visible={activeTooltipId === movePickerTooltip.tooltipId}
+                        side="floating"
+                        accentClass={`type-accent-${typeClassName(movePickerTooltip.option.type)}`}
+                        className="move-picker-floating-tooltip"
+                        style={{ left: movePickerTooltip.left, top: movePickerTooltip.top }}
+                        meta={[
+                          { label: '위력', value: movePickerTooltip.option.power || '—' },
+                          {
+                            label: '명중',
+                            value: movePickerTooltip.option.accuracyLabel
+                              ?? movePickerTooltip.option.accuracy
+                              ?? '—',
+                          },
+                          { label: 'PP', value: movePickerTooltip.option.pp },
+                        ]}
+                      />
+                    )}
                   </section>
                 </div>
               )}
