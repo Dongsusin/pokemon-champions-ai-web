@@ -124,6 +124,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
   const [profilePicker, setProfilePicker] = useState(null)
   const [activeTooltipId, setActiveTooltipId] = useState(null)
   const [movePickerTooltip, setMovePickerTooltip] = useState(null)
+  const [abilityPickerTooltip, setAbilityPickerTooltip] = useState(null)
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
 
   useEffect(() => {
@@ -141,6 +142,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
       setProfilePicker(null)
       setActiveTooltipId(null)
       setMovePickerTooltip(null)
+      setAbilityPickerTooltip(null)
     }
 
     window.addEventListener('keydown', closeOnEscape)
@@ -225,6 +227,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     if (isPreviewForm) return
     setActiveTooltipId(null)
     setMovePickerTooltip(null)
+    setAbilityPickerTooltip(null)
     setProfilePicker(null)
     setMovePickerSlot(slotIndex)
     setMoveSearch('')
@@ -246,6 +249,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     if (isPreviewForm && !['evolution', 'battle-form'].includes(picker)) return
     setActiveTooltipId(null)
     setMovePickerTooltip(null)
+    setAbilityPickerTooltip(null)
     setMovePickerSlot(null)
     setProfilePicker(picker)
   }
@@ -268,6 +272,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
 
   const chooseAbility = (ability) => {
     updateSelected({ ability })
+    setAbilityPickerTooltip(null)
     setProfilePicker(null)
   }
 
@@ -305,9 +310,9 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     },
   })
 
-  const showMovePickerTooltip = (event, option, tooltipId) => {
-    const panel = event.currentTarget.closest('.move-picker-panel')
-    if (!panel) return
+  const getPickerTooltipPosition = (event) => {
+    const panel = event.currentTarget.closest('.move-picker-panel, .profile-picker-panel')
+    if (!panel) return null
 
     const anchorRect = event.currentTarget.getBoundingClientRect()
     const panelRect = panel.getBoundingClientRect()
@@ -323,11 +328,29 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     const anchorCenter = anchorRect.top - panelRect.top + (anchorRect.height / 2)
     const top = Math.max(82, Math.min(anchorCenter, panelRect.height - 82))
 
-    setMovePickerTooltip({ option, tooltipId, left, top })
+    return { left, top }
+  }
+
+  const showMovePickerTooltip = (event, option, tooltipId) => {
+    const position = getPickerTooltipPosition(event)
+    if (!position) return
+    setMovePickerTooltip({ option, tooltipId, ...position })
   }
 
   const hideMovePickerTooltip = (tooltipId) => {
     setMovePickerTooltip((currentTooltip) => (
+      currentTooltip?.tooltipId === tooltipId ? null : currentTooltip
+    ))
+  }
+
+  const showAbilityPickerTooltip = (event, ability, abilityInfo, tooltipId) => {
+    const position = getPickerTooltipPosition(event)
+    if (!position) return
+    setAbilityPickerTooltip({ ability, abilityInfo, tooltipId, ...position })
+  }
+
+  const hideAbilityPickerTooltip = (tooltipId) => {
+    setAbilityPickerTooltip((currentTooltip) => (
       currentTooltip?.tooltipId === tooltipId ? null : currentTooltip
     ))
   }
@@ -381,6 +404,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
     setProfilePicker(null)
     setActiveTooltipId(null)
     setMovePickerTooltip(null)
+    setAbilityPickerTooltip(null)
   }
 
   const isEvolutionPicker = profilePicker === 'evolution'
@@ -937,7 +961,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                         visible={activeTooltipId === movePickerTooltip.tooltipId}
                         side="floating"
                         accentClass={`type-accent-${typeClassName(movePickerTooltip.option.type)}`}
-                        className="move-picker-floating-tooltip"
+                        className="picker-floating-tooltip"
                         style={{ left: movePickerTooltip.left, top: movePickerTooltip.top }}
                         meta={[
                           { label: '위력', value: movePickerTooltip.option.power || '—' },
@@ -1158,6 +1182,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                       <div className="profile-picker-list ability-picker-list" role="listbox" aria-label={`${species.name} 특성 목록`}>
                         {species.abilities.map((ability) => {
                           const abilityInfo = getAbility(ability)
+                          const abilityTooltipId = `ability-picker-tooltip-${selectedPokemon.captureId}-${ability}`
                           const isSelected = selectedPokemon.ability === ability
 
                           return (
@@ -1166,9 +1191,19 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                               type="button"
                               role="option"
                               aria-selected={isSelected}
+                              aria-describedby={abilityTooltipId}
                               autoFocus={isSelected}
                               key={ability}
                               onClick={() => chooseAbility(ability)}
+                              {...tooltipAnchorProps(abilityTooltipId, {
+                                onShow: (event) => showAbilityPickerTooltip(
+                                  event,
+                                  ability,
+                                  abilityInfo,
+                                  abilityTooltipId,
+                                ),
+                                onHide: () => hideAbilityPickerTooltip(abilityTooltipId),
+                              })}
                             >
                               <span className="profile-choice-symbol"><Dna size={18} /></span>
                               <span className="profile-choice-copy">
@@ -1200,6 +1235,23 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                       </span>
                       <strong>ESC 닫기</strong>
                     </footer>
+                    {profilePicker === 'ability' && abilityPickerTooltip && (
+                      <BattleTooltip
+                        id={abilityPickerTooltip.tooltipId}
+                        eyebrow="ABILITY"
+                        title={abilityPickerTooltip.ability}
+                        description={abilityPickerTooltip.abilityInfo.description}
+                        visible={activeTooltipId === abilityPickerTooltip.tooltipId}
+                        label="특성 정보"
+                        side="floating"
+                        accentClass="ability-tooltip"
+                        className="picker-floating-tooltip"
+                        style={{ left: abilityPickerTooltip.left, top: abilityPickerTooltip.top }}
+                        meta={[
+                          { label: '발동 조건', value: abilityPickerTooltip.abilityInfo.trigger },
+                        ]}
+                      />
+                    )}
                   </section>
                 </div>
               )}

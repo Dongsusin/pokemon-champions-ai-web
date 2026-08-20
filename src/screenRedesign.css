@@ -2572,14 +2572,14 @@
   height: 100%;
 }
 
-.move-picker-floating-tooltip {
+.picker-floating-tooltip {
   z-index: 120;
   width: min(292px, calc(100% - 20px));
   max-height: calc(100% - 20px);
   transform: translateY(-50%) scale(0.98);
 }
 
-.move-picker-floating-tooltip.is-visible {
+.picker-floating-tooltip.is-visible {
   transform: translateY(-50%) scale(1);
 }
 
@@ -2732,6 +2732,7 @@
 }
 
 .profile-picker-panel {
+  position: relative;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   width: min(760px, 100%);
