@@ -192,6 +192,8 @@ const TURN_STEP_DURATIONS = {
   result: 760,
 }
 
+const TURN_ACTION_PAUSE = 520
+
 const GIMMICK_STEP_DURATIONS = {
   mega: 3000,
   zmove: 2700,
@@ -204,6 +206,15 @@ function turnStepDuration(step) {
   if (step?.phase === 'attack' && step.moveId) return getMoveAnimationProfile(step).duration
   if (step?.phase === 'gimmick') return GIMMICK_STEP_DURATIONS[step.mechanicId] ?? TURN_STEP_DURATIONS.gimmick
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
+}
+
+function turnPlaybackDelay(steps, stepIndex) {
+  const step = steps[stepIndex]
+  const nextStep = steps[stepIndex + 1]
+  const baseDuration = turnStepDuration(step)
+  if (step?.actionOrder == null) return baseDuration
+  if (nextStep?.actionOrder === step.actionOrder) return baseDuration
+  return baseDuration + TURN_ACTION_PAUSE
 }
 
 function MoveAnimation({ cue }) {
@@ -1262,7 +1273,7 @@ function BattleScreen({
       const step = steps[stepIndex]
       if (step.phase !== 'attack' || stepIndex === 0) setBattle(step.state)
       setTurnCue(step)
-      playbackTimerRef.current = setTimeout(() => playStep(stepIndex + 1), turnStepDuration(step))
+      playbackTimerRef.current = setTimeout(() => playStep(stepIndex + 1), turnPlaybackDelay(steps, stepIndex))
     }
 
     if (steps.length > 0) {

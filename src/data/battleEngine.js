@@ -1788,6 +1788,9 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       ...moveStep,
       message: latestLogMessage(state, `${move.name}의 효과가 발동했다!`),
     })
+    markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
+    markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+    markActiveFaints(state, timeline, actionOrder)
     applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
     return
   }
@@ -1906,14 +1909,21 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   applySelfDestruct(state, attacker, move, damage > 0)
 
-  if (state.log.length > postEffectLogLength) {
+  const hasPostEffectLog = state.log.length > postEffectLogLength
+  const postEffectMessage = latestLogMessage(state, `${move.name}의 추가 효과가 발동했다!`)
+  markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
+
+  if (hasPostEffectLog) {
     pushTimelineStep(timeline, state, {
       phase: 'status',
       ...moveStep,
       targetSideId: sideId,
-      message: latestLogMessage(state, `${move.name}의 추가 효과가 발동했다!`),
+      message: postEffectMessage,
     })
   }
+
+  markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+  markActiveFaints(state, timeline, actionOrder)
 
   if (damage > 0) applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
 }
@@ -2159,35 +2169,38 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null) {
   }
 }
 
-function settleFaints(state, timeline = null) {
-  const faintedPokemon = []
-  ;['player', 'opponent'].forEach((sideId) => {
-    getActivePokemonList(state, sideId).forEach((pokemon, activeSlot) => {
-      if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return
-      pokemon.fainted = true
-      appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
-      faintedPokemon.push({
-        sideId,
-        activeSlot,
-        name: pokemon.name,
-        speciesId: pokemon.speciesId,
-        originalSpeciesId: pokemon.originalSpeciesId,
-      })
-    })
-  })
+function markPokemonFaint(state, sideId, activeSlot, timeline = null, actionOrder = null) {
+  const pokemon = getActivePokemon(state, sideId, activeSlot)
+  if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return false
 
-  faintedPokemon.forEach(({ sideId, activeSlot, name, speciesId, originalSpeciesId }) => {
-    pushTimelineStep(timeline, state, {
-      phase: 'faint',
-      sideId: sideId === 'player' ? 'opponent' : 'player',
-      targetSideId: sideId,
-      targetSlot: activeSlot,
-      actorName: name,
-      actorSpeciesId: speciesId,
-      actorOriginalSpeciesId: originalSpeciesId,
-      message: `${name}은(는) 쓰러졌다!`,
+  pokemon.fainted = true
+  appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
+  pushTimelineStep(timeline, state, {
+    phase: 'faint',
+    ...(actionOrder == null ? {} : { actionOrder }),
+    sideId: sideId === 'player' ? 'opponent' : 'player',
+    targetSideId: sideId,
+    targetSlot: activeSlot,
+    actorName: pokemon.name,
+    actorSpeciesId: pokemon.speciesId,
+    actorOriginalSpeciesId: pokemon.originalSpeciesId,
+    message: `${pokemon.name}은(는) 쓰러졌다!`,
+  })
+  return true
+}
+
+function markActiveFaints(state, timeline = null, actionOrder = null) {
+  let markedFaint = false
+  ;['player', 'opponent'].forEach((sideId) => {
+    getActivePokemonList(state, sideId).forEach((_, activeSlot) => {
+      if (markPokemonFaint(state, sideId, activeSlot, timeline, actionOrder)) markedFaint = true
     })
   })
+  return markedFaint
+}
+
+function settleFaints(state, timeline = null) {
+  markActiveFaints(state, timeline)
 
   const playerRemaining = remainingCount(state.player)
   const opponentRemaining = remainingCount(state.opponent)
@@ -2450,6 +2463,7 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline) {
     } else {
       executeMove(nextState, sideId, action, random, timeline, actionOrder)
     }
+    markActiveFaints(nextState, timeline, actionOrder)
   }
 
   const playerResidualSlots = nextState.rules?.format?.rotation
@@ -2458,8 +2472,14 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline) {
   const opponentResidualSlots = nextState.rules?.format?.rotation
     ? [nextState.opponent.rotationSlot]
     : getActivePokemonList(nextState, 'opponent').map((_, slot) => slot)
-  playerResidualSlots.forEach((slot) => residualEffects(nextState, 'player', timeline, slot))
-  opponentResidualSlots.forEach((slot) => residualEffects(nextState, 'opponent', timeline, slot))
+  playerResidualSlots.forEach((slot) => {
+    residualEffects(nextState, 'player', timeline, slot)
+    markActiveFaints(nextState, timeline)
+  })
+  opponentResidualSlots.forEach((slot) => {
+    residualEffects(nextState, 'opponent', timeline, slot)
+    markActiveFaints(nextState, timeline)
+  })
   advanceEnvironmentTimers(nextState, timeline)
   settleFaints(nextState, timeline)
   nextState.turn += 1
