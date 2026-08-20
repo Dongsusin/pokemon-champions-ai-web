@@ -666,6 +666,7 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                         <div
                           className={`training-move-card training-tooltip-anchor move-type-${typeClassName(move.type)}`}
                           key={`${index}-${moveName}`}
+                          {...tooltipAnchorProps(tooltipId)}
                         >
                           <span className="training-move-slot">0{index + 1}</span>
                           <span className={`training-move-type type-${typeClassName(move.type)}`}>{move.type}</span>
@@ -696,7 +697,6 @@ function TrainingScreen({ pokemon, onBack, onSave, onOpenHatch }) {
                             type="button"
                             aria-label={`${move.name} 설명`}
                             aria-describedby={tooltipId}
-                            {...tooltipAnchorProps(tooltipId)}
                           >
                             <Info size={13} />
                           </button>
