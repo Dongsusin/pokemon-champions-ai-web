@@ -22,6 +22,7 @@ import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
 import { createGameAudio } from './gameAudio'
 import {
+  createCompletePokemonCollection,
   createPokemonDraw,
   getPokemonEvolutionFamilyKey,
   getTrainingRosterPokemon,
@@ -39,6 +40,7 @@ import {
 import {
   attemptItemEquip,
   attemptItemPurchase,
+  createCompleteBattleItemInventory,
   normalizeItemInventory,
 } from './data/shopData'
 import {
@@ -66,6 +68,7 @@ const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
 const TEST_VP_BALANCE = 99_999
+const TEST_UNLOCK_ALL_CONTENT = true
 
 function interactiveSoundKind(element) {
   const label = `${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`.toLowerCase()
@@ -89,7 +92,9 @@ function loadStoredBox() {
   const storedPokemon = hasCurrentCollection
     ? loadStoredArray(BOX_STORAGE_KEY)
     : loadStoredArray(LEGACY_BOX_STORAGE_KEY)
-  return migratePokemonCollection(storedPokemon)
+  return TEST_UNLOCK_ALL_CONTENT
+    ? createCompletePokemonCollection(storedPokemon)
+    : migratePokemonCollection(storedPokemon)
 }
 
 function loadLegacyTeamIds(collection) {
@@ -161,9 +166,10 @@ function loadStoredVp() {
 function loadStoredItems() {
   try {
     const storedItems = window.localStorage.getItem(ITEM_STORAGE_KEY)
-    return normalizeItemInventory(storedItems ? JSON.parse(storedItems) : {})
+    const inventory = normalizeItemInventory(storedItems ? JSON.parse(storedItems) : {})
+    return TEST_UNLOCK_ALL_CONTENT ? createCompleteBattleItemInventory(inventory) : inventory
   } catch {
-    return {}
+    return TEST_UNLOCK_ALL_CONTENT ? createCompleteBattleItemInventory() : {}
   }
 }
 

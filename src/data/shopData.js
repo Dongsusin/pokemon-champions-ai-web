@@ -38,6 +38,14 @@ export function normalizeItemInventory(value) {
   }))
 }
 
+export function createCompleteBattleItemInventory(value = {}) {
+  const currentInventory = normalizeItemInventory(value)
+  return Object.fromEntries(BATTLE_ITEMS.map((item) => [
+    item.id,
+    currentInventory[item.id] ?? MAX_ITEM_QUANTITY,
+  ]))
+}
+
 export function attemptItemPurchase(balance, inventory, itemId) {
   const item = BATTLE_ITEM_BY_ID.get(itemId)
   const currentBalance = Math.max(0, Math.floor(Number(balance) || 0))

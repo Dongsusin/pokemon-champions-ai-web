@@ -16,6 +16,7 @@
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",
     "validate:pokemon-learnsets": "node scripts/validatePokemonLearnsets.mjs",
     "validate:draw-pool": "node scripts/validatePokemonDrawPool.mjs",
+    "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",
     "generate:sprite-manifest": "node scripts/generateGen5SpriteManifest.mjs",
     "generate:trainer-teams": "node scripts/generateTrainerTeams.mjs && node scripts/generateTrainerLoadouts.mjs",
     "generate:trainer-loadouts": "node scripts/generateTrainerLoadouts.mjs"

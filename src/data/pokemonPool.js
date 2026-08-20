@@ -253,6 +253,19 @@ export function migratePokemonCollection(storedPokemon = []) {
   return [...collectionMap.values()].sort((left, right) => left.dexSpeciesId - right.dexSpeciesId)
 }
 
+export function createCompletePokemonCollection(collection = []) {
+  const currentCollection = migratePokemonCollection(collection)
+  const collectionMap = new Map(currentCollection.map((pokemon) => [pokemon.dexSpeciesId, pokemon]))
+  const obtainedAt = new Date().toISOString()
+
+  for (const pokemon of POKEMON_POOL) {
+    ensureEvolutionRoute(collectionMap, pokemon.id, obtainedAt)
+  }
+
+  return [...collectionMap.values()]
+    .sort((left, right) => left.dexSpeciesId - right.dexSpeciesId)
+}
+
 export function mergePokemonDraws(collection, results) {
   const currentCollection = migratePokemonCollection(collection)
   const collectionMap = new Map(currentCollection.map((pokemon) => [pokemon.dexSpeciesId, pokemon]))
