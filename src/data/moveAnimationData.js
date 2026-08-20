@@ -778,6 +778,7 @@ export function getMoveAnimationProfile(move = {}) {
     || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(archetype)
   const targetField = ['all', 'allAdjacent'].includes(moveTarget)
     || ['terrain', 'weather'].includes(archetype)
+  const targetSpread = ['allAdjacentFoes', 'foeSide'].includes(moveTarget)
   const runtimeCoverage = resource?.specific
     ? 'dedicated-ebdx'
     : resource
@@ -817,6 +818,7 @@ export function getMoveAnimationProfile(move = {}) {
     logicalCanvas: moveAnimationReference.logicalCanvas,
     targetSelf,
     targetField,
+    targetSpread,
   }
 }
 

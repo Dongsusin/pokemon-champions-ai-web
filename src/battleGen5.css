@@ -4189,6 +4189,36 @@
 .app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-1 { right: 21%; bottom: 39%; }
 .app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-2 { right: 36%; bottom: 49%; }
 
+.app-shell.battle-view .battle-pixel-move-animation.is-slot-anchored .pixel-move-beam {
+  width: var(--trajectory-distance);
+  transform: translateY(-50%) rotate(var(--trajectory-angle));
+}
+
+.app-shell.battle-view :is(.format-double, .format-triple) .battle-pixel-move-animation.target-spread .pixel-move-impact {
+  width: clamp(170px, 22vw, 340px);
+  height: clamp(120px, 15vw, 230px);
+}
+
+.app-shell.battle-view .format-double :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-player.slot-0 { left: 4%; }
+.app-shell.battle-view .format-double :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-player.slot-1 { left: 23%; }
+.app-shell.battle-view .format-double :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-opponent.slot-0 { right: 9%; bottom: 36%; }
+.app-shell.battle-view .format-double :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-opponent.slot-1 { right: 26%; bottom: 47%; }
+.app-shell.battle-view .format-double .battle-hit-spark.target-player.target-spread { left: 14%; }
+.app-shell.battle-view .format-double .battle-impact-feedback.target-player.target-spread { left: 18%; }
+.app-shell.battle-view .format-double .battle-hit-spark.target-opponent.target-spread { right: 16%; bottom: 42%; }
+.app-shell.battle-view .format-double .battle-impact-feedback.target-opponent.target-spread { right: 19%; bottom: 47%; }
+
+.app-shell.battle-view :is(.format-triple, .format-rotation) :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-player.slot-0 { left: 2%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-player.slot-1 { left: 18%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-player.slot-2 { left: 33%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-opponent.slot-0 { right: 7%; bottom: 34%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-opponent.slot-1 { right: 22%; bottom: 44%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) :is(.battle-hit-spark, .battle-impact-feedback, .battle-faint-effect).target-opponent.slot-2 { right: 37%; bottom: 54%; }
+.app-shell.battle-view .format-triple .battle-hit-spark.target-player.target-spread { left: 18%; }
+.app-shell.battle-view .format-triple .battle-impact-feedback.target-player.target-spread { left: 22%; }
+.app-shell.battle-view .format-triple .battle-hit-spark.target-opponent.target-spread { right: 20%; bottom: 43%; }
+.app-shell.battle-view .format-triple .battle-impact-feedback.target-opponent.target-spread { right: 23%; bottom: 48%; }
+
 .app-shell.battle-view .format-rotation .battle-pokemon-stage.is-rotation-reserve {
   opacity: 0.58;
   filter: saturate(0.72) brightness(0.78);

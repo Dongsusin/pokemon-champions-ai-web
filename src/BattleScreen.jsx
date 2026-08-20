@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   ArrowLeftRight,
@@ -217,6 +217,79 @@ function turnPlaybackDelay(steps, stepIndex) {
   return baseDuration + TURN_ACTION_PAUSE
 }
 
+function battleStageAnchor(camera, sideId, activeSlot) {
+  const stage = camera.querySelector(`.battle-pokemon-stage.${sideId}.slot-${activeSlot ?? 0}`)
+  if (!stage) return null
+
+  const cameraBounds = camera.getBoundingClientRect()
+  const stageBounds = stage.getBoundingClientRect()
+  return {
+    x: stageBounds.left - cameraBounds.left + stageBounds.width * 0.5,
+    y: stageBounds.top - cameraBounds.top + stageBounds.height * 0.45,
+  }
+}
+
+function battleSideAnchor(camera, sideId) {
+  const stages = [...camera.querySelectorAll(`.battle-pokemon-stage.${sideId}:not(.is-fainted)`)]
+    .filter((stage) => !stage.classList.contains('is-rotation-reserve'))
+  const anchors = stages
+    .map((stage) => {
+      const slotClass = [...stage.classList].find((className) => className.startsWith('slot-'))
+      return battleStageAnchor(camera, sideId, Number(slotClass?.slice(5)) || 0)
+    })
+    .filter(Boolean)
+
+  if (!anchors.length) return null
+  return {
+    x: anchors.reduce((sum, anchor) => sum + anchor.x, 0) / anchors.length,
+    y: anchors.reduce((sum, anchor) => sum + anchor.y, 0) / anchors.length,
+  }
+}
+
+function useMoveAnimationAnchors(animationRef, cue, profile) {
+  useLayoutEffect(() => {
+    const animationRoot = animationRef.current
+    const camera = animationRoot?.closest('.battle-field-camera')
+    const format = cue.state?.rules?.format
+    if (!animationRoot || !camera || (format?.activeSlots ?? 1) <= 1) return undefined
+
+    const updateAnchors = () => {
+      const cameraBounds = camera.getBoundingClientRect()
+      const source = battleStageAnchor(camera, cue.sideId, cue.actorSlot)
+      if (!source || cameraBounds.width <= 0 || cameraBounds.height <= 0) return
+
+      const useSpreadAnchor = profile.targetSpread && !format?.rotation
+      const target = profile.targetSelf
+        ? source
+        : profile.targetField
+          ? { x: cameraBounds.width * 0.5, y: cameraBounds.height * 0.61 }
+          : useSpreadAnchor
+            ? battleSideAnchor(camera, cue.targetSideId)
+            : battleStageAnchor(camera, cue.targetSideId, cue.targetSlot)
+      if (!target) return
+
+      const travelX = target.x - source.x
+      const travelY = target.y - source.y
+      animationRoot.style.setProperty('--source-x', `${source.x}px`)
+      animationRoot.style.setProperty('--source-y', `${source.y}px`)
+      animationRoot.style.setProperty('--target-x', `${target.x}px`)
+      animationRoot.style.setProperty('--target-y', `${target.y}px`)
+      animationRoot.style.setProperty('--travel-x', `${travelX}px`)
+      animationRoot.style.setProperty('--travel-y', `${travelY}px`)
+      animationRoot.style.setProperty('--reverse-travel-x', `${-travelX}px`)
+      animationRoot.style.setProperty('--reverse-travel-y', `${-travelY}px`)
+      animationRoot.style.setProperty('--trajectory-distance', `${Math.hypot(travelX, travelY)}px`)
+      animationRoot.style.setProperty('--trajectory-angle', `${Math.atan2(travelY, travelX) * 180 / Math.PI}deg`)
+      animationRoot.classList.add('is-slot-anchored')
+    }
+
+    updateAnchors()
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateAnchors)
+    resizeObserver?.observe(camera)
+    return () => resizeObserver?.disconnect()
+  }, [animationRef, cue.id, cue.actorSlot, cue.sideId, cue.targetSideId, cue.targetSlot, cue.state?.rules?.format?.id, profile.targetField, profile.targetSelf, profile.targetSpread])
+}
+
 function MoveAnimation({ cue }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
@@ -244,6 +317,8 @@ function MoveAnimation({ cue }) {
     '--move-impact-scale': plan.impactScale,
     '--move-arc': `${plan.arc}deg`,
   }
+
+  useMoveAnimationAnchors(animationRef, cue, profile)
 
   useEffect(() => {
     const animationRoot = animationRef.current
@@ -297,7 +372,7 @@ function MoveAnimation({ cue }) {
   return (
     <div
       ref={animationRef}
-      className={`battle-pixel-move-animation timeline-frame-0 side-${cue.sideId} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}`}
+      className={`battle-pixel-move-animation timeline-frame-0 side-${cue.sideId} actor-slot-${cue.actorSlot ?? 0} target-slot-${cue.targetSlot ?? 0} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}${profile.targetSpread ? ' target-spread' : ''}`}
       style={style}
       data-move-id={profile.moveId}
       data-animation-source={profile.sourceKind}
@@ -608,6 +683,12 @@ function BattleArenaEffects({ cue }) {
   const showImpact = cue.phase === 'impact' || (cue.phase === 'resolve' && cue.result === 'blocked')
   const showSwitch = cue.phase === 'switch-out' || cue.phase === 'switch'
   const showFaint = cue.phase === 'faint'
+  const moveProfile = cue.moveName ? getMoveAnimationProfile(cue) : null
+  const spreadTargetEffect = moveProfile?.targetField
+    || (moveProfile?.targetSpread && !cue.state?.rules?.format?.rotation)
+  const targetEffectClass = spreadTargetEffect
+    ? ' target-spread'
+    : ` slot-${cue.targetSlot ?? 0}`
 
   return (
     <>
@@ -621,7 +702,7 @@ function BattleArenaEffects({ cue }) {
 
       {showImpact && (
         <div
-          className={`battle-hit-spark target-${cue.targetSideId}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''} result-${cue.result ?? 'hit'}`}
+          className={`battle-hit-spark target-${cue.targetSideId}${targetEffectClass}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''} result-${cue.result ?? 'hit'}`}
           key={`impact-${cue.id}`}
           aria-hidden="true"
         >
@@ -631,7 +712,7 @@ function BattleArenaEffects({ cue }) {
 
       {showImpact && cue.result !== 'miss' && (
         <div
-          className={`battle-impact-feedback target-${cue.targetSideId}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
+          className={`battle-impact-feedback target-${cue.targetSideId}${targetEffectClass}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
           key={`feedback-${cue.id}`}
           aria-hidden="true"
         >
@@ -655,7 +736,7 @@ function BattleArenaEffects({ cue }) {
       )}
 
       {showFaint && (
-        <div className={`battle-faint-effect target-${cue.targetSideId}`} key={`faint-${cue.id}`} aria-hidden="true">
+        <div className={`battle-faint-effect target-${cue.targetSideId} slot-${cue.targetSlot ?? 0}`} key={`faint-${cue.id}`} aria-hidden="true">
           <span /><i /><i /><i /><b />
         </div>
       )}
