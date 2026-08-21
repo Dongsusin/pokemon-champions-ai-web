@@ -6,6 +6,7 @@ import './screenRedesign.css'
 import './battleGen5.css'
 import './titleCleanup.css'
 import './battleGimmicks.css'
+import './moveAnimationDirector.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

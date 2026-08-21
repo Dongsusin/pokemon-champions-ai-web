@@ -2170,6 +2170,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     sideId,
     targetSideId: targetSide.id,
     damage,
+    hitCount: landedHits,
     effectiveness: result.effectiveness,
     nonce: state.eventNonce += 1,
   }

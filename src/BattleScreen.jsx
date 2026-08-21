@@ -57,19 +57,6 @@ import {
 import { getBattleRuleDescription } from './data/battleRules'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
-const MOVE_REFERENCE_BADGES = {
-  MAX_MOVE: 'MAX MOVE',
-  GMAX_MOVE: 'G-MAX MOVE',
-  Z_GENERIC_PHYSICAL: 'Z-POWER',
-  Z_GENERIC_SPECIAL: 'Z-POWER',
-  Z_SIGNATURE: 'SIGNATURE Z',
-  SHADOW_MOVE: 'SHADOW MOVE',
-  TERA_TYPE_VARIANTS: 'TERA TYPE',
-  FORM_TYPE_VARIANTS: 'FORM TYPE',
-  STARMOBILE_TORQUE: 'STAR TORQUE',
-  PLZA_NEW_MOVE: 'NEW MOVE',
-}
-
 function animationClassToken(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
 }
@@ -220,7 +207,10 @@ const GIMMICK_STEP_DURATIONS = {
 }
 
 function turnStepDuration(step) {
-  if (step?.phase === 'attack' && step.moveId) return getMoveAnimationProfile(step).duration
+  if (step?.moveId && (step.phase === 'attack' || step.phase === 'impact' || (step.phase === 'resolve' && step.result === 'blocked'))) {
+    const profile = getMoveAnimationProfile(step)
+    return step.phase === 'attack' ? profile.duration : getMovePixelAnimationPlan(profile).impactDuration
+  }
   if (step?.phase === 'gimmick') return GIMMICK_STEP_DURATIONS[step.mechanicId] ?? TURN_STEP_DURATIONS.gimmick
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
 }
@@ -243,6 +233,8 @@ function battleStageAnchor(camera, sideId, activeSlot) {
   return {
     x: stageBounds.left - cameraBounds.left + stageBounds.width * 0.5,
     y: stageBounds.top - cameraBounds.top + stageBounds.height * 0.45,
+    width: stageBounds.width,
+    height: stageBounds.height,
   }
 }
 
@@ -268,25 +260,64 @@ function useMoveAnimationAnchors(animationRef, cue, profile) {
     const animationRoot = animationRef.current
     const camera = animationRoot?.closest('.battle-field-camera')
     const format = cue.state?.rules?.format
-    if (!animationRoot || !camera || (format?.activeSlots ?? 1) <= 1) return undefined
+    if (!animationRoot || !camera) return undefined
+
+    const cameraProperties = [
+      '--actor-lunge-x',
+      '--actor-lunge-y',
+      '--actor-recoil-x',
+      '--actor-recoil-y',
+      '--actor-cast-x',
+      '--actor-cast-y',
+    ]
 
     const updateAnchors = () => {
       const cameraBounds = camera.getBoundingClientRect()
-      const source = battleStageAnchor(camera, cue.sideId, cue.actorSlot)
-      if (!source || cameraBounds.width <= 0 || cameraBounds.height <= 0) return
+      const sourceStage = battleStageAnchor(camera, cue.sideId, cue.actorSlot)
+      if (!sourceStage || cameraBounds.width <= 0 || cameraBounds.height <= 0) return
 
       const useSpreadAnchor = profile.targetSpread && !format?.rotation
-      const target = profile.targetSelf
-        ? source
+      const targetStage = profile.targetSelf
+        ? sourceStage
         : profile.targetField
           ? { x: cameraBounds.width * 0.5, y: cameraBounds.height * 0.61 }
           : useSpreadAnchor
             ? battleSideAnchor(camera, cue.targetSideId)
             : battleStageAnchor(camera, cue.targetSideId, cue.targetSlot)
-      if (!target) return
+      if (!targetStage) return
 
+      const stageTravelX = targetStage.x - sourceStage.x
+      const stageTravelY = targetStage.y - sourceStage.y
+      const stageDistance = Math.max(1, Math.hypot(stageTravelX, stageTravelY))
+      const unitX = stageTravelX / stageDistance
+      const unitY = stageTravelY / stageDistance
+      const canInsetAnchors = !profile.targetSelf && !profile.targetField && !useSpreadAnchor
+      const sourceInset = canInsetAnchors
+        ? Math.min(sourceStage.width ?? 0, sourceStage.height ?? 0) * (profile.motion === 'dash' || profile.motion === 'lunge' ? 0.14 : 0.23)
+        : 0
+      const targetInset = canInsetAnchors
+        ? Math.min(targetStage.width ?? 0, targetStage.height ?? 0) * 0.12
+        : 0
+      const source = {
+        x: sourceStage.x + unitX * sourceInset,
+        y: sourceStage.y + unitY * sourceInset,
+      }
+      const target = {
+        x: targetStage.x - unitX * targetInset,
+        y: targetStage.y - unitY * targetInset,
+      }
       const travelX = target.x - source.x
       const travelY = target.y - source.y
+      const distance = Math.max(1, Math.hypot(travelX, travelY))
+      const motionDistance = profile.motion === 'dash'
+        ? Math.min(220, distance * 0.42)
+        : profile.motion === 'lunge'
+          ? Math.min(150, distance * 0.28)
+          : profile.motion === 'leap'
+            ? Math.min(120, distance * 0.22)
+            : Math.min(28, distance * 0.06)
+      const lungeX = unitX * motionDistance
+      const lungeY = unitY * motionDistance
       animationRoot.style.setProperty('--source-x', `${source.x}px`)
       animationRoot.style.setProperty('--source-y', `${source.y}px`)
       animationRoot.style.setProperty('--target-x', `${target.x}px`)
@@ -298,65 +329,73 @@ function useMoveAnimationAnchors(animationRef, cue, profile) {
       animationRoot.style.setProperty('--trajectory-distance', `${Math.hypot(travelX, travelY)}px`)
       animationRoot.style.setProperty('--trajectory-angle', `${Math.atan2(travelY, travelX) * 180 / Math.PI}deg`)
       animationRoot.classList.add('is-slot-anchored')
+      camera.style.setProperty('--actor-lunge-x', `${lungeX}px`)
+      camera.style.setProperty('--actor-lunge-y', `${lungeY}px`)
+      camera.style.setProperty('--actor-recoil-x', `${-unitX * 18}px`)
+      camera.style.setProperty('--actor-recoil-y', `${-unitY * 18}px`)
+      camera.style.setProperty('--actor-cast-x', `${unitX * 22}px`)
+      camera.style.setProperty('--actor-cast-y', `${unitY * 22}px`)
     }
 
-    updateAnchors()
+    let frameId = null
+    const syncAnchors = () => {
+      updateAnchors()
+      frameId = requestAnimationFrame(syncAnchors)
+    }
+
+    syncAnchors()
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateAnchors)
     resizeObserver?.observe(camera)
-    return () => resizeObserver?.disconnect()
-  }, [animationRef, cue.id, cue.actorSlot, cue.sideId, cue.targetSideId, cue.targetSlot, cue.state?.rules?.format?.id, profile.targetField, profile.targetSelf, profile.targetSpread])
+    return () => {
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      resizeObserver?.disconnect()
+      cameraProperties.forEach((property) => camera.style.removeProperty(property))
+    }
+  }, [cue.id, cue.actorSlot, cue.sideId, cue.targetSideId, cue.targetSlot, cue.state?.rules?.format?.id, profile.motion, profile.targetField, profile.targetSelf, profile.targetSpread])
 }
 
-function MoveAnimation({ cue }) {
-  const profile = getMoveAnimationProfile(cue)
-  const plan = getMovePixelAnimationPlan(profile)
-  const animationRef = useRef(null)
-  const renderTrajectory = plan.trajectoryAssets.length > 0 || plan.mode === 'dash'
-  const trajectoryAssets = plan.trajectoryAssets.length
-    ? plan.trajectoryAssets
-    : [plan.primaryAsset, plan.secondaryAsset]
-  const sprites = Array.from({ length: renderTrajectory ? plan.copies : 0 }, (_, spriteIndex) => ({
-    index: spriteIndex,
-    asset: trajectoryAssets[spriteIndex % trajectoryAssets.length],
-    delay: spriteIndex * plan.stagger,
-    lane: ((profile.seed >>> (spriteIndex % 12)) + spriteIndex * 17) % 5,
-    spin: ((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 53) % 360,
-  }))
-  const targetSelf = profile.targetSelf || cue.targetSideId === cue.sideId
-  const referenceBadge = MOVE_REFERENCE_BADGES[profile.recordVariant] ?? null
-  const displayedMoveName = referenceBadge && profile.referenceName ? profile.referenceName : cue.moveName
-  const style = {
+function moveAnimationStyle(profile, plan, duration = profile.duration) {
+  return {
     '--move-primary': profile.primary,
     '--move-secondary': profile.secondary,
     '--move-highlight': profile.highlight,
-    '--move-duration': `${profile.duration}ms`,
+    '--move-duration': `${duration}ms`,
+    '--impact-duration': `${plan.impactDuration}ms`,
     '--move-scale': plan.scale,
     '--move-impact-scale': plan.impactScale,
     '--move-arc': `${plan.arc}deg`,
   }
+}
 
-  useMoveAnimationAnchors(animationRef, cue, profile)
+function moveAnimationClassName(cue, profile, plan, phase) {
+  const targetSelf = profile.targetSelf || cue.targetSideId === cue.sideId
+  return `battle-pixel-${phase}-animation timeline-frame-0 side-${cue.sideId} actor-slot-${cue.actorSlot ?? 0} target-slot-${cue.targetSlot ?? 0} mode-${plan.mode} tempo-${plan.tempo} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}${profile.targetSpread ? ' target-spread' : ''}`
+}
 
+function sceneAssetForSide(plan, sideId) {
+  if (!plan.sceneAssets.length) return null
+  const sidePattern = sideId === 'player' ? /_PU(?:_|\.|$)/i : /_EU(?:_|\.|$)/i
+  return plan.sceneAssets.find((asset) => sidePattern.test(asset.file ?? '')) ?? plan.sceneAssets[0]
+}
+
+function useFxSheetPlayback(animationRef, duration, cueId) {
   useEffect(() => {
     const animationRoot = animationRef.current
     if (!animationRoot) return undefined
 
     const framedAssets = [...animationRoot.querySelectorAll('.pixel-fx-asset.has-frames')]
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     const startedAt = performance.now()
     let requestId = null
-    let currentTimelineFrame = 0
+    let currentTimelineFrame = -1
 
     const renderFrame = (timestamp) => {
       const elapsed = Math.max(0, timestamp - startedAt)
-
-      if (reducedMotion) {
-        const timelineFrame = Math.min(11, Math.floor((elapsed / profile.duration) * 12))
-        if (timelineFrame !== currentTimelineFrame) {
-          animationRoot.classList.remove(`timeline-frame-${currentTimelineFrame}`)
-          animationRoot.classList.add(`timeline-frame-${timelineFrame}`)
-          currentTimelineFrame = timelineFrame
-        }
+      const progress = Math.min(1, elapsed / Math.max(1, duration))
+      const timelineFrame = Math.min(11, Math.floor(progress * 12))
+      if (timelineFrame !== currentTimelineFrame) {
+        if (currentTimelineFrame >= 0) animationRoot.classList.remove(`timeline-frame-${currentTimelineFrame}`)
+        animationRoot.classList.add(`timeline-frame-${timelineFrame}`)
+        currentTimelineFrame = timelineFrame
       }
 
       framedAssets.forEach((assetNode) => {
@@ -364,10 +403,12 @@ function MoveAnimation({ cue }) {
         const rows = Math.max(1, Number(assetNode.dataset.fxRows) || 1)
         const frameCount = Math.max(1, Number(assetNode.dataset.fxFrameCount) || columns * rows)
         const frameOffset = Math.max(0, Number(assetNode.dataset.fxFrameOffset) || 0)
-        const frameInterval = Math.max(72, Math.min(120, profile.duration / Math.max(4, frameCount * 2)))
-        const cycleLength = frameCount > 1 ? frameCount * 2 - 2 : 1
-        const cycleFrame = Math.floor(elapsed / frameInterval + frameOffset) % cycleLength
-        const sheetFrame = cycleFrame < frameCount ? cycleFrame : cycleLength - cycleFrame
+        const start = Math.max(0, Math.min(1, Number(assetNode.dataset.fxTimelineStart) || 0))
+        const end = Math.max(start + 0.01, Math.min(1, Number(assetNode.dataset.fxTimelineEnd) || 1))
+        const localProgress = Math.max(0, Math.min(1, (progress - start) / (end - start)))
+        const sheetFrame = assetNode.dataset.fxPlayback === 'loop'
+          ? (Math.floor(localProgress * frameCount * 1.8) + frameOffset) % frameCount
+          : Math.min(frameCount - 1, Math.floor(localProgress * frameCount))
 
         if (assetNode.dataset.renderedFxFrame === String(sheetFrame)) return
         assetNode.dataset.renderedFxFrame = String(sheetFrame)
@@ -377,20 +418,38 @@ function MoveAnimation({ cue }) {
         assetNode.style.setProperty('--fx-fallback-shift-y', `${-((sheetRow / rows) * 100)}%`)
       })
 
-      if (elapsed < profile.duration) requestId = requestAnimationFrame(renderFrame)
+      if (elapsed < duration) requestId = requestAnimationFrame(renderFrame)
     }
 
     requestId = requestAnimationFrame(renderFrame)
     return () => {
       if (requestId !== null) cancelAnimationFrame(requestId)
     }
-  }, [cue.id, profile.duration])
+  }, [cueId, duration, animationRef])
+}
+
+function MoveAnimation({ cue }) {
+  const profile = getMoveAnimationProfile(cue)
+  const plan = getMovePixelAnimationPlan(profile)
+  const animationRef = useRef(null)
+  const sprites = Array.from({ length: plan.trajectoryAssets.length ? plan.copies : 0 }, (_, spriteIndex) => ({
+    index: spriteIndex,
+    asset: plan.trajectoryAssets[spriteIndex % plan.trajectoryAssets.length],
+    delay: spriteIndex * plan.stagger,
+    lane: ((profile.seed >>> (spriteIndex % 12)) + spriteIndex * 17) % 5,
+    spin: ['projectile', 'stream', 'wave', 'drain', 'dash', 'melee'].includes(plan.mode)
+      ? ((((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 7) % 17) - 8)
+      : ((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 53) % 360,
+  }))
+
+  useMoveAnimationAnchors(animationRef, cue, profile)
+  useFxSheetPlayback(animationRef, profile.duration, cue.id)
 
   return (
     <div
       ref={animationRef}
-      className={`battle-pixel-move-animation timeline-frame-0 side-${cue.sideId} actor-slot-${cue.actorSlot ?? 0} target-slot-${cue.targetSlot ?? 0} mode-${plan.mode} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}${profile.targetSpread ? ' target-spread' : ''}`}
-      style={style}
+      className={moveAnimationClassName(cue, profile, plan, 'move')}
+      style={moveAnimationStyle(profile, plan)}
       data-move-id={profile.moveId}
       data-animation-source={profile.sourceKind}
       data-move-generation={profile.generation ?? undefined}
@@ -402,14 +461,20 @@ function MoveAnimation({ cue }) {
       data-logical-canvas={`${profile.logicalCanvas.width}x${profile.logicalCanvas.height}`}
       aria-hidden="true"
     >
-      <span className="pixel-move-screen" />
-      {plan.fieldAsset && <img className="pixel-move-field" src={plan.fieldAsset.src} alt="" draggable="false" />}
-
-      <span className="pixel-move-source">
-        <MoveFxAsset asset={plan.primaryAsset} />
-        <MoveFxAsset asset={plan.secondaryAsset} frameOffset={1} />
-        <i />
-      </span>
+      {plan.sourceAssets.length > 0 && (
+        <span className="pixel-move-source">
+          {plan.sourceAssets.map((asset, assetIndex) => (
+            <MoveFxAsset
+              key={`${asset.src}-${assetIndex}`}
+              asset={asset}
+              frameOffset={assetIndex}
+              role="source"
+              timelineEnd={0.46}
+            />
+          ))}
+          <i />
+        </span>
+      )}
 
       <span className="pixel-move-trajectory">
         {sprites.map((sprite) => (
@@ -417,6 +482,9 @@ function MoveAnimation({ cue }) {
             key={`${profile.moveId}-${sprite.index}`}
             asset={sprite.asset}
             frameOffset={sprite.index}
+            role="trajectory"
+            timelineStart={0.18}
+            timelineEnd={0.96}
             style={{
               '--sprite-index': sprite.index,
               '--sprite-delay': `${sprite.delay}ms`,
@@ -427,24 +495,95 @@ function MoveAnimation({ cue }) {
         ))}
       </span>
 
-      <span className="pixel-move-beam"><i /><b /></span>
-      <span className="pixel-move-impact">
+      <span className="pixel-move-beam">
+        {plan.beamAsset && <MoveFxAsset asset={plan.beamAsset} role="beam" timelineStart={0.24} timelineEnd={0.92} />}
+        <i /><b />
+      </span>
+      {plan.inlineImpact && (
+        <span className="pixel-move-impact inline-impact">
+          {plan.impactAssets.map((asset, assetIndex) => (
+            <MoveFxAsset
+              key={`${asset.src}-${assetIndex}`}
+              asset={asset}
+              frameOffset={assetIndex}
+              role="impact"
+              timelineStart={0.38}
+              timelineEnd={0.94}
+              style={{ '--impact-index': assetIndex }}
+            />
+          ))}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function MoveSceneAnimation({ cue }) {
+  const profile = getMoveAnimationProfile(cue)
+  const plan = getMovePixelAnimationPlan(profile)
+  const animationRef = useRef(null)
+  const sceneAsset = sceneAssetForSide(plan, cue.sideId)
+
+  useMoveAnimationAnchors(animationRef, cue, profile)
+  useFxSheetPlayback(animationRef, profile.duration, cue.id)
+
+  return (
+    <div
+      ref={animationRef}
+      className={moveAnimationClassName(cue, profile, plan, 'scene')}
+      style={moveAnimationStyle(profile, plan)}
+      aria-hidden="true"
+    >
+      <span className="pixel-move-screen" />
+      {sceneAsset && <img className="pixel-move-field" src={sceneAsset.src} alt="" draggable="false" />}
+    </div>
+  )
+}
+
+function MoveImpactAnimation({ cue, presentation }) {
+  const profile = getMoveAnimationProfile(cue)
+  const plan = getMovePixelAnimationPlan(profile)
+  const animationRef = useRef(null)
+  const hitCount = Math.max(1, Math.min(5, Number(cue.hitCount) || 1))
+  const feedbackLabel = cue.critical ? '급소에 맞았다!' : presentation?.label ?? '명중'
+
+  useMoveAnimationAnchors(animationRef, cue, profile)
+  useFxSheetPlayback(animationRef, plan.impactDuration, cue.id)
+
+  return (
+    <div
+      ref={animationRef}
+      className={`${moveAnimationClassName(cue, profile, plan, 'impact')} result-${cue.result ?? 'hit'}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
+      style={moveAnimationStyle(profile, plan, plan.impactDuration)}
+      aria-hidden="true"
+    >
+      <span className="pixel-impact-wash" />
+      <span className="pixel-move-impact phase-impact">
         {plan.impactAssets.map((asset, assetIndex) => (
           <MoveFxAsset
             key={`${asset.src}-${assetIndex}`}
             asset={asset}
             frameOffset={assetIndex}
+            role="impact"
+            timelineEnd={0.72}
             style={{ '--impact-index': assetIndex }}
           />
         ))}
+        <i className="pixel-impact-core" />
+        <b className="pixel-impact-ring" />
+        {Array.from({ length: hitCount }, (_, echoIndex) => (
+          <em className="pixel-impact-echo" key={echoIndex} style={{ '--echo-index': echoIndex }} />
+        ))}
       </span>
-      <strong className="pixel-move-name">{displayedMoveName}</strong>
-      {referenceBadge && <small className="pixel-move-reference-badge">{referenceBadge}</small>}
+      <span className="director-impact-feedback">
+        <strong>{cue.result === 'blocked' ? 'BLOCK' : cue.damage > 0 ? `-${cue.damage}` : presentation?.value ?? 'HIT'}</strong>
+        <small>{cue.result === 'blocked' ? '공격을 막았다!' : feedbackLabel}</small>
+      </span>
     </div>
   )
 }
 
-function MoveFxAsset({ asset, frameOffset = 0, style }) {
+function MoveFxAsset({ asset, frameOffset = 0, role = 'effect', style, timelineStart = 0, timelineEnd = 1, playback = 'once' }) {
   if (!asset?.src) return null
   const frame = asset.frame
   const columns = Math.max(1, Number(frame?.columns) || 1)
@@ -468,12 +607,15 @@ function MoveFxAsset({ asset, frameOffset = 0, style }) {
 
   return (
     <span
-      className={`pixel-fx-asset${framed ? ' has-frames' : ''}`}
+      className={`pixel-fx-asset fx-role-${role}${framed ? ' has-frames' : ''}`}
       style={assetStyle}
       data-fx-columns={framed ? columns : undefined}
       data-fx-rows={framed ? rows : undefined}
       data-fx-frame-count={framed ? frameCount : undefined}
       data-fx-frame-offset={framed ? frameOffset : undefined}
+      data-fx-timeline-start={framed ? timelineStart : undefined}
+      data-fx-timeline-end={framed ? timelineEnd : undefined}
+      data-fx-playback={framed ? playback : undefined}
     >
       {framed ? (
         <span className="pixel-fx-frame">
@@ -700,12 +842,6 @@ function BattleArenaEffects({ cue }) {
   const showImpact = cue.phase === 'impact' || (cue.phase === 'resolve' && cue.result === 'blocked')
   const showSwitch = cue.phase === 'switch-out' || cue.phase === 'switch'
   const showFaint = cue.phase === 'faint'
-  const moveProfile = cue.moveName ? getMoveAnimationProfile(cue) : null
-  const spreadTargetEffect = moveProfile?.targetField
-    || (moveProfile?.targetSpread && !cue.state?.rules?.format?.rotation)
-  const targetEffectClass = spreadTargetEffect
-    ? ' target-spread'
-    : ` slot-${cue.targetSlot ?? 0}`
 
   return (
     <>
@@ -714,29 +850,14 @@ function BattleArenaEffects({ cue }) {
       )}
 
       {showMoveEffect && (
-        <MoveAnimation cue={cue} key={`move-${cue.id}`} />
-      )}
-
-      {showImpact && (
-        <div
-          className={`battle-hit-spark target-${cue.targetSideId}${targetEffectClass}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''} result-${cue.result ?? 'hit'}`}
-          key={`impact-${cue.id}`}
-          aria-hidden="true"
-        >
-          <span /><i /><i /><i /><b />
-        </div>
+        <>
+          <MoveSceneAnimation cue={cue} key={`scene-${cue.id}`} />
+          <MoveAnimation cue={cue} key={`move-${cue.id}`} />
+        </>
       )}
 
       {showImpact && cue.result !== 'miss' && (
-        <div
-          className={`battle-impact-feedback target-${cue.targetSideId}${targetEffectClass}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
-          key={`feedback-${cue.id}`}
-          aria-hidden="true"
-        >
-          <strong>{cue.damage > 0 ? `-${cue.damage}` : presentation?.value ?? 'HIT'}</strong>
-          <small>{cue.critical ? '급소에 맞았다!' : presentation?.label ?? '명중'}</small>
-          <span className="battle-impact-burst" />
-        </div>
+        <MoveImpactAnimation cue={cue} presentation={presentation} key={`impact-${cue.id}`} />
       )}
 
       {showSwitch && (
@@ -805,6 +926,7 @@ function battleCameraClassName(cue) {
 
 function battleStageStyle(cue) {
   if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue)}ms` }
+  if (cue?.phase === 'impact') return { '--impact-duration': `${turnStepDuration(cue)}ms` }
   if (cue?.phase === 'gimmick') return { '--gimmick-duration': `${turnStepDuration(cue)}ms` }
   return undefined
 }

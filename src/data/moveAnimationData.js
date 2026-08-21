@@ -269,23 +269,23 @@ const ARCHETYPE_MOTION = {
 }
 
 const ARCHETYPE_DURATION = {
-  aerial: 1420,
-  barrage: 1540,
-  beam: 1640,
-  bite: 1460,
-  dance: 1500,
-  dash: 1380,
-  drain: 1580,
-  eruption: 1720,
-  explosion: 1680,
-  lightning: 1560,
-  meteor: 1660,
-  punch: 1420,
-  quake: 1640,
-  slash: 1420,
-  storm: 1700,
-  stream: 1580,
-  wave: 1660,
+  aerial: 980,
+  barrage: 1040,
+  beam: 1180,
+  bite: 860,
+  dance: 980,
+  dash: 820,
+  drain: 1100,
+  eruption: 1240,
+  explosion: 1180,
+  lightning: 1080,
+  meteor: 1200,
+  punch: 840,
+  quake: 1120,
+  slash: 860,
+  storm: 1240,
+  stream: 1120,
+  wave: 1200,
 }
 
 const MOVE_PIXEL_FX_FILES = [
@@ -646,6 +646,110 @@ const ARCHETYPE_PIXEL_MODES = {
   whip: 'stream',
 }
 
+const CONTACT_PIXEL_MODES = new Set(['dash', 'melee', 'slash', 'bite'])
+const INLINE_IMPACT_MODES = new Set(['self', 'field', 'hazard', 'vanish'])
+const HEAVY_PIXEL_MODES = new Set(['burst', 'eruption', 'ground', 'lightning', 'rain', 'wave'])
+const HIDDEN_TRAJECTORY_MODES = new Set(['lightning', 'slash', 'bite', 'self', 'field', 'vanish'])
+
+function uniqueAssets(assets) {
+  return [...new Map(assets.filter(Boolean).map((asset) => [asset.src, asset])).values()]
+}
+
+function assetVisualDimensions(asset) {
+  return {
+    width: Math.max(1, Number(asset?.frame?.frameWidth) || Number(asset?.width) || 1),
+    height: Math.max(1, Number(asset?.frame?.frameHeight) || Number(asset?.height) || 1),
+  }
+}
+
+function isSceneAsset(asset) {
+  if (asset?.kind === 'background') return true
+  if (asset?.frame?.count > 1) return false
+  const width = Number(asset?.width) || 0
+  const height = Number(asset?.height) || 0
+  return width >= 1600 || height >= 900 || (width >= 900 && height >= 460)
+}
+
+function isBeamStripAsset(asset) {
+  if (isSceneAsset(asset)) return false
+  const { width, height } = assetVisualDimensions(asset)
+  return width >= 180 && width / height >= 3.2
+}
+
+function isTallImpactAsset(asset) {
+  if (isSceneAsset(asset)) return false
+  const { width, height } = assetVisualDimensions(asset)
+  return height >= 150 && height / width >= 2.35
+}
+
+function isCompactParticleAsset(asset) {
+  if (isSceneAsset(asset) || isBeamStripAsset(asset)) return false
+  const { width, height } = assetVisualDimensions(asset)
+  const largestSide = Math.max(width, height)
+  const aspect = width / height
+  return largestSide <= 132 && aspect >= 0.38 && aspect <= 2.65
+}
+
+function animationTempoForMode(mode) {
+  if (CONTACT_PIXEL_MODES.has(mode)) return 'quick'
+  if (HEAVY_PIXEL_MODES.has(mode)) return 'heavy'
+  if (['beam', 'stream', 'projectile', 'drain'].includes(mode)) return 'travel'
+  if (['rings', 'status', 'self', 'field', 'hazard'].includes(mode)) return 'ritual'
+  return 'standard'
+}
+
+function roleAssetsForMove(mode, resourceAssets, fallbackPrimary, fallbackSecondary, profile) {
+  const sceneAssets = uniqueAssets(resourceAssets.filter(isSceneAsset))
+  const effectAssets = uniqueAssets(resourceAssets.filter((asset) => !isSceneAsset(asset)))
+  const beamAsset = mode === 'beam'
+    ? effectAssets.find(isBeamStripAsset) ?? null
+    : null
+  const reusableAssets = effectAssets.filter((asset) => asset !== beamAsset)
+  const compactAssets = reusableAssets.filter(isCompactParticleAsset)
+  const tallAssets = reusableAssets.filter(isTallImpactAsset)
+  const fallbackTrajectory = uniqueAssets([fallbackPrimary, fallbackSecondary])
+  const fallbackImpact = impactAssetsForMode(mode, profile).map((file) => ({ file, src: fxAsset(file), kind: 'sprite' }))
+
+  let sourceAssets = []
+  if (!CONTACT_PIXEL_MODES.has(mode) && !INLINE_IMPACT_MODES.has(mode)) {
+    sourceAssets = uniqueAssets([
+      fallbackPrimary,
+      fallbackSecondary,
+    ]).slice(0, 2)
+  }
+
+  let trajectoryAssets = []
+  if (!HIDDEN_TRAJECTORY_MODES.has(mode)) {
+    const preferredTrajectory = mode === 'beam'
+      ? compactAssets
+      : mode === 'rain' || mode === 'ground' || mode === 'eruption'
+        ? reusableAssets.filter((asset) => !isTallImpactAsset(asset))
+        : reusableAssets.filter((asset) => asset !== beamAsset)
+    trajectoryAssets = uniqueAssets(
+      preferredTrajectory.length ? preferredTrajectory : fallbackTrajectory,
+    ).slice(0, mode === 'stream' || mode === 'rain' ? 4 : 3)
+  }
+
+  const usedTrajectoryFiles = new Set(trajectoryAssets.map((asset) => asset.file))
+  const dedicatedImpact = mode === 'lightning'
+    ? uniqueAssets([...tallAssets, ...reusableAssets])
+    : CONTACT_PIXEL_MODES.has(mode) || ['ground', 'burst', 'eruption', 'rings', 'self', 'hazard'].includes(mode)
+      ? reusableAssets
+      : reusableAssets.filter((asset) => !usedTrajectoryFiles.has(asset.file))
+  const impactAssets = uniqueAssets([
+    ...dedicatedImpact,
+    ...fallbackImpact,
+  ]).slice(0, 3)
+
+  return {
+    sourceAssets,
+    trajectoryAssets,
+    impactAssets,
+    sceneAssets,
+    beamAsset,
+  }
+}
+
 function fieldAssetForMove(profile) {
   if (!profile.targetField && !['terrain', 'weather'].includes(profile.archetype)) return null
   if (profile.moveId.includes('electricterrain')) return 'weather-electricterrain.png'
@@ -699,17 +803,8 @@ export function getMovePixelAnimationPlan(profile) {
   const resourceBackgrounds = profile.resource?.backgrounds?.map(ebdxAsset) ?? []
   const primaryAsset = resourceAssets[0] ?? fallbackPrimary
   const secondaryAsset = resourceAssets[1] ?? resourceAssets[0] ?? fallbackSecondary
-  const compactAssets = resourceAssets.slice(0, 4)
-  const trailingAssets = resourceAssets.slice(-4)
-  const impactAssets = mode === 'lightning'
-    ? compactAssets
-    : ['melee', 'slash', 'bite', 'ground', 'burst', 'eruption', 'rings', 'self', 'hazard'].includes(mode)
-      ? compactAssets
-      : trailingAssets
-  const trajectoryAssets = ['lightning', 'slash', 'bite', 'self', 'field', 'dash', 'vanish'].includes(mode)
-    ? []
-    : compactAssets.length ? compactAssets : [fallbackPrimary, fallbackSecondary]
-  const smallestParticle = resourceAssets.reduce(
+  const roleAssets = roleAssetsForMove(mode, resourceAssets, fallbackPrimary, fallbackSecondary, profile)
+  const smallestParticle = roleAssets.trajectoryAssets.reduce(
     (smallest, asset) => Math.min(smallest, Number(asset.width) || 999, Number(asset.height) || 999),
     999,
   )
@@ -720,29 +815,42 @@ export function getMovePixelAnimationPlan(profile) {
       : profile.recordVariant === 'TERA_TYPE_VARIANTS'
         ? 1.06
         : 1
-  const baseCopies = smallestParticle <= 48
-    ? 6 + (profile.seed % 2)
-    : mode === 'stream' || mode === 'rain'
-      ? 5 + (profile.seed % 2)
-      : mode === 'projectile'
-        ? 2 + (profile.seed % 2)
-        : 3
-  const extraCopies = profile.intensity >= 3 && !['self', 'field', 'vanish'].includes(mode) ? 2 : 0
+  const baseCopies = mode === 'stream' || mode === 'rain'
+    ? 4 + (profile.seed % 2)
+    : mode === 'projectile' || mode === 'drain'
+      ? 1 + (profile.seed % 2)
+      : mode === 'wave'
+        ? 2
+        : smallestParticle <= 48
+          ? 3 + (profile.seed % 2)
+          : 2
+  const extraCopies = profile.intensity >= 3 && ['stream', 'rain', 'projectile'].includes(mode) ? 1 : 0
+  const fallbackFieldAsset = fieldFile ? { file: fieldFile, src: fxAsset(fieldFile), kind: 'background' } : null
+  const sceneAssets = uniqueAssets([...resourceBackgrounds, ...roleAssets.sceneAssets, fallbackFieldAsset])
+  const impactDuration = clamp(
+    500,
+    450 + profile.intensity * 58 + (HEAVY_PIXEL_MODES.has(mode) ? 92 : 0),
+    760,
+  )
 
   return {
     mode,
-    primaryAsset,
-    secondaryAsset,
-    trajectoryAssets,
-    impactAssets: impactAssets.length
-      ? impactAssets
-      : impactAssetsForMode(mode, profile).map((file) => ({ file, src: fxAsset(file), kind: 'sprite' })),
-    fieldAsset: resourceBackgrounds[0] ?? (fieldFile ? { file: fieldFile, src: fxAsset(fieldFile), kind: 'background' } : null),
-    copies: Math.min(10, baseCopies + extraCopies),
+    primaryAsset: roleAssets.sourceAssets[0] ?? roleAssets.trajectoryAssets[0] ?? primaryAsset,
+    secondaryAsset: roleAssets.sourceAssets[1] ?? roleAssets.trajectoryAssets[1] ?? secondaryAsset,
+    sourceAssets: roleAssets.sourceAssets,
+    trajectoryAssets: roleAssets.trajectoryAssets,
+    impactAssets: roleAssets.impactAssets,
+    sceneAssets,
+    beamAsset: roleAssets.beamAsset,
+    fieldAsset: sceneAssets[0] ?? null,
+    copies: Math.min(7, baseCopies + extraCopies),
     scale: (0.84 + (profile.seed % 29) / 100) * referenceScale,
     impactScale: (1 + ((profile.seed >>> 5) % 36) / 100) * referenceScale,
     arc: (profile.seed % 31) - 15,
-    stagger: Math.max(46, 58 + (profile.seed % 43) - extraCopies * 4),
+    stagger: Math.max(54, 74 + (profile.seed % 37) - extraCopies * 5),
+    tempo: animationTempoForMode(mode),
+    impactDuration,
+    inlineImpact: profile.category === 'status' || profile.targetSelf || INLINE_IMPACT_MODES.has(mode),
   }
 }
 
@@ -770,9 +878,9 @@ export function getMoveAnimationProfile(move = {}) {
   const baseDuration = ARCHETYPE_DURATION[archetype] ?? (category === 'status' ? 1460 : 1480)
   const resource = MOVE_RESOURCE_BY_ID.get(moveId) ?? null
   const unscaledDuration = resource?.durationMs
-    ? Math.round(clamp(1250, resource.durationMs * 0.78, 2200))
-    : Math.round(clamp(1250, baseDuration + (seed % 121) - 60, 1900))
-  const duration = Math.round(clamp(1250, unscaledDuration * (referenceStyle.durationScale ?? 1), 2500))
+    ? Math.round(clamp(760, resource.durationMs * 0.46, 1500))
+    : Math.round(clamp(780, baseDuration + (seed % 101) - 50, 1450))
+  const duration = Math.round(clamp(760, unscaledDuration * (referenceStyle.durationScale ?? 1), 1720))
   const moveTarget = move.moveTarget ?? move.target
   const targetSelf = ['self', 'allySide', 'allyTeam', 'allies', 'adjacentAllyOrSelf'].includes(moveTarget)
     || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(archetype)
@@ -788,6 +896,7 @@ export function getMoveAnimationProfile(move = {}) {
   return {
     moveId,
     archetype,
+    category,
     motif,
     type,
     screen,
@@ -826,9 +935,9 @@ export function getMoveAnimationAssets(move = {}) {
   const profile = getMoveAnimationProfile(move)
   const plan = getMovePixelAnimationPlan(profile)
   return [...new Set([
-    plan.fieldAsset?.src,
-    plan.primaryAsset?.src,
-    plan.secondaryAsset?.src,
+    ...plan.sceneAssets.map((asset) => asset.src),
+    plan.beamAsset?.src,
+    ...plan.sourceAssets.map((asset) => asset.src),
     ...plan.trajectoryAssets.map((asset) => asset.src),
     ...plan.impactAssets.map((asset) => asset.src),
   ].filter(Boolean))]

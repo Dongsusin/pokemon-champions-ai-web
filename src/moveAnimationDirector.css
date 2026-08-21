@@ -1,0 +1,781 @@
+.app-shell.battle-view .battle-field-camera {
+  --actor-lunge-x: 120px;
+  --actor-lunge-y: -42px;
+  --actor-recoil-x: -16px;
+  --actor-recoil-y: 6px;
+  --actor-cast-x: 18px;
+  --actor-cast-y: -7px;
+}
+
+.app-shell.battle-view .battle-field-camera:is(.phase-announce, .phase-attack, .phase-impact) {
+  animation: none !important;
+  transform: none !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-attacking {
+  transform-origin: center bottom;
+  will-change: translate, scale, rotate;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-dash,
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-lunge {
+  animation: director-actor-lunge var(--move-duration, 900ms) cubic-bezier(0.16, 0.78, 0.2, 1) both !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-cast {
+  animation: director-actor-cast var(--move-duration, 980ms) cubic-bezier(0.2, 0.72, 0.24, 1) both !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-leap {
+  animation: director-actor-leap var(--move-duration, 980ms) cubic-bezier(0.22, 0.72, 0.2, 1) both !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-spin {
+  animation: director-actor-spin var(--move-duration, 960ms) cubic-bezier(0.2, 0.72, 0.2, 1) both !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-brace,
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-rise,
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-dance,
+.app-shell.battle-view .battle-pokemon-stage.is-attacking.move-motion-settle {
+  animation: director-actor-ritual var(--move-duration, 980ms) ease-in-out both !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-anticipating-hit {
+  animation: none !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-hit {
+  animation: director-target-recoil var(--impact-duration, 500ms) cubic-bezier(0.2, 0.72, 0.24, 1) both !important;
+}
+
+@keyframes director-actor-lunge {
+  0%, 100% { translate: 0 0; scale: 1; }
+  16% { translate: var(--actor-recoil-x) var(--actor-recoil-y); scale: 0.97; }
+  46%, 58% { translate: var(--actor-lunge-x) var(--actor-lunge-y); scale: 1.035; }
+  76% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1; }
+}
+
+@keyframes director-actor-cast {
+  0%, 100% { translate: 0 0; scale: 1; }
+  16% { translate: var(--actor-recoil-x) var(--actor-recoil-y); scale: 0.98; }
+  34%, 58% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1.045; }
+  76% { translate: 0 0; scale: 1.01; }
+}
+
+@keyframes director-actor-leap {
+  0%, 100% { translate: 0 0; scale: 1; }
+  18% { translate: var(--actor-recoil-x) 8px; scale: 0.96; }
+  44% { translate: var(--actor-cast-x) calc(var(--actor-cast-y) - 66px); scale: 1.03; }
+  66% { translate: var(--actor-lunge-x) var(--actor-lunge-y); scale: 1.04; }
+  82% { translate: var(--actor-cast-x) 0; scale: 0.99; }
+}
+
+@keyframes director-actor-spin {
+  0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
+  18% { translate: var(--actor-recoil-x) var(--actor-recoil-y); rotate: -16deg; scale: 0.96; }
+  54% { translate: var(--actor-lunge-x) var(--actor-lunge-y); rotate: 360deg; scale: 1.04; }
+  78% { translate: var(--actor-cast-x) var(--actor-cast-y); rotate: 390deg; scale: 1; }
+}
+
+@keyframes director-actor-ritual {
+  0%, 100% { translate: 0 0; scale: 1; }
+  18% { translate: 0 5px; scale: 0.97; }
+  42%, 68% { translate: 0 -10px; scale: 1.045; }
+  82% { translate: 0 -3px; scale: 1.01; }
+}
+
+@keyframes director-target-recoil {
+  0%, 100% { translate: 0 0; filter: brightness(1); }
+  14% { translate: -6px 1px; filter: brightness(2.25) saturate(0.4); }
+  32% { translate: 5px -1px; filter: brightness(0.72); }
+  52% { translate: -3px 0; filter: brightness(1.55); }
+  74% { translate: 2px 0; filter: brightness(0.92); }
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation,
+.app-shell.battle-view .battle-pixel-move-animation,
+.app-shell.battle-view .battle-pixel-impact-animation {
+  --source-x: 18%;
+  --source-y: 76%;
+  --target-x: 82%;
+  --target-y: 48%;
+  --travel-x: 64vw;
+  --travel-y: -17vh;
+  --reverse-travel-x: -64vw;
+  --reverse-travel-y: 17vh;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint;
+  isolation: isolate;
+  image-rendering: pixelated;
+  transform: translateZ(0);
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation {
+  z-index: 4;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation {
+  z-index: 32;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation {
+  z-index: 36;
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation.side-opponent,
+.app-shell.battle-view .battle-pixel-move-animation.side-opponent,
+.app-shell.battle-view .battle-pixel-impact-animation.side-opponent {
+  --source-x: 82%;
+  --source-y: 48%;
+  --target-x: 18%;
+  --target-y: 76%;
+  --travel-x: -64vw;
+  --travel-y: 17vh;
+  --reverse-travel-x: 64vw;
+  --reverse-travel-y: -17vh;
+}
+
+.app-shell.battle-view :is(.battle-pixel-scene-animation, .battle-pixel-move-animation, .battle-pixel-impact-animation).target-self {
+  --target-x: var(--source-x);
+  --target-y: var(--source-y);
+  --travel-x: 0px;
+  --travel-y: 0px;
+  --reverse-travel-x: 0px;
+  --reverse-travel-y: 0px;
+}
+
+.app-shell.battle-view :is(.battle-pixel-scene-animation, .battle-pixel-move-animation, .battle-pixel-impact-animation) img {
+  display: block;
+  max-width: none;
+  object-fit: contain;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation .pixel-move-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  animation: director-screen-focus var(--move-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation.screen-none .pixel-move-screen {
+  background: radial-gradient(circle at var(--target-x) var(--target-y), color-mix(in srgb, var(--move-primary) 16%, transparent), transparent 22%);
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation .pixel-move-field {
+  position: absolute;
+  inset: -2%;
+  z-index: 1;
+  width: 104%;
+  height: 104%;
+  opacity: 0;
+  object-fit: cover !important;
+  object-position: center;
+  mix-blend-mode: normal;
+  animation: director-scene-cue var(--move-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-scene-animation.mode-wave .pixel-move-field {
+  object-position: center 58%;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-source,
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-impact {
+  position: absolute;
+  width: clamp(52px, 5.2vw, 84px);
+  height: clamp(52px, 5.2vw, 84px);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-source {
+  top: var(--source-y);
+  left: var(--source-x);
+  z-index: 5;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-source > .fx-role-source {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 92%;
+  height: 92%;
+  opacity: 0;
+  filter: drop-shadow(0 0 5px var(--move-primary)) drop-shadow(0 0 9px var(--move-secondary));
+  transform: translate(-50%, -50%);
+  animation: director-source-charge var(--move-duration) cubic-bezier(0.2, 0.75, 0.22, 1) both;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-source > .fx-role-source:nth-child(2) {
+  width: 62%;
+  height: 62%;
+  animation-name: director-source-charge-reverse;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-source > i {
+  position: absolute;
+  inset: 7%;
+  display: block;
+  border: 2px solid color-mix(in srgb, var(--move-highlight) 78%, transparent);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 14px var(--move-primary), inset 0 0 12px var(--move-secondary);
+  animation: director-source-ring var(--move-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-trajectory {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-trajectory > .fx-role-trajectory {
+  --lane-offset: calc((var(--sprite-lane) - 2) * 13px);
+  position: absolute;
+  top: var(--source-y);
+  left: var(--source-x);
+  width: clamp(48px, 5.4vw, 88px);
+  height: clamp(48px, 5.4vw, 88px);
+  opacity: 0;
+  filter: drop-shadow(0 0 8px var(--move-primary));
+  animation: director-projectile-flight calc(var(--move-duration) - var(--sprite-delay)) cubic-bezier(0.16, 0.72, 0.18, 1) var(--sprite-delay) both;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-stream .pixel-move-trajectory > .fx-role-trajectory {
+  width: clamp(38px, 4.2vw, 68px);
+  height: clamp(48px, 5.2vw, 84px);
+  animation-name: director-stream-flight;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-wave .pixel-move-trajectory > .fx-role-trajectory {
+  width: clamp(88px, 10vw, 164px);
+  height: clamp(72px, 8vw, 132px);
+  animation-name: director-wave-flight;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-dash .pixel-move-trajectory > .fx-role-trajectory,
+.app-shell.battle-view .battle-pixel-move-animation.mode-melee .pixel-move-trajectory > .fx-role-trajectory {
+  width: clamp(42px, 4.5vw, 72px);
+  height: clamp(42px, 4.5vw, 72px);
+  animation-name: director-contact-trail;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-rain .pixel-move-trajectory > .fx-role-trajectory,
+.app-shell.battle-view .battle-pixel-move-animation.mode-ground .pixel-move-trajectory > .fx-role-trajectory,
+.app-shell.battle-view .battle-pixel-move-animation.mode-eruption .pixel-move-trajectory > .fx-role-trajectory {
+  top: -16%;
+  left: calc(var(--target-x) + (var(--sprite-lane) * 4%) - 8%);
+  width: clamp(46px, 5vw, 82px);
+  height: clamp(46px, 5vw, 82px);
+  animation-name: director-falling-effect;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-beam {
+  position: absolute;
+  top: var(--source-y);
+  left: var(--source-x);
+  z-index: 6;
+  display: none;
+  width: var(--trajectory-distance, 64vw);
+  height: clamp(54px, 5.5vw, 90px);
+  transform: translateY(-50%) rotate(var(--trajectory-angle, -10deg));
+  transform-origin: left center;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-beam .pixel-move-beam {
+  display: block;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-beam > .fx-role-beam {
+  position: absolute;
+  inset: 6% 0;
+  overflow: hidden;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px var(--move-primary));
+  transform-origin: left center;
+  animation: director-beam-asset var(--move-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-beam > i,
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-beam > b {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 18%;
+  border: 2px solid var(--move-highlight);
+  border-radius: 999px;
+  opacity: 0;
+  background: linear-gradient(90deg, var(--move-highlight), var(--move-primary) 35%, var(--move-secondary) 72%, var(--move-highlight));
+  box-shadow: 0 0 9px var(--move-primary), 0 0 19px var(--move-secondary);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: director-beam-fire var(--move-duration) cubic-bezier(0.18, 0.74, 0.2, 1) both;
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .pixel-move-beam > b {
+  height: 52%;
+  border-width: 1px;
+  background: transparent;
+  filter: blur(3px);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .inline-impact {
+  top: var(--target-y);
+  left: var(--target-x);
+  z-index: 8;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-self .inline-impact {
+  top: var(--source-y);
+  left: var(--source-x);
+  width: clamp(132px, 14vw, 222px);
+  height: clamp(132px, 14vw, 222px);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-field .inline-impact,
+.app-shell.battle-view .battle-pixel-move-animation.target-field .inline-impact {
+  top: 63%;
+  left: 50%;
+  width: clamp(190px, 24vw, 380px);
+  height: clamp(130px, 16vw, 250px);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation .inline-impact > .fx-role-impact {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  filter: drop-shadow(0 0 7px var(--move-highlight)) drop-shadow(0 0 16px var(--move-primary));
+  transform: translate(-50%, -50%);
+  animation: director-inline-impact var(--move-duration) ease-out both;
+  animation-delay: calc(var(--impact-index) * 38ms);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-hazard .inline-impact {
+  top: calc(var(--target-y) + 58px);
+  width: clamp(160px, 19vw, 300px);
+  height: clamp(68px, 8vw, 126px);
+}
+
+.app-shell.battle-view .battle-pixel-move-animation.mode-drain .pixel-move-trajectory > .fx-role-trajectory {
+  top: var(--target-y);
+  left: var(--target-x);
+  animation-name: director-drain-return;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(circle at var(--target-x) var(--target-y), color-mix(in srgb, var(--move-highlight) 48%, transparent) 0 2%, color-mix(in srgb, var(--move-primary) 26%, transparent) 7%, transparent 20%);
+  animation: director-impact-wash var(--impact-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .phase-impact {
+  position: absolute;
+  top: var(--target-y);
+  left: var(--target-x);
+  z-index: 4;
+  width: clamp(92px, 9vw, 148px);
+  height: clamp(92px, 9vw, 148px);
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.target-spread .phase-impact,
+.app-shell.battle-view .battle-pixel-impact-animation.target-field .phase-impact {
+  width: clamp(190px, 24vw, 380px);
+  height: clamp(128px, 16vw, 250px);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.mode-lightning .phase-impact {
+  width: clamp(82px, 9vw, 142px);
+  height: clamp(210px, 24vw, 370px);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation:is(.mode-slash, .mode-bite) .phase-impact {
+  width: clamp(158px, 18vw, 286px);
+  height: clamp(140px, 16vw, 252px);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation:is(.mode-burst, .mode-eruption, .mode-ground) .phase-impact {
+  width: clamp(180px, 22vw, 350px);
+  height: clamp(160px, 20vw, 320px);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.mode-ground .phase-impact {
+  top: calc(var(--target-y) + 42px);
+  height: clamp(100px, 12vw, 190px);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .phase-impact > .fx-role-impact {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  filter: drop-shadow(0 0 7px var(--move-highlight)) drop-shadow(0 0 17px var(--move-primary));
+  transform: translate(-50%, -50%);
+  animation: director-impact-asset var(--impact-duration) cubic-bezier(0.16, 0.76, 0.2, 1) both;
+  animation-delay: calc(var(--impact-index) * 30ms);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .phase-impact > .fx-role-impact:nth-child(2) {
+  width: 82%;
+  height: 82%;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .phase-impact > .fx-role-impact:nth-child(3),
+.app-shell.battle-view .battle-pixel-impact-animation .phase-impact > .fx-role-impact:nth-child(4) {
+  width: 64%;
+  height: 64%;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-core,
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-ring,
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-echo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-core {
+  z-index: 3;
+  width: 26%;
+  height: 26%;
+  background: var(--move-highlight);
+  box-shadow: 0 0 14px #fff, 0 0 28px var(--move-primary);
+  animation: director-impact-core var(--impact-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-ring {
+  z-index: 4;
+  width: 38%;
+  height: 38%;
+  border: 4px solid var(--move-highlight);
+  box-shadow: 0 0 12px var(--move-primary), inset 0 0 10px var(--move-secondary);
+  animation: director-impact-ring var(--impact-duration) ease-out both;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-echo {
+  z-index: 1;
+  width: 48%;
+  height: 48%;
+  border: 3px solid color-mix(in srgb, var(--move-highlight) 76%, transparent);
+  animation: director-impact-echo var(--impact-duration) ease-out both;
+  animation-delay: calc(var(--echo-index) * 58ms);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.result-blocked .phase-impact {
+  filter: hue-rotate(155deg) saturate(0.72);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.effectiveness-super,
+.app-shell.battle-view .battle-pixel-impact-animation.effectiveness-quad {
+  --move-highlight: #fff49a;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.effectiveness-resisted,
+.app-shell.battle-view .battle-pixel-impact-animation.effectiveness-quarter {
+  --move-highlight: #a8ceff;
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.effectiveness-immune {
+  --move-highlight: #c4cfda;
+  filter: grayscale(0.75);
+}
+
+.app-shell.battle-view .battle-pixel-impact-animation.is-critical .phase-impact {
+  filter: brightness(1.28) saturate(1.22);
+}
+
+.app-shell.battle-view .director-impact-feedback {
+  position: absolute;
+  top: calc(var(--target-y) - 76px);
+  left: var(--target-x);
+  z-index: 8;
+  display: grid;
+  min-width: 104px;
+  justify-items: center;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(4, 9, 24, 0.82);
+  opacity: 0;
+  filter: drop-shadow(0 4px 8px rgba(3, 5, 24, 0.58));
+  transform: translate(-50%, 10px);
+  animation: director-feedback-rise var(--impact-duration) ease-out both;
+}
+
+.app-shell.battle-view .director-impact-feedback strong {
+  color: var(--move-highlight);
+  font-family: var(--font-display, inherit);
+  font-size: clamp(17px, 1.45vw, 24px);
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.app-shell.battle-view .director-impact-feedback small {
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #f7fbff;
+  font-size: clamp(10px, 0.78vw, 13px);
+  font-weight: 900;
+  background: rgba(8, 19, 38, 0.72);
+}
+
+.app-shell.battle-view .pixel-fx-asset,
+.app-shell.battle-view .pixel-fx-frame,
+.app-shell.battle-view .pixel-fx-frame > img,
+.app-shell.battle-view .pixel-fx-asset > img {
+  display: block;
+  backface-visibility: hidden;
+}
+
+.app-shell.battle-view .pixel-fx-asset > img,
+.app-shell.battle-view .pixel-fx-frame {
+  width: 100%;
+  height: 100%;
+}
+
+.app-shell.battle-view .pixel-fx-asset > img {
+  object-fit: contain;
+}
+
+.app-shell.battle-view .pixel-fx-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.app-shell.battle-view .pixel-fx-frame > img {
+  width: calc(var(--fx-columns) * 100%);
+  height: calc(var(--fx-rows) * 100%);
+  max-width: none;
+  object-fit: fill;
+  transform: translate(var(--fx-fallback-shift-x), var(--fx-fallback-shift-y));
+  will-change: transform;
+}
+
+@keyframes director-screen-focus {
+  0%, 100% { opacity: 0; }
+  18% { opacity: 0.18; }
+  36%, 72% { opacity: 0.38; }
+  90% { opacity: 0.08; }
+}
+
+@keyframes director-scene-cue {
+  0%, 100% { opacity: 0; transform: scale(1.025); }
+  14% { opacity: 0.18; }
+  28%, 78% { opacity: 0.9; transform: scale(1); }
+  92% { opacity: 0.18; }
+}
+
+@keyframes director-source-charge {
+  0%, 48%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.2); }
+  10% { opacity: 0.68; transform: translate(-50%, -50%) rotate(36deg) scale(0.48); }
+  24% { opacity: 1; transform: translate(-50%, -50%) rotate(132deg) scale(var(--move-scale)); }
+  38% { opacity: 0.9; transform: translate(-50%, -50%) rotate(206deg) scale(0.84); }
+}
+
+@keyframes director-source-charge-reverse {
+  0%, 46%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(180deg) scale(0.18); }
+  13%, 32% { opacity: 0.88; transform: translate(-50%, -50%) rotate(-82deg) scale(0.82); }
+  42% { opacity: 0.18; transform: translate(-50%, -50%) rotate(-168deg) scale(1.12); }
+}
+
+@keyframes director-source-ring {
+  0%, 46%, 100% { opacity: 0; transform: scale(0.22); }
+  12% { opacity: 0.9; transform: scale(0.58); }
+  34% { opacity: 0.64; transform: scale(1.06); }
+  44% { opacity: 0; transform: scale(1.32); }
+}
+
+@keyframes director-projectile-flight {
+  0% { opacity: 0; transform: translate(-50%, calc(-50% + var(--lane-offset))) rotate(var(--sprite-spin)) scale(0.32); }
+  8% { opacity: 1; transform: translate(-50%, calc(-50% + var(--lane-offset))) rotate(var(--sprite-spin)) scale(calc(var(--move-scale) * 0.72)); }
+  70% { opacity: 1; transform: translate(calc(-50% + var(--travel-x) * 0.78), calc(-50% + var(--travel-y) * 0.78 + var(--lane-offset))) rotate(calc(var(--sprite-spin) + 5deg)) scale(var(--move-scale)); }
+  92% { opacity: 1; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) rotate(calc(var(--sprite-spin) + 8deg)) scale(calc(var(--move-scale) * 1.03)); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) rotate(calc(var(--sprite-spin) + 8deg)) scale(0.4); }
+}
+
+@keyframes director-stream-flight {
+  0% { opacity: 0; transform: translate(-50%, calc(-50% + var(--lane-offset))) rotate(var(--sprite-spin)) scale(0.28); }
+  10% { opacity: 0.92; }
+  76% { opacity: 1; transform: translate(calc(-50% + var(--travel-x) * 0.84), calc(-50% + var(--travel-y) * 0.84 + var(--lane-offset))) rotate(calc(var(--sprite-spin) + 4deg)) scale(var(--move-scale)); }
+  96% { opacity: 0.9; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) rotate(calc(var(--sprite-spin) + 7deg)) scale(calc(var(--move-scale) * 1.04)); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) scale(0.5); }
+}
+
+@keyframes director-wave-flight {
+  0% { opacity: 0; transform: translate(-50%, 24px) scale(0.62); }
+  12% { opacity: 0.72; }
+  76% { opacity: 0.86; transform: translate(calc(-50% + var(--travel-x) * 0.82), calc(-50% + var(--travel-y) * 0.82 + var(--lane-offset))) scale(1.18); }
+  96% { opacity: 0.72; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) scale(1.4); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y) - 12px)) scale(1.52); }
+}
+
+@keyframes director-contact-trail {
+  0%, 14% { opacity: 0; transform: translate(-50%, -50%) scale(0.28); }
+  30% { opacity: 0.74; }
+  58% { opacity: 0.9; transform: translate(calc(-50% + var(--travel-x) * 0.45), calc(-50% + var(--travel-y) * 0.45 + var(--lane-offset))) rotate(calc(var(--sprite-spin) + 120deg)) scale(0.92); }
+  78%, 100% { opacity: 0; transform: translate(calc(-50% + var(--travel-x) * 0.76), calc(-50% + var(--travel-y) * 0.76)) rotate(calc(var(--sprite-spin) + 210deg)) scale(0.38); }
+}
+
+@keyframes director-falling-effect {
+  0% { opacity: 0; transform: translate(-50%, -20%) rotate(var(--sprite-spin)) scale(0.46); }
+  12% { opacity: 0.9; }
+  82% { opacity: 1; transform: translate(-50%, 52vh) rotate(calc(var(--sprite-spin) + 320deg)) scale(var(--move-scale)); }
+  100% { opacity: 0; transform: translate(-50%, 60vh) rotate(calc(var(--sprite-spin) + 420deg)) scale(1.16); }
+}
+
+@keyframes director-beam-asset {
+  0%, 20%, 100% { opacity: 0; clip-path: inset(0 100% 0 0); transform: scaleY(0.35); }
+  32% { opacity: 0.9; clip-path: inset(0 72% 0 0); transform: scaleY(0.75); }
+  48%, 82% { opacity: 0.95; clip-path: inset(0 0 0 0); transform: scaleY(1); }
+  94% { opacity: 0; clip-path: inset(0 0 0 0); transform: scaleY(0.6); }
+}
+
+@keyframes director-beam-fire {
+  0%, 22%, 100% { opacity: 0; transform: translateY(-50%) scaleX(0); }
+  32% { opacity: 0.92; transform: translateY(-50%) scaleX(0.18); }
+  48%, 82% { opacity: 1; transform: translateY(-50%) scaleX(1); }
+  94% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+}
+
+@keyframes director-inline-impact {
+  0%, 34%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(0.24); }
+  48% { opacity: 0.92; transform: translate(-50%, -50%) rotate(0deg) scale(calc(var(--move-impact-scale) * 0.76)); }
+  68%, 84% { opacity: 1; transform: translate(-50%, -50%) rotate(12deg) scale(var(--move-impact-scale)); }
+  96% { opacity: 0; transform: translate(-50%, -50%) rotate(20deg) scale(calc(var(--move-impact-scale) * 1.22)); }
+}
+
+@keyframes director-drain-return {
+  0%, 18% { opacity: 0; transform: translate(-50%, -50%) scale(0.32); }
+  32% { opacity: 0.92; }
+  82% { opacity: 0.9; transform: translate(calc(-50% + var(--reverse-travel-x) * 0.86), calc(-50% + var(--reverse-travel-y) * 0.86 + var(--lane-offset))) rotate(260deg) scale(0.9); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--reverse-travel-x)), calc(-50% + var(--reverse-travel-y))) rotate(340deg) scale(0.18); }
+}
+
+@keyframes director-impact-wash {
+  0%, 100% { opacity: 0; }
+  10% { opacity: 0.82; }
+  36% { opacity: 0.46; }
+  72% { opacity: 0.12; }
+}
+
+@keyframes director-impact-asset {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(0.22); }
+  9% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(calc(var(--move-impact-scale) * 0.7)); }
+  34%, 62% { opacity: 1; transform: translate(-50%, -50%) rotate(7deg) scale(var(--move-impact-scale)); }
+  86% { opacity: 0.48; transform: translate(-50%, -50%) rotate(13deg) scale(calc(var(--move-impact-scale) * 1.16)); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(18deg) scale(calc(var(--move-impact-scale) * 1.3)); }
+}
+
+@keyframes director-impact-core {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.18); }
+  8% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  28% { opacity: 0.72; transform: translate(-50%, -50%) scale(0.72); }
+}
+
+@keyframes director-impact-ring {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.24); }
+  12% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.68); }
+  58% { opacity: 0.45; transform: translate(-50%, -50%) scale(1.34); }
+  82% { opacity: 0; transform: translate(-50%, -50%) scale(1.72); }
+}
+
+@keyframes director-impact-echo {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  14% { opacity: 0.72; transform: translate(-50%, -50%) scale(0.72); }
+  70% { opacity: 0.18; transform: translate(-50%, -50%) scale(1.45); }
+  88% { opacity: 0; transform: translate(-50%, -50%) scale(1.72); }
+}
+
+@keyframes director-feedback-rise {
+  0%, 8%, 100% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
+  18%, 66% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  86% { opacity: 0; transform: translate(-50%, -14px) scale(1); }
+}
+
+@media (max-width: 860px) {
+  .app-shell.battle-view .director-impact-feedback {
+    top: calc(var(--target-y) - 54px);
+    min-width: 82px;
+  }
+
+  .app-shell.battle-view .battle-pixel-move-animation .pixel-move-trajectory > .fx-role-trajectory {
+    --lane-offset: calc((var(--sprite-lane) - 2) * 8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.battle-view .battle-pokemon-stage.is-attacking,
+  .app-shell.battle-view .battle-pokemon-stage.is-hit {
+    animation-duration: 1ms !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-move-animation *,
+  .app-shell.battle-view .battle-pixel-scene-animation *,
+  .app-shell.battle-view .battle-pixel-impact-animation * {
+    animation-timing-function: linear !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-scene-animation .pixel-move-screen,
+  .app-shell.battle-view .battle-pixel-scene-animation .pixel-move-field,
+  .app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-wash,
+  .app-shell.battle-view .battle-pixel-impact-animation .phase-impact > .fx-role-impact,
+  .app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-core,
+  .app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-ring,
+  .app-shell.battle-view .battle-pixel-impact-animation .pixel-impact-echo,
+  .app-shell.battle-view .battle-pixel-impact-animation .director-impact-feedback {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-scene-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8, .timeline-frame-9) .pixel-move-screen {
+    opacity: 0.36 !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-scene-animation:is(.timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8, .timeline-frame-9) .pixel-move-field {
+    opacity: 0.82 !important;
+    transform: scale(1) !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7) .pixel-impact-wash {
+    opacity: 0.42 !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8) .phase-impact > .fx-role-impact {
+    opacity: 1 !important;
+    transform: translate(-50%, -50%) rotate(6deg) scale(var(--move-impact-scale)) !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3) .pixel-impact-core,
+  .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5) .pixel-impact-ring,
+  .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6) .pixel-impact-echo {
+    opacity: 0.86 !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+
+  .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8) .director-impact-feedback {
+    opacity: 1 !important;
+    transform: translate(-50%, 0) scale(1) !important;
+  }
+}

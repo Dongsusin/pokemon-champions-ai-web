@@ -17,6 +17,11 @@ const reference = readJson('src/data/generatedMoveAnimationReference.json')
 const battleMoves = readJson('src/data/generatedBattleMoves.json')
 const animationManifest = readJson('src/data/generatedMoveAnimationManifest.json')
 const qaPath = path.join(rootDirectory, 'docs/move-animation-qa-checklist.csv')
+const {
+  getMoveAnimationAssets,
+  getMoveAnimationProfile,
+  getMovePixelAnimationPlan,
+} = await import('../src/data/moveAnimationData.js')
 
 assert(reference.counts.records === 971, `Expected 971 reference records, found ${reference.counts.records}.`)
 assert(reference.records.length === 971, `Expected 971 runtime records, found ${reference.records.length}.`)
@@ -40,6 +45,34 @@ Object.values(animationManifest.moves).forEach((resource) => {
   })
 })
 assert(missingAssets.length === 0, `Missing EBDX files: ${[...new Set(missingAssets)].join(', ')}`)
+
+const runtimePlans = battleMoves.moves.map((move) => {
+  const profile = getMoveAnimationProfile(move)
+  return { move, profile, plan: getMovePixelAnimationPlan(profile) }
+})
+
+runtimePlans.forEach(({ move, profile, plan }) => {
+  assert(profile.duration >= 760 && profile.duration <= 1720, `${move.id} has an invalid attack duration.`)
+  assert(plan.impactDuration >= 500 && plan.impactDuration <= 760, `${move.id} has an invalid impact duration.`)
+  const sceneSources = new Set(plan.sceneAssets.map((asset) => asset.src))
+  const movingSources = [
+    ...plan.sourceAssets,
+    ...plan.trajectoryAssets,
+    ...plan.impactAssets,
+    plan.beamAsset,
+  ].filter(Boolean).map((asset) => asset.src)
+  assert(movingSources.every((src) => !sceneSources.has(src)), `${move.id} reuses a scene asset as a moving effect.`)
+  const preloadSources = new Set(getMoveAnimationAssets(move))
+  ;[...sceneSources, ...movingSources].forEach((src) => {
+    assert(preloadSources.has(src), `${move.id} does not preload ${src}.`)
+  })
+})
+
+const surfPlan = runtimePlans.find(({ move }) => move.id === 'surf')?.plan
+assert(surfPlan?.sceneAssets.length >= 2, 'Surf must retain side-aware field scene assets.')
+assert(!surfPlan?.inlineImpact, 'Damaging spread moves must resolve impact during the damage phase.')
+const tacklePlan = runtimePlans.find(({ move }) => move.id === 'tackle')?.plan
+assert(tacklePlan?.sourceAssets.length === 0, 'Contact moves must not render a detached charge orb.')
 
 assert(existsSync(qaPath), 'QA checklist was not generated.')
 const qaLines = readFileSync(qaPath, 'utf8').trimEnd().split(/\r?\n/)
