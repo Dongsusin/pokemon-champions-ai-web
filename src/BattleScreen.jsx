@@ -1091,6 +1091,7 @@ function MoveMenu({
   activeSlot = 0,
   targetSlot = 0,
   pendingGimmick,
+  reservedMechanicIds,
   onActiveSlot,
   onGimmick,
   onMove,
@@ -1103,6 +1104,7 @@ function MoveMenu({
   const opponent = getActivePokemon(battle, 'opponent', targetSlot)
   const playerActive = getActivePokemonList(battle, 'player')
   const mechanics = getAvailableBattleMechanics(battle, 'player', activeSlot)
+    .filter((mechanic) => !reservedMechanicIds?.has(mechanic.id))
 
   return (
     <section className="battle-move-menu">
@@ -1639,8 +1641,19 @@ function BattleScreen({
   const livingOpponentTargetSlots = opponentActivePokemon
     .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
     .filter((slot) => slot >= 0)
+  const reservedMechanicIds = useMemo(() => new Set(
+    queuedActions
+      .filter((action) => action.actorSlot !== commandSlot && action.gimmick)
+      .map((action) => action.gimmick),
+  ), [commandSlot, queuedActions])
 
   const submitPlayerAction = (action) => {
+    if (action.gimmick && reservedMechanicIds.has(action.gimmick)) {
+      battleAudioRef.current?.playMenu('cancel')
+      setPendingGimmick(null)
+      return
+    }
+
     const nextAction = {
       ...action,
       actorSlot: commandSlot,
@@ -2039,6 +2052,7 @@ function BattleScreen({
               activeSlot={commandSlot}
               targetSlot={targetSlot}
               pendingGimmick={pendingGimmick}
+              reservedMechanicIds={reservedMechanicIds}
               onActiveSlot={setCommandSlot}
               onGimmick={setPendingGimmick}
               onMove={chooseMove}
