@@ -54,8 +54,8 @@ export const BATTLE_SAMPLE_PATHS = {
 
 const BATTLE_MASTER_VOLUME = 0.96
 const BATTLE_EFFECTS_VOLUME = 0.56
-const BATTLE_MUSIC_VOLUME = 0.34
-const LOW_HP_MUSIC_VOLUME = 0.25
+const BATTLE_MUSIC_VOLUME = 0.19
+const LOW_HP_MUSIC_VOLUME = 0.13
 
 function audioContextConstructor() {
   if (typeof window === 'undefined') return null

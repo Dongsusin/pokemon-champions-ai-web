@@ -40,7 +40,7 @@ const SCENE_THEMES = {
 }
 
 const MASTER_VOLUME = 0.94
-const MUSIC_VOLUME = 0.2
+const MUSIC_VOLUME = 0.16
 const UI_VOLUME = 0.58
 const EVENT_VOLUME = 0.64
 
