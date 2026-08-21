@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-15T05:09:27.874Z",
+  "generatedAt": "2026-08-21T10:33:18.781Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
@@ -318,7 +318,10 @@
         "mirror",
         "metronome"
       ],
-      "ohko": true
+      "ohko": true,
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "razorwind",
@@ -371,6 +374,9 @@
       ],
       "boosts": {
         "atk": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -475,7 +481,12 @@
         "failcopycat",
         "wind"
       ],
-      "forceSwitch": true
+      "forceSwitch": true,
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "fly",
@@ -739,6 +750,11 @@
       ],
       "boosts": {
         "accuracy": -1
+      },
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
       }
     },
     {
@@ -844,7 +860,10 @@
         "mirror",
         "metronome"
       ],
-      "ohko": true
+      "ohko": true,
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "tackle",
@@ -1034,6 +1053,11 @@
       ],
       "boosts": {
         "def": -1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -1116,7 +1140,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "leer",
@@ -1143,6 +1170,11 @@
       ],
       "boosts": {
         "def": -1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -1201,6 +1233,11 @@
       ],
       "boosts": {
         "atk": -1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -1230,7 +1267,12 @@
         "noassist",
         "failcopycat"
       ],
-      "forceSwitch": true
+      "forceSwitch": true,
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "sing",
@@ -1257,7 +1299,12 @@
         "bypasssub",
         "metronome"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "supersonic",
@@ -1284,7 +1331,12 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "confusion"
+      "volatileStatus": "confusion",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "sonicboom",
@@ -1334,7 +1386,10 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "disable"
+      "volatileStatus": "disable",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "acid",
@@ -1439,7 +1494,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "watergun",
@@ -1778,7 +1836,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "counter",
@@ -1909,7 +1970,10 @@
       "drain": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "basePower": 120
+      }
     },
     {
       "id": "leechseed",
@@ -1934,7 +1998,10 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "leechseed"
+      "volatileStatus": "leechseed",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "growth",
@@ -1960,6 +2027,11 @@
       "boosts": {
         "atk": 1,
         "spa": 1
+      },
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
       }
     },
     {
@@ -2037,7 +2109,12 @@
         "metronome",
         "powder"
       ],
-      "status": "psn"
+      "status": "psn",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "stunspore",
@@ -2063,7 +2140,12 @@
         "metronome",
         "powder"
       ],
-      "status": "par"
+      "status": "par",
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "sleeppowder",
@@ -2089,7 +2171,12 @@
         "metronome",
         "powder"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "petaldance",
@@ -2145,6 +2232,11 @@
       ],
       "boosts": {
         "spe": -2
+      },
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
       }
     },
     {
@@ -2272,7 +2364,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "par"
+      "status": "par",
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "thunder",
@@ -2371,7 +2468,10 @@
         "nonsky",
         "metronome"
       ],
-      "ohko": true
+      "ohko": true,
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "dig",
@@ -2425,7 +2525,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "tox"
+      "status": "tox",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "confusion",
@@ -2506,7 +2611,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "meditate",
@@ -2531,6 +2641,11 @@
       ],
       "boosts": {
         "atk": 1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -2556,6 +2671,9 @@
       ],
       "boosts": {
         "spe": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -2629,7 +2747,10 @@
       "flags": [
         "metronome"
       ],
-      "selfSwitch": true
+      "selfSwitch": true,
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "nightshade",
@@ -2682,7 +2803,12 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
+      }
     },
     {
       "id": "screech",
@@ -2712,6 +2838,11 @@
       ],
       "boosts": {
         "def": -2
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -2737,6 +2868,9 @@
       ],
       "boosts": {
         "evasion": 1
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -2764,7 +2898,10 @@
       "heal": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "harden",
@@ -2789,6 +2926,11 @@
       ],
       "boosts": {
         "def": 1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -2815,6 +2957,9 @@
       "volatileStatus": "minimize",
       "boosts": {
         "evasion": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -2842,6 +2987,11 @@
       ],
       "boosts": {
         "accuracy": -1
+      },
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
       }
     },
     {
@@ -2867,7 +3017,12 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "confusion"
+      "volatileStatus": "confusion",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "withdraw",
@@ -2892,6 +3047,11 @@
       ],
       "boosts": {
         "def": 1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -2918,6 +3078,11 @@
       "volatileStatus": "defensecurl",
       "boosts": {
         "def": 1
+      },
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
       }
     },
     {
@@ -2943,6 +3108,9 @@
       ],
       "boosts": {
         "def": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -2965,7 +3133,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "haze",
@@ -2987,7 +3160,10 @@
       "flags": [
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "reflect",
@@ -3009,7 +3185,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "focusenergy",
@@ -3032,7 +3213,12 @@
         "snatch",
         "metronome"
       ],
-      "volatileStatus": "focusenergy"
+      "volatileStatus": "focusenergy",
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
+      }
     },
     {
       "id": "bide",
@@ -3110,7 +3296,12 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 2
+        }
+      }
     },
     {
       "id": "selfdestruct",
@@ -3480,6 +3671,9 @@
       ],
       "boosts": {
         "spd": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -3507,6 +3701,11 @@
       ],
       "boosts": {
         "accuracy": -1
+      },
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
       }
     },
     {
@@ -3534,7 +3733,10 @@
       "heal": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "highjumpkick",
@@ -3585,7 +3787,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "par"
+      "status": "par",
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "dreameater",
@@ -3638,7 +3845,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "psn"
+      "status": "psn",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "barrage",
@@ -3720,7 +3932,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "skyattack",
@@ -3778,7 +3995,10 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "bubble",
@@ -3862,7 +4082,10 @@
         "metronome",
         "powder"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "flash",
@@ -3889,6 +4112,11 @@
       ],
       "boosts": {
         "accuracy": -1
+      },
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
       }
     },
     {
@@ -3934,7 +4162,12 @@
       "flags": [
         "gravity",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 3
+        }
+      }
     },
     {
       "id": "acidarmor",
@@ -3959,6 +4192,9 @@
       ],
       "boosts": {
         "def": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -4084,7 +4320,10 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "rockslide",
@@ -4165,6 +4404,11 @@
       ],
       "boosts": {
         "atk": 1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -4187,7 +4431,16 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "triattack",
@@ -4287,7 +4540,10 @@
         "nonsky",
         "metronome"
       ],
-      "volatileStatus": "substitute"
+      "volatileStatus": "substitute",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "struggle",
@@ -4346,7 +4602,16 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "triplekick",
@@ -4371,7 +4636,10 @@
         "mirror",
         "metronome"
       ],
-      "multihit": 3
+      "multihit": 3,
+      "zMove": {
+        "basePower": 120
+      }
     },
     {
       "id": "thief",
@@ -4421,7 +4689,12 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "mindreader",
@@ -4444,7 +4717,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "nightmare",
@@ -4468,7 +4746,12 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "nightmare"
+      "volatileStatus": "nightmare",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "flamewheel",
@@ -4548,7 +4831,10 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "curse"
+      "volatileStatus": "curse",
+      "zMove": {
+        "effect": "curse"
+      }
     },
     {
       "id": "flail",
@@ -4572,7 +4858,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "conversion2",
@@ -4594,7 +4883,10 @@
       "flags": [
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "aeroblast",
@@ -4648,6 +4940,9 @@
       ],
       "boosts": {
         "spe": -2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -4672,7 +4967,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "spite",
@@ -4697,7 +4995,10 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "powdersnow",
@@ -4747,7 +5048,10 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "protect"
+      "volatileStatus": "protect",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "machpunch",
@@ -4800,6 +5104,11 @@
       ],
       "boosts": {
         "spe": -2
+      },
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
       }
     },
     {
@@ -4849,7 +5158,12 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "confusion"
+      "volatileStatus": "confusion",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "bellydrum",
@@ -4871,7 +5185,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "sludgebomb",
@@ -4982,7 +5299,12 @@
         "nonsky",
         "metronome",
         "mustpressure"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "zapcannon",
@@ -5036,7 +5358,10 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "foresight"
+      "volatileStatus": "foresight",
+      "zMove": {
+        "effect": "crit2"
+      }
     },
     {
       "id": "destinybond",
@@ -5060,7 +5385,10 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "destinybond"
+      "volatileStatus": "destinybond",
+      "zMove": {
+        "effect": "redirect"
+      }
     },
     {
       "id": "perishsong",
@@ -5084,7 +5412,10 @@
         "distance",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "icywind",
@@ -5137,7 +5468,12 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "protect"
+      "volatileStatus": "protect",
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
+      }
     },
     {
       "id": "bonerush",
@@ -5164,7 +5500,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "lockon",
@@ -5187,7 +5526,12 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "outrage",
@@ -5238,7 +5582,12 @@
         "metronome",
         "wind"
       ],
-      "weather": "Sandstorm"
+      "weather": "Sandstorm",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "gigadrain",
@@ -5289,7 +5638,10 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "endure"
+      "volatileStatus": "endure",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "charm",
@@ -5317,6 +5669,11 @@
       ],
       "boosts": {
         "atk": -2
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -5396,6 +5753,9 @@
       "volatileStatus": "confusion",
       "boosts": {
         "atk": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -5423,7 +5783,10 @@
       "heal": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "spark",
@@ -5531,7 +5894,12 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "attract",
@@ -5557,7 +5925,10 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "attract"
+      "volatileStatus": "attract",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "sleeptalk",
@@ -5583,7 +5954,10 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "effect": "crit2"
+      }
     },
     {
       "id": "healbell",
@@ -5608,7 +5982,10 @@
         "distance",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "return",
@@ -5632,7 +6009,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "present",
@@ -5679,7 +6059,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "safeguard",
@@ -5701,7 +6084,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "painsplit",
@@ -5725,7 +6113,12 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "sacredfire",
@@ -5777,7 +6170,10 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "dynamicpunch",
@@ -5880,7 +6276,10 @@
         "metronome"
       ],
       "self": {},
-      "selfSwitch": "copyvolatile"
+      "selfSwitch": "copyvolatile",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "encore",
@@ -5907,7 +6306,12 @@
         "metronome",
         "failencore"
       ],
-      "volatileStatus": "encore"
+      "volatileStatus": "encore",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "pursuit",
@@ -5990,6 +6394,11 @@
       ],
       "boosts": {
         "evasion": -2
+      },
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
       }
     },
     {
@@ -6099,7 +6508,10 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "synthesis",
@@ -6122,7 +6534,10 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "moonlight",
@@ -6145,7 +6560,10 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "hiddenpower",
@@ -6595,7 +7013,12 @@
       "flags": [
         "metronome"
       ],
-      "weather": "RainDance"
+      "weather": "RainDance",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "sunnyday",
@@ -6617,7 +7040,12 @@
       "flags": [
         "metronome"
       ],
-      "weather": "sunnyday"
+      "weather": "sunnyday",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "crunch",
@@ -6694,7 +7122,10 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "extremespeed",
@@ -6965,7 +7396,10 @@
         "snatch",
         "metronome"
       ],
-      "volatileStatus": "stockpile"
+      "volatileStatus": "stockpile",
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "spitup",
@@ -7010,7 +7444,10 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "heatwave",
@@ -7060,7 +7497,12 @@
       "flags": [
         "metronome"
       ],
-      "weather": "hail"
+      "weather": "hail",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "torment",
@@ -7086,7 +7528,12 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "torment"
+      "volatileStatus": "torment",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "flatter",
@@ -7115,6 +7562,11 @@
       "volatileStatus": "confusion",
       "boosts": {
         "spa": 1
+      },
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
       }
     },
     {
@@ -7140,7 +7592,12 @@
         "mirror",
         "metronome"
       ],
-      "status": "brn"
+      "status": "brn",
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "memento",
@@ -7168,6 +7625,9 @@
       "boosts": {
         "atk": -2,
         "spa": -2
+      },
+      "zMove": {
+        "effect": "healreplacement"
       }
     },
     {
@@ -7267,7 +7727,10 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "followme"
+      "volatileStatus": "followme",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "naturepower",
@@ -7319,6 +7782,11 @@
       "volatileStatus": "charge",
       "boosts": {
         "spd": 1
+      },
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
       }
     },
     {
@@ -7345,7 +7813,12 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "taunt"
+      "volatileStatus": "taunt",
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "helpinghand",
@@ -7369,7 +7842,10 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "helpinghand"
+      "volatileStatus": "helpinghand",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "trick",
@@ -7394,7 +7870,12 @@
         "allyanim",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "roleplay",
@@ -7417,7 +7898,12 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "wish",
@@ -7440,7 +7926,12 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "assist",
@@ -7490,7 +7981,12 @@
         "nonsky",
         "metronome"
       ],
-      "volatileStatus": "ingrain"
+      "volatileStatus": "ingrain",
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "superpower",
@@ -7542,7 +8038,12 @@
       "flags": [
         "metronome"
       ],
-      "volatileStatus": "magiccoat"
+      "volatileStatus": "magiccoat",
+      "zMove": {
+        "boost": {
+          "spd": 2
+        }
+      }
     },
     {
       "id": "recycle",
@@ -7564,7 +8065,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "revenge",
@@ -7637,7 +8143,12 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "yawn"
+      "volatileStatus": "yawn",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "knockoff",
@@ -7686,7 +8197,10 @@
         "mirror",
         "metronome",
         "noparentalbond"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "eruption",
@@ -7734,7 +8248,12 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "imprison",
@@ -7759,7 +8278,12 @@
         "metronome",
         "mustpressure"
       ],
-      "volatileStatus": "imprison"
+      "volatileStatus": "imprison",
+      "zMove": {
+        "boost": {
+          "spd": 2
+        }
+      }
     },
     {
       "id": "refresh",
@@ -7781,7 +8305,10 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "grudge",
@@ -7804,7 +8331,10 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "grudge"
+      "volatileStatus": "grudge",
+      "zMove": {
+        "effect": "redirect"
+      }
     },
     {
       "id": "snatch",
@@ -7829,7 +8359,12 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "snatch"
+      "volatileStatus": "snatch",
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "secretpower",
@@ -7936,7 +8471,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
+      }
     },
     {
       "id": "tailglow",
@@ -7961,6 +8501,9 @@
       ],
       "boosts": {
         "spa": 3
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -8049,6 +8592,11 @@
       ],
       "boosts": {
         "atk": -2
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -8074,7 +8622,12 @@
         "dance",
         "metronome"
       ],
-      "volatileStatus": "confusion"
+      "volatileStatus": "confusion",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "blazekick",
@@ -8125,7 +8678,12 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "iceball",
@@ -8207,7 +8765,10 @@
       "heal": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "hypervoice",
@@ -8430,7 +8991,10 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "aromatherapy",
@@ -8453,7 +9017,10 @@
         "snatch",
         "distance",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "heal"
+      }
     },
     {
       "id": "faketears",
@@ -8481,6 +9048,11 @@
       ],
       "boosts": {
         "spd": -2
+      },
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
       }
     },
     {
@@ -8562,7 +9134,12 @@
         "allyanim",
         "metronome"
       ],
-      "volatileStatus": "foresight"
+      "volatileStatus": "foresight",
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "rocktomb",
@@ -8656,6 +9233,11 @@
       ],
       "boosts": {
         "spd": -2
+      },
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
       }
     },
     {
@@ -8683,7 +9265,12 @@
         "bypasssub",
         "metronome"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "tickle",
@@ -8712,6 +9299,11 @@
       "boosts": {
         "atk": -1,
         "def": -1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -8738,6 +9330,11 @@
       "boosts": {
         "def": 1,
         "spd": 1
+      },
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
       }
     },
     {
@@ -8913,7 +9510,10 @@
         "mirror",
         "metronome"
       ],
-      "ohko": "Ice"
+      "ohko": "Ice",
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "muddywater",
@@ -8971,7 +9571,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "aerialace",
@@ -9024,7 +9627,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "irondefense",
@@ -9049,6 +9655,9 @@
       ],
       "boosts": {
         "def": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -9072,7 +9681,12 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "howl",
@@ -9098,6 +9712,11 @@
       ],
       "boosts": {
         "atk": 1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -9176,6 +9795,11 @@
       "boosts": {
         "atk": 1,
         "def": 1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -9371,7 +9995,12 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "calmmind",
@@ -9397,6 +10026,9 @@
       "boosts": {
         "spa": 1,
         "spd": 1
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -9450,6 +10082,9 @@
       "boosts": {
         "atk": 1,
         "spe": 1
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -9478,7 +10113,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "shockwave",
@@ -9610,7 +10248,10 @@
       "heal": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "gravity",
@@ -9632,7 +10273,12 @@
       "flags": [
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "miracleeye",
@@ -9658,7 +10304,12 @@
         "bypasssub",
         "metronome"
       ],
-      "volatileStatus": "miracleeye"
+      "volatileStatus": "miracleeye",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "wakeupslap",
@@ -9737,7 +10388,10 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "healingwish",
@@ -9807,7 +10461,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "feint",
@@ -9878,7 +10535,10 @@
         "snatch",
         "metronome",
         "wind"
-      ]
+      ],
+      "zMove": {
+        "effect": "crit2"
+      }
     },
     {
       "id": "acupressure",
@@ -9899,7 +10559,10 @@
       "description": "경혈을 눌러 몸을 활성화시킨다. 능력 중 하나를 크게 올린다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "crit2"
+      }
     },
     {
       "id": "metalburst",
@@ -10051,7 +10714,12 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "embargo"
+      "volatileStatus": "embargo",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "fling",
@@ -10100,7 +10768,12 @@
         "mirror",
         "metronome"
       ],
-      "self": {}
+      "self": {},
+      "zMove": {
+        "boost": {
+          "spa": 2
+        }
+      }
     },
     {
       "id": "trumpcard",
@@ -10124,7 +10797,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "healblock",
@@ -10149,7 +10825,12 @@
         "mirror",
         "metronome"
       ],
-      "volatileStatus": "healblock"
+      "volatileStatus": "healblock",
+      "zMove": {
+        "boost": {
+          "spa": 2
+        }
+      }
     },
     {
       "id": "wringout",
@@ -10173,7 +10854,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 190
+      }
     },
     {
       "id": "powertrick",
@@ -10196,7 +10880,12 @@
         "snatch",
         "metronome"
       ],
-      "volatileStatus": "powertrick"
+      "volatileStatus": "powertrick",
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "gastroacid",
@@ -10222,7 +10911,12 @@
         "allyanim",
         "metronome"
       ],
-      "volatileStatus": "gastroacid"
+      "volatileStatus": "gastroacid",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "luckychant",
@@ -10244,7 +10938,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
+      }
     },
     {
       "id": "mefirst",
@@ -10273,7 +10972,12 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "copycat",
@@ -10299,7 +11003,12 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
+      }
     },
     {
       "id": "powerswap",
@@ -10324,7 +11033,12 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "guardswap",
@@ -10349,7 +11063,12 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "punishment",
@@ -10373,7 +11092,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "lastresort",
@@ -10422,7 +11144,12 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "suckerpunch",
@@ -10470,7 +11197,12 @@
         "nonsky",
         "metronome",
         "mustpressure"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "heartswap",
@@ -10495,7 +11227,10 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "crit2"
+      }
     },
     {
       "id": "aquaring",
@@ -10518,7 +11253,12 @@
         "snatch",
         "metronome"
       ],
-      "volatileStatus": "aquaring"
+      "volatileStatus": "aquaring",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "magnetrise",
@@ -10542,7 +11282,12 @@
         "gravity",
         "metronome"
       ],
-      "volatileStatus": "magnetrise"
+      "volatileStatus": "magnetrise",
+      "zMove": {
+        "boost": {
+          "evasion": 1
+        }
+      }
     },
     {
       "id": "flareblitz",
@@ -10654,6 +11399,9 @@
       ],
       "boosts": {
         "spe": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -11144,7 +11892,12 @@
         "allyanim",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "gigaimpact",
@@ -11197,6 +11950,9 @@
       ],
       "boosts": {
         "spa": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -11617,7 +12373,12 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
+      }
     },
     {
       "id": "trickroom",
@@ -11639,7 +12400,12 @@
       "flags": [
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "accuracy": 1
+        }
+      }
     },
     {
       "id": "dracometeor",
@@ -11961,6 +12727,11 @@
       ],
       "boosts": {
         "spa": -2
+      },
+      "zMove": {
+        "boost": {
+          "spd": 2
+        }
       }
     },
     {
@@ -11984,7 +12755,12 @@
         "reflectable",
         "metronome",
         "mustpressure"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "grassknot",
@@ -12009,7 +12785,10 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "chatter",
@@ -12223,6 +13002,11 @@
       "boosts": {
         "def": 1,
         "spd": 1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -12250,7 +13034,10 @@
       "heal": [
         1,
         2
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "headsmash",
@@ -12303,7 +13090,10 @@
         "mirror",
         "metronome"
       ],
-      "multihit": 2
+      "multihit": 2,
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "roaroftime",
@@ -12403,7 +13193,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 190
+      }
     },
     {
       "id": "magmastorm",
@@ -12453,7 +13246,10 @@
         "metronome",
         "nosketch"
       ],
-      "status": "slp"
+      "status": "slp",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "seedflare",
@@ -12570,6 +13366,11 @@
       "boosts": {
         "atk": 1,
         "accuracy": 1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -12591,7 +13392,12 @@
       "description": "같은 편 전원에게 향하는 공격을 1턴 동안 막는다.",
       "flags": [
         "snatch"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "guardsplit",
@@ -12614,7 +13420,12 @@
         "protect",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "powersplit",
@@ -12637,7 +13448,12 @@
         "protect",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "wonderroom",
@@ -12659,7 +13475,12 @@
       "flags": [
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "psyshock",
@@ -12730,6 +13551,9 @@
       ],
       "boosts": {
         "spe": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -12754,7 +13578,10 @@
         "failcopycat",
         "powder"
       ],
-      "volatileStatus": "ragepowder"
+      "volatileStatus": "ragepowder",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "telekinesis",
@@ -12781,7 +13608,12 @@
         "allyanim",
         "metronome"
       ],
-      "volatileStatus": "telekinesis"
+      "volatileStatus": "telekinesis",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "magicroom",
@@ -12803,7 +13635,12 @@
       "flags": [
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "smackdown",
@@ -12931,6 +13768,9 @@
         "spa": 1,
         "spd": 1,
         "spe": 1
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -12957,7 +13797,10 @@
         "nonsky",
         "metronome",
         "minimize"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "synchronoise",
@@ -13004,7 +13847,10 @@
         "mirror",
         "metronome",
         "bullet"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "soak",
@@ -13029,7 +13875,12 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "flamecharge",
@@ -13088,6 +13939,9 @@
         "atk": 1,
         "def": 1,
         "accuracy": 1
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -13197,7 +14051,12 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "entrainment",
@@ -13222,7 +14081,12 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "afteryou",
@@ -13244,7 +14108,12 @@
       "flags": [
         "bypasssub",
         "allyanim"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "round",
@@ -13364,7 +14233,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "quickguard",
@@ -13385,7 +14257,12 @@
       "description": "자신과 같은 편을 상대의 선제공격으로부터 지킨다.",
       "flags": [
         "snatch"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "allyswitch",
@@ -13406,7 +14283,12 @@
       "description": "이상한 힘으로 순간이동하여 자신과 같은 편의 위치를 바꾼다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "scald",
@@ -13463,6 +14345,9 @@
         "atk": 2,
         "spa": 2,
         "spe": 2
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -13490,7 +14375,10 @@
         "allyanim",
         "metronome",
         "pulse"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "hex",
@@ -13513,7 +14401,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "skydrop",
@@ -13569,6 +14460,9 @@
       "boosts": {
         "spe": 2,
         "atk": 1
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -13641,7 +14535,12 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "acrobatics",
@@ -13690,7 +14589,12 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "retaliate",
@@ -13738,7 +14642,10 @@
         "metronome",
         "noparentalbond"
       ],
-      "selfdestruct": "ifHit"
+      "selfdestruct": "ifHit",
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "bestow",
@@ -13763,7 +14670,12 @@
         "allyanim",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 2
+        }
+      }
     },
     {
       "id": "inferno",
@@ -14025,6 +14937,11 @@
       "boosts": {
         "atk": 1,
         "spa": 1
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
       }
     },
     {
@@ -14271,7 +15188,10 @@
         "nonsky",
         "metronome",
         "minimize"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "leaftornado",
@@ -14354,6 +15274,9 @@
       ],
       "boosts": {
         "def": 3
+      },
+      "zMove": {
+        "effect": "clearnegativeboost"
       }
     },
     {
@@ -14434,7 +15357,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "hurricane",
@@ -14516,7 +15442,10 @@
         "mirror",
         "metronome"
       ],
-      "multihit": 2
+      "multihit": 2,
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "searingshot",
@@ -14878,6 +15807,9 @@
           "def": -1,
           "spd": -1
         }
+      },
+      "zMove": {
+        "basePower": 220
       }
     },
     {
@@ -14953,7 +15885,10 @@
         "nonsky",
         "metronome",
         "minimize"
-      ]
+      ],
+      "zMove": {
+        "basePower": 170
+      }
     },
     {
       "id": "matblock",
@@ -14977,7 +15912,12 @@
         "nonsky",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "belch",
@@ -15027,7 +15967,12 @@
         "distance",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "stickyweb",
@@ -15049,7 +15994,12 @@
       "flags": [
         "reflectable",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "fellstinger",
@@ -15125,7 +16075,16 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "nobleroar",
@@ -15155,6 +16114,11 @@
       "boosts": {
         "atk": -1,
         "spa": -1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -15176,7 +16140,12 @@
       "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "paraboliccharge",
@@ -15229,7 +16198,16 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "petalblizzard",
@@ -15332,7 +16310,10 @@
         "bypasssub",
         "metronome"
       ],
-      "selfSwitch": true
+      "selfSwitch": true,
+      "zMove": {
+        "effect": "healreplacement"
+      }
     },
     {
       "id": "topsyturvy",
@@ -15357,7 +16338,12 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "drainingkiss",
@@ -15405,7 +16391,12 @@
       "target": "allySide",
       "generation": 6,
       "description": "이상한 힘을 사용하여 같은 편을 공격하는 변화 기술을 막는다. 데미지 기술은 받는다.",
-      "flags": []
+      "flags": [],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "flowershield",
@@ -15427,7 +16418,12 @@
       "flags": [
         "distance",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "grassyterrain",
@@ -15450,7 +16446,12 @@
         "nonsky",
         "metronome"
       ],
-      "terrain": "grassyterrain"
+      "terrain": "grassyterrain",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "mistyterrain",
@@ -15473,7 +16474,12 @@
         "nonsky",
         "metronome"
       ],
-      "terrain": "mistyterrain"
+      "terrain": "mistyterrain",
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "electrify",
@@ -15498,7 +16504,12 @@
         "allyanim",
         "metronome"
       ],
-      "volatileStatus": "electrify"
+      "volatileStatus": "electrify",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "playrough",
@@ -15629,7 +16640,12 @@
         "mirror",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "kingsshield",
@@ -15653,7 +16669,10 @@
         "failcopycat",
         "failinstruct"
       ],
-      "volatileStatus": "kingsshield"
+      "volatileStatus": "kingsshield",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "playnice",
@@ -15680,6 +16699,11 @@
       ],
       "boosts": {
         "atk": -1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -15708,6 +16732,11 @@
       ],
       "boosts": {
         "spa": -1
+      },
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
       }
     },
     {
@@ -15865,7 +16894,12 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "spikyshield"
+      "volatileStatus": "spikyshield",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "aromaticmist",
@@ -15890,6 +16924,11 @@
       ],
       "boosts": {
         "spd": 1
+      },
+      "zMove": {
+        "boost": {
+          "spd": 2
+        }
       }
     },
     {
@@ -15917,6 +16956,11 @@
       ],
       "boosts": {
         "spa": -2
+      },
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
       }
     },
     {
@@ -15941,7 +16985,12 @@
         "reflectable",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "powder",
@@ -15968,7 +17017,12 @@
         "metronome",
         "powder"
       ],
-      "volatileStatus": "powder"
+      "volatileStatus": "powder",
+      "zMove": {
+        "boost": {
+          "spd": 2
+        }
+      }
     },
     {
       "id": "geomancy",
@@ -15998,6 +17052,15 @@
         "spa": 2,
         "spd": 2,
         "spe": 2
+      },
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
       }
     },
     {
@@ -16022,7 +17085,12 @@
         "distance",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "happyhour",
@@ -16043,7 +17111,16 @@
       "description": "해피타임 기술을 쓰면 배틀 후에 받을 수 있는 돈이 배가 된다.",
       "flags": [
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "electricterrain",
@@ -16066,7 +17143,12 @@
         "nonsky",
         "metronome"
       ],
-      "terrain": "electricterrain"
+      "terrain": "electricterrain",
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "dazzlinggleam",
@@ -16114,7 +17196,16 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "holdhands",
@@ -16140,7 +17231,16 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "babydolleyes",
@@ -16168,6 +17268,11 @@
       ],
       "boosts": {
         "atk": -1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -16331,7 +17436,10 @@
         "mirror",
         "nonsky"
       ],
-      "volatileStatus": "smackdown"
+      "volatileStatus": "smackdown",
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "thousandwaves",
@@ -16378,7 +17486,10 @@
         "mirror",
         "nonsky",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 185
+      }
     },
     {
       "id": "lightofruin",
@@ -16531,7 +17642,10 @@
         "snatch",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "firstimpression",
@@ -16578,7 +17692,12 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "banefulbunker"
+      "volatileStatus": "banefulbunker",
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "spiritshackle",
@@ -16712,7 +17831,10 @@
         "heal",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "highhorsepower",
@@ -16761,7 +17883,12 @@
         "mirror",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
+      }
     },
     {
       "id": "solarblade",
@@ -16838,7 +17965,12 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "spotlight"
+      "volatileStatus": "spotlight",
+      "zMove": {
+        "boost": {
+          "spd": 1
+        }
+      }
     },
     {
       "id": "toxicthread",
@@ -16866,6 +17998,11 @@
       "status": "psn",
       "boosts": {
         "spe": -1
+      },
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
       }
     },
     {
@@ -16889,7 +18026,12 @@
         "snatch",
         "metronome"
       ],
-      "volatileStatus": "laserfocus"
+      "volatileStatus": "laserfocus",
+      "zMove": {
+        "boost": {
+          "atk": 1
+        }
+      }
     },
     {
       "id": "gearup",
@@ -16912,7 +18054,12 @@
         "snatch",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "throatchop",
@@ -17014,7 +18161,12 @@
         "nonsky",
         "metronome"
       ],
-      "terrain": "psychicterrain"
+      "terrain": "psychicterrain",
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "lunge",
@@ -17098,7 +18250,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "burnup",
@@ -17148,7 +18303,12 @@
         "bypasssub",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "smartstrike",
@@ -17196,7 +18356,16 @@
         "reflectable",
         "heal",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "atk": 1,
+          "def": 1,
+          "spa": 1,
+          "spd": 1,
+          "spe": 1
+        }
+      }
     },
     {
       "id": "revelationdance",
@@ -17243,7 +18412,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "tropkick",
@@ -17297,7 +18469,12 @@
         "bypasssub",
         "allyanim",
         "failinstruct"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spa": 1
+        }
+      }
     },
     {
       "id": "beakblast",
@@ -17419,7 +18596,12 @@
       "flags": [
         "snatch",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "boost": {
+          "spe": 1
+        }
+      }
     },
     {
       "id": "shelltrap",
@@ -17727,6 +18909,11 @@
       "boosts": {
         "atk": -1,
         "spa": -1
+      },
+      "zMove": {
+        "boost": {
+          "def": 1
+        }
       }
     },
     {
@@ -17801,7 +18988,10 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "zMove": {
+        "basePower": 185
+      }
     },
     {
       "id": "mindblown",
@@ -18228,7 +19418,10 @@
         "chance": 30,
         "volatileStatus": "flinch"
       },
-      "multihit": 2
+      "multihit": 2,
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "dynamaxcannon",
@@ -19200,7 +20393,10 @@
       "multihit": [
         2,
         5
-      ]
+      ],
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "meteorbeam",
@@ -19346,7 +20542,10 @@
         "mirror",
         "metronome",
         "pulse"
-      ]
+      ],
+      "zMove": {
+        "basePower": 160
+      }
     },
     {
       "id": "skittersmack",
@@ -19551,7 +20750,10 @@
         "mirror",
         "metronome"
       ],
-      "multihit": 3
+      "multihit": 3,
+      "zMove": {
+        "basePower": 120
+      }
     },
     {
       "id": "dualwingbeat",
@@ -19678,7 +20880,10 @@
         "punch"
       ],
       "multihit": 3,
-      "willCrit": true
+      "willCrit": true,
+      "zMove": {
+        "basePower": 140
+      }
     },
     {
       "id": "thundercage",
@@ -21291,7 +22496,10 @@
       "flags": [],
       "volatileStatus": "substitute",
       "self": {},
-      "selfSwitch": "shedtail"
+      "selfSwitch": "shedtail",
+      "zMove": {
+        "effect": "clearnegativeboost"
+      }
     },
     {
       "id": "chillyreception",
@@ -22106,7 +23314,10 @@
         "metronome",
         "slicing"
       ],
-      "multihit": 2
+      "multihit": 2,
+      "zMove": {
+        "basePower": 180
+      }
     },
     {
       "id": "hardpress",

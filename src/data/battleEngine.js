@@ -8,6 +8,7 @@ import {
 } from './trainingData.js'
 import { BATTLE_TERRAINS, BATTLE_WEATHERS } from './battleRules.js'
 import { resolveMaxMove } from './maxMoveData.js'
+import { canUseZMove, resolveZMove } from './zMoveData.js'
 
 const TYPE_CHART = {
   노말: { 바위: 0.5, 고스트: 0, 강철: 0.5 },
@@ -338,6 +339,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     tormented: false,
     lastMoveIndex: null,
     criticalStageBoost: 0,
+    redirectTurns: 0,
     rechargeTurns: 0,
     chargingMove: null,
     lockedMove: null,
@@ -391,6 +393,7 @@ function createSide(id, name, entries, teamGimmicks = [], leadName = '', activeS
       primal: false,
     },
     healingWishPending: null,
+    zHealReplacement: false,
     auroraVeilTurns: 0,
     gmaxResidual: null,
     hazards: {
@@ -757,6 +760,26 @@ function resolveBattleMaxMove(pokemon, move, forceDynamax = false, powerSourceMo
   })
 }
 
+function currentSpeciesSlug(pokemon) {
+  return getSpeciesProfile(pokemon?.speciesId)?.slug ?? pokemon?.slug ?? ''
+}
+
+function battleZMoveOptions(pokemon, sourceMove = null) {
+  return {
+    heldItemId: pokemon?.heldItemId,
+    speciesSlug: currentSpeciesSlug(pokemon),
+    sourceMove,
+  }
+}
+
+function resolveBattleZMove(pokemon, move, sourceMove = move) {
+  return resolveZMove(move, battleZMoveOptions(pokemon, sourceMove))
+}
+
+function hasCompatibleBattleZMove(pokemon) {
+  return pokemon?.moves?.some((move) => canUseZMove(move, battleZMoveOptions(pokemon))) ?? false
+}
+
 function environmentMovePriority(state, attacker, move) {
   let priority = Number(move?.priority ?? 0)
   if (attacker.ability === '짓궂은마음' && isStatusMove(move)) priority += 1
@@ -818,7 +841,9 @@ function abilityImmunity(defender, moveType) {
 }
 
 function calculateDamage(state, attacker, defender, move, random, powerMultiplier = 1) {
-  const category = move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
+  const category = move.adaptiveOffense
+    ? (effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack') ? 'physical' : 'special')
+    : move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
   const attackKey = category === 'physical' ? 'attack' : 'specialAttack'
   const defenseKey = category === 'physical' ? 'defense' : 'specialDefense'
   const power = Math.max(1, Number(move.power) || 1) * powerMultiplier
@@ -1010,6 +1035,65 @@ function applyEnvironmentFromMove(state, attacker, move) {
   return applied
 }
 
+function applyZPower(state, sideId, attacker, move) {
+  if (!move.isZMove || !move.zPower) return false
+  const { boost, effect } = move.zPower
+
+  if (boost) {
+    changeStages(state, attacker, boost)
+    return true
+  }
+  if (effect === 'heal') {
+    return healPokemon(state, attacker, attacker.maxHp, 'Z파워') > 0
+  }
+  if (effect === 'healreplacement') {
+    getSide(state, sideId).zHealReplacement = true
+    appendLog(state, 'Z파워가 다음에 교체될 포켓몬을 회복시킨다!', 'gimmick')
+    return true
+  }
+  if (effect === 'clearnegativeboost') {
+    let cleared = false
+    Object.keys(attacker.statStages).forEach((statKey) => {
+      if (attacker.statStages[statKey] >= 0) return
+      attacker.statStages[statKey] = 0
+      cleared = true
+    })
+    if (cleared) appendLog(state, `${attacker.name}의 떨어진 능력이 원래대로 돌아왔다!`, 'gimmick')
+    return cleared
+  }
+  if (effect === 'redirect') {
+    attacker.redirectTurns = 1
+    appendLog(state, `${attacker.name}이(가) 공격을 자신에게 끌어모은다!`, 'gimmick')
+    return true
+  }
+  if (effect === 'crit2') {
+    attacker.criticalStageBoost = Math.min(3, (attacker.criticalStageBoost ?? 0) + 2)
+    appendLog(state, `${attacker.name}이(가) 급소를 노리고 있다!`, 'gimmick')
+    return true
+  }
+  if (effect === 'curse') {
+    if (attacker.types.includes('고스트')) return healPokemon(state, attacker, attacker.maxHp, 'Z파워') > 0
+    changeStages(state, attacker, { attack: 1 })
+    return true
+  }
+  return false
+}
+
+function applyZMoveEffect(state, attacker, move) {
+  const effect = move.zMoveEffect
+  if (!move.isZMove || !effect) return false
+  if (effect.kind === 'terrain') {
+    return setTemporaryEnvironment(state, 'terrain', effect.id, move.name, attacker)
+  }
+  if (effect.kind === 'clearTerrain') {
+    const environmentState = ensureEnvironmentState(state)
+    if (state.rules?.terrain?.id === 'neutral' && environmentState.terrainTurns == null) return false
+    restoreBaseEnvironment(state, 'terrain', move.name)
+    return true
+  }
+  return false
+}
+
 function maxMoveEffectTargets(state, sideId, effect, defender) {
   if (effect.side === 'allies') return getActivePokemonList(state, sideId)
   if (effect.side === 'opponents') return getActivePokemonList(state, getOtherSide(state, sideId).id)
@@ -1170,6 +1254,7 @@ function applyMaxMoveEffect(state, sideId, attacker, defender, move, random) {
 function applyEnvironmentAfterDamagingMove(state, sideId, attacker, defender, move, random) {
   let applied = false
 
+  applied = applyZMoveEffect(state, attacker, move) || applied
   applied = applyMaxMoveEffect(state, sideId, attacker, defender, move, random) || applied
 
   if (!defender.fainted && defender.ability === '모래뿜기') {
@@ -1455,7 +1540,8 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
   const hasMegaForm = Boolean(pokemon.gimmickFormId || formOptions.some((form) => form.slug.includes('-mega')))
   const hasPrimalForm = Boolean(pokemon.gimmickFormId || formOptions.some((form) => form.slug.includes('-primal')))
   const hasMegaStone = pokemon.heldItemId?.includes('ite') || configured.includes('mega')
-  const hasZCrystal = pokemon.heldItemId?.includes('-z') || pokemon.heldItemId?.includes('ium-z') || configured.includes('zmove')
+  const hasZCrystal = pokemon.heldItemId?.includes('-z') || pokemon.heldItemId?.includes('ium-z')
+  const hasCompatibleZMove = hasZCrystal && hasCompatibleBattleZMove(pokemon)
 
   if (!side.usedMechanics.mega && allow('mega') && hasMegaForm && hasMegaStone) {
     available.push({ id: 'mega', label: '메가진화', shortLabel: 'MEGA' })
@@ -1463,7 +1549,7 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
   if (!side.usedMechanics.primal && allow('primal') && hasPrimalForm) {
     available.push({ id: 'primal', label: '원시회귀', shortLabel: 'PRIMAL' })
   }
-  if (!side.usedMechanics.zmove && allow('zmove') && hasZCrystal) {
+  if (!side.usedMechanics.zmove && allow('zmove') && hasCompatibleZMove) {
     available.push({ id: 'zmove', label: 'Z기술', shortLabel: 'Z-MOVE' })
   }
 
@@ -1505,7 +1591,6 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
   } else if (mechanicId === 'zmove') {
     side.usedMechanics.zmove = true
     appendLog(state, `${trainerName}와 ${pokemon.name}의 전력! Z파워가 기술에 모인다!`, 'gimmick')
-    return 1.65
   }
 
   state.lastEvent = {
@@ -1560,7 +1645,10 @@ export function getBattleMovePreview(
   const move = attacker?.moves?.[moveIndex]
   if (!attacker || !defender || !move) return move ?? null
   const environmentMove = resolveEnvironmentMove(state, attacker, defender, move)
-  const resolvedMove = resolveBattleMaxMove(attacker, environmentMove, gimmick === 'dynamax', move)
+  const zMove = gimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
+  const resolvedMove = gimmick === 'zmove'
+    ? zMove ?? { ...environmentMove, zMoveCompatible: false }
+    : resolveBattleMaxMove(attacker, environmentMove, gimmick === 'dynamax', move)
   return {
     ...resolvedMove,
     priority: environmentMovePriority(state, attacker, resolvedMove),
@@ -1623,6 +1711,14 @@ function chooseMultiHitCount(attacker, move, random) {
 function fixedDamageResult(state, attacker, defender, move) {
   const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
   if (effectiveness === 0) return { damage: 0, effectiveness, critical: false }
+  if (move.currentHpFraction) {
+    const [numerator, denominator] = move.currentHpFraction
+    return {
+      damage: Math.max(1, Math.floor(defender.hp * numerator / denominator)),
+      effectiveness,
+      critical: false,
+    }
+  }
   if (move.id === 'finalgambit') return { damage: attacker.hp, effectiveness, critical: false }
   if (move.ohko) return { damage: defender.hp, effectiveness, critical: false, ohko: true }
   if (move.damage !== undefined) {
@@ -1766,7 +1862,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
   const moveSlot = attacker.moves[action.moveIndex]
   let move = moveSlot
-  const moveCategory = moveSlot?.categoryId
+  let moveCategory = moveSlot?.categoryId
     ?? (moveSlot?.category === '물리' ? 'physical' : moveSlot?.category === '변화' ? 'status' : 'special')
 
   if (!moveSlot || attacker.fainted || attacker.hp <= 0 || defender.fainted || defender.hp <= 0) return
@@ -1800,13 +1896,18 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   const mechanicWasUsed = action.gimmick ? side.usedMechanics[action.gimmick] : false
   const mechanicBefore = action.gimmick ? mechanicPokemonSnapshot(attacker) : null
+  const environmentMove = resolveEnvironmentMove(state, attacker, defender, moveSlot)
+  const requestedZMove = action.gimmick === 'zmove'
+    ? resolveBattleZMove(attacker, environmentMove, moveSlot)
+    : null
+  if (action.gimmick === 'zmove' && !requestedZMove) {
+    appendLog(state, `${moveSlot.name}에는 현재 Z크리스탈의 힘을 담을 수 없다!`, 'muted')
+    return
+  }
   const powerMultiplier = activateMechanic(state, sideId, action.gimmick, actorSlot)
-  move = resolveBattleMaxMove(
-    attacker,
-    resolveEnvironmentMove(state, attacker, defender, moveSlot),
-    false,
-    moveSlot,
-  )
+  move = requestedZMove ?? resolveBattleMaxMove(attacker, environmentMove, false, moveSlot)
+  moveCategory = move.categoryId
+    ?? (move.category === '물리' ? 'physical' : move.category === '변화' ? 'status' : 'special')
   if (action.gimmick && !mechanicWasUsed && side.usedMechanics[action.gimmick]) {
     const mechanicAfter = mechanicPokemonSnapshot(attacker)
     pushTimelineStep(timeline, state, {
@@ -1906,6 +2007,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   pushTimelineStep(timeline, state, { phase: 'attack', ...moveStep })
+  applyZPower(state, sideId, attacker, move)
 
   if (DAMP_BLOCKED_MOVE_IDS.has(move.id)) {
     const dampPokemon = [attacker, defender].find((pokemon) => pokemon.ability === '습기')
@@ -2004,7 +2106,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   let protectionMultiplier = 1
   if (defender.protected && move.flags?.includes('protect') && !move.bypassesMaxGuard) {
-    if (defender.protectMode === 'maxguard' || !move.isMaxMove) {
+    if (defender.protectMode === 'maxguard' || !move.isMaxMove && !move.isZMove) {
       appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
       applyFailedMoveConsequences(state, attacker, move)
       pushTimelineStep(timeline, state, {
@@ -2016,7 +2118,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       return
     }
     protectionMultiplier = 0.25
-    appendLog(state, `${defender.name}은(는) 방어했지만 맥스 기술의 충격을 완전히 막지 못했다!`, 'muted')
+    appendLog(
+      state,
+      `${defender.name}은(는) 방어했지만 ${move.isZMove ? 'Z기술' : '맥스 기술'}의 충격을 완전히 막지 못했다!`,
+      'muted',
+    )
   }
 
   const immunity = move.ignoreAbility ? null : abilityImmunity(defender, move.type)
@@ -2200,6 +2306,7 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.tormented = false
   pokemon.lastMoveIndex = null
   pokemon.criticalStageBoost = 0
+  pokemon.redirectTurns = 0
   pokemon.rechargeTurns = 0
   pokemon.chargingMove = null
   pokemon.lockedMove = null
@@ -2284,6 +2391,11 @@ function performSwitch(
       'heal',
     )
     side.healingWishPending = null
+  }
+  if (side.zHealReplacement) {
+    target.hp = target.maxHp
+    appendLog(state, `${target.name}은(는) Z파워로 완전히 회복했다!`, 'heal')
+    side.zHealReplacement = false
   }
   applyEntryHazards(state, side, target)
   activateEntryAbility(state, sideId, resolvedSlot)
@@ -2552,7 +2664,8 @@ function actionPriority(state, sideId, action) {
   )
   const move = pokemon.moves[action.moveIndex]
   const environmentMove = defender ? resolveEnvironmentMove(state, pokemon, defender, move) : move
-  const resolvedMove = resolveBattleMaxMove(pokemon, environmentMove, action.gimmick === 'dynamax', move)
+  const zMove = action.gimmick === 'zmove' ? resolveBattleZMove(pokemon, environmentMove, move) : null
+  const resolvedMove = zMove ?? resolveBattleMaxMove(pokemon, environmentMove, action.gimmick === 'dynamax', move)
   return environmentMovePriority(state, pokemon, resolvedMove)
 }
 
@@ -2570,12 +2683,15 @@ function orderedActions(state, playerActions, opponentActions, random) {
   })
 }
 
-function scoreMove(state, attacker, defender, move) {
+function scoreMove(state, attacker, defender, move, gimmick = null) {
   if (move.currentPp <= 0) return -Infinity
-  const resolvedMove = resolveBattleMaxMove(
+  const environmentMove = resolveEnvironmentMove(state, attacker, defender, move)
+  const zMove = gimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
+  if (gimmick === 'zmove' && !zMove) return -Infinity
+  const resolvedMove = zMove ?? resolveBattleMaxMove(
     attacker,
-    resolveEnvironmentMove(state, attacker, defender, move),
-    false,
+    environmentMove,
+    gimmick === 'dynamax',
     move,
   )
   const isStatus = isStatusMove(resolvedMove)
@@ -2601,7 +2717,9 @@ function scoreMove(state, attacker, defender, move) {
   if (resolvedMove.id === 'steelroller' && state.rules?.terrain?.id === 'neutral') return -Infinity
   const effectiveness = getBattleTypeEffectiveness(state, resolvedMove.type, defender.types)
   const environmentMultiplier = environmentMoveMultiplier(state, attacker, defender, resolvedMove)
-  const category = resolvedMove.categoryId ?? (resolvedMove.category === '물리' ? 'physical' : 'special')
+  const category = resolvedMove.adaptiveOffense
+    ? (effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack') ? 'physical' : 'special')
+    : resolvedMove.categoryId ?? (resolvedMove.category === '물리' ? 'physical' : 'special')
   const offense = category === 'physical'
     ? effectiveStat(state, attacker, 'attack')
     : effectiveStat(state, attacker, 'specialAttack')
@@ -2610,7 +2728,9 @@ function scoreMove(state, attacker, defender, move) {
     : effectiveStat(state, defender, 'specialDefense')
   const effectivePower = resolvedMove.ohko
     ? defender.maxHp
-    : resolvedMove.damage === 'level' ? 50 : Number(resolvedMove.damage ?? resolvedMove.power) || 1
+    : resolvedMove.currentHpFraction
+      ? defender.hp * resolvedMove.currentHpFraction[0] / resolvedMove.currentHpFraction[1]
+      : resolvedMove.damage === 'level' ? 50 : Number(resolvedMove.damage ?? resolvedMove.power) || 1
   const skipsCharge = effectiveWeatherId(state) === 'sun' && ['solarbeam', 'solarblade'].includes(resolvedMove.id)
     || effectiveWeatherId(state) === 'rain' && resolvedMove.id === 'electroshot'
   const chargeModifier = resolvedMove.flags?.includes('charge') && attacker.heldItemId !== 'power-herb' && !skipsCharge ? 0.65 : 1
@@ -2621,11 +2741,14 @@ export function chooseAiAction(state, random = Math.random, activeSlot = 0, targ
   const attacker = getActivePokemon(state, 'opponent', activeSlot)
   const defender = getActivePokemon(state, 'player', targetSlot)
   const switchOptions = availableBenchIndexes(state.opponent)
-  const scoredMoves = attacker.moves
-    .map((move, moveIndex) => ({ moveIndex, score: scoreMove(state, attacker, defender, move) + random() * 8 }))
-    .sort((first, second) => second.score - first.score)
   const availableMechanics = getAvailableBattleMechanics(state, 'opponent', activeSlot)
   const configuredMechanic = availableMechanics[0]
+  const scoredMoves = attacker.moves
+    .map((move, moveIndex) => ({
+      moveIndex,
+      score: scoreMove(state, attacker, defender, move, configuredMechanic?.id) + random() * 8,
+    }))
+    .sort((first, second) => second.score - first.score)
 
   if (
     attacker.hp < attacker.maxHp * 0.2

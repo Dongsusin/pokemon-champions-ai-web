@@ -181,7 +181,13 @@ const MANUAL_OPPONENT_TARGETS = new Set(['normal', 'adjacentFoe', 'any'])
 
 function moveDealsDirectDamage(move) {
   return move?.category !== '변화'
-    && (Number(move?.power) > 0 || move?.ohko || move?.damage !== undefined || move?.id === 'finalgambit')
+    && (
+      Number(move?.power) > 0
+      || move?.ohko
+      || move?.damage !== undefined
+      || move?.currentHpFraction
+      || move?.id === 'finalgambit'
+    )
 }
 
 function needsOpponentTargetSelection(move, availableTargetCount) {
@@ -1030,10 +1036,11 @@ function MoveMenu({
           const presentation = effectivenessPresentation(multiplier)
           const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
           const isTooltipVisible = activeTooltipIndex === moveIndex
+          const isZMoveLocked = pendingGimmick === 'zmove' && displayMove.zMoveCompatible === false
 
           return (
             <div
-              className={`battle-move-option effectiveness-${presentation.tone}${isTooltipVisible ? ' tooltip-open' : ''}`}
+              className={`battle-move-option effectiveness-${presentation.tone}${isTooltipVisible ? ' tooltip-open' : ''}${isZMoveLocked ? ' z-incompatible' : ''}`}
               key={`${pokemon.battleId}-${move.id}-${moveIndex}`}
               onMouseEnter={() => {
                 onPreview?.()
@@ -1046,8 +1053,9 @@ function MoveMenu({
               <button
                 className={`battle-move-button type-${typeClassName(displayMove.type)} effectiveness-${presentation.tone}`}
                 type="button"
-                disabled={move.currentPp <= 0}
+                disabled={move.currentPp <= 0 || isZMoveLocked}
                 aria-describedby={tooltipId}
+                aria-label={isZMoveLocked ? `${move.name}: 현재 Z크리스탈과 호환되지 않음` : undefined}
                 onFocus={() => setActiveTooltipIndex(moveIndex)}
                 onBlur={() => setActiveTooltipIndex((currentIndex) => (
                   currentIndex === moveIndex ? null : currentIndex
@@ -1547,6 +1555,7 @@ function BattleScreen({
       targetSlot,
       pendingGimmick,
     ) ?? pokemon?.moves?.[moveIndex]
+    if (pendingGimmick === 'zmove' && move?.zMoveCompatible === false) return
     if (needsOpponentTargetSelection(move, livingOpponentTargetSlots.length)) {
       setPendingMoveIndex(moveIndex)
       setTargetSlot((currentSlot) => (

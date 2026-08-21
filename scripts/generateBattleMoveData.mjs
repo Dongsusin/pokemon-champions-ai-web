@@ -177,6 +177,7 @@ const BATTLE_MECHANIC_FIELDS = [
   'willCrit',
   'critRatio',
   'mindBlownRecoil',
+  'zMove',
 ]
 
 function battleMechanics(move) {
