@@ -1016,7 +1016,14 @@ function MoveMenu({
       </header>
       <div className="battle-move-grid">
         {pokemon.moves.map((move, moveIndex) => {
-          const displayMove = getBattleMovePreview(battle, 'player', moveIndex, activeSlot, targetSlot) ?? move
+          const displayMove = getBattleMovePreview(
+            battle,
+            'player',
+            moveIndex,
+            activeSlot,
+            targetSlot,
+            pendingGimmick,
+          ) ?? move
           const multiplier = moveDealsDirectDamage(displayMove)
             ? getBattleTypeEffectiveness(battle, displayMove.type, opponent.types)
             : null
@@ -1096,6 +1103,14 @@ function MoveTargetMenu({
     .filter(({ target }) => target.hp > 0 && !target.fainted)
   const selectedMechanic = getAvailableBattleMechanics(battle, 'player', activeSlot)
     .find((mechanic) => mechanic.id === pendingGimmick)
+  const displayMove = getBattleMovePreview(
+    battle,
+    'player',
+    moveIndex,
+    activeSlot,
+    targets[0]?.slot ?? 0,
+    pendingGimmick,
+  ) ?? move
 
   if (!pokemon || !move) return null
 
@@ -1110,8 +1125,8 @@ function MoveTargetMenu({
           <strong>공격 대상 선택</strong>
         </div>
         <div className="battle-target-move-summary">
-          <span className={`type-${typeClassName(move.type)}`}>{move.type}</span>
-          <strong>{move.name}</strong>
+          <span className={`type-${typeClassName(displayMove.type)}`}>{displayMove.type}</span>
+          <strong>{displayMove.name}</strong>
           {selectedMechanic && <em>{selectedMechanic.shortLabel}</em>}
         </div>
       </header>
@@ -1120,9 +1135,16 @@ function MoveTargetMenu({
         style={{ '--battle-target-columns': Math.max(1, targets.length) }}
       >
         {targets.map(({ target, slot }) => {
-          const displayMove = getBattleMovePreview(battle, 'player', moveIndex, activeSlot, slot) ?? move
-          const multiplier = moveDealsDirectDamage(displayMove)
-            ? getBattleTypeEffectiveness(battle, displayMove.type, target.types)
+          const targetMove = getBattleMovePreview(
+            battle,
+            'player',
+            moveIndex,
+            activeSlot,
+            slot,
+            pendingGimmick,
+          ) ?? move
+          const multiplier = moveDealsDirectDamage(targetMove)
+            ? getBattleTypeEffectiveness(battle, targetMove.type, target.types)
             : null
           const presentation = effectivenessPresentation(multiplier)
 
@@ -1517,7 +1539,14 @@ function BattleScreen({
   const chooseMove = (moveIndex) => {
     battleAudioRef.current?.playMenu('select')
     const pokemon = getActivePokemon(battle, 'player', commandSlot)
-    const move = pokemon?.moves?.[moveIndex]
+    const move = getBattleMovePreview(
+      battle,
+      'player',
+      moveIndex,
+      commandSlot,
+      targetSlot,
+      pendingGimmick,
+    ) ?? pokemon?.moves?.[moveIndex]
     if (needsOpponentTargetSelection(move, livingOpponentTargetSlots.length)) {
       setPendingMoveIndex(moveIndex)
       setTargetSlot((currentSlot) => (
