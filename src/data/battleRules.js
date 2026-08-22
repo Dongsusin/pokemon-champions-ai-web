@@ -24,8 +24,8 @@ export const BATTLE_FORMATS = [
 ]
 
 export const BATTLE_TEAM_RULES = [
-  { id: 'full', label: '6마리 전원전', shortLabel: '6 VS 6', battleSize: 6, description: '등록한 포켓몬 6마리를 모두 사용합니다.' },
-  { id: 'pick3', label: '6마리 중 3마리 선출', shortLabel: '6→3', battleSize: 3, description: '등록한 포켓몬 6마리 중 대전에 참가할 3마리를 선택합니다.' },
+  { id: 'full', label: '6대6', shortLabel: '6대6', battleSize: 6, description: '등록한 포켓몬 6마리를 모두 사용합니다.' },
+  { id: 'pick3', label: '3대3', shortLabel: '3대3', battleSize: 3, description: '등록한 포켓몬 6마리 중 대전에 참가할 3마리를 선택합니다.' },
 ]
 
 export const BATTLE_GIMMICK_RESTRICTIONS = [

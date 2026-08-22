@@ -2798,7 +2798,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     weather: { id: 'clear', label: '맑음' },
     terrain: { id: 'neutral', label: '일반 필드' },
     format: { id: 'single', label: '싱글배틀', activeSlots: 1, actionSlots: 1 },
-    teamRule: { id: 'full', label: '6마리 전원전', battleSize: playerPokemon.length },
+    teamRule: { id: 'full', label: '6대6', battleSize: playerPokemon.length },
     disabledGimmickId: null,
     gimmickRestriction: { id: null, label: '제한 없음' },
   }
