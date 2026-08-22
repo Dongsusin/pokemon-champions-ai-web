@@ -2,10 +2,12 @@ export const SETTINGS_STORAGE_KEY = 'champions-settings-v1'
 
 const ATTACK_ANIMATION_MODES = new Set(['skip', 'normal', 'fast', 'very-fast'])
 const HP_BAR_SPEEDS = new Set(['slow', 'normal', 'fast', 'instant'])
+const PLAYER_GENDERS = new Set(['male', 'female'])
 const AUDIO_KEYS = ['master', 'music', 'ui', 'event', 'effects', 'cries']
 
 export const DEFAULT_GAME_SETTINGS = {
   game: {
+    playerGender: 'male',
     attackAnimation: 'normal',
     hpBarSpeed: 'normal',
     showDamageNumbers: true,
@@ -49,6 +51,9 @@ export function normalizeGameSettings(value = {}) {
 
   return {
     game: {
+      playerGender: PLAYER_GENDERS.has(game.playerGender)
+        ? game.playerGender
+        : defaults.game.playerGender,
       attackAnimation: ATTACK_ANIMATION_MODES.has(game.attackAnimation)
         ? game.attackAnimation
         : defaults.game.attackAnimation,
@@ -70,4 +75,3 @@ export function loadGameSettings() {
     return createDefaultGameSettings()
   }
 }
-

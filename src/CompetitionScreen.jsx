@@ -42,13 +42,13 @@ function fallbackImageHandler(fallback) {
   }
 }
 
-function ParticipantCard({ participant, state, isOpponent = false, compact = false }) {
+function ParticipantCard({ participant, state, isOpponent = false, compact = false, playerGender = 'male' }) {
   return (
     <article
       className={`competition-participant-card state-${state}${isOpponent ? ' current-opponent' : ''}${compact ? ' compact' : ''}`}
       title={`${participant.name} · ${participant.tier} TIER`}
     >
-      <TrainerSprite trainer={participant} isPlayer={participant.isPlayer} />
+      <TrainerSprite trainer={participant} isPlayer={participant.isPlayer} playerGender={playerGender} />
       <span>
         <small>{participant.isPlayer ? 'PLAYER' : `${participant.tier} TIER`}</small>
         <strong>{participant.name}</strong>
@@ -59,7 +59,7 @@ function ParticipantCard({ participant, state, isOpponent = false, compact = fal
   )
 }
 
-function MatchTrainer({ participant, side, team, getInspectorProps }) {
+function MatchTrainer({ participant, side, team, getInspectorProps, playerGender = 'male' }) {
   return (
     <article className={`competition-match-trainer side-${side}`}>
       <span className="competition-match-trainer-tier">
@@ -68,6 +68,7 @@ function MatchTrainer({ participant, side, team, getInspectorProps }) {
       <TrainerSprite
         trainer={participant}
         isPlayer={participant.isPlayer}
+        playerGender={playerGender}
         className="competition-match-trainer-sprite"
       />
       <div>
@@ -195,7 +196,7 @@ function createTournamentBracketLevels(competition) {
   })
 }
 
-function TournamentOverview({ competition, currentMatch, onClose }) {
+function TournamentOverview({ competition, currentMatch, playerGender = 'male', onClose }) {
   const bracketViewportRef = useRef(null)
   const dragStateRef = useRef({ active: false, pointerId: null, startX: 0, scrollLeft: 0 })
   const hasCenteredRef = useRef(false)
@@ -353,6 +354,7 @@ function TournamentOverview({ competition, currentMatch, onClose }) {
                           <TrainerSprite
                             trainer={participant}
                             isPlayer={isPlayer}
+                            playerGender={playerGender}
                             className="tournament-bracket-sprite"
                           />
                           <span className="tournament-bracket-node-copy">
@@ -380,7 +382,7 @@ function TournamentOverview({ competition, currentMatch, onClose }) {
   )
 }
 
-function LeagueOverview({ competition, currentMatch }) {
+function LeagueOverview({ competition, currentMatch, playerGender = 'male' }) {
   const standings = getSortedLeagueStandings(competition)
   const currentPairings = competition.schedule[competition.round] ?? []
 
@@ -401,6 +403,7 @@ function LeagueOverview({ competition, currentMatch }) {
               participant={participant}
               state="active"
               isOpponent={participant.id === currentMatch?.opponent?.id}
+              playerGender={playerGender}
             />
           ))}
         </div>
@@ -461,7 +464,7 @@ function LeagueOverview({ competition, currentMatch }) {
   )
 }
 
-function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
+function CompetitionScreen({ competition, playerGender = 'male', onBack, onStartBattle, onRestart }) {
   const currentMatch = getCurrentCompetitionMatch(competition)
   const player = getCompetitionParticipant(competition, PLAYER_PARTICIPANT_ID)
   const opponent = currentMatch?.opponent
@@ -612,6 +615,7 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
               side="player"
               team={playerPreviewPokemon}
               getInspectorProps={getInspectorProps}
+              playerGender={playerGender}
             />
             <div className="competition-versus-mark">
               <small>MATCH</small>
@@ -720,13 +724,14 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
           <TournamentOverview
             competition={competition}
             currentMatch={currentMatch}
+            playerGender={playerGender}
             onClose={() => setIsBracketOpen(false)}
           />
         </div>
       )}
 
       {!isTournament && (
-        <LeagueOverview competition={competition} currentMatch={currentMatch} />
+        <LeagueOverview competition={competition} currentMatch={currentMatch} playerGender={playerGender} />
       )}
     </main>
   )

@@ -1435,14 +1435,14 @@ function BattleOverviewMenu({ battle, onBack, onPreview }) {
   )
 }
 
-function BattleIntro({ opponent, opponentTeam, playerTeam, rules, effectsReady, onStart, onPreview }) {
+function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, effectsReady, onStart, onPreview }) {
   return (
     <section className={`battle-intro-overlay${effectsReady ? ' is-ready' : ' is-loading'}`}>
       <div className="battle-intro-streaks" />
       <div className="battle-intro-light battle-intro-light-player" />
       <div className="battle-intro-light battle-intro-light-opponent" />
       <article className="battle-intro-trainer player">
-        <TrainerSprite isPlayer className="battle-intro-trainer-sprite" />
+        <TrainerSprite isPlayer playerGender={playerGender} className="battle-intro-trainer-sprite" />
         <div>
           <small>CHALLENGER</small>
           <strong>PLAYER_01</strong>
@@ -1497,6 +1497,7 @@ function BattleScreen({
   rules,
   soundEnabled = true,
   gameSettings = {},
+  playerGender = 'male',
   audioSettings = {},
   onToggleSound,
   onOpenSettings,
@@ -2173,6 +2174,7 @@ function BattleScreen({
           opponent={opponent}
           opponentTeam={{ ...opponentTeam, pokemon: battle.opponent.team }}
           playerTeam={playerPokemon}
+          playerGender={playerGender}
           rules={battle.rules}
           effectsReady={moveAssetsReady}
           onPreview={previewBattleMenu}

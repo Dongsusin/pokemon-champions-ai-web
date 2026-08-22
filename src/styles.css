@@ -270,11 +270,15 @@ button:focus-visible {
   gap: 13px;
 }
 
+.trainer-card-minimal {
+  flex-direction: column;
+}
+
 .trainer-avatar {
   position: relative;
   display: grid;
-  width: 68px;
-  height: 68px;
+  width: min(100%, 184px);
+  height: 220px;
   flex: 0 0 auto;
   place-items: center;
   border: 2px solid rgba(155, 224, 255, 0.74);
@@ -284,9 +288,14 @@ button:focus-visible {
   box-shadow: 0 0 28px rgba(75, 173, 255, 0.25), inset 0 1px rgba(255, 255, 255, 0.3);
 }
 
+.trainer-avatar img {
+  padding: 8px 8px 0;
+}
+
 .trainer-copy {
   display: grid;
   gap: 3px;
+  text-align: center;
 }
 
 .trainer-copy strong {

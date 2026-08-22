@@ -1,5 +1,10 @@
 const TRAINER_SPRITE_ROOT = 'https://play.pokemonshowdown.com/sprites/trainers'
 
+export const PLAYER_TRAINER_SPRITES = {
+  male: '/assets/trainers/generated/player-male-gen5.png',
+  female: '/assets/trainers/generated/player-female-gen5.png',
+}
+
 export const TRAINER_LOCAL_SPRITES = {
   반디나: '/assets/trainers/generated/honey-gen5.png',
   J: '/assets/trainers/generated/hunter-j-gen5.png',
@@ -258,8 +263,16 @@ export function hasTrainerSprite(trainerName) {
   return Boolean(TRAINER_LOCAL_SPRITES[trainerName] || TRAINER_SPRITE_SLUGS[trainerName])
 }
 
-export function getPlayerTrainerSpriteCandidates() {
-  return [spriteUrl('red-gen2'), spriteUrl('player-go'), spriteUrl('acetrainer')]
+export function getPlayerTrainerSpriteCandidates(playerGender = 'male') {
+  const normalizedGender = playerGender === 'female' ? 'female' : 'male'
+  const fallbackGender = normalizedGender === 'female' ? 'male' : 'female'
+
+  return [
+    PLAYER_TRAINER_SPRITES[normalizedGender],
+    PLAYER_TRAINER_SPRITES[fallbackGender],
+    spriteUrl('player-go'),
+    spriteUrl('acetrainer'),
+  ]
 }
 
 export const TRAINER_SPRITE_SOURCE = 'https://play.pokemonshowdown.com/sprites/trainers/'

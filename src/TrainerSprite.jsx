@@ -5,9 +5,9 @@ import {
   getTrainerSpriteCandidates,
 } from './data/trainerSprites.js'
 
-function TrainerSprite({ trainer, isPlayer = false, className = '', alt }) {
+function TrainerSprite({ trainer, isPlayer = false, playerGender = 'male', className = '', alt }) {
   const candidates = isPlayer
-    ? getPlayerTrainerSpriteCandidates()
+    ? getPlayerTrainerSpriteCandidates(playerGender)
     : getTrainerSpriteCandidates(trainer)
   const candidateKey = candidates.join('|')
   const [sourceIndex, setSourceIndex] = useState(0)

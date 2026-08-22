@@ -8,7 +8,6 @@ import {
   ShoppingBag,
   Sparkles,
   Swords,
-  UserRound,
   Volume2,
   VolumeX,
   Zap,
@@ -21,6 +20,7 @@ import HatchScreen from './HatchScreen'
 import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
+import TrainerSprite from './TrainerSprite'
 import { createGameAudio } from './gameAudio'
 import {
   SETTINGS_STORAGE_KEY,
@@ -775,9 +775,12 @@ function App() {
       <main className="lobby-layout">
         <aside className="profile-panel glass-panel" aria-label="트레이너 프로필">
           <div className="trainer-card trainer-card-minimal">
-            <div className="trainer-avatar">
-              <UserRound size={38} strokeWidth={1.8} />
-            </div>
+            <TrainerSprite
+              isPlayer
+              playerGender={settings.game.playerGender}
+              className="trainer-avatar"
+              alt="PLAYER_01 트레이너"
+            />
             <div className="trainer-copy">
               <strong>PLAYER_01</strong>
             </div>
@@ -834,6 +837,7 @@ function App() {
       ) : screen === 'competition' && competition ? (
         <CompetitionScreen
           competition={competition}
+          playerGender={settings.game.playerGender}
           onBack={leaveCompetition}
           onRestart={leaveCompetition}
           onStartBattle={startCompetitionBattle}
@@ -847,6 +851,7 @@ function App() {
           rules={battleMatch.rules}
           soundEnabled={soundEnabled}
           gameSettings={settings.game}
+          playerGender={settings.game.playerGender}
           audioSettings={settings.audio}
           onToggleSound={toggleSound}
           onOpenSettings={() => setSettingsOpen(true)}

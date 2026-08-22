@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Swords,
+  UserRound,
   Volume2,
   VolumeX,
   X,
@@ -35,6 +36,11 @@ const HP_BAR_OPTIONS = [
 const DAMAGE_NUMBER_OPTIONS = [
   { value: true, label: '표시' },
   { value: false, label: '숨김' },
+]
+
+const PLAYER_GENDER_OPTIONS = [
+  { value: 'male', label: '남성' },
+  { value: 'female', label: '여성' },
 ]
 
 const AUDIO_CHANNELS = [
@@ -170,6 +176,13 @@ function SettingsModal({ settings, onChange, onClose, onReset }) {
               aria-labelledby="settings-game-tab"
               key="game-settings"
             >
+              <SegmentedSetting
+                label="플레이어 캐릭터"
+                icon={UserRound}
+                value={settings.game.playerGender}
+                options={PLAYER_GENDER_OPTIONS}
+                onChange={(value) => onChange('game', 'playerGender', value)}
+              />
               <SegmentedSetting
                 label="공격 애니메이션"
                 icon={Gauge}
