@@ -930,6 +930,7 @@ function BattleWeatherEffects({ weatherId, layer }) {
           <span className="battle-weather-cloud cloud-two" />
           <span className="battle-weather-gust gust-one" />
           <span className="battle-weather-gust gust-two" />
+          <span className="battle-weather-loop" />
         </>
       )}
       <span className="battle-weather-particles">

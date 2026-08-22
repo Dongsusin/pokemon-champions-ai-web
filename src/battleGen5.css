@@ -3887,6 +3887,14 @@
   display: none;
 }
 
+.app-shell.battle-view .battle-weather-loop {
+  inset: -14%;
+  z-index: 1;
+  display: block;
+  opacity: 0;
+  will-change: transform, background-position, opacity;
+}
+
 .app-shell.battle-view .battle-weather-particles {
   z-index: 2;
   display: block;
@@ -3926,6 +3934,15 @@
     radial-gradient(ellipse at 50% 72%, rgba(174, 244, 255, 0.05), transparent 56%);
 }
 
+.app-shell.battle-view .weather-effect-clear .battle-weather-loop {
+  opacity: 0.14;
+  background: linear-gradient(112deg, transparent 32%, rgba(211, 249, 255, 0.4) 48%, transparent 64%);
+  background-position: 130% 0;
+  background-size: 240% 100%;
+  mix-blend-mode: screen;
+  animation: battle-clear-loop 9s linear infinite;
+}
+
 .app-shell.battle-view .weather-effect-clear .battle-weather-particles > i {
   top: var(--weather-y);
   left: var(--weather-x);
@@ -3951,6 +3968,17 @@
     linear-gradient(115deg, rgba(255, 207, 84, 0.2), transparent 44%),
     radial-gradient(circle at 73% 8%, rgba(255, 246, 169, 0.35), rgba(255, 167, 49, 0.08) 20%, transparent 46%);
   mix-blend-mode: screen;
+}
+
+.app-shell.battle-view .weather-effect-sun .battle-weather-loop {
+  opacity: 0.2;
+  background:
+    repeating-linear-gradient(116deg, transparent 0 62px, rgba(255, 235, 139, 0.34) 70px 74px, transparent 84px 132px),
+    linear-gradient(90deg, transparent, rgba(255, 201, 84, 0.2), transparent);
+  background-position: 120% 0, 160% 0;
+  background-size: 220% 100%, 260% 100%;
+  mix-blend-mode: screen;
+  animation: battle-sun-loop 8s linear infinite;
 }
 
 .app-shell.battle-view .weather-effect-sun .battle-weather-celestial {
@@ -4009,6 +4037,17 @@
   background:
     linear-gradient(180deg, rgba(4, 17, 36, 0.5), rgba(10, 63, 97, 0.12) 72%),
     radial-gradient(ellipse at 48% -8%, rgba(83, 134, 168, 0.38), transparent 58%);
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-loop {
+  opacity: 0.34;
+  background:
+    repeating-linear-gradient(104deg, transparent 0 23px, rgba(195, 234, 255, 0.64) 24px 25px, transparent 26px 47px),
+    repeating-linear-gradient(104deg, transparent 0 41px, rgba(127, 204, 242, 0.38) 42px 43px, transparent 44px 79px);
+  background-position: 0 -220px, 72px -160px;
+  background-size: 176px 220px, 232px 180px;
+  mix-blend-mode: screen;
+  animation: battle-rain-loop 680ms linear infinite;
 }
 
 .app-shell.battle-view .weather-effect-rain .battle-weather-cloud {
@@ -4075,6 +4114,18 @@
   mix-blend-mode: color;
 }
 
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-loop {
+  opacity: 0.38;
+  background:
+    radial-gradient(circle, rgba(255, 224, 151, 0.86) 0 1px, transparent 1.8px),
+    radial-gradient(circle, rgba(213, 151, 72, 0.68) 0 1.5px, transparent 2.3px),
+    repeating-linear-gradient(174deg, transparent 0 52px, rgba(244, 189, 104, 0.16) 58px 62px, transparent 69px 116px);
+  background-position: 0 0, 28px 17px, 0 0;
+  background-size: 43px 37px, 67px 53px, 100% 100%;
+  mix-blend-mode: screen;
+  animation: battle-sand-loop 1.65s linear infinite;
+}
+
 .app-shell.battle-view .weather-effect-sandstorm .battle-weather-gust {
   top: 18%;
   left: -42%;
@@ -4133,6 +4184,18 @@
   background:
     linear-gradient(180deg, rgba(197, 237, 255, 0.18), transparent 52%),
     linear-gradient(110deg, rgba(113, 173, 206, 0.13), rgba(235, 251, 255, 0.08));
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-loop {
+  opacity: 0.48;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.96) 0 2px, transparent 2.8px),
+    radial-gradient(circle, rgba(211, 244, 255, 0.78) 0 1.2px, transparent 2px),
+    radial-gradient(circle, rgba(240, 253, 255, 0.82) 0 1.6px, transparent 2.4px);
+  background-position: 0 -96px, 28px -72px, 52px -118px;
+  background-size: 72px 96px, 53px 72px, 91px 118px;
+  mix-blend-mode: screen;
+  animation: battle-snow-loop 4.8s linear infinite;
 }
 
 .app-shell.battle-view .weather-effect-snow .battle-weather-cloud {
@@ -4197,6 +4260,16 @@
   background:
     linear-gradient(180deg, rgba(207, 226, 238, 0.22), rgba(226, 240, 244, 0.1)),
     radial-gradient(ellipse at 48% 64%, rgba(235, 247, 250, 0.34), transparent 62%);
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-loop {
+  opacity: 0.48;
+  background:
+    radial-gradient(ellipse at 18% 38%, rgba(238, 248, 250, 0.58), transparent 36%),
+    radial-gradient(ellipse at 72% 66%, rgba(211, 230, 236, 0.48), transparent 42%),
+    linear-gradient(90deg, transparent, rgba(230, 243, 246, 0.28), transparent);
+  filter: blur(11px);
+  animation: battle-fog-loop 11s ease-in-out infinite alternate;
 }
 
 .app-shell.battle-view .weather-effect-fog .battle-weather-cloud {
@@ -4926,6 +4999,36 @@
   50% { opacity: 0.62; transform: scaleY(1.04); }
 }
 
+@keyframes battle-clear-loop {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
+}
+
+@keyframes battle-sun-loop {
+  from { background-position: 120% 0, 160% 0; }
+  to { background-position: -110% 0, -150% 0; }
+}
+
+@keyframes battle-rain-loop {
+  from { background-position: 0 -220px, 72px -180px; }
+  to { background-position: -54px 0, 18px 0; }
+}
+
+@keyframes battle-sand-loop {
+  from { background-position: 0 0, 28px 17px, 0 0; transform: translateX(-2%); }
+  to { background-position: 129px -37px, 162px -36px, 0 0; transform: translateX(2%); }
+}
+
+@keyframes battle-snow-loop {
+  from { background-position: 0 -96px, 28px -72px, 52px -118px; }
+  to { background-position: 22px 0, 4px 0, 78px 0; }
+}
+
+@keyframes battle-fog-loop {
+  from { opacity: 0.36; transform: translate3d(-5%, 0, 0) scale(1.04); }
+  to { opacity: 0.58; transform: translate3d(5%, -2%, 0) scale(1.1); }
+}
+
 @keyframes battle-clear-mote {
   0%, 100% { opacity: 0.05; transform: translate3d(0, 8px, 0) scale(var(--weather-scale)); }
   42% { opacity: var(--weather-opacity); }
@@ -5171,6 +5274,37 @@
 
   .app-shell.battle-view .battle-weather-transition {
     display: none;
+  }
+
+  .app-shell.battle-view .battle-weather-loop,
+  .app-shell.battle-view .battle-weather-celestial,
+  .app-shell.battle-view .battle-weather-celestial::before,
+  .app-shell.battle-view .battle-weather-cloud,
+  .app-shell.battle-view .battle-weather-gust,
+  .app-shell.battle-view .battle-weather-particles > i,
+  .app-shell.battle-view .battle-weather-ground > i {
+    animation-iteration-count: infinite !important;
+  }
+
+  .app-shell.battle-view .weather-effect-clear .battle-weather-loop,
+  .app-shell.battle-view .weather-effect-sun .battle-weather-loop {
+    animation-duration: 16s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-rain .battle-weather-loop {
+    animation-duration: 1.25s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-sandstorm .battle-weather-loop {
+    animation-duration: 3.4s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-snow .battle-weather-loop {
+    animation-duration: 8s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-fog .battle-weather-loop {
+    animation-duration: 18s !important;
   }
 
   .app-shell.battle-view .battle-weather-particles > i:nth-child(even),
