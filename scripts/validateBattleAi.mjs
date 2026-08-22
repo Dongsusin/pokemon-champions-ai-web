@@ -130,4 +130,61 @@ function makeBattle({
   assert.equal(opponentZMoves.length, 1)
 }
 
-process.stdout.write('Validated 6 advanced battle AI decisions.\n')
+{
+  const state = makeBattle({ playerCount: 2 })
+  state.opponent.team[0].types = ['전기']
+  state.opponent.team[0].moves = [runtimeMove('thunderbolt'), runtimeMove('icebeam')]
+  state.player.team[0].types = ['물']
+  state.player.team[0].moves = [runtimeMove('splash')]
+  state.player.team[0].hp = Math.ceil(state.player.team[0].maxHp * 0.22)
+  state.player.team[1].types = ['땅']
+  state.player.team[1].moves = [runtimeMove('earthquake')]
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'icebeam')
+}
+
+{
+  const state = makeBattle()
+  state.opponent.team[0].moves = [runtimeMove('tackle'), runtimeMove('swordsdance')]
+  state.player.team[0].moves = [runtimeMove('protect')]
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'swordsdance')
+}
+
+{
+  const state = makeBattle({ opponentCount: 2 })
+  state.opponent.team.forEach((pokemon) => { pokemon.types = ['불꽃'] })
+  state.opponent.team[0].moves = [runtimeMove('sunnyday'), runtimeMove('tackle')]
+  state.player.team[0].types = ['물']
+  state.player.team[0].moves = [runtimeMove('surf')]
+  Object.keys(state.player.usedMechanics).forEach((mechanicId) => {
+    state.player.usedMechanics[mechanicId] = true
+  })
+  state.opponent.team[0].stats.speed = state.player.team[0].stats.speed + 40
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'sunnyday')
+}
+
+{
+  const state = makeBattle()
+  state.opponent.team[0].moves = [runtimeMove('quickattack'), runtimeMove('tackle')]
+  state.opponent.team[0].hp = Math.ceil(state.opponent.team[0].maxHp * 0.15)
+  state.opponent.team[0].stats.speed = 40
+  state.player.team[0].moves = [runtimeMove('earthquake')]
+  state.player.team[0].hp = Math.ceil(state.player.team[0].maxHp * 0.08)
+  state.player.team[0].stats.speed = 200
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'quickattack')
+}
+
+{
+  const state = makeBattle()
+  state.opponent.team[0].moves = [runtimeMove('thunderbolt'), runtimeMove('tackle')]
+  state.opponent.team[0].tormented = true
+  state.opponent.team[0].lastMoveIndex = 0
+  state.player.team[0].types = ['물']
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'tackle')
+}
+
+process.stdout.write('Validated 11 predictive battle AI decisions.\n')
