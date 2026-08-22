@@ -13,6 +13,7 @@
 .settings-modal {
   position: relative;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   width: min(940px, 94vw);
   max-height: min(820px, 90dvh);
   overflow: hidden;
@@ -122,12 +123,28 @@
 }
 
 .settings-modal-body {
-  min-height: 340px;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
   background: rgba(17, 14, 31, 0.48);
   scrollbar-color: #5fdddf #15132b;
   scrollbar-width: thin;
+}
+
+.settings-modal-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.settings-modal-body::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: #15132b;
+}
+
+.settings-modal-body::-webkit-scrollbar-thumb {
+  border: 2px solid #15132b;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #70f3ef, #5876e9);
 }
 
 .settings-panel {
@@ -378,4 +395,3 @@
     flex: 1;
   }
 }
-
