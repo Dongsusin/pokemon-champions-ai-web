@@ -730,7 +730,7 @@ function App() {
       <div className="ambient ambient-two" aria-hidden="true" />
 
       <header className="topbar">
-        <div className="brand" aria-label="Champions Arena">
+        <div className="brand" aria-label="Pokémon Champions Arena">
           <span className="brand-mark">
             <img
               src="/assets/brand/champions-arena-emblem.png"
