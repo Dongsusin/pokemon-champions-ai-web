@@ -5165,14 +5165,60 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-shell.battle-view .battle-terrain-aura,
-  .app-shell.battle-view .battle-weather-layer,
-  .app-shell.battle-view .battle-weather-layer * {
+  .app-shell.battle-view .battle-terrain-aura {
     animation: none !important;
   }
 
-  .app-shell.battle-view .battle-weather-particles > i,
-  .app-shell.battle-view .battle-weather-ground > i {
-    opacity: 0.34;
+  .app-shell.battle-view .battle-weather-transition {
+    display: none;
+  }
+
+  .app-shell.battle-view .battle-weather-particles > i:nth-child(even),
+  .app-shell.battle-view .battle-weather-ground > i:nth-child(even) {
+    display: none;
+  }
+
+  .app-shell.battle-view .weather-effect-clear .battle-weather-particles > i,
+  .app-shell.battle-view .weather-effect-sun .battle-weather-particles > i {
+    animation-duration: 8s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-sun .battle-weather-celestial {
+    animation-duration: 7s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-sun .battle-weather-celestial::before {
+    animation-duration: 40s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-sun .battle-weather-ground > i {
+    animation-duration: 9s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-rain .battle-weather-particles > i {
+    animation-duration: 1.15s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-rain .battle-weather-ground > i {
+    animation-duration: 2s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-sandstorm .battle-weather-gust,
+  .app-shell.battle-view .weather-effect-sandstorm .battle-weather-particles > i,
+  .app-shell.battle-view .weather-effect-sandstorm .battle-weather-ground > i {
+    animation-duration: 5.5s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-snow .battle-weather-particles > i,
+  .app-shell.battle-view .weather-effect-snow .battle-weather-ground > i {
+    animation-duration: 9s !important;
+  }
+
+  .app-shell.battle-view .weather-effect-rain .battle-weather-cloud,
+  .app-shell.battle-view .weather-effect-snow .battle-weather-cloud,
+  .app-shell.battle-view .weather-effect-fog .battle-weather-cloud,
+  .app-shell.battle-view .weather-effect-fog .battle-weather-particles > i,
+  .app-shell.battle-view .weather-effect-fog .battle-weather-ground > i {
+    animation-duration: 18s !important;
   }
 }
