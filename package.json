@@ -13,6 +13,7 @@
     "import:move-animation-reference": "node scripts/importMoveAnimationReference.mjs",
     "validate:move-animations": "node scripts/validateMoveAnimationCoverage.mjs",
     "validate:move-sounds": "node scripts/validateMoveSoundCoverage.mjs",
+    "validate:battle-ai": "node scripts/validateBattleAi.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",
     "validate:pokemon-learnsets": "node scripts/validatePokemonLearnsets.mjs",
     "validate:draw-pool": "node scripts/validatePokemonDrawPool.mjs",

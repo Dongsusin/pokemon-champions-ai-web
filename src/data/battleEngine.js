@@ -2684,92 +2684,634 @@ function orderedActions(state, playerActions, opponentActions, random) {
   })
 }
 
-function scoreMove(state, attacker, defender, move, gimmick = null) {
-  if (move.currentPp <= 0) return -Infinity
-  const environmentMove = resolveEnvironmentMove(state, attacker, defender, move)
-  const zMove = gimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
-  if (gimmick === 'zmove' && !zMove) return -Infinity
-  const resolvedMove = zMove ?? resolveBattleMaxMove(
-    attacker,
-    environmentMove,
-    gimmick === 'dynamax',
-    move,
-  )
-  const isStatus = isStatusMove(resolvedMove)
-  if (isStatus) {
-    const weatherId = SHOWDOWN_WEATHER_IDS[String(resolvedMove.weather ?? resolvedMove.id).toLowerCase()]
-    const terrainId = SHOWDOWN_TERRAIN_IDS[String(resolvedMove.terrain ?? resolvedMove.id).toLowerCase()]
-    if (weatherId) {
-      const sameWeatherHasTime = state.rules?.weather?.id === weatherId
-        && (state.environment?.weatherTurns ?? 5) > 1
-      return sameWeatherHasTime ? 18 : 72
+const AI_TIER_NOISE = {
+  S: 0.4,
+  A: 0.8,
+  B: 1.4,
+  C: 2,
+  D: 2.8,
+}
+
+const AI_STAGE_WEIGHTS = {
+  attack: 28,
+  defense: 20,
+  specialAttack: 28,
+  specialDefense: 20,
+  speed: 30,
+  accuracy: 14,
+  evasion: 16,
+}
+
+const AI_NON_TARGETED_MOVE_TARGETS = new Set(['self', 'allySide', 'allyTeam', 'foeSide', 'all'])
+
+function projectAiPokemonForMechanic(attacker, gimmick) {
+  if (gimmick === 'tera' && attacker.teraType) {
+    return {
+      ...attacker,
+      types: [attacker.teraType],
+      teraActive: true,
     }
-    if (terrainId) {
-      const sameTerrainHasTime = state.rules?.terrain?.id === terrainId
-        && (state.environment?.terrainTurns ?? 5) > 1
-      return sameTerrainHasTime ? 18 : 72
-    }
-    if (PROTECT_MOVE_IDS.has(resolvedMove.id) && attacker.hp < attacker.maxHp * 0.4) return 55
-    if ((HEAL_MOVE_IDS.has(resolvedMove.id) || resolvedMove.flags?.includes('heal')) && attacker.hp < attacker.maxHp * 0.55) return 90
-    if (STATUS_MOVE_EFFECTS[resolvedMove.id]) return 48
-    return 32
   }
 
-  if (resolvedMove.id === 'steelroller' && state.rules?.terrain?.id === 'neutral') return -Infinity
-  const effectiveness = getBattleTypeEffectiveness(state, resolvedMove.type, defender.types)
-  const environmentMultiplier = environmentMoveMultiplier(state, attacker, defender, resolvedMove)
-  const category = resolvedMove.adaptiveOffense
-    ? (effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack') ? 'physical' : 'special')
-    : resolvedMove.categoryId ?? (resolvedMove.category === '물리' ? 'physical' : 'special')
-  const offense = category === 'physical'
-    ? effectiveStat(state, attacker, 'attack')
-    : effectiveStat(state, attacker, 'specialAttack')
-  const defense = category === 'physical'
-    ? effectiveStat(state, defender, 'defense')
-    : effectiveStat(state, defender, 'specialDefense')
-  const effectivePower = resolvedMove.ohko
-    ? defender.maxHp
-    : resolvedMove.currentHpFraction
-      ? defender.hp * resolvedMove.currentHpFraction[0] / resolvedMove.currentHpFraction[1]
-      : resolvedMove.damage === 'level' ? 50 : Number(resolvedMove.damage ?? resolvedMove.power) || 1
+  if (!['mega', 'primal'].includes(gimmick)) return attacker
+  const formOptions = getBattleFormOptions(attacker.originalSpeciesId)
+  const form = getSpeciesProfile(attacker.gimmickFormId)
+    ?? formOptions.find((option) => (
+      gimmick === 'primal' ? option.slug.includes('-primal') : option.slug.includes('-mega')
+    ))
+  if (!form) return attacker
+  const transformed = normalizePokemon({
+    ...attacker,
+    speciesId: form.id,
+    ability: form.abilities[0],
+    moves: attacker.moves.map((move) => move.name),
+  })
+
+  return {
+    ...attacker,
+    speciesId: form.id,
+    types: [...form.types],
+    ability: form.abilities[0],
+    stats: statObject(transformed),
+  }
+}
+
+function resolveAiMove(state, attacker, defender, move, gimmick) {
+  const projectedAttacker = projectAiPokemonForMechanic(attacker, gimmick)
+  const environmentMove = resolveEnvironmentMove(state, projectedAttacker, defender, move)
+  const zMove = gimmick === 'zmove'
+    ? resolveBattleZMove(projectedAttacker, environmentMove, move)
+    : null
+  if (gimmick === 'zmove' && !zMove) return null
+
+  return {
+    attacker: projectedAttacker,
+    move: zMove ?? resolveBattleMaxMove(
+      projectedAttacker,
+      environmentMove,
+      gimmick === 'dynamax',
+      move,
+    ),
+  }
+}
+
+function aiMoveAccuracy(state, attacker, defender, move) {
+  if (move.accuracyLabel === '필중' || move.accuracy == null) return 1
+  if (attacker.ability === '노가드' || defender.ability === '노가드') return 1
+  const weatherId = effectiveWeatherId(state)
+  if (weatherId === 'rain' && ['thunder', 'hurricane'].includes(move.id)) return 1
+  if (weatherId === 'snow' && move.id === 'blizzard') return 1
+
+  const stageModifier = accuracyStageMultiplier(attacker.statStages.accuracy ?? 0)
+    / accuracyStageMultiplier(defender.statStages.evasion ?? 0)
+  const hustleModifier = attacker.ability === '의욕' && move.categoryId === 'physical' ? 0.8 : 1
+  let weatherModifier = weatherId === 'fog' ? 0.6 : 1
+  if (weatherId === 'sun' && ['thunder', 'hurricane'].includes(move.id)) weatherModifier *= 0.5
+  if (weatherId === 'sandstorm' && defender.ability === '모래숨기') weatherModifier *= 0.8
+  if (weatherId === 'snow' && defender.ability === '눈숨기') weatherModifier *= 0.8
+  return Math.max(0, Math.min(1, (Number(move.accuracy) || 100) * stageModifier * hustleModifier * weatherModifier / 100))
+}
+
+function aiExpectedHitCount(attacker, move) {
+  if (!move.multihit) return 1
+  if (typeof move.multihit === 'number') return move.multihit
+  const [minimum, maximum] = move.multihit
+  if (attacker.ability === '스킬링크') return maximum
+  if (minimum === 2 && maximum === 5) return 3
+  return (minimum + maximum) / 2
+}
+
+function aiKnownSurvivalDamage(defender, move, damage) {
+  if (damage < defender.hp || defender.hp !== defender.maxHp) return damage
+  if (defender.ability === '옹골참') return move.ohko ? 0 : Math.max(0, defender.hp - 1)
+  if (defender.heldItemId === 'focus-sash' && !defender.consumedItem) {
+    return Math.max(0, defender.hp - 1)
+  }
+  return damage
+}
+
+function estimateAiDamage(state, attacker, defender, move, targetHp = defender.hp) {
+  const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
+  const immunity = move.ignoreAbility ? null : abilityImmunity(defender, move.type)
+  const accuracy = aiMoveAccuracy(state, attacker, defender, move)
+  const semiInvulnerable = semiInvulnerableInteraction(defender, move)
+  if (effectiveness === 0 || immunity || semiInvulnerable.avoided || accuracy <= 0) {
+    return { rawDamage: 0, expectedDamage: 0, effectiveness: 0, accuracy }
+  }
+
+  let rawDamage
+  if (move.currentHpFraction) {
+    const [numerator, denominator] = move.currentHpFraction
+    rawDamage = Math.max(1, Math.floor(targetHp * numerator / denominator))
+  } else if (move.id === 'finalgambit') {
+    rawDamage = attacker.hp
+  } else if (move.ohko) {
+    rawDamage = targetHp
+  } else if (move.damage !== undefined) {
+    rawDamage = move.damage === 'level' ? 50 : Number(move.damage)
+  } else {
+    const category = move.adaptiveOffense
+      ? (effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack') ? 'physical' : 'special')
+      : move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
+    const attackKey = category === 'physical' ? 'attack' : 'specialAttack'
+    const defenseKey = category === 'physical' ? 'defense' : 'specialDefense'
+    let attack = effectiveStat(state, attacker, attackKey)
+    let defense = effectiveStat(state, defender, defenseKey)
+
+    if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
+    if (attacker.ability === '의욕' && category === 'physical') attack *= 1.5
+    if (attacker.ability === '근성' && attacker.status) attack *= 1.5
+    if (effectiveWeatherId(state) === 'snow' && category === 'physical' && defender.types.includes('얼음')) defense *= 1.5
+    if (effectiveWeatherId(state) === 'sandstorm' && category === 'special' && defender.types.includes('바위')) defense *= 1.5
+
+    const baseDamage = (((2 * 50) / 5 + 2) * Math.max(1, Number(move.power) || 1) * attack / defense) / 50 + 2
+    const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
+    const criticalStage = Math.max(0, Math.min(
+      3,
+      Number(move.critRatio ?? 0) + (attacker.ability === '대운' ? 1 : 0) + (attacker.criticalStageBoost ?? 0),
+    ))
+    const expectedCriticalMultiplier = move.willCrit ? 1.5 : 1 + criticalRates[criticalStage] * 0.5
+    let modifier = getMoveStab(attacker, move.type)
+      * effectiveness
+      * environmentMoveMultiplier(state, attacker, defender, move)
+      * 0.925
+      * expectedCriticalMultiplier
+      * semiInvulnerable.powerMultiplier
+
+    if (attacker.heldItemId === 'life-orb') modifier *= 1.3
+    if (attacker.heldItemId === 'expert-belt' && effectiveness > 1) modifier *= 1.2
+    if (attacker.ability === '심록' && attacker.hp <= attacker.maxHp / 3 && move.type === '풀') modifier *= 1.5
+    if (attacker.ability === '맹화' && attacker.hp <= attacker.maxHp / 3 && move.type === '불꽃') modifier *= 1.5
+    if (attacker.ability === '급류' && attacker.hp <= attacker.maxHp / 3 && move.type === '물') modifier *= 1.5
+    if (!move.ignoreAbility) {
+      if (defender.ability === '멀티스케일' && defender.hp === defender.maxHp) modifier *= 0.5
+      if (defender.ability === '두꺼운지방' && ['불꽃', '얼음'].includes(move.type)) modifier *= 0.5
+      if (defender.ability === '건조피부' && move.type === '불꽃') modifier *= 1.25
+    }
+
+    const defenderSide = getPokemonSide(state, defender)
+    if (defenderSide.auroraVeilTurns > 0) {
+      modifier *= state.rules?.format?.activeSlots > 1 ? 2 / 3 : 0.5
+    }
+    rawDamage = Math.max(1, Math.floor(baseDamage * modifier * aiExpectedHitCount(attacker, move)))
+  }
+
+  rawDamage = aiKnownSurvivalDamage(defender, move, Math.max(0, Number(rawDamage) || 0))
+  return {
+    rawDamage,
+    expectedDamage: rawDamage * accuracy,
+    effectiveness,
+    accuracy,
+  }
+}
+
+function aiCanApplyStatus(state, target, statusId) {
+  if (!STATUS_LABELS[statusId] || target.status || target.fainted || target.hp <= 0) return false
+  if (target.ability === '정화의소금') return false
+  if (target.ability === '리프가드' && effectiveWeatherId(state) === 'sun') return false
+  if (statusId === 'burn' && (target.types.includes('불꽃') || ['수의베일', '수포'].includes(target.ability))) return false
+  if (['poison', 'toxic'].includes(statusId) && target.types.some((type) => ['독', '강철'].includes(type))) return false
+  if (['poison', 'toxic'].includes(statusId) && target.ability === '면역') return false
+  if (statusId === 'paralysis' && (target.types.includes('전기') || target.ability === '유연')) return false
+  if (statusId === 'freeze' && (target.types.includes('얼음') || target.ability === '마그마의무장')) return false
+  if (statusId === 'freeze' && effectiveWeatherId(state) === 'sun') return false
+  if (statusId === 'sleep' && SLEEP_IMMUNE_ABILITIES.has(target.ability)) return false
+  if (isGrounded(target, state) && state.rules?.terrain?.id === 'misty') return false
+  if (isGrounded(target, state) && state.rules?.terrain?.id === 'electric' && statusId === 'sleep') return false
+  return true
+}
+
+function aiStageUtility(pokemon, changes, favorsIncrease) {
+  return Object.entries(normalizedStageChanges(changes)).reduce((total, [statKey, amount]) => {
+    const favorableAmount = favorsIncrease ? amount : -amount
+    if (favorableAmount <= 0) return total
+    const currentStage = pokemon.statStages[statKey] ?? 0
+    const availableStages = favorsIncrease ? 6 - currentStage : currentStage + 6
+    return total + Math.min(favorableAmount, availableStages) * (AI_STAGE_WEIGHTS[statKey] ?? 14)
+  }, 0)
+}
+
+function aiEnvironmentUtility(state, attacker, kind, environmentId) {
+  const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
+  const sameEnvironmentHasTime = state.rules?.[kind]?.id === environmentId
+    && (state.environment?.[turnsKey] ?? 5) > 1
+  if (sameEnvironmentHasTime) return 6
+
+  const side = getPokemonSide(state, attacker)
+  const livingTeam = side.team.filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
+  const affinity = kind === 'weather'
+    ? {
+        sun: ['불꽃', '엽록소', '선파워', '진홍빛고동'],
+        rain: ['물', '쓱쓱', '급류'],
+        sandstorm: ['바위', '땅', '강철', '모래헤치기', '모래의힘'],
+        snow: ['얼음', '눈치우기'],
+      }[environmentId] ?? []
+    : {
+        electric: ['전기', '서핑테일', '하드론엔진'],
+        grassy: ['풀', '풀모피'],
+        psychic: ['에스퍼'],
+        misty: ['페어리'],
+      }[environmentId] ?? []
+  const synergyCount = livingTeam.filter((pokemon) => (
+    pokemon.types.some((type) => affinity.includes(type)) || affinity.includes(pokemon.ability)
+  )).length
+  return 58 + synergyCount * 7
+}
+
+function aiStatusMoveScore(state, attacker, defender, move) {
+  const hpRatio = attacker.hp / Math.max(1, attacker.maxHp)
+  const missingHpRatio = 1 - hpRatio
+  const accuracy = aiMoveAccuracy(state, attacker, defender, move)
+  const weatherId = SHOWDOWN_WEATHER_IDS[String(move.weather ?? move.id).toLowerCase()]
+  const terrainId = SHOWDOWN_TERRAIN_IDS[String(move.terrain ?? move.id).toLowerCase()]
+  if (weatherId) return aiEnvironmentUtility(state, attacker, 'weather', weatherId)
+  if (terrainId) return aiEnvironmentUtility(state, attacker, 'terrain', terrainId)
+
+  if (PROTECT_MOVE_IDS.has(move.id)) {
+    const chainPenalty = Math.max(1, 3 ** (attacker.protectChain ?? 0))
+    const residualPressure = attacker.status || attacker.perishCount != null || defender.dynamaxActive ? 22 : 0
+    return (34 + residualPressure + (hpRatio < 0.45 ? 28 : 0)) / chainPenalty
+  }
+
+  if (move.id === 'rest') {
+    if (missingHpRatio < 0.18 && !attacker.status) return -Infinity
+    return 70 + missingHpRatio * 90 + (attacker.status ? 25 : 0)
+  }
+
+  if (['healingwish', 'lunardance'].includes(move.id)) {
+    const side = getPokemonSide(state, attacker)
+    const hasRecoveryTarget = availableBenchIndexes(side).some((index) => {
+      const pokemon = side.team[index]
+      return pokemon.hp < pokemon.maxHp * 0.65 || pokemon.status
+    })
+    if (!hasRecoveryTarget) return -Infinity
+    return hpRatio < 0.35 ? 118 : 32
+  }
+
+  if (move.heal || HEAL_MOVE_IDS.has(move.id) || move.flags?.includes('heal')) {
+    if (missingHpRatio < 0.15) return -Infinity
+    return 42 + missingHpRatio * 125
+  }
+
+  if (move.id === 'perishsong') {
+    if (defender.perishCount != null) return 4
+    const ownBench = availableBenchIndexes(getPokemonSide(state, attacker)).length
+    const opposingBench = availableBenchIndexes(getPokemonSide(state, defender)).length
+    return 48 + Math.max(0, ownBench - opposingBench) * 12
+  }
+
+  if (move.id === 'stealthrock') {
+    const targetSide = getPokemonSide(state, defender)
+    if (targetSide.hazards?.stealthRock) return 3
+    return 48 + availableBenchIndexes(targetSide).length * 12
+  }
+
+  let utility = 0
+  const statusId = SHOWDOWN_STATUS_IDS[move.status] ?? move.status
+  if (statusId) {
+    if (!aiCanApplyStatus(state, defender, statusId)) return -Infinity
+    if (statusId === 'sleep') utility += 105
+    else if (statusId === 'toxic') utility += 82
+    else if (statusId === 'burn') {
+      utility += effectiveStat(state, defender, 'attack') >= effectiveStat(state, defender, 'specialAttack') ? 88 : 55
+    } else if (statusId === 'paralysis') {
+      utility += effectiveStat(state, defender, 'speed') > effectiveStat(state, attacker, 'speed') ? 82 : 58
+    } else utility += 56
+  }
+
+  const target = move.target === 'self' ? attacker : defender
+  if (move.volatileStatus === 'confusion' && target.confusionTurns <= 0 && target.ability !== '마이페이스') utility += 55
+  if (move.volatileStatus === 'yawn' && !target.status && target.yawnTurns <= 0) utility += 82
+  if (move.volatileStatus === 'destinybond' && hpRatio < 0.4) utility += 76
+
+  const scriptedEffect = STATUS_MOVE_EFFECTS[move.id]
+  if (move.target === 'self') {
+    utility += aiStageUtility(attacker, move.boosts ?? scriptedEffect?.self, true)
+  } else {
+    utility += aiStageUtility(defender, move.boosts ?? scriptedEffect?.target, false)
+  }
+  utility += aiStageUtility(attacker, move.self?.boosts, true)
+
+  if (utility <= 0) utility = scriptedEffect ? 38 : 22
+  if (move.target === 'self') utility *= hpRatio < 0.3 ? 0.55 : hpRatio > 0.7 ? 1.15 : 1
+  return utility * accuracy
+}
+
+function aiSecondaryUtility(state, attacker, defender, move) {
+  const effects = move.secondaries ?? (move.secondary ? [move.secondary] : [])
+  return effects.reduce((total, effect) => {
+    const chance = Math.min(100, Number(effect.chance ?? 100) * (attacker.ability === '하늘의은총' ? 2 : 1)) / 100
+    let utility = 0
+    const statusId = SHOWDOWN_STATUS_IDS[effect.status] ?? effect.status
+    if (statusId && aiCanApplyStatus(state, defender, statusId)) utility += statusId === 'sleep' ? 52 : 30
+    if (effect.volatileStatus === 'flinch' && effectiveStat(state, attacker, 'speed') > effectiveStat(state, defender, 'speed')) utility += 34
+    if (effect.volatileStatus === 'confusion' && defender.confusionTurns <= 0) utility += 24
+    utility += aiStageUtility(defender, effect.boosts, false) * 0.55
+    utility += aiStageUtility(attacker, effect.self?.boosts, true) * 0.55
+    return total + utility * chance
+  }, 0)
+}
+
+function aiIncomingThreatRatio(state, pokemon, attackers) {
+  const threatRatios = attackers
+    .filter((attacker) => attacker && attacker.hp > 0 && !attacker.fainted)
+    .map((attacker) => attacker.moves.reduce((highest, move) => {
+      if (move.currentPp <= 0 || isStatusMove(move)) return highest
+      const resolved = resolveAiMove(state, attacker, pokemon, move, null)
+      if (!resolved) return highest
+      const estimate = estimateAiDamage(state, resolved.attacker, pokemon, resolved.move)
+      return Math.max(highest, estimate.expectedDamage / Math.max(1, pokemon.maxHp))
+    }, 0))
+    .sort((first, second) => second - first)
+  if (threatRatios.length === 0) return 0
+  return Math.min(2, threatRatios[0] + threatRatios.slice(1).reduce((total, ratio) => total + ratio * 0.4, 0))
+}
+
+function aiDefensiveTeraUtility(state, attacker, defender) {
+  if (!attacker.teraType) return 0
+  const damagingMoves = defender.moves.filter((move) => move.currentPp > 0 && !isStatusMove(move))
+  const before = damagingMoves.reduce((highest, move) => (
+    Math.max(highest, getBattleTypeEffectiveness(state, move.type, attacker.types))
+  ), 0)
+  const after = damagingMoves.reduce((highest, move) => (
+    Math.max(highest, getBattleTypeEffectiveness(state, move.type, [attacker.teraType]))
+  ), 0)
+  return Math.max(-28, Math.min(42, (before - after) * 22))
+}
+
+function aiMechanicUtility(state, attacker, defender, move, gimmick, evaluation) {
+  if (!gimmick) return 0
+  const urgency = (state.turn >= 3 ? 8 : 0)
+    + (attacker.hp < attacker.maxHp * 0.55 ? 10 : 0)
+    + (remainingCount(state.player) <= 2 ? 12 : 0)
+  if (gimmick === 'mega' || gimmick === 'primal') return 48 + urgency
+  if (gimmick === 'dynamax') return 24 + urgency + (attacker.hp < attacker.maxHp * 0.6 ? 14 : 0)
+  if (gimmick === 'tera') {
+    const offensiveUtility = move.type === attacker.teraType ? 18 : -14
+    return offensiveUtility + aiDefensiveTeraUtility(state, attacker, defender) + urgency - 8
+  }
+  if (gimmick === 'zmove') return (evaluation.knockout ? 32 : -8) + urgency
+  return 0
+}
+
+function evaluateAiMove(state, attacker, defender, move, gimmick = null, context = {}) {
+  if (!move || move.currentPp <= 0) return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
+  const resolved = resolveAiMove(state, attacker, defender, move, gimmick)
+  if (!resolved) return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
+  const resolvedMove = resolved.move
+  const projectedAttacker = resolved.attacker
+  const targetHp = Math.max(1, Number(context.targetHp ?? defender.hp) || defender.hp)
+  const priority = environmentMovePriority(state, projectedAttacker, resolvedMove)
+
+  if (isStatusMove(resolvedMove)) {
+    let score = aiStatusMoveScore(state, projectedAttacker, defender, resolvedMove)
+    const evaluation = {
+      score,
+      estimatedDamage: 0,
+      rawDamage: 0,
+      effectiveness: 1,
+      knockout: false,
+      priority,
+      resolvedMove,
+    }
+    score += aiMechanicUtility(state, attacker, defender, resolvedMove, gimmick, evaluation)
+    if (context.targetReserved && resolvedMove.target !== 'self') score -= 60
+    return { ...evaluation, score }
+  }
+
+  if (resolvedMove.id === 'steelroller' && state.rules?.terrain?.id === 'neutral') {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
+  }
+
+  const estimate = estimateAiDamage(state, projectedAttacker, defender, resolvedMove, targetHp)
+  if (estimate.effectiveness === 0 || estimate.rawDamage <= 0) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, effectiveness: 0, priority }
+  }
+
+  const knockout = estimate.rawDamage >= targetHp
+  const damageRatio = estimate.expectedDamage / Math.max(1, defender.maxHp)
+  let score = Math.min(1.5, damageRatio) * 190
+  if (knockout) score += 130 * estimate.accuracy
+  if (knockout && priority > 0) score += 42
+  if (estimate.effectiveness > 1) score += 12
+  if (context.targetReserved) score -= 105
+
+  const attackerIsSlower = effectiveStat(state, projectedAttacker, 'speed') < effectiveStat(state, defender, 'speed')
+  const incomingThreat = aiIncomingThreatRatio(state, projectedAttacker, [defender])
+  if (attackerIsSlower && priority <= 0 && incomingThreat * projectedAttacker.maxHp >= projectedAttacker.hp) {
+    score *= knockout ? 0.82 : 0.62
+  }
+
   const skipsCharge = effectiveWeatherId(state) === 'sun' && ['solarbeam', 'solarblade'].includes(resolvedMove.id)
     || effectiveWeatherId(state) === 'rain' && resolvedMove.id === 'electroshot'
-  const chargeModifier = resolvedMove.flags?.includes('charge') && attacker.heldItemId !== 'power-herb' && !skipsCharge ? 0.65 : 1
-  return effectivePower * effectiveness * environmentMultiplier * chargeModifier * (offense / Math.max(1, defense)) * ((resolvedMove.accuracy ?? 100) / 100)
+  if (resolvedMove.flags?.includes('charge') && attacker.heldItemId !== 'power-herb' && !skipsCharge && !resolvedMove.isZMove && !resolvedMove.isMaxMove) {
+    score *= 0.68
+  }
+  if (resolvedMove.flags?.includes('recharge') && !resolvedMove.isZMove && !resolvedMove.isMaxMove) score -= 24
+
+  if (resolvedMove.drain && estimate.expectedDamage > 0) {
+    const [numerator, denominator] = resolvedMove.drain
+    const missingHp = Math.max(0, projectedAttacker.maxHp - projectedAttacker.hp)
+    score += Math.min(missingHp, estimate.expectedDamage * numerator / denominator) / projectedAttacker.maxHp * 65
+  }
+  if (resolvedMove.recoil && estimate.expectedDamage > 0) {
+    const [numerator, denominator] = resolvedMove.recoil
+    const recoil = estimate.expectedDamage * numerator / denominator
+    score -= recoil / projectedAttacker.maxHp * 72
+    if (recoil >= projectedAttacker.hp && !knockout) score -= 95
+  }
+  if (resolvedMove.selfdestruct) {
+    const lastPokemon = remainingCount(state.opponent) <= 1
+    if (!knockout) score -= 180
+    if (lastPokemon && remainingCount(state.player) > 1) score -= 240
+    if (knockout && projectedAttacker.hp < projectedAttacker.maxHp * 0.3) score += 25
+  }
+  if (resolvedMove.selfSwitch && availableBenchIndexes(state.opponent).length > 0) score += 16
+  if (resolvedMove.forceSwitch && availableBenchIndexes(state.player).length > 0) score += 12
+  score += aiSecondaryUtility(state, projectedAttacker, defender, resolvedMove)
+
+  const evaluation = {
+    score,
+    estimatedDamage: Math.min(targetHp, estimate.expectedDamage),
+    rawDamage: estimate.rawDamage,
+    effectiveness: estimate.effectiveness,
+    knockout,
+    priority,
+    resolvedMove,
+  }
+  score += aiMechanicUtility(state, attacker, defender, resolvedMove, gimmick, evaluation)
+  return { ...evaluation, score }
+}
+
+function aiHazardDamageRatio(state, side, pokemon) {
+  if (pokemon.ability === '매직가드') return 0
+  let ratio = 0
+  if (side.hazards?.stealthRock) ratio += getBattleTypeEffectiveness(state, '바위', pokemon.types) / 8
+  if (side.hazards?.steelsurge) ratio += getBattleTypeEffectiveness(state, '강철', pokemon.types) / 8
+  return ratio
+}
+
+function aiEntryAbilityUtility(pokemon) {
+  if (pokemon.ability === '위협') return 24
+  if (ENTRY_WEATHER_ABILITIES[pokemon.ability] || ENTRY_TERRAIN_ABILITIES[pokemon.ability]) return 18
+  return 0
+}
+
+function aiPositiveStageTotal(pokemon) {
+  return Object.values(pokemon.statStages).reduce((total, stage) => total + Math.max(0, stage), 0)
+}
+
+function bestAiMoveForPokemon(state, attacker, targetSlots) {
+  let best = null
+  attacker.moves.forEach((move, moveIndex) => {
+    const moveTargetSlots = AI_NON_TARGETED_MOVE_TARGETS.has(move.target) ? targetSlots.slice(0, 1) : targetSlots
+    moveTargetSlots.forEach((targetSlot) => {
+      const defender = getActivePokemon(state, 'player', targetSlot)
+      if (!defender || defender.hp <= 0 || defender.fainted) return
+      const evaluation = evaluateAiMove(state, attacker, defender, move)
+      if (!best || evaluation.score > best.score) best = { ...evaluation, moveIndex, targetSlot }
+    })
+  })
+  return best
+}
+
+function chooseAiSwitch(state, attacker, activeSlot, moveDecision, targetSlots, planning) {
+  if (attacker.trappedTurns > 0 || attacker.dynamaxActive) return null
+  const switchOptions = availableBenchIndexes(state.opponent)
+    .filter((index) => !planning.reservedBenchIndexes?.has(index))
+  if (switchOptions.length === 0) return null
+
+  const playerAttackers = targetSlots.map((slot) => getActivePokemon(state, 'player', slot)).filter(Boolean)
+  const candidates = switchOptions.map((targetIndex) => {
+    const pokemon = state.opponent.team[targetIndex]
+    const hazardRatio = aiHazardDamageRatio(state, state.opponent, pokemon)
+    if (hazardRatio * pokemon.maxHp >= pokemon.hp) return { targetIndex, score: -Infinity }
+    const offense = bestAiMoveForPokemon(state, pokemon, targetSlots)
+    const incomingThreat = aiIncomingThreatRatio(state, pokemon, playerAttackers)
+    const remainingHpRatio = Math.max(0, pokemon.hp / pokemon.maxHp - hazardRatio)
+    return {
+      targetIndex,
+      score: Math.max(0, offense?.score ?? 0) * 0.58
+        + remainingHpRatio * 65
+        - incomingThreat * 88
+        + aiEntryAbilityUtility(pokemon),
+    }
+  }).sort((first, second) => second.score - first.score)
+  const bestSwitch = candidates[0]
+  if (!bestSwitch || !Number.isFinite(bestSwitch.score)) return null
+
+  const currentThreat = aiIncomingThreatRatio(state, attacker, playerAttackers)
+  const currentHpRatio = attacker.hp / Math.max(1, attacker.maxHp)
+  const stayScore = Math.max(0, moveDecision?.score ?? 0) * 0.62
+    + currentHpRatio * 48
+    - currentThreat * 82
+    + aiPositiveStageTotal(attacker) * 13
+  const projectedTargetHp = planning.projectedTargetHp?.get(moveDecision?.action?.targetSlot)
+    ?? getActivePokemon(state, 'player', moveDecision?.action?.targetSlot)?.hp
+    ?? Infinity
+  const canKnockOutBeforeHit = moveDecision?.priority > 0 && moveDecision.rawDamage >= projectedTargetHp
+  const urgentSwitch = attacker.perishCount === 1 || attacker.yawnTurns === 1
+  const expectedKnockout = currentThreat * attacker.maxHp >= attacker.hp && !canKnockOutBeforeHit
+  const badMatchup = !Number.isFinite(moveDecision?.score) || moveDecision.score < 48
+  const lowHp = currentHpRatio < 0.34
+  const advantage = bestSwitch.score - stayScore
+
+  if (!urgentSwitch && aiPositiveStageTotal(attacker) >= 3) return null
+  if (!urgentSwitch && !expectedKnockout && !badMatchup && !lowHp) return null
+  if (!urgentSwitch && advantage < (expectedKnockout ? -12 : 12)) return null
+  return {
+    action: {
+      type: 'switch',
+      actorSlot: activeSlot,
+      targetIndex: bestSwitch.targetIndex,
+    },
+    score: bestSwitch.score + (urgentSwitch ? 100 : 0),
+    estimatedDamage: 0,
+    rawDamage: 0,
+    priority: 10,
+  }
+}
+
+function aiTargetSlots(state, fallbackTargetSlot) {
+  const slots = getActivePokemonList(state, 'player')
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  return slots.length > 0 ? slots : [fallbackTargetSlot]
+}
+
+function chooseAiDecision(state, random, activeSlot, fallbackTargetSlot, planning) {
+  const attacker = getActivePokemon(state, 'opponent', activeSlot)
+  const targetSlots = aiTargetSlots(state, fallbackTargetSlot)
+  if (!attacker) {
+    return {
+      action: { type: 'move', actorSlot: activeSlot, targetSlot: targetSlots[0] ?? 0, moveIndex: 0, gimmick: null },
+      score: -Infinity,
+      estimatedDamage: 0,
+      rawDamage: 0,
+      priority: 0,
+    }
+  }
+
+  const forcedAction = forcedActionForPokemon(attacker)
+  const availableMechanics = forcedAction
+    ? []
+    : getAvailableBattleMechanics(state, 'opponent', activeSlot)
+      .filter((mechanic) => !planning.reservedMechanics?.has(mechanic.id))
+  const gimmicks = [null, ...availableMechanics.map((mechanic) => mechanic.id)]
+  const moveEntries = forcedAction
+    ? [{ move: attacker.moves[forcedAction.moveIndex], moveIndex: forcedAction.moveIndex }]
+    : attacker.moves.map((move, moveIndex) => ({ move, moveIndex }))
+  const noiseRange = AI_TIER_NOISE[String(state.opponentMeta?.tier ?? 'S').toUpperCase()] ?? 1.4
+  const candidates = []
+
+  moveEntries.forEach(({ move, moveIndex }) => {
+    if (!move) return
+    const moveTargetSlots = AI_NON_TARGETED_MOVE_TARGETS.has(move.target) ? targetSlots.slice(0, 1) : targetSlots
+    moveTargetSlots.forEach((targetSlot) => {
+      const defender = getActivePokemon(state, 'player', targetSlot)
+      if (!defender) return
+      const projectedHp = planning.projectedTargetHp?.get(targetSlot) ?? defender.hp
+      const targetReserved = targetSlots.length > 1 && projectedHp <= 0
+      gimmicks.forEach((gimmick) => {
+        const evaluation = evaluateAiMove(state, attacker, defender, move, gimmick, {
+          targetHp: Math.max(1, projectedHp),
+          targetReserved,
+        })
+        const score = evaluation.score + (Number.isFinite(evaluation.score) ? random() * noiseRange : 0)
+        candidates.push({
+          action: {
+            ...(forcedAction ?? { type: 'move', moveIndex }),
+            actorSlot: activeSlot,
+            targetSlot,
+            gimmick,
+          },
+          ...evaluation,
+          score,
+        })
+      })
+    })
+  })
+
+  candidates.sort((first, second) => second.score - first.score)
+  const moveDecision = candidates[0] ?? {
+    action: { type: 'move', actorSlot: activeSlot, targetSlot: targetSlots[0] ?? 0, moveIndex: 0, gimmick: null },
+    score: -Infinity,
+    estimatedDamage: 0,
+    rawDamage: 0,
+    priority: 0,
+  }
+  if (forcedAction) return moveDecision
+
+  const switchDecision = chooseAiSwitch(state, attacker, activeSlot, moveDecision, targetSlots, planning)
+  return switchDecision ?? moveDecision
 }
 
 export function chooseAiAction(state, random = Math.random, activeSlot = 0, targetSlot = 0) {
-  const attacker = getActivePokemon(state, 'opponent', activeSlot)
-  const defender = getActivePokemon(state, 'player', targetSlot)
-  const switchOptions = availableBenchIndexes(state.opponent)
-  const availableMechanics = getAvailableBattleMechanics(state, 'opponent', activeSlot)
-  const configuredMechanic = availableMechanics[0]
-  const scoredMoves = attacker.moves
-    .map((move, moveIndex) => ({
-      moveIndex,
-      score: scoreMove(state, attacker, defender, move, configuredMechanic?.id) + random() * 8,
-    }))
-    .sort((first, second) => second.score - first.score)
-
-  if (
-    attacker.hp < attacker.maxHp * 0.2
-    && switchOptions.length > 0
-    && random() < 0.12
-  ) {
-    return {
-      type: 'switch',
-      actorSlot: activeSlot,
-      targetIndex: switchOptions[Math.floor(random() * switchOptions.length)],
-    }
-  }
-
-  return {
-    type: 'move',
-    actorSlot: activeSlot,
-    targetSlot,
-    moveIndex: scoredMoves[0]?.moveIndex ?? 0,
-    gimmick: configuredMechanic?.id ?? null,
-  }
+  return chooseAiDecision(state, random, activeSlot, targetSlot, {
+    reservedMechanics: new Set(),
+    reservedBenchIndexes: new Set(),
+    projectedTargetHp: new Map(),
+  }).action
 }
 
 function chooseAiActions(state, random) {
@@ -2781,16 +3323,43 @@ function chooseAiActions(state, random) {
   const livingPlayerSlots = playerActive
     .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
     .filter((slot) => slot >= 0)
-  const actorSlots = state.rules?.format?.rotation
-    ? [livingOpponentSlots[Math.floor(random() * livingOpponentSlots.length)] ?? 0]
-    : livingOpponentSlots
+  const planning = {
+    reservedMechanics: new Set(),
+    reservedBenchIndexes: new Set(),
+    projectedTargetHp: new Map(livingPlayerSlots.map((slot) => [slot, playerActive[slot].hp])),
+  }
+  const commitDecision = (decision) => {
+    if (decision.action.type === 'switch') {
+      planning.reservedBenchIndexes.add(decision.action.targetIndex)
+      return
+    }
+    if (decision.action.gimmick) planning.reservedMechanics.add(decision.action.gimmick)
+    if (decision.estimatedDamage <= 0) return
+    const currentHp = planning.projectedTargetHp.get(decision.action.targetSlot) ?? 0
+    planning.projectedTargetHp.set(decision.action.targetSlot, Math.max(0, currentHp - decision.estimatedDamage))
+  }
 
-  return actorSlots.map((activeSlot, index) => chooseAiAction(
-    state,
-    random,
-    activeSlot,
-    livingPlayerSlots[index % Math.max(1, livingPlayerSlots.length)] ?? 0,
-  ))
+  if (state.rules?.format?.rotation) {
+    const decisions = livingOpponentSlots
+      .map((activeSlot) => chooseAiDecision(state, random, activeSlot, livingPlayerSlots[0] ?? 0, planning))
+      .sort((first, second) => second.score - first.score)
+    const decision = decisions[0]
+    if (!decision) return []
+    commitDecision(decision)
+    return [decision.action]
+  }
+
+  return livingOpponentSlots.map((activeSlot, index) => {
+    const decision = chooseAiDecision(
+      state,
+      random,
+      activeSlot,
+      livingPlayerSlots[index % Math.max(1, livingPlayerSlots.length)] ?? 0,
+      planning,
+    )
+    commitDecision(decision)
+    return decision.action
+  })
 }
 
 export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null }) {
