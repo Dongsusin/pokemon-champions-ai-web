@@ -873,6 +873,63 @@ function GimmickAnimation({ cue }) {
   )
 }
 
+const FIELD_PARTICLE_COUNTS = Object.freeze({
+  neutral: 12,
+  grassy: 20,
+  electric: 18,
+  psychic: 18,
+  misty: 20,
+})
+
+const FIELD_DURATION_RANGES = Object.freeze({
+  neutral: [3.8, 6.2],
+  grassy: [5.2, 8.8],
+  electric: [1.4, 3.1],
+  psychic: [5.4, 9.4],
+  misty: [5.8, 10.2],
+})
+
+function fieldParticleStyle(terrainId, index) {
+  const [minimumDuration, maximumDuration] = FIELD_DURATION_RANGES[terrainId] ?? FIELD_DURATION_RANGES.neutral
+  const terrainOffset = ['neutral', 'grassy', 'electric', 'psychic', 'misty'].indexOf(terrainId) * 13
+  const horizontalPhase = ((index * 43) + 17 + terrainOffset) % 101
+  const verticalPhase = 8 + (((index * 31) + terrainOffset) % 78)
+  const timingPhase = (((index * 29) + 7 + terrainOffset) % 97) / 96
+  const duration = minimumDuration + ((maximumDuration - minimumDuration) * timingPhase)
+  const scale = 0.62 + ((((index * 19) + terrainOffset) % 47) / 46)
+  const drift = (((index * 37) + terrainOffset) % 141) - 70
+  const spin = ((index * 53) + terrainOffset) % 360
+
+  return {
+    '--field-x': `${horizontalPhase}%`,
+    '--field-y': `${verticalPhase}%`,
+    '--field-delay': `${-(duration * timingPhase).toFixed(2)}s`,
+    '--field-duration': `${duration.toFixed(2)}s`,
+    '--field-scale': scale.toFixed(2),
+    '--field-drift': `${drift}px`,
+    '--field-spin': `${spin}deg`,
+  }
+}
+
+function BattleFieldEffects({ terrainId }) {
+  const normalizedTerrainId = FIELD_PARTICLE_COUNTS[terrainId] ? terrainId : 'neutral'
+  const particleCount = FIELD_PARTICLE_COUNTS[normalizedTerrainId]
+
+  return (
+    <div className={`battle-field-effects field-effect-${normalizedTerrainId}`} aria-hidden="true">
+      <span className="battle-field-ambient field-ambient-far" />
+      <span className="battle-field-ambient field-ambient-near" />
+      <span className="battle-field-energy" />
+      <span className="battle-field-particles">
+        {[...Array(particleCount).keys()].map((index) => (
+          <i key={index} style={fieldParticleStyle(normalizedTerrainId, index)} />
+        ))}
+      </span>
+      <span className="battle-field-transition" />
+    </div>
+  )
+}
+
 const WEATHER_PARTICLE_COUNTS = Object.freeze({
   clear: { back: 9, front: 4 },
   sun: { back: 13, front: 7 },
@@ -2108,6 +2165,10 @@ function BattleScreen({
 
         <div className={battleCameraClassName(visualTurnCue)} style={battleStageStyle(visualTurnCue, attackAnimationMode)}>
           <div className="battle-environment-backdrop" />
+          <BattleFieldEffects
+            key={`terrain-${battle.rules.terrain.id}`}
+            terrainId={battle.rules.terrain.id}
+          />
           <div className="battle-terrain-aura" />
           <BattleWeatherEffects
             key={`weather-back-${battle.rules.weather.id}`}

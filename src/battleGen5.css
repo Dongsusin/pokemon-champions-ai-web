@@ -3803,6 +3803,7 @@
 }
 
 .app-shell.battle-view .battle-environment-backdrop,
+.app-shell.battle-view .battle-field-effects,
 .app-shell.battle-view .battle-terrain-aura,
 .app-shell.battle-view .battle-weather-layer {
   position: absolute;
@@ -3814,7 +3815,10 @@
   z-index: 0;
   background-position: center 54%;
   background-size: cover;
-  transform: scale(1.012);
+  transform: scale(1.025);
+  transform-origin: 50% 55%;
+  animation: battle-field-backdrop-drift 24s ease-in-out infinite alternate;
+  will-change: transform, background-position, filter;
 }
 
 .app-shell.battle-view .terrain-neutral .battle-environment-backdrop {
@@ -3852,6 +3856,276 @@
 .app-shell.battle-view .terrain-electric { --terrain-glow: rgba(255, 229, 63, 0.4); }
 .app-shell.battle-view .terrain-psychic { --terrain-glow: rgba(224, 94, 255, 0.4); }
 .app-shell.battle-view .terrain-misty { --terrain-glow: rgba(255, 162, 234, 0.34); }
+
+.app-shell.battle-view .battle-field-effects {
+  z-index: 1;
+  overflow: hidden;
+  contain: paint;
+  isolation: isolate;
+}
+
+.app-shell.battle-view .battle-field-effects > span,
+.app-shell.battle-view .battle-field-particles,
+.app-shell.battle-view .battle-field-particles > i {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.app-shell.battle-view .battle-field-ambient {
+  inset: -12%;
+  z-index: 0;
+  will-change: transform, background-position, opacity;
+}
+
+.app-shell.battle-view .battle-field-energy {
+  inset: 0;
+  z-index: 1;
+  will-change: transform, opacity;
+}
+
+.app-shell.battle-view .battle-field-particles {
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.app-shell.battle-view .battle-field-particles > i {
+  top: var(--field-y);
+  left: var(--field-x);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.app-shell.battle-view .battle-field-transition {
+  inset: 0;
+  z-index: 3;
+  opacity: 0;
+  mix-blend-mode: screen;
+  animation: battle-field-arrive 1050ms ease-out both;
+}
+
+.app-shell.battle-view .field-effect-neutral .field-ambient-far {
+  top: 12%;
+  right: -8%;
+  bottom: 48%;
+  left: -8%;
+  opacity: 0.34;
+  background:
+    radial-gradient(circle, rgba(126, 246, 255, 0.92) 0 1px, transparent 2px),
+    radial-gradient(circle, rgba(67, 198, 228, 0.58) 0 1.2px, transparent 2.2px);
+  background-position: 0 0, 21px 13px;
+  background-size: 42px 27px, 58px 39px;
+  mix-blend-mode: screen;
+  animation: battle-field-neutral-crowd 3.6s steps(5, end) infinite;
+}
+
+.app-shell.battle-view .field-effect-neutral .field-ambient-near {
+  inset: 28% -32% -20%;
+  opacity: 0.24;
+  background: linear-gradient(108deg, transparent 34%, rgba(123, 237, 244, 0.3) 48%, transparent 62%);
+  background-position: 150% 0;
+  background-size: 250% 100%;
+  mix-blend-mode: screen;
+  animation: battle-field-neutral-sweep 10s linear infinite;
+}
+
+.app-shell.battle-view .field-effect-neutral .battle-field-energy {
+  top: 46%;
+  opacity: 0.22;
+  background: radial-gradient(ellipse at 50% 92%, rgba(101, 235, 239, 0.34), transparent 58%);
+  animation: battle-field-neutral-pulse 5.8s ease-in-out infinite;
+}
+
+.app-shell.battle-view .field-effect-neutral .battle-field-particles > i {
+  width: 3px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #c4fbff;
+  box-shadow: 0 0 6px rgba(93, 231, 246, 0.92);
+  animation: battle-field-neutral-glint var(--field-duration) ease-in-out var(--field-delay) infinite;
+}
+
+.app-shell.battle-view .field-effect-neutral .battle-field-transition {
+  background: radial-gradient(ellipse at 50% 58%, rgba(141, 244, 246, 0.36), transparent 66%);
+}
+
+.app-shell.battle-view .field-effect-grassy .field-ambient-far {
+  opacity: 0.25;
+  background: repeating-linear-gradient(116deg, transparent 0 78px, rgba(237, 255, 182, 0.3) 92px 98px, transparent 111px 164px);
+  transform-origin: 50% 0;
+  mix-blend-mode: screen;
+  animation: battle-field-grassy-rays 9s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .field-effect-grassy .field-ambient-near {
+  inset: 42% -14% -12%;
+  opacity: 0.28;
+  background:
+    radial-gradient(ellipse at 12% 100%, rgba(145, 255, 110, 0.34), transparent 52%),
+    repeating-linear-gradient(174deg, transparent 0 46px, rgba(192, 255, 127, 0.18) 52px 57px, transparent 64px 106px);
+  background-position: 0 0, 0 0;
+  background-size: 100% 100%, 170px 100%;
+  mix-blend-mode: screen;
+  animation: battle-field-grassy-wave 7.5s linear infinite;
+}
+
+.app-shell.battle-view .field-effect-grassy .battle-field-energy {
+  top: 48%;
+  opacity: 0.3;
+  background:
+    radial-gradient(ellipse at 18% 92%, rgba(121, 255, 87, 0.34), transparent 27%),
+    radial-gradient(ellipse at 76% 67%, rgba(177, 255, 112, 0.24), transparent 24%);
+  animation: battle-field-grassy-pulse 4.6s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .field-effect-grassy .battle-field-particles > i {
+  width: 9px;
+  height: 4px;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(135deg, #e6ff91, #5fc85a 70%);
+  box-shadow: 0 0 4px rgba(157, 255, 112, 0.55);
+  transform-origin: 100% 50%;
+  animation: battle-field-grassy-leaf var(--field-duration) linear var(--field-delay) infinite;
+}
+
+.app-shell.battle-view .field-effect-grassy .battle-field-particles > i:nth-child(3n) {
+  background: linear-gradient(135deg, #fff2a1, #7cda55 72%);
+}
+
+.app-shell.battle-view .field-effect-grassy .battle-field-transition {
+  background: radial-gradient(ellipse at 50% 72%, rgba(177, 255, 119, 0.48), transparent 68%);
+}
+
+.app-shell.battle-view .field-effect-electric .field-ambient-far {
+  opacity: 0.28;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 89px, rgba(79, 223, 255, 0.2) 91px 94px, transparent 97px 172px),
+    linear-gradient(180deg, rgba(46, 120, 255, 0.15), transparent 56%);
+  background-position: 0 0;
+  mix-blend-mode: screen;
+  animation: battle-field-electric-grid 4.2s linear infinite;
+}
+
+.app-shell.battle-view .field-effect-electric .field-ambient-near {
+  inset: 38% -8% -8%;
+  opacity: 0.32;
+  background: repeating-linear-gradient(168deg, transparent 0 58px, rgba(255, 225, 62, 0.27) 62px 65px, transparent 70px 132px);
+  background-position: 0 0;
+  background-size: 220px 100%;
+  mix-blend-mode: screen;
+  animation: battle-field-electric-floor 2.6s linear infinite;
+}
+
+.app-shell.battle-view .field-effect-electric .battle-field-energy {
+  opacity: 0.42;
+  background:
+    radial-gradient(ellipse at 17% 88%, rgba(78, 231, 255, 0.46), transparent 25%),
+    radial-gradient(ellipse at 75% 57%, rgba(255, 224, 61, 0.38), transparent 22%);
+  mix-blend-mode: screen;
+  animation: battle-field-electric-pulse 1.7s steps(4, end) infinite;
+}
+
+.app-shell.battle-view .field-effect-electric .battle-field-particles > i {
+  width: 9px;
+  height: 15px;
+  background: linear-gradient(180deg, #fffbd2, #ffe347 58%, #55dfff);
+  clip-path: polygon(43% 0, 100% 0, 62% 38%, 92% 38%, 12% 100%, 36% 55%, 0 55%);
+  filter: drop-shadow(0 0 5px rgba(255, 239, 91, 0.9));
+  animation: battle-field-electric-spark var(--field-duration) steps(5, end) var(--field-delay) infinite;
+}
+
+.app-shell.battle-view .field-effect-electric .battle-field-transition {
+  background: radial-gradient(ellipse at 50% 66%, rgba(255, 239, 76, 0.52), rgba(74, 211, 255, 0.2) 34%, transparent 70%);
+}
+
+.app-shell.battle-view .field-effect-psychic .field-ambient-far {
+  opacity: 0.3;
+  background: repeating-radial-gradient(circle at 51% 27%, transparent 0 36px, rgba(204, 116, 255, 0.24) 39px 42px, transparent 45px 78px);
+  mix-blend-mode: screen;
+  animation: battle-field-psychic-rings 17s linear infinite;
+}
+
+.app-shell.battle-view .field-effect-psychic .field-ambient-near {
+  inset: 34% -18% -28%;
+  opacity: 0.24;
+  background: conic-gradient(from 0deg at 50% 76%, transparent, rgba(104, 213, 255, 0.22), transparent 24%, rgba(240, 116, 255, 0.27), transparent 48%, rgba(150, 112, 255, 0.2), transparent 72%);
+  mix-blend-mode: screen;
+  animation: battle-field-psychic-orbit 20s linear infinite;
+}
+
+.app-shell.battle-view .field-effect-psychic .battle-field-energy {
+  opacity: 0.3;
+  background:
+    radial-gradient(circle at 50% 26%, rgba(198, 121, 255, 0.32), transparent 28%),
+    linear-gradient(112deg, transparent 24%, rgba(119, 223, 255, 0.19) 48%, transparent 72%);
+  mix-blend-mode: screen;
+  animation: battle-field-psychic-glow 6.2s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .field-effect-psychic .battle-field-particles > i {
+  width: 8px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(238, 214, 255, 0.9);
+  background: linear-gradient(135deg, rgba(231, 183, 255, 0.96), rgba(105, 223, 255, 0.78));
+  box-shadow: 0 0 7px rgba(207, 122, 255, 0.74);
+  animation: battle-field-psychic-crystal var(--field-duration) ease-in-out var(--field-delay) infinite;
+}
+
+.app-shell.battle-view .field-effect-psychic .battle-field-transition {
+  background: radial-gradient(circle at 50% 43%, rgba(228, 162, 255, 0.52), rgba(96, 189, 255, 0.16) 42%, transparent 72%);
+}
+
+.app-shell.battle-view .field-effect-misty .field-ambient-far {
+  opacity: 0.38;
+  background:
+    radial-gradient(ellipse at 16% 45%, rgba(244, 227, 255, 0.48), transparent 38%),
+    radial-gradient(ellipse at 68% 58%, rgba(218, 219, 255, 0.42), transparent 43%),
+    linear-gradient(90deg, transparent, rgba(245, 221, 255, 0.25), transparent);
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  animation: battle-field-misty-far 13s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .field-effect-misty .field-ambient-near {
+  inset: 42% -24% -20%;
+  opacity: 0.48;
+  background:
+    radial-gradient(ellipse at 27% 70%, rgba(255, 229, 251, 0.54), transparent 42%),
+    radial-gradient(ellipse at 76% 55%, rgba(196, 219, 255, 0.48), transparent 44%);
+  filter: blur(16px);
+  mix-blend-mode: screen;
+  animation: battle-field-misty-near 9s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .field-effect-misty .battle-field-energy {
+  opacity: 0.32;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.66) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 17%, rgba(223, 204, 255, 0.72) 0 1.2px, transparent 2.4px),
+    radial-gradient(circle at 48% 46%, rgba(196, 233, 255, 0.64) 0 1px, transparent 2px);
+  background-size: 88px 73px, 137px 96px, 111px 84px;
+  mix-blend-mode: screen;
+  animation: battle-field-misty-stars 5.4s steps(5, end) infinite;
+}
+
+.app-shell.battle-view .field-effect-misty .battle-field-particles > i {
+  width: 5px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff5ff;
+  box-shadow: 0 0 4px #fff, 0 0 10px rgba(231, 173, 255, 0.82);
+  animation: battle-field-misty-mote var(--field-duration) ease-in-out var(--field-delay) infinite;
+}
+
+.app-shell.battle-view .field-effect-misty .battle-field-particles > i:nth-child(4n) {
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.app-shell.battle-view .field-effect-misty .battle-field-transition {
+  background: radial-gradient(ellipse at 50% 54%, rgba(255, 225, 253, 0.62), rgba(191, 218, 255, 0.22) 45%, transparent 76%);
+}
 
 .app-shell.battle-view .battle-weather-layer {
   z-index: 3;
@@ -4994,6 +5268,143 @@
   display: none;
 }
 
+@keyframes battle-field-backdrop-drift {
+  0% {
+    background-position: 49.4% 54.4%;
+    filter: saturate(0.98) brightness(0.99);
+    transform: scale(1.025) translate3d(-0.2%, 0.1%, 0);
+  }
+  100% {
+    background-position: 50.6% 53.6%;
+    filter: saturate(1.04) brightness(1.025);
+    transform: scale(1.04) translate3d(0.2%, -0.1%, 0);
+  }
+}
+
+@keyframes battle-field-arrive {
+  0% { opacity: 0.82; transform: scale(1.08); }
+  45% { opacity: 0.28; }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes battle-field-neutral-crowd {
+  0%, 100% { opacity: 0.26; background-position: 0 0, 21px 13px; }
+  40% { opacity: 0.42; background-position: 6px 2px, 16px 10px; }
+  72% { opacity: 0.31; background-position: -4px 1px, 27px 15px; }
+}
+
+@keyframes battle-field-neutral-sweep {
+  from { background-position: 150% 0; }
+  to { background-position: -150% 0; }
+}
+
+@keyframes battle-field-neutral-pulse {
+  0%, 100% { opacity: 0.13; transform: scaleY(0.92); }
+  50% { opacity: 0.3; transform: scaleY(1.06); }
+}
+
+@keyframes battle-field-neutral-glint {
+  0%, 100% { opacity: 0; transform: scale(0.35); }
+  38% { opacity: 0.18; }
+  48% { opacity: 0.92; transform: scale(var(--field-scale)); }
+  58% { opacity: 0.12; }
+}
+
+@keyframes battle-field-grassy-rays {
+  from { opacity: 0.16; transform: translate3d(-2%, 0, 0) skewX(-1deg); }
+  to { opacity: 0.32; transform: translate3d(2%, -1%, 0) skewX(1deg); }
+}
+
+@keyframes battle-field-grassy-wave {
+  from { background-position: 0 0, 0 0; transform: translateY(1%); }
+  to { background-position: 0 0, 170px -8px; transform: translateY(-1%); }
+}
+
+@keyframes battle-field-grassy-pulse {
+  from { opacity: 0.18; transform: scaleY(0.94); }
+  to { opacity: 0.38; transform: scaleY(1.06); }
+}
+
+@keyframes battle-field-grassy-leaf {
+  0% { opacity: 0; transform: translate3d(-18px, 28px, 0) rotate(var(--field-spin)) scale(0.52); }
+  16% { opacity: 0.78; }
+  76% { opacity: 0.62; }
+  100% { opacity: 0; transform: translate3d(var(--field-drift), -112px, 0) rotate(calc(var(--field-spin) + 540deg)) scale(var(--field-scale)); }
+}
+
+@keyframes battle-field-electric-grid {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 172px 0, 0 0; }
+}
+
+@keyframes battle-field-electric-floor {
+  from { background-position: 0 0; }
+  to { background-position: 220px -18px; }
+}
+
+@keyframes battle-field-electric-pulse {
+  0%, 100% { opacity: 0.2; filter: brightness(0.92); }
+  36% { opacity: 0.52; filter: brightness(1.32); }
+  54% { opacity: 0.28; filter: brightness(1); }
+  68% { opacity: 0.46; filter: brightness(1.2); }
+}
+
+@keyframes battle-field-electric-spark {
+  0%, 15%, 100% { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.55); }
+  22%, 34% { opacity: 0.96; transform: translate3d(0, 0, 0) scale(var(--field-scale)); }
+  41% { opacity: 0.12; }
+  49% { opacity: 0.82; transform: translate3d(var(--field-drift), -8px, 0) scale(0.86); }
+  62% { opacity: 0; transform: translate3d(var(--field-drift), -18px, 0) scale(0.5); }
+}
+
+@keyframes battle-field-psychic-rings {
+  from { opacity: 0.2; transform: rotate(0deg) scale(0.96); }
+  50% { opacity: 0.36; }
+  to { opacity: 0.2; transform: rotate(360deg) scale(1.08); }
+}
+
+@keyframes battle-field-psychic-orbit {
+  from { transform: rotate(0deg) scale(1); }
+  to { transform: rotate(360deg) scale(1.04); }
+}
+
+@keyframes battle-field-psychic-glow {
+  from { opacity: 0.19; filter: hue-rotate(-8deg); transform: translateX(-2%); }
+  to { opacity: 0.39; filter: hue-rotate(12deg); transform: translateX(2%); }
+}
+
+@keyframes battle-field-psychic-crystal {
+  0% { opacity: 0; transform: translate3d(0, 28px, 0) rotate(var(--field-spin)) scale(0.45); }
+  22% { opacity: 0.78; }
+  54% { opacity: 0.42; }
+  72% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate3d(var(--field-drift), -76px, 0) rotate(calc(var(--field-spin) + 270deg)) scale(var(--field-scale)); }
+}
+
+@keyframes battle-field-misty-far {
+  from { opacity: 0.28; transform: translate3d(-5%, 0, 0) scale(1.03); }
+  to { opacity: 0.46; transform: translate3d(5%, -2%, 0) scale(1.1); }
+}
+
+@keyframes battle-field-misty-near {
+  from { opacity: 0.34; transform: translate3d(6%, 1%, 0) scale(1.05); }
+  to { opacity: 0.56; transform: translate3d(-6%, -1%, 0) scale(1.12); }
+}
+
+@keyframes battle-field-misty-stars {
+  0%, 100% { opacity: 0.2; background-position: 0 0, 0 0, 0 0; }
+  44% { opacity: 0.44; background-position: 8px -4px, -5px 7px, 4px 5px; }
+  68% { opacity: 0.27; }
+}
+
+@keyframes battle-field-misty-mote {
+  0%, 100% { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.42); }
+  28% { opacity: 0.76; }
+  52% { opacity: 0.24; }
+  68% { opacity: 0.86; transform: translate3d(var(--field-drift), -28px, 0) scale(var(--field-scale)); }
+  86% { opacity: 0.16; }
+}
+
 @keyframes battle-terrain-breathe {
   0%, 100% { opacity: 0.34; transform: scaleY(0.92); }
   50% { opacity: 0.62; transform: scaleY(1.04); }
@@ -5270,6 +5681,31 @@
 @media (prefers-reduced-motion: reduce) {
   .app-shell.battle-view .battle-terrain-aura {
     animation: none !important;
+  }
+
+  .app-shell.battle-view .battle-environment-backdrop,
+  .app-shell.battle-view .battle-field-ambient,
+  .app-shell.battle-view .battle-field-energy,
+  .app-shell.battle-view .battle-field-particles > i {
+    animation-iteration-count: infinite !important;
+  }
+
+  .app-shell.battle-view .battle-environment-backdrop {
+    animation-duration: 48s !important;
+  }
+
+  .app-shell.battle-view .battle-field-ambient,
+  .app-shell.battle-view .battle-field-energy {
+    animation-duration: 22s !important;
+  }
+
+  .app-shell.battle-view .battle-field-particles > i {
+    animation-duration: 12s !important;
+  }
+
+  .app-shell.battle-view .battle-field-particles > i:nth-child(even),
+  .app-shell.battle-view .battle-field-transition {
+    display: none;
   }
 
   .app-shell.battle-view .battle-weather-transition {
