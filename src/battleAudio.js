@@ -54,18 +54,43 @@ export const BATTLE_SAMPLE_PATHS = {
 
 const BATTLE_MASTER_VOLUME = 0.96
 const BATTLE_EFFECTS_VOLUME = 0.56
+const BATTLE_UI_VOLUME = 0.56
+const BATTLE_CRY_VOLUME = 0.56
 const BATTLE_MUSIC_VOLUME = 0.19
 const LOW_HP_MUSIC_VOLUME = 0.13
+
+const DEFAULT_AUDIO_MIX = {
+  master: 1,
+  music: 1,
+  ui: 1,
+  effects: 1,
+  cries: 1,
+}
+
+function audioMixLevel(value, fallback = 1) {
+  const normalized = Number(value)
+  if (!Number.isFinite(normalized)) return fallback
+  return Math.max(0, Math.min(1, normalized / 100))
+}
+
+function mergeAudioMix(current = DEFAULT_AUDIO_MIX, value = {}) {
+  return Object.fromEntries(Object.keys(DEFAULT_AUDIO_MIX).map((key) => [
+    key,
+    value[key] == null ? current[key] : audioMixLevel(value[key], current[key]),
+  ]))
+}
 
 function audioContextConstructor() {
   if (typeof window === 'undefined') return null
   return window.AudioContext ?? window.webkitAudioContext ?? null
 }
 
-export function createBattleAudio(initialEnabled = true) {
+export function createBattleAudio(initialEnabled = true, initialMix = {}) {
   let context = null
   let masterGain = null
   let effectsGain = null
+  let uiGain = null
+  let cryGain = null
   let musicGain = null
   let compressor = null
   let musicElement = null
@@ -77,6 +102,7 @@ export function createBattleAudio(initialEnabled = true) {
   const cryLoadPromises = new Map()
   const failedCryIds = new Set()
   let enabled = Boolean(initialEnabled)
+  let mix = mergeAudioMix(DEFAULT_AUDIO_MIX, initialMix)
   let battleStarted = false
   let musicStarted = false
   let lowHpActive = false
@@ -94,17 +120,23 @@ export function createBattleAudio(initialEnabled = true) {
     context = new AudioContext()
     masterGain = context.createGain()
     effectsGain = context.createGain()
+    uiGain = context.createGain()
+    cryGain = context.createGain()
     musicGain = context.createGain()
     compressor = context.createDynamicsCompressor()
-    masterGain.gain.value = enabled ? BATTLE_MASTER_VOLUME : 0
-    effectsGain.gain.value = BATTLE_EFFECTS_VOLUME
-    musicGain.gain.value = BATTLE_MUSIC_VOLUME
+    masterGain.gain.value = enabled ? BATTLE_MASTER_VOLUME * mix.master : 0
+    effectsGain.gain.value = BATTLE_EFFECTS_VOLUME * mix.effects
+    uiGain.gain.value = BATTLE_UI_VOLUME * mix.ui
+    cryGain.gain.value = BATTLE_CRY_VOLUME * mix.cries
+    musicGain.gain.value = BATTLE_MUSIC_VOLUME * mix.music
     compressor.threshold.value = -19
     compressor.knee.value = 18
     compressor.ratio.value = 7
     compressor.attack.value = 0.003
     compressor.release.value = 0.2
     effectsGain.connect(masterGain)
+    uiGain.connect(masterGain)
+    cryGain.connect(masterGain)
     musicGain.connect(masterGain)
     masterGain.connect(compressor)
     compressor.connect(context.destination)
@@ -173,11 +205,18 @@ export function createBattleAudio(initialEnabled = true) {
     return Promise.all([sampleLoadPromise, ...cryIds.map(preloadCry)]).then(() => undefined)
   }
 
+  const audioOutput = (options = {}) => {
+    if (options.music) return musicGain
+    if (options.bus === 'ui') return uiGain
+    if (options.bus === 'cry') return cryGain
+    return effectsGain
+  }
+
   const tone = (frequency, start, duration, options = {}) => {
     if (!context || !enabled) return
     const oscillator = context.createOscillator()
     const gain = context.createGain()
-    const output = options.music ? musicGain : effectsGain
+    const output = audioOutput(options)
     const volume = Math.max(0.0001, options.volume ?? 0.22)
     const end = start + duration
 
@@ -236,7 +275,7 @@ export function createBattleAudio(initialEnabled = true) {
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration)
     source.connect(filter)
     filter.connect(gain)
-    const output = options.music ? musicGain : effectsGain
+    const output = audioOutput(options)
     if (context.createStereoPanner && options.pan !== undefined) {
       const panner = context.createStereoPanner()
       panner.pan.value = Math.max(-1, Math.min(1, options.pan))
@@ -291,7 +330,7 @@ export function createBattleAudio(initialEnabled = true) {
       lastNode = panner
     }
 
-    lastNode.connect(effectsGain)
+    lastNode.connect(audioOutput(options))
     source.start(playAt, offset, sourceDuration)
     return true
   }
@@ -322,9 +361,9 @@ export function createBattleAudio(initialEnabled = true) {
       const panner = context.createStereoPanner()
       panner.pan.value = sidePan(sideId)
       gain.connect(panner)
-      panner.connect(effectsGain)
+      panner.connect(cryGain)
     } else {
-      gain.connect(effectsGain)
+      gain.connect(cryGain)
     }
 
     source.start(playAt)
@@ -388,19 +427,19 @@ export function createBattleAudio(initialEnabled = true) {
     if (!audio || !enabled) return
     const now = audio.currentTime + 0.005
     if (kind === 'cancel') {
-      if (playSample('cancel', now, { volume: 0.82 })) return
-      tone(330, now, 0.05, { volume: 0.12 })
-      tone(220, now + 0.055, 0.07, { volume: 0.11 })
+      if (playSample('cancel', now, { bus: 'ui', volume: 0.82 })) return
+      tone(330, now, 0.05, { bus: 'ui', volume: 0.12 })
+      tone(220, now + 0.055, 0.07, { bus: 'ui', volume: 0.11 })
       return
     }
     if (kind === 'cursor') {
-      if (playSample('cursor', now, { volume: 0.62, rate: 1.04 })) return
-      tone(392, now, 0.035, { volume: 0.09 })
+      if (playSample('cursor', now, { bus: 'ui', volume: 0.62, rate: 1.04 })) return
+      tone(392, now, 0.035, { bus: 'ui', volume: 0.09 })
       return
     }
-    if (playSample('select', now, { volume: 0.74 })) return
-    tone(440, now, 0.045, { volume: 0.12 })
-    tone(660, now + 0.045, 0.065, { volume: 0.1 })
+    if (playSample('select', now, { bus: 'ui', volume: 0.74 })) return
+    tone(440, now, 0.045, { bus: 'ui', volume: 0.12 })
+    tone(660, now + 0.045, 0.065, { bus: 'ui', volume: 0.1 })
   }
 
   const sidePan = (sideId) => sideId === 'player' ? -0.32 : 0.32
@@ -421,6 +460,7 @@ export function createBattleAudio(initialEnabled = true) {
     const length = 0.2 + (seed % 5) * 0.035
 
     tone(root, start, length, {
+      bus: 'cry',
       volume: 0.16,
       wave: seed % 2 === 0 ? 'sawtooth' : 'square',
       slide: upper,
@@ -428,12 +468,14 @@ export function createBattleAudio(initialEnabled = true) {
       filter: { frequency: 1150 + (seed % 900), q: 1.4 },
     })
     tone(upper * 0.76, start + length * 0.34, length * 0.82, {
+      bus: 'cry',
       volume: 0.11,
       wave: 'triangle',
       slide: root * 0.82,
       pan: pan * 0.8,
     })
     noise(start + 0.02, length * 0.72, {
+      bus: 'cry',
       volume: 0.045,
       frequency: 800 + (seed % 1200),
       q: 2.2,
@@ -642,9 +684,9 @@ export function createBattleAudio(initialEnabled = true) {
 
   const duckMusicForGimmick = (now, duration) => {
     if (!musicGain) return
-    const restoredVolume = lowHpActive ? LOW_HP_MUSIC_VOLUME : BATTLE_MUSIC_VOLUME
+    const restoredVolume = (lowHpActive ? LOW_HP_MUSIC_VOLUME : BATTLE_MUSIC_VOLUME) * mix.music
     musicGain.gain.cancelScheduledValues(now)
-    musicGain.gain.setTargetAtTime(0.018, now, 0.035)
+    musicGain.gain.setTargetAtTime(Math.max(0.0001, 0.018 * mix.music), now, 0.035)
     musicGain.gain.setTargetAtTime(restoredVolume, now + duration * 0.78, 0.11)
   }
 
@@ -910,7 +952,7 @@ export function createBattleAudio(initialEnabled = true) {
     const audio = enabled ? ensureContext() : context
     if (audio && masterGain) {
       masterGain.gain.cancelScheduledValues(audio.currentTime)
-      masterGain.gain.setTargetAtTime(enabled ? BATTLE_MASTER_VOLUME : 0, audio.currentTime, 0.015)
+      masterGain.gain.setTargetAtTime(enabled ? BATTLE_MASTER_VOLUME * mix.master : 0, audio.currentTime, 0.015)
     }
     if (enabled && battleStarted) {
       startMusic()
@@ -922,12 +964,31 @@ export function createBattleAudio(initialEnabled = true) {
     }
   }
 
+  const setMix = (nextMix = {}) => {
+    mix = mergeAudioMix(mix, nextMix)
+    if (!context) return
+    const now = context.currentTime
+    masterGain.gain.setTargetAtTime(enabled ? BATTLE_MASTER_VOLUME * mix.master : 0, now, 0.025)
+    effectsGain.gain.setTargetAtTime(BATTLE_EFFECTS_VOLUME * mix.effects, now, 0.025)
+    uiGain.gain.setTargetAtTime(BATTLE_UI_VOLUME * mix.ui, now, 0.025)
+    cryGain.gain.setTargetAtTime(BATTLE_CRY_VOLUME * mix.cries, now, 0.025)
+    musicGain.gain.setTargetAtTime(
+      (lowHpActive ? LOW_HP_MUSIC_VOLUME : BATTLE_MUSIC_VOLUME) * mix.music,
+      now,
+      0.04,
+    )
+  }
+
   const setLowHpWarning = (active) => {
     lowHpActive = Boolean(active)
     const audio = context
     if (audio && musicGain) {
       musicGain.gain.cancelScheduledValues(audio.currentTime)
-      musicGain.gain.setTargetAtTime(lowHpActive ? LOW_HP_MUSIC_VOLUME : BATTLE_MUSIC_VOLUME, audio.currentTime, 0.05)
+      musicGain.gain.setTargetAtTime(
+        (lowHpActive ? LOW_HP_MUSIC_VOLUME : BATTLE_MUSIC_VOLUME) * mix.music,
+        audio.currentTime,
+        0.05,
+      )
     }
     if (lowHpActive) startLowHpWarning()
     else stopLowHpWarning()
@@ -939,6 +1000,11 @@ export function createBattleAudio(initialEnabled = true) {
     stopLowHpWarning()
     if (context && context.state !== 'closed') context.close().catch(() => {})
     context = null
+    masterGain = null
+    effectsGain = null
+    uiGain = null
+    cryGain = null
+    musicGain = null
     compressor = null
     musicElement = null
     musicSource = null
@@ -955,6 +1021,7 @@ export function createBattleAudio(initialEnabled = true) {
     playCue,
     playMenu,
     setEnabled,
+    setMix,
     setLowHpWarning,
     start,
   }

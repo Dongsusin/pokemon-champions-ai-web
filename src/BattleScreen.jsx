@@ -22,6 +22,7 @@ import {
   Moon,
   Mountain,
   ScrollText,
+  Settings,
   Shield,
   Skull,
   Snowflake,
@@ -198,6 +199,20 @@ const TURN_STEP_DURATIONS = {
 
 const TURN_ACTION_PAUSE = 520
 
+const ATTACK_ANIMATION_PHASES = new Set(['announce', 'attack', 'impact', 'resolve'])
+const ATTACK_ANIMATION_RATES = {
+  normal: 1,
+  fast: 1.5,
+  'very-fast': 2,
+}
+
+const HP_BAR_DURATIONS = {
+  slow: 900,
+  normal: 520,
+  fast: 240,
+  instant: 0,
+}
+
 const GIMMICK_STEP_DURATIONS = {
   mega: 3000,
   zmove: 2700,
@@ -206,7 +221,7 @@ const GIMMICK_STEP_DURATIONS = {
   primal: 2350,
 }
 
-function turnStepDuration(step) {
+function baseTurnStepDuration(step) {
   if (step?.moveId && (step.phase === 'attack' || step.phase === 'impact' || (step.phase === 'resolve' && step.result === 'blocked'))) {
     const profile = getMoveAnimationProfile(step)
     return step.phase === 'attack' ? profile.duration : getMovePixelAnimationPlan(profile).impactDuration
@@ -215,13 +230,27 @@ function turnStepDuration(step) {
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
 }
 
-function turnPlaybackDelay(steps, stepIndex) {
+function attackAnimationRate(mode = 'normal') {
+  return ATTACK_ANIMATION_RATES[mode] ?? 1
+}
+
+function turnStepDuration(step, animationMode = 'normal') {
+  const duration = baseTurnStepDuration(step)
+  if (!ATTACK_ANIMATION_PHASES.has(step?.phase)) return duration
+  if (animationMode === 'skip') return 70
+  return Math.max(90, Math.round(duration / attackAnimationRate(animationMode)))
+}
+
+function turnPlaybackDelay(steps, stepIndex, animationMode = 'normal') {
   const step = steps[stepIndex]
   const nextStep = steps[stepIndex + 1]
-  const baseDuration = turnStepDuration(step)
+  const baseDuration = turnStepDuration(step, animationMode)
   if (step?.actionOrder == null) return baseDuration
   if (nextStep?.actionOrder === step.actionOrder) return baseDuration
-  return baseDuration + TURN_ACTION_PAUSE
+  const actionPause = animationMode === 'skip'
+    ? 90
+    : Math.round(TURN_ACTION_PAUSE / attackAnimationRate(animationMode))
+  return baseDuration + actionPause
 }
 
 function battleStageAnchor(camera, sideId, activeSlot) {
@@ -354,13 +383,13 @@ function useMoveAnimationAnchors(animationRef, cue, profile) {
   }, [cue.id, cue.actorSlot, cue.sideId, cue.targetSideId, cue.targetSlot, cue.state?.rules?.format?.id, profile.motion, profile.targetField, profile.targetSelf, profile.targetSpread])
 }
 
-function moveAnimationStyle(profile, plan, duration = profile.duration) {
+function moveAnimationStyle(profile, plan, duration = profile.duration, impactDuration = plan.impactDuration) {
   return {
     '--move-primary': profile.primary,
     '--move-secondary': profile.secondary,
     '--move-highlight': profile.highlight,
     '--move-duration': `${duration}ms`,
-    '--impact-duration': `${plan.impactDuration}ms`,
+    '--impact-duration': `${impactDuration}ms`,
     '--move-scale': plan.scale,
     '--move-impact-scale': plan.impactScale,
     '--move-arc': `${plan.arc}deg`,
@@ -428,10 +457,13 @@ function useFxSheetPlayback(animationRef, duration, cueId) {
   }, [cueId, duration, animationRef])
 }
 
-function MoveAnimation({ cue }) {
+function MoveAnimation({ cue, animationMode }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
   const animationRef = useRef(null)
+  const duration = turnStepDuration(cue, animationMode)
+  const animationRate = attackAnimationRate(animationMode)
+  const impactDuration = Math.max(90, Math.round(plan.impactDuration / animationRate))
   const sprites = Array.from({ length: plan.trajectoryAssets.length ? plan.copies : 0 }, (_, spriteIndex) => ({
     index: spriteIndex,
     asset: plan.trajectoryAssets[spriteIndex % plan.trajectoryAssets.length],
@@ -443,13 +475,13 @@ function MoveAnimation({ cue }) {
   }))
 
   useMoveAnimationAnchors(animationRef, cue, profile)
-  useFxSheetPlayback(animationRef, profile.duration, cue.id)
+  useFxSheetPlayback(animationRef, duration, cue.id)
 
   return (
     <div
       ref={animationRef}
       className={moveAnimationClassName(cue, profile, plan, 'move')}
-      style={moveAnimationStyle(profile, plan)}
+      style={moveAnimationStyle(profile, plan, duration, impactDuration)}
       data-move-id={profile.moveId}
       data-animation-source={profile.sourceKind}
       data-move-generation={profile.generation ?? undefined}
@@ -487,7 +519,7 @@ function MoveAnimation({ cue }) {
             timelineEnd={0.96}
             style={{
               '--sprite-index': sprite.index,
-              '--sprite-delay': `${sprite.delay}ms`,
+              '--sprite-delay': `${Math.round(sprite.delay / animationRate)}ms`,
               '--sprite-lane': sprite.lane,
               '--sprite-spin': `${sprite.spin}deg`,
             }}
@@ -518,20 +550,22 @@ function MoveAnimation({ cue }) {
   )
 }
 
-function MoveSceneAnimation({ cue }) {
+function MoveSceneAnimation({ cue, animationMode }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
   const animationRef = useRef(null)
   const sceneAsset = sceneAssetForSide(plan, cue.sideId)
+  const duration = turnStepDuration(cue, animationMode)
+  const impactDuration = Math.max(90, Math.round(plan.impactDuration / attackAnimationRate(animationMode)))
 
   useMoveAnimationAnchors(animationRef, cue, profile)
-  useFxSheetPlayback(animationRef, profile.duration, cue.id)
+  useFxSheetPlayback(animationRef, duration, cue.id)
 
   return (
     <div
       ref={animationRef}
       className={moveAnimationClassName(cue, profile, plan, 'scene')}
-      style={moveAnimationStyle(profile, plan)}
+      style={moveAnimationStyle(profile, plan, duration, impactDuration)}
       aria-hidden="true"
     >
       <span className="pixel-move-screen" />
@@ -540,21 +574,27 @@ function MoveSceneAnimation({ cue }) {
   )
 }
 
-function MoveImpactAnimation({ cue, presentation }) {
+function MoveImpactAnimation({ cue, presentation, animationMode, showDamageNumbers }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
   const animationRef = useRef(null)
   const hitCount = Math.max(1, Math.min(5, Number(cue.hitCount) || 1))
   const feedbackLabel = cue.critical ? '급소에 맞았다!' : presentation?.label ?? '명중'
+  const duration = turnStepDuration(cue, animationMode)
+  const damageLabel = cue.result === 'blocked'
+    ? 'BLOCK'
+    : showDamageNumbers && cue.damage > 0
+      ? `-${cue.damage}`
+      : presentation?.value ?? 'HIT'
 
   useMoveAnimationAnchors(animationRef, cue, profile)
-  useFxSheetPlayback(animationRef, plan.impactDuration, cue.id)
+  useFxSheetPlayback(animationRef, duration, cue.id)
 
   return (
     <div
       ref={animationRef}
       className={`${moveAnimationClassName(cue, profile, plan, 'impact')} result-${cue.result ?? 'hit'}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
-      style={moveAnimationStyle(profile, plan, plan.impactDuration)}
+      style={moveAnimationStyle(profile, plan, duration, duration)}
       aria-hidden="true"
     >
       <span className="pixel-impact-wash" />
@@ -576,7 +616,7 @@ function MoveImpactAnimation({ cue, presentation }) {
         ))}
       </span>
       <span className="director-impact-feedback">
-        <strong>{cue.result === 'blocked' ? 'BLOCK' : cue.damage > 0 ? `-${cue.damage}` : presentation?.value ?? 'HIT'}</strong>
+        <strong>{damageLabel}</strong>
         <small>{cue.result === 'blocked' ? '공격을 막았다!' : feedbackLabel}</small>
       </span>
     </div>
@@ -833,13 +873,14 @@ function GimmickAnimation({ cue }) {
   )
 }
 
-function BattleArenaEffects({ cue }) {
+function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers = true }) {
   if (!cue) return null
   const presentation = cue.effectiveness == null
     ? null
     : effectivenessPresentation(cue.effectiveness)
-  const showMoveEffect = cue.phase === 'attack' && cue.moveName
-  const showImpact = cue.phase === 'impact' || (cue.phase === 'resolve' && cue.result === 'blocked')
+  const attackAnimationsVisible = animationMode !== 'skip'
+  const showMoveEffect = attackAnimationsVisible && cue.phase === 'attack' && cue.moveName
+  const showImpact = attackAnimationsVisible && (cue.phase === 'impact' || (cue.phase === 'resolve' && cue.result === 'blocked'))
   const showSwitch = cue.phase === 'switch-out' || cue.phase === 'switch'
   const showFaint = cue.phase === 'faint'
 
@@ -851,13 +892,19 @@ function BattleArenaEffects({ cue }) {
 
       {showMoveEffect && (
         <>
-          <MoveSceneAnimation cue={cue} key={`scene-${cue.id}`} />
-          <MoveAnimation cue={cue} key={`move-${cue.id}`} />
+          <MoveSceneAnimation cue={cue} animationMode={animationMode} key={`scene-${cue.id}`} />
+          <MoveAnimation cue={cue} animationMode={animationMode} key={`move-${cue.id}`} />
         </>
       )}
 
       {showImpact && cue.result !== 'miss' && (
-        <MoveImpactAnimation cue={cue} presentation={presentation} key={`impact-${cue.id}`} />
+        <MoveImpactAnimation
+          cue={cue}
+          presentation={presentation}
+          animationMode={animationMode}
+          showDamageNumbers={showDamageNumbers}
+          key={`impact-${cue.id}`}
+        />
       )}
 
       {showSwitch && (
@@ -924,9 +971,9 @@ function battleCameraClassName(cue) {
   return classes.join(' ')
 }
 
-function battleStageStyle(cue) {
-  if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue)}ms` }
-  if (cue?.phase === 'impact') return { '--impact-duration': `${turnStepDuration(cue)}ms` }
+function battleStageStyle(cue, animationMode = 'normal') {
+  if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue, animationMode)}ms` }
+  if (cue?.phase === 'impact') return { '--impact-duration': `${turnStepDuration(cue, animationMode)}ms` }
   if (cue?.phase === 'gimmick') return { '--gimmick-duration': `${turnStepDuration(cue)}ms` }
   return undefined
 }
@@ -1449,7 +1496,10 @@ function BattleScreen({
   opponentTeam,
   rules,
   soundEnabled = true,
+  gameSettings = {},
+  audioSettings = {},
   onToggleSound,
+  onOpenSettings,
   onComplete,
 }) {
   const [battle, setBattle] = useState(() => createBattle({ playerPokemon, opponent, opponentTeam, rules }))
@@ -1471,7 +1521,7 @@ function BattleScreen({
   const playbackTokenRef = useRef(0)
   const turnLockedRef = useRef(false)
   const battleAudioRef = useRef(null)
-  if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled)
+  if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
   const playerActivePokemon = getActivePokemonList(battle, 'player')
@@ -1485,6 +1535,12 @@ function BattleScreen({
     .filter((entry) => entry.id !== currentLogEntry?.id || turnCue)
     .slice(-12)
   const commandLocked = isTurnAnimating || Boolean(battle.winner)
+  const attackAnimationMode = gameSettings.attackAnimation ?? 'normal'
+  const showDamageNumbers = gameSettings.showDamageNumbers !== false
+  const hpBarDuration = HP_BAR_DURATIONS[gameSettings.hpBarSpeed] ?? HP_BAR_DURATIONS.normal
+  const visualTurnCue = attackAnimationMode === 'skip' && ATTACK_ANIMATION_PHASES.has(turnCue?.phase)
+    ? null
+    : turnCue
 
   useEffect(() => {
     let active = true
@@ -1547,6 +1603,10 @@ function BattleScreen({
   }, [soundEnabled])
 
   useEffect(() => {
+    battleAudioRef.current?.setMix(audioSettings)
+  }, [audioSettings])
+
+  useEffect(() => {
     setHoveredPokemonSide(null)
     setFocusedPokemonSide(null)
     setPinnedPokemonSide(null)
@@ -1559,8 +1619,9 @@ function BattleScreen({
   }, [battle.winner, introVisible, playerActive.hp, playerActive.maxHp])
 
   useEffect(() => {
-    if (!introVisible && turnCue) battleAudioRef.current?.playCue(turnCue)
-  }, [introVisible, turnCue])
+    const skipAttackCue = attackAnimationMode === 'skip' && ATTACK_ANIMATION_PHASES.has(turnCue?.phase)
+    if (!introVisible && turnCue && !skipAttackCue) battleAudioRef.current?.playCue(turnCue)
+  }, [attackAnimationMode, introVisible, turnCue])
 
   const startAnimatedTurn = (playerAction) => {
     if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch) return
@@ -1589,7 +1650,10 @@ function BattleScreen({
       const step = steps[stepIndex]
       if (step.phase !== 'attack' || stepIndex === 0) setBattle(step.state)
       setTurnCue(step)
-      playbackTimerRef.current = setTimeout(() => playStep(stepIndex + 1), turnPlaybackDelay(steps, stepIndex))
+      playbackTimerRef.current = setTimeout(
+        () => playStep(stepIndex + 1),
+        turnPlaybackDelay(steps, stepIndex, attackAnimationMode),
+      )
     }
 
     if (steps.length > 0) {
@@ -1755,7 +1819,7 @@ function BattleScreen({
         setIsTurnAnimating(false)
         turnLockedRef.current = false
         playbackTimerRef.current = null
-      }, turnStepDuration(forcedSwitchCue))
+      }, turnStepDuration(forcedSwitchCue, attackAnimationMode))
     } else {
       submitPlayerAction({ type: 'switch', targetIndex })
     }
@@ -1855,7 +1919,10 @@ function BattleScreen({
     : `이 대전의 기본 필드는 ${baseTerrainLabel}입니다.`}`
 
   return (
-    <main className={`battle-game-screen cue-${turnCue?.phase ?? 'command'} actor-${turnCue?.sideId ?? 'none'} target-${turnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}>
+    <main
+      className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
+      style={{ '--battle-hp-duration': `${hpBarDuration}ms` }}
+    >
       <header className="battle-game-header">
         <div className="battle-title-lockup">
           <span><Swords size={14} /> TRAINER BATTLE</span>
@@ -1904,24 +1971,34 @@ function BattleScreen({
             >
               {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
             </button>
+            <button
+              type="button"
+              aria-label="환경 설정"
+              onClick={() => {
+                battleAudioRef.current?.playMenu('select')
+                onOpenSettings?.()
+              }}
+            >
+              <Settings size={17} />
+            </button>
           </div>
         </div>
       </header>
 
       <section
-        className={`battle-arena phase-${turnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
+        className={`battle-arena phase-${visualTurnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
         onPointerDown={(event) => {
           if (event.pointerType !== 'mouse') setPinnedPokemonSide(null)
         }}
       >
         {opponentActivePokemon.map((pokemon, slot) => (
-          <div className={statusAnchorClassName('opponent', turnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
+          <div className={statusAnchorClassName('opponent', visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
             <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} />
             {slot === 0 && <PartyIndicators side={battle.opponent} />}
           </div>
         ))}
         {playerActivePokemon.map((pokemon, slot) => (
-          <div className={statusAnchorClassName('player', turnCue, slot)} key={`player-status-${pokemon.battleId}`}>
+          <div className={statusAnchorClassName('player', visualTurnCue, slot)} key={`player-status-${pokemon.battleId}`}>
             <BattleStatusPanel pokemon={pokemon} side="player" trainerName="PLAYER_01" />
             {slot === 0 && <PartyIndicators side={battle.player} />}
           </div>
@@ -1948,7 +2025,7 @@ function BattleScreen({
           />
         ))}
 
-        <div className={battleCameraClassName(turnCue)} style={battleStageStyle(turnCue)}>
+        <div className={battleCameraClassName(visualTurnCue)} style={battleStageStyle(visualTurnCue, attackAnimationMode)}>
           <div className="battle-environment-backdrop" />
           <div className="battle-terrain-aura" />
           <div className="battle-weather-layer" />
@@ -1962,9 +2039,9 @@ function BattleScreen({
 
           {opponentActivePokemon.map((pokemon, slot) => (
             <div
-              className={`${battleStageClassName('opponent', pokemon, turnCue, slot)}${battle.rules.format.rotation ? (battle.opponent.rotationSlot === slot ? ' is-rotation-active' : ' is-rotation-reserve') : ''}`}
+              className={`${battleStageClassName('opponent', pokemon, visualTurnCue, slot)}${battle.rules.format.rotation ? (battle.opponent.rotationSlot === slot ? ' is-rotation-active' : ' is-rotation-reserve') : ''}`}
               key={`opponent-stage-${pokemon.battleId}`}
-              style={battleStageStyle(turnCue)}
+              style={battleStageStyle(visualTurnCue, attackAnimationMode)}
               {...pokemonInspectorProps(`opponent-${slot}`, pokemon)}
             >
               <span className="battle-pokemon-shadow" aria-hidden="true" />
@@ -1982,9 +2059,9 @@ function BattleScreen({
 
           {playerActivePokemon.map((pokemon, slot) => (
             <div
-              className={`${battleStageClassName('player', pokemon, turnCue, slot)}${battle.rules.format.rotation ? (battle.player.rotationSlot === slot ? ' is-rotation-active' : ' is-rotation-reserve') : ''}`}
+              className={`${battleStageClassName('player', pokemon, visualTurnCue, slot)}${battle.rules.format.rotation ? (battle.player.rotationSlot === slot ? ' is-rotation-active' : ' is-rotation-reserve') : ''}`}
               key={`player-stage-${pokemon.battleId}`}
-              style={battleStageStyle(turnCue)}
+              style={battleStageStyle(visualTurnCue, attackAnimationMode)}
               {...pokemonInspectorProps(`player-${slot}`, pokemon)}
             >
               <span className="battle-pokemon-shadow" aria-hidden="true" />
@@ -2000,7 +2077,11 @@ function BattleScreen({
             </div>
           ))}
 
-          <BattleArenaEffects cue={turnCue} />
+          <BattleArenaEffects
+            cue={visualTurnCue}
+            animationMode={attackAnimationMode}
+            showDamageNumbers={showDamageNumbers}
+          />
         </div>
       </section>
 

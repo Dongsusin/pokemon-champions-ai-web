@@ -44,6 +44,26 @@ const MUSIC_VOLUME = 0.16
 const UI_VOLUME = 0.58
 const EVENT_VOLUME = 0.64
 
+const DEFAULT_AUDIO_MIX = {
+  master: 1,
+  music: 1,
+  ui: 1,
+  event: 1,
+}
+
+function audioMixLevel(value, fallback = 1) {
+  const normalized = Number(value)
+  if (!Number.isFinite(normalized)) return fallback
+  return Math.max(0, Math.min(1, normalized / 100))
+}
+
+function mergeAudioMix(current = DEFAULT_AUDIO_MIX, value = {}) {
+  return Object.fromEntries(Object.keys(DEFAULT_AUDIO_MIX).map((key) => [
+    key,
+    value[key] == null ? current[key] : audioMixLevel(value[key], current[key]),
+  ]))
+}
+
 function audioContextConstructor() {
   if (typeof window === 'undefined') return null
   return window.AudioContext ?? window.webkitAudioContext ?? null
@@ -53,7 +73,7 @@ function clampPan(value) {
   return Math.max(-1, Math.min(1, Number(value) || 0))
 }
 
-export function createGameAudio(initialEnabled = true) {
+export function createGameAudio(initialEnabled = true, initialMix = {}) {
   let context = null
   let masterGain = null
   let musicGain = null
@@ -65,6 +85,7 @@ export function createGameAudio(initialEnabled = true) {
   let musicStep = 0
   let currentScene = 'lobby'
   let enabled = Boolean(initialEnabled)
+  let mix = mergeAudioMix(DEFAULT_AUDIO_MIX, initialMix)
   let activated = false
   let lastCursorTime = 0
 
@@ -90,10 +111,10 @@ export function createGameAudio(initialEnabled = true) {
     eventGain = context.createGain()
     compressor = context.createDynamicsCompressor()
 
-    masterGain.gain.value = enabled ? MASTER_VOLUME : 0
-    musicGain.gain.value = MUSIC_VOLUME
-    uiGain.gain.value = UI_VOLUME
-    eventGain.gain.value = EVENT_VOLUME
+    masterGain.gain.value = enabled ? MASTER_VOLUME * mix.master : 0
+    musicGain.gain.value = MUSIC_VOLUME * mix.music
+    uiGain.gain.value = UI_VOLUME * mix.ui
+    eventGain.gain.value = EVENT_VOLUME * mix.event
     compressor.threshold.value = -20
     compressor.knee.value = 18
     compressor.ratio.value = 7
@@ -435,7 +456,7 @@ export function createGameAudio(initialEnabled = true) {
     musicGain.gain.setTargetAtTime(0.001, now, 0.025)
 
     if (normalizedScene) {
-      musicGain.gain.setTargetAtTime(MUSIC_VOLUME, now + 0.1, 0.08)
+      musicGain.gain.setTargetAtTime(MUSIC_VOLUME * mix.music, now + 0.1, 0.08)
       musicStep = 0
       nextMusicTime = now + 0.12
       startMusic()
@@ -451,13 +472,23 @@ export function createGameAudio(initialEnabled = true) {
     if (!audio || !masterGain) return
 
     masterGain.gain.cancelScheduledValues(audio.currentTime)
-    masterGain.gain.setTargetAtTime(enabled ? MASTER_VOLUME : 0, audio.currentTime, 0.018)
+    masterGain.gain.setTargetAtTime(enabled ? MASTER_VOLUME * mix.master : 0, audio.currentTime, 0.018)
     if (enabled) {
       startMusic()
       playUi('confirm')
     } else {
       stopMusic()
     }
+  }
+
+  const setMix = (nextMix = {}) => {
+    mix = mergeAudioMix(mix, nextMix)
+    if (!context) return
+    const now = context.currentTime
+    masterGain.gain.setTargetAtTime(enabled ? MASTER_VOLUME * mix.master : 0, now, 0.025)
+    musicGain.gain.setTargetAtTime(MUSIC_VOLUME * mix.music, now, 0.04)
+    uiGain.gain.setTargetAtTime(UI_VOLUME * mix.ui, now, 0.025)
+    eventGain.gain.setTargetAtTime(EVENT_VOLUME * mix.event, now, 0.025)
   }
 
   const destroy = () => {
@@ -477,6 +508,7 @@ export function createGameAudio(initialEnabled = true) {
     playEvent,
     playUi,
     setEnabled,
+    setMix,
     setScene,
   }
 }

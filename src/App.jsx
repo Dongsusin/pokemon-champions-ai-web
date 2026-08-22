@@ -18,9 +18,16 @@ import BattleScreen from './BattleScreen'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
+import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
 import { createGameAudio } from './gameAudio'
+import {
+  SETTINGS_STORAGE_KEY,
+  createDefaultGameSettings,
+  loadGameSettings,
+  normalizeGameSettings,
+} from './gameSettings'
 import {
   createCompletePokemonCollection,
   createPokemonDraw,
@@ -231,15 +238,17 @@ function App() {
   const [activeTeamId, setActiveTeamId] = useState(initialTeamState.current.activeTeamId)
   const [vp, setVp] = useState(vpBalance.current)
   const [itemInventory, setItemInventory] = useState(storedItemInventory.current)
-  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [settings, setSettings] = useState(loadGameSettings)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [competition, setCompetition] = useState(null)
   const [battleMatch, setBattleMatch] = useState(null)
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
-  if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(true)
+  if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(settings.audio.enabled, settings.audio)
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
+  const soundEnabled = settings.audio.enabled
 
   useEffect(() => {
     return () => {
@@ -251,6 +260,10 @@ function App() {
   useEffect(() => {
     gameAudioRef.current?.setEnabled(soundEnabled)
   }, [soundEnabled])
+
+  useEffect(() => {
+    gameAudioRef.current?.setMix(settings.audio)
+  }, [settings.audio])
 
   useEffect(() => {
     gameAudioRef.current?.setScene(screen === 'battle' ? null : screen)
@@ -320,6 +333,12 @@ function App() {
   }, [itemInventory])
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    } catch {}
+  }, [settings])
+
+  useEffect(() => {
     const availableCaptureIds = boxPokemon.map((pokemon) => pokemon.captureId)
     setTeams((currentTeams) => {
       const sanitizedTeams = sanitizeSavedTeams(currentTeams, availableCaptureIds)
@@ -338,6 +357,27 @@ function App() {
     setNotice(message)
     window.clearTimeout(noticeTimer.current)
     noticeTimer.current = window.setTimeout(() => setNotice(''), 2400)
+  }
+
+  const updateSetting = (section, key, value) => {
+    setSettings((currentSettings) => normalizeGameSettings({
+      ...currentSettings,
+      [section]: {
+        ...currentSettings[section],
+        [key]: value,
+      },
+    }))
+  }
+
+  const toggleSound = () => {
+    const nextEnabled = !soundEnabled
+    updateSetting('audio', 'enabled', nextEnabled)
+    showNotice(nextEnabled ? '사운드를 켰습니다.' : '사운드를 껐습니다.')
+  }
+
+  const resetSettings = () => {
+    setSettings(createDefaultGameSettings())
+    showNotice('설정을 기본값으로 복원했습니다.')
   }
 
   const createAndStoreDraw = () => {
@@ -715,10 +755,7 @@ function App() {
             className="icon-button"
             type="button"
             aria-label={soundEnabled ? '사운드 끄기' : '사운드 켜기'}
-            onClick={() => {
-              setSoundEnabled((enabled) => !enabled)
-              showNotice(soundEnabled ? '사운드를 껐습니다.' : '사운드를 켰습니다.')
-            }}
+            onClick={toggleSound}
           >
             {soundEnabled ? <Volume2 size={21} /> : <VolumeX size={21} />}
           </button>
@@ -727,7 +764,7 @@ function App() {
             className="icon-button"
             type="button"
             aria-label="설정"
-            onClick={() => showNotice('환경 설정 화면은 준비 중입니다.')}
+            onClick={() => setSettingsOpen(true)}
           >
             <Settings size={21} />
           </button>
@@ -809,7 +846,10 @@ function App() {
           opponentTeam={battleMatch.opponentTeam}
           rules={battleMatch.rules}
           soundEnabled={soundEnabled}
-          onToggleSound={() => setSoundEnabled((enabled) => !enabled)}
+          gameSettings={settings.game}
+          audioSettings={settings.audio}
+          onToggleSound={toggleSound}
+          onOpenSettings={() => setSettingsOpen(true)}
           onComplete={finishCompetitionBattle}
         />
       ) : screen === 'hatch' ? (
@@ -853,6 +893,15 @@ function App() {
           onConfirmTeam={confirmTeam}
           onOpenHatch={enterHatchScreen}
           onOpenShop={openShop}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          settings={settings}
+          onChange={updateSetting}
+          onClose={() => setSettingsOpen(false)}
+          onReset={resetSettings}
         />
       )}
 
