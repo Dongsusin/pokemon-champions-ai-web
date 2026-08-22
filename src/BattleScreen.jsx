@@ -873,6 +873,84 @@ function GimmickAnimation({ cue }) {
   )
 }
 
+const WEATHER_PARTICLE_COUNTS = Object.freeze({
+  clear: { back: 9, front: 4 },
+  sun: { back: 13, front: 7 },
+  rain: { back: 28, front: 22 },
+  sandstorm: { back: 21, front: 25 },
+  snow: { back: 18, front: 24 },
+  fog: { back: 7, front: 6 },
+})
+
+const WEATHER_DURATION_RANGES = Object.freeze({
+  clear: [4.8, 7.4],
+  sun: [2.8, 5.2],
+  rain: [0.58, 0.94],
+  sandstorm: [1.45, 2.5],
+  snow: [4.1, 7.2],
+  fog: [7.5, 12.5],
+})
+
+function weatherParticleStyle(weatherId, layer, index) {
+  const [minimumDuration, maximumDuration] = WEATHER_DURATION_RANGES[weatherId] ?? WEATHER_DURATION_RANGES.clear
+  const layerOffset = layer === 'front' ? 29 : 11
+  const horizontalPhase = ((index * 37) + layerOffset) % 101
+  const verticalPhase = ((index * 53) + (layerOffset * 2)) % 101
+  const timingPhase = (((index * 23) + layerOffset) % 97) / 96
+  const duration = minimumDuration + ((maximumDuration - minimumDuration) * timingPhase)
+  const scale = (layer === 'front' ? 0.92 : 0.56) + ((((index * 17) + layerOffset) % 41) / 40)
+  const opacity = (layer === 'front' ? 0.48 : 0.28) + ((((index * 31) + layerOffset) % 37) / 72)
+  const drift = (((index * 19) + layerOffset) % 81) - 40
+  const spin = ((index * 47) + layerOffset) % 360
+
+  return {
+    '--weather-x': `${horizontalPhase}%`,
+    '--weather-y': `${verticalPhase}%`,
+    '--weather-ground-y': `${2 + (verticalPhase * 0.18)}%`,
+    '--weather-delay': `${-(duration * timingPhase).toFixed(2)}s`,
+    '--weather-duration': `${duration.toFixed(2)}s`,
+    '--weather-scale': scale.toFixed(2),
+    '--weather-opacity': Math.min(opacity, 0.94).toFixed(2),
+    '--weather-drift': `${drift}px`,
+    '--weather-spin': `${spin}deg`,
+  }
+}
+
+function BattleWeatherEffects({ weatherId, layer }) {
+  const particleCount = WEATHER_PARTICLE_COUNTS[weatherId]?.[layer] ?? 0
+  const isBackLayer = layer === 'back'
+
+  return (
+    <div className={`battle-weather-layer weather-layer-${layer} weather-effect-${weatherId}`} aria-hidden="true">
+      {isBackLayer && (
+        <>
+          <span className="battle-weather-grade" />
+          <span className="battle-weather-celestial" />
+          <span className="battle-weather-cloud cloud-one" />
+          <span className="battle-weather-cloud cloud-two" />
+          <span className="battle-weather-gust gust-one" />
+          <span className="battle-weather-gust gust-two" />
+        </>
+      )}
+      <span className="battle-weather-particles">
+        {[...Array(particleCount).keys()].map((index) => (
+          <i key={index} style={weatherParticleStyle(weatherId, layer, index)} />
+        ))}
+      </span>
+      {!isBackLayer && (
+        <>
+          <span className="battle-weather-ground">
+            {[...Array(9).keys()].map((index) => (
+              <i key={index} style={weatherParticleStyle(weatherId, layer, index + particleCount)} />
+            ))}
+          </span>
+          <span className="battle-weather-transition" />
+        </>
+      )}
+    </div>
+  )
+}
+
 function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers = true }) {
   if (!cue) return null
   const presentation = cue.effectiveness == null
@@ -2030,7 +2108,11 @@ function BattleScreen({
         <div className={battleCameraClassName(visualTurnCue)} style={battleStageStyle(visualTurnCue, attackAnimationMode)}>
           <div className="battle-environment-backdrop" />
           <div className="battle-terrain-aura" />
-          <div className="battle-weather-layer" />
+          <BattleWeatherEffects
+            key={`weather-back-${battle.rules.weather.id}`}
+            weatherId={battle.rules.weather.id}
+            layer="back"
+          />
           <div className="battle-field-horizon" />
           <div className="battle-field-light battle-field-light-player" />
           <div className="battle-field-light battle-field-light-opponent" />
@@ -2079,6 +2161,11 @@ function BattleScreen({
             </div>
           ))}
 
+          <BattleWeatherEffects
+            key={`weather-front-${battle.rules.weather.id}`}
+            weatherId={battle.rules.weather.id}
+            layer="front"
+          />
           <BattleArenaEffects
             cue={visualTurnCue}
             animationMode={attackAnimationMode}

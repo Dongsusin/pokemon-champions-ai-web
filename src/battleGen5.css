@@ -3854,62 +3854,406 @@
 .app-shell.battle-view .terrain-misty { --terrain-glow: rgba(255, 162, 234, 0.34); }
 
 .app-shell.battle-view .battle-weather-layer {
-  z-index: 4;
+  z-index: 3;
+  overflow: hidden;
+  contain: paint;
+  isolation: isolate;
+}
+
+.app-shell.battle-view .battle-weather-layer.weather-layer-front {
+  z-index: 7;
+}
+
+.app-shell.battle-view .battle-weather-layer > span,
+.app-shell.battle-view .battle-weather-particles,
+.app-shell.battle-view .battle-weather-ground {
+  position: absolute;
+  pointer-events: none;
+}
+
+.app-shell.battle-view .battle-weather-grade,
+.app-shell.battle-view .battle-weather-particles {
+  inset: 0;
+}
+
+.app-shell.battle-view .battle-weather-grade {
+  z-index: 0;
+}
+
+.app-shell.battle-view .battle-weather-celestial,
+.app-shell.battle-view .battle-weather-cloud,
+.app-shell.battle-view .battle-weather-gust {
+  z-index: 1;
+  display: none;
+}
+
+.app-shell.battle-view .battle-weather-particles {
+  z-index: 2;
+  display: block;
   overflow: hidden;
 }
 
-.app-shell.battle-view .weather-clear .battle-weather-layer {
-  background: linear-gradient(180deg, rgba(81, 178, 255, 0.05), transparent 42%);
+.app-shell.battle-view .battle-weather-particles > i,
+.app-shell.battle-view .battle-weather-ground > i {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
 }
 
-.app-shell.battle-view .weather-sun .battle-weather-layer {
-  opacity: 0.62;
+.app-shell.battle-view .battle-weather-ground {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: block;
+  height: 44%;
+  overflow: hidden;
+}
+
+.app-shell.battle-view .battle-weather-transition {
+  inset: 0;
+  z-index: 6;
+  display: block;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+.app-shell.battle-view .weather-effect-clear .battle-weather-grade {
   background:
-    radial-gradient(circle at 74% 8%, rgba(255, 250, 184, 0.82) 0 3%, rgba(255, 190, 76, 0.26) 9%, transparent 27%),
-    linear-gradient(120deg, rgba(255, 218, 112, 0.2), transparent 45%);
+    linear-gradient(180deg, rgba(103, 199, 255, 0.08), transparent 34%),
+    radial-gradient(ellipse at 50% 72%, rgba(174, 244, 255, 0.05), transparent 56%);
+}
+
+.app-shell.battle-view .weather-effect-clear .battle-weather-particles > i {
+  top: var(--weather-y);
+  left: var(--weather-x);
+  width: 2px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(225, 250, 255, 0.92);
+  box-shadow: 0 0 5px rgba(164, 235, 255, 0.58);
+  animation: battle-clear-mote var(--weather-duration) ease-in-out var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-clear .battle-weather-ground {
+  display: none;
+}
+
+.app-shell.battle-view .weather-effect-clear .battle-weather-transition {
+  background: linear-gradient(180deg, rgba(205, 247, 255, 0.28), transparent 58%);
+  animation: battle-clear-arrive 900ms ease-out both;
+}
+
+.app-shell.battle-view .weather-effect-sun .battle-weather-grade {
+  background:
+    linear-gradient(115deg, rgba(255, 207, 84, 0.2), transparent 44%),
+    radial-gradient(circle at 73% 8%, rgba(255, 246, 169, 0.35), rgba(255, 167, 49, 0.08) 20%, transparent 46%);
   mix-blend-mode: screen;
-  animation: battle-sun-pulse 3.2s ease-in-out infinite;
 }
 
-.app-shell.battle-view .weather-rain .battle-weather-layer {
-  opacity: 0.52;
+.app-shell.battle-view .weather-effect-sun .battle-weather-celestial {
+  top: -16%;
+  right: 13%;
+  display: block;
+  width: clamp(132px, 18vw, 300px);
+  aspect-ratio: 1;
+  border-radius: 50%;
   background:
-    linear-gradient(180deg, rgba(9, 27, 57, 0.32), rgba(16, 72, 116, 0.14)),
-    repeating-linear-gradient(106deg, transparent 0 18px, rgba(185, 230, 255, 0.48) 19px 21px, transparent 22px 39px);
-  background-size: 100% 100%, 180px 210px;
-  animation: battle-rain-fall 520ms linear infinite;
-}
-
-.app-shell.battle-view .weather-sandstorm .battle-weather-layer {
-  opacity: 0.68;
-  background:
-    radial-gradient(circle at 15% 70%, rgba(255, 220, 137, 0.24) 0 1px, transparent 2px),
-    radial-gradient(circle at 65% 35%, rgba(255, 236, 177, 0.22) 0 2px, transparent 3px),
-    linear-gradient(110deg, rgba(121, 74, 32, 0.22), rgba(239, 189, 91, 0.18), rgba(93, 55, 26, 0.2));
-  background-size: 36px 31px, 58px 47px, 100% 100%;
+    radial-gradient(circle, #fffbd0 0 8%, rgba(255, 222, 112, 0.96) 9% 17%, rgba(255, 173, 47, 0.34) 35%, transparent 68%);
+  box-shadow: 0 0 54px rgba(255, 208, 82, 0.46);
   mix-blend-mode: screen;
-  animation: battle-sand-drift 1.2s linear infinite;
+  animation: battle-sun-breathe 3.4s ease-in-out infinite;
 }
 
-.app-shell.battle-view .weather-snow .battle-weather-layer {
-  opacity: 0.72;
-  background-image:
-    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 2px, transparent 2.5px),
-    radial-gradient(circle, rgba(216, 247, 255, 0.72) 0 1px, transparent 1.8px),
-    linear-gradient(180deg, rgba(202, 240, 255, 0.18), transparent 46%);
-  background-position: 0 0, 28px 18px, 0 0;
-  background-size: 54px 58px, 42px 46px, 100% 100%;
-  animation: battle-snow-fall 3.8s linear infinite;
+.app-shell.battle-view .weather-effect-sun .battle-weather-celestial::before {
+  position: absolute;
+  inset: -32%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 8deg, rgba(255, 232, 122, 0.25) 0 3deg, transparent 3deg 20deg);
+  content: "";
+  animation: battle-sun-rays 18s linear infinite;
 }
 
-.app-shell.battle-view .weather-fog .battle-weather-layer {
-  opacity: 0.68;
+.app-shell.battle-view .weather-effect-sun .battle-weather-particles > i {
+  top: var(--weather-y);
+  left: var(--weather-x);
+  width: 4px;
+  aspect-ratio: 1;
+  border-radius: 1px;
+  background: #fff7b7;
+  box-shadow: 0 0 8px rgba(255, 221, 95, 0.82);
+  animation: battle-sun-glint var(--weather-duration) ease-in-out var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-sun .battle-weather-ground > i {
+  bottom: -14%;
+  left: var(--weather-x);
+  width: 8px;
+  height: 72%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, transparent, rgba(255, 237, 157, 0.24) 52%, transparent);
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  animation: battle-heat-rise var(--weather-duration) ease-in-out var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-sun .battle-weather-transition {
+  background: radial-gradient(circle at 72% 12%, rgba(255, 255, 219, 0.92), rgba(255, 202, 86, 0.25) 24%, transparent 59%);
+  mix-blend-mode: screen;
+  animation: battle-sun-arrive 1050ms ease-out both;
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-grade {
   background:
-    radial-gradient(ellipse at 18% 64%, rgba(234, 246, 250, 0.62), transparent 42%),
-    radial-gradient(ellipse at 78% 44%, rgba(223, 238, 247, 0.52), transparent 39%),
-    linear-gradient(180deg, rgba(207, 226, 238, 0.28), rgba(226, 240, 244, 0.16));
-  filter: blur(7px);
-  animation: battle-fog-drift 6s ease-in-out infinite alternate;
+    linear-gradient(180deg, rgba(4, 17, 36, 0.5), rgba(10, 63, 97, 0.12) 72%),
+    radial-gradient(ellipse at 48% -8%, rgba(83, 134, 168, 0.38), transparent 58%);
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-cloud {
+  top: -18%;
+  left: -14%;
+  display: block;
+  width: 76%;
+  height: 38%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 30% 58%, rgba(43, 69, 92, 0.72), transparent 58%),
+    radial-gradient(ellipse at 68% 46%, rgba(25, 49, 74, 0.66), transparent 62%);
+  filter: blur(12px);
+  animation: battle-rain-cloud 8s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-cloud.cloud-two {
+  top: -10%;
+  right: -19%;
+  left: auto;
+  animation-direction: alternate-reverse;
+  animation-duration: 10s;
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-particles > i {
+  top: -28%;
+  left: var(--weather-x);
+  width: 1.35px;
+  height: 34px;
+  border-radius: 999px;
+  opacity: var(--weather-opacity);
+  background: linear-gradient(180deg, transparent, rgba(216, 244, 255, 0.96));
+  box-shadow: 0 0 4px rgba(128, 218, 255, 0.42);
+  transform: rotate(13deg);
+  animation: battle-rain-streak var(--weather-duration) linear var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-rain.weather-layer-back .battle-weather-particles > i {
+  width: 1px;
+  height: 25px;
+  filter: blur(0.45px);
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-ground > i {
+  bottom: var(--weather-ground-y);
+  left: var(--weather-x);
+  width: 25px;
+  height: 8px;
+  border: 2px solid rgba(188, 234, 255, 0.72);
+  border-radius: 50%;
+  animation: battle-rain-ripple 1.25s ease-out var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-rain .battle-weather-transition {
+  background: linear-gradient(112deg, transparent 0 32%, rgba(194, 234, 255, 0.62) 48%, transparent 64%);
+  mix-blend-mode: screen;
+  animation: battle-rain-arrive 800ms ease-out both;
+}
+
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-grade {
+  background:
+    linear-gradient(105deg, rgba(88, 46, 17, 0.3), rgba(226, 166, 65, 0.21) 52%, rgba(75, 42, 19, 0.29)),
+    linear-gradient(180deg, rgba(183, 126, 54, 0.12), rgba(62, 39, 23, 0.25));
+  mix-blend-mode: color;
+}
+
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-gust {
+  top: 18%;
+  left: -42%;
+  display: block;
+  width: 82%;
+  height: 13%;
+  border-radius: 50%;
+  opacity: 0.48;
+  background: linear-gradient(180deg, transparent, rgba(255, 221, 142, 0.46), transparent);
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  transform: rotate(-7deg);
+  animation: battle-sand-gust 3.8s linear -1.2s infinite;
+}
+
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-gust.gust-two {
+  top: 57%;
+  animation-delay: -3s;
+  animation-duration: 5.1s;
+}
+
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-particles > i {
+  top: var(--weather-y);
+  left: -12%;
+  width: 5px;
+  height: 2px;
+  border-radius: 50%;
+  opacity: var(--weather-opacity);
+  background: #ffe0a0;
+  box-shadow: 0 0 5px rgba(179, 104, 34, 0.62);
+  animation: battle-sand-particle var(--weather-duration) linear var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-sandstorm.weather-layer-back .battle-weather-particles > i {
+  filter: blur(1px);
+}
+
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-ground > i {
+  bottom: -9%;
+  left: var(--weather-x);
+  width: 54px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(242, 190, 103, 0.44), transparent 68%);
+  filter: blur(5px);
+  animation: battle-sand-ground 2.8s ease-in-out var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-sandstorm .battle-weather-transition {
+  background: linear-gradient(104deg, transparent 0 20%, rgba(255, 210, 123, 0.58) 43%, rgba(121, 72, 29, 0.24) 64%, transparent 82%);
+  mix-blend-mode: screen;
+  animation: battle-sand-arrive 920ms ease-out both;
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-grade {
+  background:
+    linear-gradient(180deg, rgba(197, 237, 255, 0.18), transparent 52%),
+    linear-gradient(110deg, rgba(113, 173, 206, 0.13), rgba(235, 251, 255, 0.08));
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-cloud {
+  top: -18%;
+  left: -8%;
+  display: block;
+  width: 70%;
+  height: 34%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(210, 237, 246, 0.34), transparent 66%);
+  filter: blur(15px);
+  animation: battle-snow-cloud 10s ease-in-out infinite alternate;
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-cloud.cloud-two {
+  right: -12%;
+  left: auto;
+  animation-direction: alternate-reverse;
+  animation-duration: 13s;
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-particles > i {
+  top: -12%;
+  left: var(--weather-x);
+  width: 5px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(232, 252, 255, 0.68);
+  border-radius: 45% 55% 48% 52%;
+  opacity: var(--weather-opacity);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 0 7px rgba(189, 239, 255, 0.72);
+  animation: battle-snow-flake var(--weather-duration) linear var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-snow.weather-layer-back .battle-weather-particles > i {
+  width: 3px;
+  filter: blur(0.45px);
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-ground {
+  background: linear-gradient(0deg, rgba(222, 249, 255, 0.12), transparent 38%);
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-ground > i {
+  bottom: var(--weather-ground-y);
+  left: var(--weather-x);
+  width: 6px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px #d9f7ff;
+  animation: battle-snow-ground-spark 2.4s ease-out var(--weather-delay) infinite;
+}
+
+.app-shell.battle-view .weather-effect-snow .battle-weather-transition {
+  background: radial-gradient(circle at 50% 38%, rgba(245, 254, 255, 0.78), rgba(190, 233, 255, 0.22) 38%, transparent 72%);
+  mix-blend-mode: screen;
+  animation: battle-snow-arrive 960ms ease-out both;
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-grade {
+  background:
+    linear-gradient(180deg, rgba(207, 226, 238, 0.22), rgba(226, 240, 244, 0.1)),
+    radial-gradient(ellipse at 48% 64%, rgba(235, 247, 250, 0.34), transparent 62%);
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-cloud {
+  top: 14%;
+  left: -28%;
+  display: block;
+  width: 88%;
+  height: 35%;
+  border-radius: 50%;
+  opacity: 0.58;
+  background: radial-gradient(ellipse, rgba(235, 246, 248, 0.68), rgba(203, 224, 232, 0.3) 46%, transparent 72%);
+  filter: blur(16px);
+  animation: battle-fog-cloud 11s ease-in-out -4s infinite alternate;
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-cloud.cloud-two {
+  top: 51%;
+  right: -24%;
+  left: auto;
+  opacity: 0.46;
+  animation-direction: alternate-reverse;
+  animation-duration: 14s;
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-particles > i {
+  top: var(--weather-y);
+  left: calc(var(--weather-x) - 34%);
+  width: 34vw;
+  height: 10vw;
+  min-height: 42px;
+  max-height: 112px;
+  border-radius: 50%;
+  opacity: var(--weather-opacity);
+  background: radial-gradient(ellipse, rgba(235, 247, 248, 0.5), rgba(208, 229, 235, 0.2) 48%, transparent 72%);
+  filter: blur(13px);
+  animation: battle-fog-bank var(--weather-duration) ease-in-out var(--weather-delay) infinite alternate;
+}
+
+.app-shell.battle-view .weather-effect-fog.weather-layer-front .battle-weather-particles > i {
+  filter: blur(18px);
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-ground > i {
+  bottom: -12%;
+  left: calc(var(--weather-x) - 18%);
+  width: 38vw;
+  height: 36%;
+  border-radius: 50%;
+  opacity: var(--weather-opacity);
+  background: radial-gradient(ellipse, rgba(238, 249, 250, 0.44), transparent 68%);
+  filter: blur(16px);
+  animation: battle-fog-ground var(--weather-duration) ease-in-out var(--weather-delay) infinite alternate;
+}
+
+.app-shell.battle-view .weather-effect-fog .battle-weather-transition {
+  background: rgba(228, 241, 245, 0.5);
+  animation: battle-fog-arrive 1150ms ease-out both;
 }
 
 .app-shell.battle-view .battle-rule-hud {
@@ -4582,29 +4926,133 @@
   50% { opacity: 0.62; transform: scaleY(1.04); }
 }
 
-@keyframes battle-sun-pulse {
-  0%, 100% { opacity: 0.48; }
-  50% { opacity: 0.72; }
+@keyframes battle-clear-mote {
+  0%, 100% { opacity: 0.05; transform: translate3d(0, 8px, 0) scale(var(--weather-scale)); }
+  42% { opacity: var(--weather-opacity); }
+  58% { opacity: calc(var(--weather-opacity) - 0.12); transform: translate3d(var(--weather-drift), -10px, 0) scale(var(--weather-scale)); }
 }
 
-@keyframes battle-rain-fall {
-  from { background-position: 0 0, 0 -210px; }
-  to { background-position: 0 0, -45px 0; }
+@keyframes battle-clear-arrive {
+  0% { opacity: 0.56; transform: translateY(-12%); }
+  100% { opacity: 0; transform: translateY(0); }
 }
 
-@keyframes battle-sand-drift {
-  from { background-position: 0 0, 0 0, 0 0; }
-  to { background-position: 72px -22px, 116px -30px, 0 0; }
+@keyframes battle-sun-breathe {
+  0%, 100% { opacity: 0.66; transform: scale(0.96); }
+  50% { opacity: 0.92; transform: scale(1.08); }
 }
 
-@keyframes battle-snow-fall {
-  from { background-position: 0 -58px, 28px -46px, 0 0; }
-  to { background-position: 24px 0, 2px 0, 0 0; }
+@keyframes battle-sun-rays {
+  to { transform: rotate(1turn); }
 }
 
-@keyframes battle-fog-drift {
-  from { transform: translateX(-2%) scale(1.04); }
-  to { transform: translateX(2%) scale(1.08); }
+@keyframes battle-sun-glint {
+  0%, 100% { opacity: 0; transform: translate3d(0, 8px, 0) rotate(0deg) scale(0.45); }
+  42% { opacity: var(--weather-opacity); transform: translate3d(var(--weather-drift), -5px, 0) rotate(45deg) scale(var(--weather-scale)); }
+  58% { opacity: 0.18; }
+}
+
+@keyframes battle-heat-rise {
+  0%, 100% { opacity: 0; transform: translate3d(0, 22px, 0) scaleX(var(--weather-scale)); }
+  45% { opacity: var(--weather-opacity); }
+  70% { opacity: 0.12; transform: translate3d(var(--weather-drift), -34px, 0) scaleX(var(--weather-scale)); }
+}
+
+@keyframes battle-sun-arrive {
+  0% { opacity: 0.86; transform: scale(0.6); }
+  54% { opacity: 0.32; }
+  100% { opacity: 0; transform: scale(1.22); }
+}
+
+@keyframes battle-rain-cloud {
+  from { transform: translate3d(-3%, 0, 0) scale(1.03); }
+  to { transform: translate3d(12%, 3%, 0) scale(1.12); }
+}
+
+@keyframes battle-rain-streak {
+  from { opacity: 0; transform: translate3d(16vw, -22vh, 0) rotate(13deg) scale(var(--weather-scale)); }
+  8% { opacity: var(--weather-opacity); }
+  88% { opacity: var(--weather-opacity); }
+  to { opacity: 0; transform: translate3d(calc(-18vw + var(--weather-drift)), 146vh, 0) rotate(13deg) scale(var(--weather-scale)); }
+}
+
+@keyframes battle-rain-ripple {
+  0% { opacity: 0; transform: scale(0.18); }
+  24% { opacity: var(--weather-opacity); }
+  100% { opacity: 0; transform: scale(var(--weather-scale)); }
+}
+
+@keyframes battle-rain-arrive {
+  0% { opacity: 0; transform: translateX(48%); }
+  34% { opacity: 0.62; }
+  100% { opacity: 0; transform: translateX(-42%); }
+}
+
+@keyframes battle-sand-gust {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(-7deg) scaleY(0.42); }
+  18%, 72% { opacity: 0.5; }
+  100% { opacity: 0; transform: translate3d(180vw, -16px, 0) rotate(-7deg) scaleY(1.2); }
+}
+
+@keyframes battle-sand-particle {
+  from { opacity: 0; transform: translate3d(0, 0, 0) rotate(var(--weather-spin)) scale(var(--weather-scale)); }
+  12%, 86% { opacity: var(--weather-opacity); }
+  to { opacity: 0; transform: translate3d(122vw, var(--weather-drift), 0) rotate(calc(var(--weather-spin) + 220deg)) scale(var(--weather-scale)); }
+}
+
+@keyframes battle-sand-ground {
+  0%, 100% { opacity: 0; transform: translate3d(-18px, 8px, 0) scale(0.42); }
+  46% { opacity: var(--weather-opacity); transform: translate3d(var(--weather-drift), -8px, 0) scale(var(--weather-scale)); }
+}
+
+@keyframes battle-sand-arrive {
+  0% { opacity: 0; transform: translateX(-64%); }
+  38% { opacity: 0.72; }
+  100% { opacity: 0; transform: translateX(64%); }
+}
+
+@keyframes battle-snow-cloud {
+  from { transform: translate3d(-5%, 0, 0) scale(1); }
+  to { transform: translate3d(15%, 4%, 0) scale(1.14); }
+}
+
+@keyframes battle-snow-flake {
+  from { opacity: 0; transform: translate3d(0, -16vh, 0) rotate(var(--weather-spin)) scale(var(--weather-scale)); }
+  9% { opacity: var(--weather-opacity); }
+  90% { opacity: var(--weather-opacity); }
+  to { opacity: 0; transform: translate3d(var(--weather-drift), 118vh, 0) rotate(calc(var(--weather-spin) + 360deg)) scale(var(--weather-scale)); }
+}
+
+@keyframes battle-snow-ground-spark {
+  0%, 100% { opacity: 0; transform: scale(0.2); }
+  38% { opacity: var(--weather-opacity); transform: scale(var(--weather-scale)); }
+  62% { opacity: 0.18; }
+}
+
+@keyframes battle-snow-arrive {
+  0% { opacity: 0.78; transform: scale(0.72); }
+  100% { opacity: 0; transform: scale(1.16); }
+}
+
+@keyframes battle-fog-cloud {
+  from { transform: translate3d(-6%, 0, 0) scale(0.96); }
+  to { transform: translate3d(24%, 3%, 0) scale(1.14); }
+}
+
+@keyframes battle-fog-bank {
+  from { opacity: calc(var(--weather-opacity) - 0.18); transform: translate3d(-20px, 0, 0) scale(var(--weather-scale)); }
+  to { opacity: var(--weather-opacity); transform: translate3d(var(--weather-drift), -12px, 0) scale(var(--weather-scale)); }
+}
+
+@keyframes battle-fog-ground {
+  from { opacity: 0.18; transform: translate3d(-22px, 6px, 0) scale(var(--weather-scale)); }
+  to { opacity: var(--weather-opacity); transform: translate3d(var(--weather-drift), -4px, 0) scale(var(--weather-scale)); }
+}
+
+@keyframes battle-fog-arrive {
+  0% { opacity: 0; }
+  42% { opacity: 0.62; }
+  100% { opacity: 0; }
 }
 
 @media (max-width: 980px) {
@@ -4718,7 +5166,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .app-shell.battle-view .battle-terrain-aura,
-  .app-shell.battle-view .battle-weather-layer {
-    animation: none;
+  .app-shell.battle-view .battle-weather-layer,
+  .app-shell.battle-view .battle-weather-layer * {
+    animation: none !important;
+  }
+
+  .app-shell.battle-view .battle-weather-particles > i,
+  .app-shell.battle-view .battle-weather-ground > i {
+    opacity: 0.34;
   }
 }
