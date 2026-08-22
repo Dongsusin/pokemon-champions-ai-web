@@ -450,6 +450,10 @@ export function getMoveById(moveId) {
 }
 
 const LEARNABLE_MOVES_BY_PROFILE_ID = new Map()
+const SUPPLEMENTAL_FORM_MOVE_IDS = new Map([
+  [10155, ['sunsteelstrike']],
+  [10156, ['moongeistbeam']],
+])
 
 export function getLearnableMoves(speciesId) {
   const profileId = Number(speciesId)
@@ -466,9 +470,12 @@ export function getLearnableMoves(speciesId) {
   const learnsetMoveIds = species.learnsetMoveIds?.length > 0
     ? species.learnsetMoveIds
     : fallbackSpecies?.learnsetMoveIds ?? []
-  const learnableMoves = learnsetMoveIds
-    .map((moveNumber) => MOVE_BY_NUMBER[moveNumber])
-    .filter(Boolean)
+  const learnableMoves = [
+    ...learnsetMoveIds.map((moveNumber) => MOVE_BY_NUMBER[moveNumber]),
+    ...(SUPPLEMENTAL_FORM_MOVE_IDS.get(profileId) ?? []).map((moveId) => MOVE_BY_ID[moveId]),
+  ].filter((move, index, moves) => (
+    Boolean(move) && moves.findIndex((candidate) => candidate?.id === move.id) === index
+  ))
 
   LEARNABLE_MOVES_BY_PROFILE_ID.set(profileId, learnableMoves)
   return learnableMoves

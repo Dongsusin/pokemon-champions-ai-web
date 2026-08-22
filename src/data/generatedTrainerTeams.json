@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T12:33:20.149Z",
+  "generatedAt": "2026-08-22T16:40:44.668Z",
   "method": [
     "작중 사용 포켓몬",
     "전문 타입의 대전 사용률",
@@ -403,19 +403,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
-                "스텔스록",
+                "사이코키네시스",
                 "냉동빔",
                 "나쁜음모",
-                "불대문자"
+                "스텔스록"
               ],
               "moveIds": [
-                "stealthrock",
+                "psychic",
                 "icebeam",
                 "nastyplot",
-                "fireblast"
+                "stealthrock"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -485,8 +485,8 @@
                 "specialDefense": 19,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "chesto-berry",
+              "heldItemName": "유루열매",
               "moves": [
                 "누르기",
                 "잠자기",
@@ -1290,19 +1290,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
-                "스텔스록",
                 "안개제거",
+                "냉동빔",
                 "나쁜음모",
-                "불대문자"
+                "스텔스록"
               ],
               "moveIds": [
-                "stealthrock",
                 "defog",
+                "icebeam",
                 "nastyplot",
-                "fireblast"
+                "stealthrock"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -2157,19 +2157,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
-                "스텔스록",
                 "안개제거",
+                "냉동빔",
                 "나쁜음모",
-                "불대문자"
+                "스텔스록"
               ],
               "moveIds": [
-                "stealthrock",
                 "defog",
+                "icebeam",
                 "nastyplot",
-                "fireblast"
+                "stealthrock"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -2196,8 +2196,8 @@
                 "specialDefense": 32,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "속임수",
                 "맹독",
@@ -2313,8 +2313,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "sitrus-berry",
-              "heldItemName": "자뭉열매",
+              "heldItemId": "kasib-berry",
+              "heldItemName": "수불열매",
               "moves": [
                 "사이코노이즈",
                 "드레인키스",
@@ -7876,8 +7876,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "focus-sash",
+              "heldItemName": "기합의띠",
               "moves": [
                 "지진",
                 "용의춤",
@@ -8796,8 +8796,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "normalium-z--held",
-              "heldItemName": "노말Z",
+              "heldItemId": "choice-band",
+              "heldItemName": "구애머리띠",
               "moves": [
                 "V제너레이트",
                 "유턴",
@@ -14600,17 +14600,17 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
-                "오물웨이브",
                 "나쁜음모",
+                "오물웨이브",
                 "용성군",
                 "불대문자"
               ],
               "moveIds": [
-                "sludgewave",
                 "nastyplot",
+                "sludgewave",
                 "dracometeor",
                 "fireblast"
               ],
@@ -15395,17 +15395,17 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
-                "오물웨이브",
                 "나쁜음모",
+                "오물웨이브",
                 "용성군",
                 "불대문자"
               ],
               "moveIds": [
-                "sludgewave",
                 "nastyplot",
+                "sludgewave",
                 "dracometeor",
                 "fireblast"
               ],
@@ -15434,18 +15434,18 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "life-orb",
-              "heldItemName": "생명의구슬",
+              "heldItemId": "lum-berry",
+              "heldItemName": "리샘열매",
               "moves": [
                 "치근거리기",
-                "칼춤",
                 "야습",
+                "칼춤",
                 "드레인펀치"
               ],
               "moveIds": [
                 "playrough",
-                "swordsdance",
                 "shadowsneak",
+                "swordsdance",
                 "drainpunch"
               ],
               "teraType": "고스트",
@@ -15579,17 +15579,17 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
-                "오물웨이브",
                 "나쁜음모",
+                "오물웨이브",
                 "용성군",
                 "불대문자"
               ],
               "moveIds": [
-                "sludgewave",
                 "nastyplot",
+                "sludgewave",
                 "dracometeor",
                 "fireblast"
               ],
@@ -16190,8 +16190,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "normalium-z--held",
-              "heldItemName": "노말Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "화염볼",
                 "유턴",
@@ -32519,19 +32519,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
-                "스텔스록",
                 "안개제거",
+                "냉동빔",
                 "나쁜음모",
-                "불대문자"
+                "스텔스록"
               ],
               "moveIds": [
-                "stealthrock",
                 "defog",
+                "icebeam",
                 "nastyplot",
-                "fireblast"
+                "stealthrock"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -32636,8 +32636,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "expert-belt",
+              "heldItemName": "달인의띠",
               "moves": [
                 "폭포오르기",
                 "용의춤",
@@ -32781,8 +32781,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "안개제거",
                 "냉동빔",
@@ -33043,19 +33043,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
-                "스텔스록",
                 "안개제거",
+                "냉동빔",
                 "나쁜음모",
-                "불대문자"
+                "스텔스록"
               ],
               "moveIds": [
-                "stealthrock",
                 "defog",
+                "icebeam",
                 "nastyplot",
-                "fireblast"
+                "stealthrock"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -33160,8 +33160,8 @@
                 "specialDefense": 19,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "chesto-berry",
+              "heldItemName": "유루열매",
               "moves": [
                 "누르기",
                 "잠자기",
@@ -37538,8 +37538,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "normalium-z--held",
-              "heldItemName": "노말Z",
+              "heldItemId": "wide-lens",
+              "heldItemName": "광각렌즈",
               "moves": [
                 "냉동빔",
                 "사이코키네시스",
@@ -39837,8 +39837,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -40021,8 +40021,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -40723,8 +40723,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "darkinium-z--held",
-              "heldItemName": "악Z",
+              "heldItemId": "lum-berry",
+              "heldItemName": "리샘열매",
               "moves": [
                 "안개제거",
                 "솔라블레이드",
@@ -43025,8 +43025,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -43510,8 +43510,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -43627,8 +43627,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "occa-berry",
+              "heldItemName": "오카열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -67245,8 +67245,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "darkinium-z--held",
-              "heldItemName": "악Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "도발",
                 "악의파동",
@@ -67507,8 +67507,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "darkinium-z--held",
-              "heldItemName": "악Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "도발",
                 "악의파동",
@@ -67769,8 +67769,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "darkinium-z--held",
-              "heldItemName": "악Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "도발",
                 "악의파동",
@@ -67966,8 +67966,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -68221,8 +68221,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "지진",
                 "용의춤",
@@ -68260,8 +68260,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "life-orb",
-              "heldItemName": "생명의구슬",
+              "heldItemId": "expert-belt",
+              "heldItemName": "달인의띠",
               "moves": [
                 "폴터가이스트",
                 "폭발펀치",
@@ -68405,8 +68405,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -68483,8 +68483,8 @@
                 "specialDefense": 0,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "게으름피우기",
                 "스텔스록",
@@ -68706,8 +68706,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "지진",
                 "용의춤",
@@ -82582,8 +82582,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -83057,8 +83057,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -83174,8 +83174,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -87451,8 +87451,8 @@
                 "specialDefense": 14,
                 "speed": 0
               },
-              "heldItemId": "grassium-z--held",
-              "heldItemName": "풀Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "나비춤",
                 "문포스",
@@ -87635,8 +87635,8 @@
                 "specialDefense": 14,
                 "speed": 0
               },
-              "heldItemId": "grassium-z--held",
-              "heldItemName": "풀Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "나비춤",
                 "문포스",
@@ -87931,8 +87931,8 @@
                 "specialDefense": 14,
                 "speed": 0
               },
-              "heldItemId": "grassium-z--held",
-              "heldItemName": "풀Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "나비춤",
                 "문포스",
@@ -88009,8 +88009,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "occa-berry",
+              "heldItemName": "오카열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -105003,8 +105003,8 @@
                 "specialDefense": 14,
                 "speed": 0
               },
-              "heldItemId": "grassium-z--held",
-              "heldItemName": "풀Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "나비춤",
                 "문포스",
@@ -105081,8 +105081,8 @@
                 "specialDefense": 0,
                 "speed": 30
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "muscle-band",
+              "heldItemName": "힘의머리띠",
               "moves": [
                 "탁쳐서떨구기",
                 "광합성",
@@ -105478,8 +105478,8 @@
                 "specialDefense": 14,
                 "speed": 0
               },
-              "heldItemId": "grassium-z--held",
-              "heldItemName": "풀Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "나비춤",
                 "문포스",
@@ -105595,8 +105595,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -113785,8 +113785,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "white-herb",
+              "heldItemName": "하양허브",
               "moves": [
                 "껍질깨기",
                 "지진",
@@ -113964,8 +113964,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "white-herb",
+              "heldItemName": "하양허브",
               "moves": [
                 "껍질깨기",
                 "지진",
@@ -114260,8 +114260,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "white-herb",
+              "heldItemName": "하양허브",
               "moves": [
                 "껍질깨기",
                 "지진",
@@ -115371,8 +115371,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "지진",
                 "용의춤",
@@ -115410,19 +115410,19 @@
                 "specialDefense": 30,
                 "speed": 0
               },
-              "heldItemId": "life-orb",
-              "heldItemName": "생명의구슬",
+              "heldItemId": "rocky-helmet",
+              "heldItemName": "울퉁불퉁멧",
               "moves": [
+                "아쿠아브레이크",
                 "지진",
                 "열탕",
-                "맹독",
-                "냉동펀치"
+                "맹독"
               ],
               "moveIds": [
+                "liquidation",
                 "earthquake",
                 "scald",
-                "toxic",
-                "icepunch"
+                "toxic"
               ],
               "teraType": "물",
               "canDynamax": true,
@@ -115496,7 +115496,7 @@
               "slug": "excadrill",
               "name": "몰드류",
               "level": 50,
-              "role": "선봉·필드 전개",
+              "role": "물리 어태커",
               "ability": "틀깨기",
               "abilityId": "moldbreaker",
               "nature": "명랑",
@@ -115514,13 +115514,13 @@
               "moves": [
                 "지진",
                 "고속스핀",
-                "스텔스록",
+                "스톤샤워",
                 "아이언헤드"
               ],
               "moveIds": [
                 "earthquake",
                 "rapidspin",
-                "stealthrock",
+                "rockslide",
                 "ironhead"
               ],
               "teraType": "땅",
@@ -115550,8 +115550,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -115589,19 +115589,19 @@
                 "specialDefense": 30,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
-                "아쿠아브레이크",
                 "지진",
                 "열탕",
-                "맹독"
+                "맹독",
+                "냉동펀치"
               ],
               "moveIds": [
-                "liquidation",
                 "earthquake",
                 "scald",
-                "toxic"
+                "toxic",
+                "icepunch"
               ],
               "teraType": "물",
               "canDynamax": true,
@@ -115654,7 +115654,7 @@
               "slug": "garchomp",
               "name": "한카리아스",
               "level": 50,
-              "role": "물리 스위퍼",
+              "role": "선봉·필드 전개",
               "ability": "까칠한피부",
               "abilityId": "roughskin",
               "nature": "명랑",
@@ -115667,19 +115667,19 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "life-orb",
-              "heldItemName": "생명의구슬",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "지진",
-                "칼춤",
-                "스케일샷",
-                "불꽃엄니"
+                "스텔스록",
+                "드래곤테일",
+                "칼춤"
               ],
               "moveIds": [
                 "earthquake",
-                "swordsdance",
-                "scaleshot",
-                "firefang"
+                "stealthrock",
+                "dragontail",
+                "swordsdance"
               ],
               "teraType": "드래곤",
               "canDynamax": true,
@@ -115706,18 +115706,18 @@
                 "specialDefense": 0,
                 "speed": 0
               },
-              "heldItemId": "sitrus-berry",
-              "heldItemName": "자뭉열매",
+              "heldItemId": "smooth-rock",
+              "heldItemName": "보송보송바위",
               "moves": [
                 "게으름피우기",
-                "암석봉인",
                 "지진",
+                "암석봉인",
                 "울부짖기"
               ],
               "moveIds": [
                 "slackoff",
-                "rocktomb",
                 "earthquake",
+                "rocktomb",
                 "roar"
               ],
               "teraType": "땅",
@@ -115737,11 +115737,11 @@
             }
           ],
           "strategy": {
-            "lead": "몰드류",
+            "lead": "한카리아스",
             "winConditions": [
               "몰드류의 테라스탈"
             ],
-            "summary": "몰드류로 초반 주도권을 잡고, 몰드류의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "한카리아스로 초반 주도권을 잡고, 몰드류의 필드 정리로 전개를 유지하고, 몰드류의 테라스탈을 승리 수단으로 운용합니다."
           }
         },
         {
@@ -115753,7 +115753,7 @@
               "slug": "excadrill",
               "name": "몰드류",
               "level": 50,
-              "role": "선봉·필드 전개",
+              "role": "물리 어태커",
               "ability": "틀깨기",
               "abilityId": "moldbreaker",
               "nature": "명랑",
@@ -115771,13 +115771,13 @@
               "moves": [
                 "지진",
                 "고속스핀",
-                "스텔스록",
+                "스톤샤워",
                 "아이언헤드"
               ],
               "moveIds": [
                 "earthquake",
                 "rapidspin",
-                "stealthrock",
+                "rockslide",
                 "ironhead"
               ],
               "teraType": "땅",
@@ -115846,8 +115846,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "지진",
                 "용의춤",
@@ -115872,7 +115872,7 @@
               "slug": "garchomp",
               "name": "한카리아스",
               "level": 50,
-              "role": "물리 스위퍼",
+              "role": "선봉·필드 전개",
               "ability": "까칠한피부",
               "abilityId": "roughskin",
               "nature": "명랑",
@@ -115885,19 +115885,19 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "life-orb",
-              "heldItemName": "생명의구슬",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "지진",
-                "칼춤",
-                "스케일샷",
-                "불꽃엄니"
+                "스텔스록",
+                "드래곤테일",
+                "칼춤"
               ],
               "moveIds": [
                 "earthquake",
-                "swordsdance",
-                "scaleshot",
-                "firefang"
+                "stealthrock",
+                "dragontail",
+                "swordsdance"
               ],
               "teraType": "드래곤",
               "canDynamax": true,
@@ -115924,8 +115924,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "sitrus-berry",
-              "heldItemName": "자뭉열매",
+              "heldItemId": "occa-berry",
+              "heldItemName": "오카열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -115994,11 +115994,11 @@
             }
           ],
           "strategy": {
-            "lead": "몰드류",
+            "lead": "한카리아스",
             "winConditions": [
               "몰드류의 테라스탈"
             ],
-            "summary": "몰드류로 초반 주도권을 잡고, 몰드류의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "한카리아스로 초반 주도권을 잡고, 몰드류의 필드 정리로 전개를 유지하고, 몰드류의 테라스탈을 승리 수단으로 운용합니다."
           }
         }
       ]
@@ -116203,8 +116203,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "flyinium-z--held",
-              "heldItemName": "비행Z",
+              "heldItemId": "scope-lens",
+              "heldItemName": "초점렌즈",
               "moves": [
                 "브레이브버드",
                 "안개제거",
@@ -117672,8 +117672,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -117776,7 +117776,7 @@
               "slug": "salamence",
               "name": "보만다",
               "level": 50,
-              "role": "물리 스위퍼",
+              "role": "물리 어태커",
               "ability": "자기과신",
               "abilityId": "moxie",
               "nature": "명랑",
@@ -117789,19 +117789,19 @@
                 "specialDefense": 1,
                 "speed": 32
               },
-              "heldItemId": "flyinium-z--held",
-              "heldItemName": "비행Z",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
                 "지진",
-                "용의춤",
                 "더블윙",
-                "역린"
+                "역린",
+                "열불내기"
               ],
               "moveIds": [
                 "earthquake",
-                "dragondance",
                 "dualwingbeat",
-                "outrage"
+                "outrage",
+                "temperflare"
               ],
               "teraType": "드래곤",
               "canDynamax": true,
@@ -117955,7 +117955,7 @@
               "slug": "salamence",
               "name": "보만다",
               "level": 50,
-              "role": "물리 스위퍼",
+              "role": "물리 어태커",
               "ability": "자기과신",
               "abilityId": "moxie",
               "nature": "명랑",
@@ -117968,19 +117968,19 @@
                 "specialDefense": 1,
                 "speed": 32
               },
-              "heldItemId": "flyinium-z--held",
-              "heldItemName": "비행Z",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
                 "지진",
-                "용의춤",
-                "안개제거",
-                "역린"
+                "더블윙",
+                "역린",
+                "열불내기"
               ],
               "moveIds": [
                 "earthquake",
-                "dragondance",
-                "defog",
-                "outrage"
+                "dualwingbeat",
+                "outrage",
+                "temperflare"
               ],
               "teraType": "드래곤",
               "canDynamax": true,
@@ -118120,7 +118120,7 @@
             "winConditions": [
               "액스라이즈의 테라스탈"
             ],
-            "summary": "브리두라스로 초반 주도권을 잡고, 보만다의 필드 정리로 전개를 유지하고, 액스라이즈의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "브리두라스로 초반 주도권을 잡고, 액스라이즈의 테라스탈을 승리 수단으로 운용합니다."
           }
         },
         {
@@ -120155,7 +120155,7 @@
               "slug": "mantine",
               "name": "만타인",
               "level": 50,
-              "role": "내구·지원",
+              "role": "특수 어태커",
               "ability": "저수",
               "abilityId": "waterabsorb",
               "nature": "차분",
@@ -120168,19 +120168,19 @@
                 "specialDefense": 32,
                 "speed": 0
               },
-              "heldItemId": "waterium-z--held",
-              "heldItemName": "물Z",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
-                "날개쉬기",
                 "열탕",
-                "맹독",
-                "안개제거"
+                "냉동빔",
+                "폭풍",
+                "미러코트"
               ],
               "moveIds": [
-                "roost",
                 "scald",
-                "toxic",
-                "defog"
+                "icebeam",
+                "hurricane",
+                "mirrorcoat"
               ],
               "teraType": "물",
               "canDynamax": true,
@@ -120242,7 +120242,7 @@
             "winConditions": [
               "탱탱겔의 테라스탈"
             ],
-            "summary": "대검귀로 초반 주도권을 잡고, 만타인의 필드 정리로 전개를 유지하고, 탱탱겔의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "대검귀로 초반 주도권을 잡고, 탱탱겔의 테라스탈을 승리 수단으로 운용합니다."
           }
         },
         {
@@ -120334,7 +120334,7 @@
               "slug": "mantine",
               "name": "만타인",
               "level": 50,
-              "role": "내구·지원",
+              "role": "특수 어태커",
               "ability": "저수",
               "abilityId": "waterabsorb",
               "nature": "차분",
@@ -120347,19 +120347,19 @@
                 "specialDefense": 32,
                 "speed": 0
               },
-              "heldItemId": "waterium-z--held",
-              "heldItemName": "물Z",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
-                "날개쉬기",
                 "열탕",
-                "맹독",
-                "안개제거"
+                "냉동빔",
+                "폭풍",
+                "미러코트"
               ],
               "moveIds": [
-                "roost",
                 "scald",
-                "toxic",
-                "defog"
+                "icebeam",
+                "hurricane",
+                "mirrorcoat"
               ],
               "teraType": "물",
               "canDynamax": true,
@@ -120499,7 +120499,7 @@
             "winConditions": [
               "탱탱겔의 테라스탈"
             ],
-            "summary": "대검귀 히스이의 모습로 초반 주도권을 잡고, 만타인의 필드 정리로 전개를 유지하고, 탱탱겔의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "대검귀 히스이의 모습로 초반 주도권을 잡고, 탱탱겔의 테라스탈을 승리 수단으로 운용합니다."
           }
         },
         {
@@ -140182,8 +140182,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -140221,17 +140221,17 @@
                 "specialDefense": 11,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "passho-berry",
+              "heldItemName": "꼬시개열매",
               "moves": [
-                "죽기살기",
                 "지진",
+                "죽기살기",
                 "뱀눈초리",
                 "잠자기"
               ],
               "moveIds": [
-                "endeavor",
                 "earthquake",
+                "endeavor",
                 "glare",
                 "rest"
               ],
@@ -140663,8 +140663,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "지진",
                 "용의춤",
@@ -140702,17 +140702,17 @@
                 "specialDefense": 11,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "passho-berry",
+              "heldItemName": "꼬시개열매",
               "moves": [
-                "죽기살기",
                 "지진",
+                "죽기살기",
                 "뱀눈초리",
                 "잠자기"
               ],
               "moveIds": [
-                "endeavor",
                 "earthquake",
+                "endeavor",
                 "glare",
                 "rest"
               ],
@@ -145017,8 +145017,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "firium-z--held",
-              "heldItemName": "불꽃Z",
+              "heldItemId": "metronome",
+              "heldItemName": "메트로놈",
               "moves": [
                 "에어슬래시",
                 "나쁜음모",
@@ -149817,8 +149817,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "fairium-z--held",
-              "heldItemName": "페어리Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "쾌청",
                 "기가드레인",
@@ -149856,19 +149856,19 @@
                 "specialDefense": 0,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
-                "버티기",
                 "웨더볼",
-                "성장",
-                "대지의힘"
+                "대지의힘",
+                "기가드레인",
+                "매혹의보이스"
               ],
               "moveIds": [
-                "endure",
                 "weatherball",
-                "growth",
-                "earthpower"
+                "earthpower",
+                "gigadrain",
+                "alluringvoice"
               ],
               "teraType": "풀",
               "canDynamax": true,
@@ -149996,8 +149996,8 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "fairium-z--held",
-              "heldItemName": "페어리Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
                 "웨더볼",
                 "기가드레인",
@@ -150893,7 +150893,7 @@
               "slug": "raging-bolt",
               "name": "날뛰는우레",
               "level": 50,
-              "role": "대면 조작·교대",
+              "role": "특수 스위퍼",
               "ability": "고대활성",
               "abilityId": "protosynthesis",
               "nature": "겁쟁이",
@@ -150906,19 +150906,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "질풍신뢰",
                 "용성군",
                 "볼트체인지",
-                "웨더볼"
+                "명상"
               ],
               "moveIds": [
                 "thunderclap",
                 "dracometeor",
                 "voltswitch",
-                "weatherball"
+                "calmmind"
               ],
               "teraType": "전기",
               "canDynamax": true,
@@ -156985,7 +156985,7 @@
               "slug": "hypno",
               "name": "슬리퍼",
               "level": 50,
-              "role": "서포터",
+              "role": "물리 어태커",
               "ability": "정신력",
               "abilityId": "innerfocus",
               "nature": "고집",
@@ -156998,19 +156998,19 @@
                 "specialDefense": 19,
                 "speed": 0
               },
-              "heldItemId": "normalium-z--held",
-              "heldItemName": "노말Z",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
                 "드레인펀치",
                 "사념의박치기",
-                "전기자석파",
-                "최면술"
+                "개척하기",
+                "탁쳐서떨구기"
               ],
               "moveIds": [
                 "drainpunch",
                 "zenheadbutt",
-                "thunderwave",
-                "hypnosis"
+                "trailblaze",
+                "knockoff"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -159393,8 +159393,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "normalium-z--held",
-              "heldItemName": "노말Z",
+              "heldItemId": "wise-glasses",
+              "heldItemName": "박식안경",
               "moves": [
                 "10만볼트",
                 "냉동빔",
@@ -160174,7 +160174,7 @@
               "slug": "salamence",
               "name": "보만다",
               "level": 50,
-              "role": "물리 스위퍼",
+              "role": "물리 어태커",
               "ability": "자기과신",
               "abilityId": "moxie",
               "nature": "명랑",
@@ -160187,19 +160187,19 @@
                 "specialDefense": 1,
                 "speed": 32
               },
-              "heldItemId": "flyinium-z--held",
-              "heldItemName": "비행Z",
+              "heldItemId": "choice-specs",
+              "heldItemName": "구애안경",
               "moves": [
                 "지진",
-                "용의춤",
-                "안개제거",
-                "역린"
+                "더블윙",
+                "역린",
+                "열불내기"
               ],
               "moveIds": [
                 "earthquake",
-                "dragondance",
-                "defog",
-                "outrage"
+                "dualwingbeat",
+                "outrage",
+                "temperflare"
               ],
               "teraType": "드래곤",
               "canDynamax": true,
@@ -160222,7 +160222,7 @@
             "winConditions": [
               "루카리오의 테라스탈"
             ],
-            "summary": "메타그로스로 초반 주도권을 잡고, 보만다의 필드 정리로 전개를 유지하고, 루카리오의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "메타그로스로 초반 주도권을 잡고, 루카리오의 테라스탈을 승리 수단으로 운용합니다."
           }
         },
         {
@@ -163278,8 +163278,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "white-herb",
+              "heldItemName": "하양허브",
               "moves": [
                 "껍질깨기",
                 "지진",
@@ -163457,8 +163457,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "focus-sash",
+              "heldItemName": "기합의띠",
               "moves": [
                 "껍질깨기",
                 "지진",
@@ -163753,8 +163753,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "focus-sash",
+              "heldItemName": "기합의띠",
               "moves": [
                 "껍질깨기",
                 "지진",
@@ -164030,19 +164030,19 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "choice-band",
+              "heldItemName": "구애머리띠",
               "moves": [
                 "아이언헤드",
                 "스톤에지",
                 "시저크로스",
-                "손톱갈기"
+                "만나자마자"
               ],
               "moveIds": [
                 "ironhead",
                 "stoneedge",
                 "xscissor",
-                "honeclaws"
+                "firstimpression"
               ],
               "teraType": "벌레",
               "canDynamax": true,
@@ -164147,19 +164147,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "choice-band",
-              "heldItemName": "구애머리띠",
+              "heldItemId": "power-herb",
+              "heldItemName": "파워풀허브",
               "moves": [
                 "스톤에지",
                 "지진",
                 "유턴",
-                "더블윙"
+                "안개제거"
               ],
               "moveIds": [
                 "stoneedge",
                 "earthquake",
                 "uturn",
-                "dualwingbeat"
+                "defog"
               ],
               "teraType": "바위",
               "canDynamax": true,
@@ -164182,7 +164182,7 @@
             "winConditions": [
               "에레키블의 테라스탈"
             ],
-            "summary": "전툴라로 초반 주도권을 잡고, 에레키블의 테라스탈을 승리 수단으로 운용합니다."
+            "summary": "전툴라로 초반 주도권을 잡고, 아케오스의 필드 정리로 전개를 유지하고, 에레키블의 테라스탈을 승리 수단으로 운용합니다."
           }
         },
         {
@@ -164505,19 +164505,19 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "rockium-z--held",
-              "heldItemName": "바위Z",
+              "heldItemId": "choice-band",
+              "heldItemName": "구애머리띠",
               "moves": [
                 "아이언헤드",
                 "스톤에지",
                 "시저크로스",
-                "손톱갈기"
+                "만나자마자"
               ],
               "moveIds": [
                 "ironhead",
                 "stoneedge",
                 "xscissor",
-                "honeclaws"
+                "firstimpression"
               ],
               "teraType": "벌레",
               "canDynamax": true,
@@ -180282,7 +180282,7 @@
               "slug": "flygon",
               "name": "플라이곤",
               "level": 50,
-              "role": "물리 스위퍼",
+              "role": "대면 조작·교대",
               "ability": "부유",
               "abilityId": "levitate",
               "nature": "명랑",
@@ -180295,19 +180295,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "choice-scarf",
+              "heldItemName": "구애스카프",
               "moves": [
                 "지진",
-                "용의춤",
                 "역린",
-                "불꽃펀치"
+                "불꽃펀치",
+                "유턴"
               ],
               "moveIds": [
                 "earthquake",
-                "dragondance",
                 "outrage",
-                "firepunch"
+                "firepunch",
+                "uturn"
               ],
               "teraType": "땅",
               "canDynamax": true,
@@ -190571,8 +190571,8 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "dragonium-z--held",
-              "heldItemName": "드래곤Z",
+              "heldItemId": "life-orb",
+              "heldItemName": "생명의구슬",
               "moves": [
                 "지진",
                 "용의춤",
@@ -191070,19 +191070,19 @@
                 "specialDefense": 2,
                 "speed": 32
               },
-              "heldItemId": "mewnium-z--held",
-              "heldItemName": "뮤Z",
+              "heldItemId": "leftovers",
+              "heldItemName": "먹다남은음식",
               "moves": [
-                "스텔스록",
+                "사이코키네시스",
                 "냉동빔",
                 "나쁜음모",
-                "불대문자"
+                "스텔스록"
               ],
               "moveIds": [
-                "stealthrock",
+                "psychic",
                 "icebeam",
                 "nastyplot",
-                "fireblast"
+                "stealthrock"
               ],
               "teraType": "에스퍼",
               "canDynamax": true,
@@ -191189,8 +191189,8 @@
                 "specialDefense": 2,
                 "speed": 0
               },
-              "heldItemId": "leftovers",
-              "heldItemName": "먹다남은음식",
+              "heldItemId": "sitrus-berry",
+              "heldItemName": "자뭉열매",
               "moves": [
                 "유턴",
                 "브레이브버드",
@@ -191228,19 +191228,19 @@
                 "specialDefense": 0,
                 "speed": 32
               },
-              "heldItemId": "sitrus-berry",
-              "heldItemName": "자뭉열매",
+              "heldItemId": "choice-scarf",
+              "heldItemName": "구애스카프",
               "moves": [
                 "하이드로펌프",
                 "볼트체인지",
-                "도깨비불",
-                "아픔나누기"
+                "트릭",
+                "10만볼트"
               ],
               "moveIds": [
                 "hydropump",
                 "voltswitch",
-                "willowisp",
-                "painsplit"
+                "trick",
+                "thunderbolt"
               ],
               "teraType": "전기",
               "canDynamax": true,
@@ -191321,8 +191321,8 @@
                 "specialDefense": 0,
                 "speed": 27
               },
-              "heldItemId": "eevium-z--held",
-              "heldItemName": "이브이Z",
+              "heldItemId": "eviolite",
+              "heldItemName": "진화의휘석",
               "moves": [
                 "어시스트파워",
                 "하품",
@@ -191578,8 +191578,8 @@
                 "specialDefense": 0,
                 "speed": 27
               },
-              "heldItemId": "eevium-z--held",
-              "heldItemName": "이브이Z",
+              "heldItemId": "eviolite",
+              "heldItemName": "진화의휘석",
               "moves": [
                 "어시스트파워",
                 "하품",
@@ -191835,8 +191835,8 @@
                 "specialDefense": 0,
                 "speed": 27
               },
-              "heldItemId": "eevium-z--held",
-              "heldItemName": "이브이Z",
+              "heldItemId": "eviolite",
+              "heldItemName": "진화의휘석",
               "moves": [
                 "어시스트파워",
                 "하품",

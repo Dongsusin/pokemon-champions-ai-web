@@ -115,7 +115,7 @@ const SIGNATURE_Z_MOVES = {
   },
   pikashuniumz: {
     species: [
-      'pikachu-original-cap', 'pikachu-hoenn-cap', 'pikachu-sinnoh-cap', 'pikachu-unova-cap',
+      'pikachu', 'pikachu-original-cap', 'pikachu-hoenn-cap', 'pikachu-sinnoh-cap', 'pikachu-unova-cap',
       'pikachu-kalos-cap', 'pikachu-alola-cap', 'pikachu-partner-cap',
     ],
     baseMoveId: 'thunderbolt',
@@ -146,7 +146,7 @@ const SIGNATURE_Z_MOVES = {
     description: '상대의 현재 HP 중 3/4만큼 데미지를 준다.',
   },
   ultranecroziumz: {
-    species: ['necrozma-ultra'], baseMoveId: 'photongeyser',
+    species: ['necrozma-dusk', 'necrozma-dawn', 'necrozma-ultra'], baseMoveId: 'photongeyser',
     id: 'lightthatburnsthesky', name: '하늘을태우는멸망의빛', englishName: 'Light That Burns the Sky',
     typeId: 'psychic', categoryId: 'special', power: 200, ignoreAbility: true, adaptiveOffense: true,
     description: '공격과 특수공격 중 더 높은 능력으로 공격하며 상대의 특성을 무시한다.',

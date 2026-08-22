@@ -8,7 +8,7 @@ import {
 } from './trainingData.js'
 import { BATTLE_TERRAINS, BATTLE_WEATHERS } from './battleRules.js'
 import { resolveMaxMove } from './maxMoveData.js'
-import { canUseZMove, resolveZMove } from './zMoveData.js'
+import { canUseZMove, normalizeZCrystalId, resolveZMove } from './zMoveData.js'
 
 const TYPE_CHART = {
   노말: { 바위: 0.5, 고스트: 0, 강철: 0.5 },
@@ -350,6 +350,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     dynamaxOriginalForm: null,
     megaActive: false,
     primalActive: false,
+    ultraActive: false,
     consumedItem: false,
     battleMechanics: [...(entry.battleMechanics ?? [])],
     gimmickFormId: matchingGimmick?.targetFormId ?? null,
@@ -1476,6 +1477,21 @@ function transformPokemon(state, pokemon, formId, mechanicId) {
   pokemon.spriteBackFallback = transformed.spriteBackFallback
   pokemon.megaActive = mechanicId === 'mega'
   pokemon.primalActive = mechanicId === 'primal'
+  pokemon.ultraActive = mechanicId === 'ultra'
+  return true
+}
+
+function activateUltraBurst(state, pokemon) {
+  if (normalizeZCrystalId(pokemon.heldItemId) !== 'ultranecroziumz') return false
+  if (!['necrozma-dusk', 'necrozma-dawn'].includes(currentSpeciesSlug(pokemon))) return false
+
+  const ultraForm = getBattleFormOptions(pokemon.originalSpeciesId)
+    .find((form) => form.slug === 'necrozma-ultra')
+  if (!ultraForm) return false
+
+  const originalName = pokemon.name
+  if (!transformPokemon(state, pokemon, ultraForm.id, 'ultra')) return false
+  appendLog(state, `${originalName}이(가) 울트라버스트했다!`, 'gimmick')
   return true
 }
 
@@ -1589,6 +1605,7 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
       activateEntryAbility(state, sideId, activeSlot)
     }
   } else if (mechanicId === 'zmove') {
+    activateUltraBurst(state, pokemon)
     side.usedMechanics.zmove = true
     appendLog(state, `${trainerName}와 ${pokemon.name}의 전력! Z파워가 기술에 모인다!`, 'gimmick')
   }

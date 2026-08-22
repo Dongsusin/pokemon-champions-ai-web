@@ -3,6 +3,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import generatedBattleItems from '../src/data/generatedBattleItems.js'
+import { canUseZMove } from '../src/data/zMoveData.js'
 import { getZaMegaStoneByFormSlug, isZaMegaForm } from '../src/data/zaMegaData.js'
 import { mechanicPreferencesFor } from './trainerBattleRules.mjs'
 
@@ -352,6 +353,11 @@ const megaStoneItemIds = new Set(
     .map((option) => option.heldItem?.id)
     .filter(Boolean),
 )
+const zCrystalItemIds = new Set(
+  generatedBattleItems
+    .filter((item) => item.sourceCategory === 'z-crystals')
+    .map((item) => item.id),
+)
 
 const gmaxOptionByBaseSlug = new Map()
 for (const form of pokemonData.forms.filter((profile) => profile.slug.endsWith('-gmax'))) {
@@ -505,7 +511,7 @@ function itemFor(species, statsResult, usedItems, forcedItem = null) {
 
   for (const candidateId of candidateIds) {
     const item = itemByShowdownId.get(candidateId)
-    if (!item || usedItems.has(item.id) || megaStoneItemIds.has(item.id)) continue
+    if (!item || usedItems.has(item.id) || megaStoneItemIds.has(item.id) || zCrystalItemIds.has(item.id)) continue
     usedItems.add(item.id)
     return item
   }
@@ -1061,6 +1067,15 @@ function validateTrainerLoadouts(data) {
         if (megaStoneItemIds.has(item.id) && !slot.battleMechanics.includes('mega-evolution')) {
           throw new Error(`${trainer.name} ${slot.name}: Mega Stone without Mega Evolution`)
         }
+        if (zCrystalItemIds.has(item.id)) {
+          const hasCompatibleZMove = slot.moveIds.some((moveId) => canUseZMove(moveById.get(moveId), {
+            heldItemId: item.id,
+            speciesSlug: slot.slug,
+          }))
+          if (!slot.battleMechanics.includes('z-move') || !hasCompatibleZMove) {
+            throw new Error(`${trainer.name} ${slot.name}: Z-Crystal without compatible Z-Move`)
+          }
+        }
         if (!abilitySpecies.abilities.includes(slot.ability)) throw new Error(`${trainer.name} ${slot.name}: invalid ability ${slot.ability}`)
         if (!validNatureLabels.has(slot.nature) || NATURE_LABELS[slot.natureId] !== slot.nature) {
           throw new Error(`${trainer.name} ${slot.name}: invalid nature ${slot.nature}`)
@@ -1156,6 +1171,7 @@ function validateTrainerLoadouts(data) {
             || !target.moveIds.includes(baseMove.id)
             || target.heldItemId !== expectedItemId
             || gimmick.heldItemId !== expectedItemId
+            || !canUseZMove(baseMove, { heldItemId: expectedItemId, speciesSlug: target.slug })
           ) {
             throw new Error(`${trainer.name} ${target.name}: invalid Z-Move setup`)
           }
