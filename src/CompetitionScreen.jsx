@@ -661,6 +661,7 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
             key={`competition-opponent-tooltip-${pokemon.battleId}`}
             pokemon={pokemon}
             side="opponent"
+            showBattleState={false}
             trainerName={opponent.name}
             visible={visible}
           />
@@ -676,6 +677,7 @@ function CompetitionScreen({ competition, onBack, onStartBattle, onRestart }) {
             key={`competition-player-tooltip-${pokemon.battleId}`}
             pokemon={pokemon}
             side="player"
+            showBattleState={false}
             trainerName="PLAYER_01"
             visible={visible}
           />

@@ -73,7 +73,15 @@ function battleGimmickEntries(pokemon) {
   ].filter(Boolean)
 }
 
-function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible, anchorElement = null }) {
+function BattlePokemonStatusTooltip({
+  id,
+  pokemon,
+  side,
+  trainerName,
+  visible,
+  anchorElement = null,
+  showBattleState = true,
+}) {
   const tooltipRef = useRef(null)
   const [anchorPosition, setAnchorPosition] = useState(null)
   const hpPercent = Math.ceil(hpRatio(pokemon))
@@ -226,23 +234,25 @@ function BattlePokemonStatusTooltip({ id, pokemon, side, trainerName, visible, a
         </div>
       )}
 
-      <div className="battle-pokemon-inspector-state">
-        <small>현재 전투 상태</small>
-        <span>
-          {gimmicks.map((entry) => (
-            <b className={`is-gimmick gimmick-${entry.id}`} key={entry.id}>{entry.label}</b>
-          ))}
-          {conditions.map((entry) => (
-            <b className={`condition-${entry.tone}`} key={entry.id}>{entry.label}</b>
-          ))}
-          {statStages.map(({ id: statId, label, stage }) => (
-            <b className={stage > 0 ? 'is-raised' : 'is-lowered'} key={statId}>
-              {label}<em>{stage > 0 ? '+' : ''}{stage}</em>
-            </b>
-          ))}
-          {gimmicks.length + conditions.length + statStages.length === 0 && <em className="is-neutral">변화 없음</em>}
-        </span>
-      </div>
+      {showBattleState && (
+        <div className="battle-pokemon-inspector-state">
+          <small>현재 전투 상태</small>
+          <span>
+            {gimmicks.map((entry) => (
+              <b className={`is-gimmick gimmick-${entry.id}`} key={entry.id}>{entry.label}</b>
+            ))}
+            {conditions.map((entry) => (
+              <b className={`condition-${entry.tone}`} key={entry.id}>{entry.label}</b>
+            ))}
+            {statStages.map(({ id: statId, label, stage }) => (
+              <b className={stage > 0 ? 'is-raised' : 'is-lowered'} key={statId}>
+                {label}<em>{stage > 0 ? '+' : ''}{stage}</em>
+              </b>
+            ))}
+            {gimmicks.length + conditions.length + statStages.length === 0 && <em className="is-neutral">변화 없음</em>}
+          </span>
+        </div>
+      )}
 
       {side === 'player' && (
         <section className="battle-pokemon-inspector-moves">
