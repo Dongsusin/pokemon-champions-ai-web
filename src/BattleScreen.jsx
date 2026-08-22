@@ -1998,6 +1998,17 @@ function BattleScreen({
     setMenu('fight')
   }
 
+  const selectRotationCommandSlot = (nextSlot) => {
+    if (!battle.rules?.format?.rotation || nextSlot === commandSlot) return
+    const nextPokemon = getActivePokemon(battle, 'player', nextSlot)
+    if (!nextPokemon || nextPokemon.fainted || nextPokemon.hp <= 0) return
+
+    battleAudioRef.current?.playMenu('select')
+    setPendingGimmick(null)
+    setPendingMoveIndex(null)
+    setCommandSlot(nextSlot)
+  }
+
   const openPartyForCurrentSlot = () => {
     battleAudioRef.current?.playMenu('select')
     setPendingGimmick(null)
@@ -2280,12 +2291,13 @@ function BattleScreen({
             />
           ) : !commandLocked && menu === 'fight' ? (
             <MoveMenu
+              key={getActivePokemon(battle, 'player', commandSlot)?.battleId ?? `rotation-slot-${commandSlot}`}
               battle={battle}
               activeSlot={commandSlot}
               targetSlot={targetSlot}
               pendingGimmick={pendingGimmick}
               reservedMechanicIds={reservedMechanicIds}
-              onActiveSlot={setCommandSlot}
+              onActiveSlot={selectRotationCommandSlot}
               onGimmick={setPendingGimmick}
               onMove={chooseMove}
               onOpenParty={openPartyForCurrentSlot}
