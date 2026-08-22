@@ -4522,6 +4522,20 @@
   filter: drop-shadow(0 0 13px rgba(225, 255, 107, 0.46));
 }
 
+.app-shell.battle-view .battle-arena .battle-pokemon-stage.is-fainted:not(.is-fainting) {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  filter: none;
+  transform: translateY(42px) scale(0.78);
+}
+
+.app-shell.battle-view .battle-arena .battle-status-anchor.is-fainted:not(.is-fainting) > .battle-hp-panel {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .app-shell.battle-view :is(.format-double, .format-triple, .format-rotation) .battle-status-anchor {
   width: clamp(170px, 17vw, 245px);
 }

@@ -992,8 +992,9 @@ function PartyIndicators({ side }) {
   )
 }
 
-function statusAnchorClassName(sideId, cue, activeSlot = 0) {
+function statusAnchorClassName(sideId, pokemon, cue, activeSlot = 0) {
   const classes = ['battle-status-anchor', `${sideId}-status-anchor`, `slot-${activeSlot}`]
+  if (pokemon.fainted) classes.push('is-fainted')
   if (!cue) return classes.join(' ')
   const isActor = cue.sideId === sideId && (cue.actorSlot == null || cue.actorSlot === activeSlot)
   const isTarget = cue.targetSideId === sideId && (cue.targetSlot == null || cue.targetSlot === activeSlot)
@@ -1993,13 +1994,13 @@ function BattleScreen({
         }}
       >
         {opponentActivePokemon.map((pokemon, slot) => (
-          <div className={statusAnchorClassName('opponent', visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
+          <div className={statusAnchorClassName('opponent', pokemon, visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
             <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} />
             {slot === 0 && <PartyIndicators side={battle.opponent} />}
           </div>
         ))}
         {playerActivePokemon.map((pokemon, slot) => (
-          <div className={statusAnchorClassName('player', visualTurnCue, slot)} key={`player-status-${pokemon.battleId}`}>
+          <div className={statusAnchorClassName('player', pokemon, visualTurnCue, slot)} key={`player-status-${pokemon.battleId}`}>
             <BattleStatusPanel pokemon={pokemon} side="player" trainerName="PLAYER_01" />
             {slot === 0 && <PartyIndicators side={battle.player} />}
           </div>
