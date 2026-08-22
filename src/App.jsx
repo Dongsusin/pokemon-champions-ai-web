@@ -732,7 +732,12 @@ function App() {
       <header className="topbar">
         <div className="brand" aria-label="Champions Arena">
           <span className="brand-mark">
-            <Sparkles size={22} strokeWidth={2.6} />
+            <img
+              src="/assets/brand/champions-arena-emblem.png"
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+            />
           </span>
         </div>
 
