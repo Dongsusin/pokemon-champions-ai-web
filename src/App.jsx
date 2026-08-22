@@ -187,7 +187,6 @@ const modes = [
     title: '시작하기',
     description: 'AI와 배틀 시작',
     icon: Swords,
-    badge: '추천',
   },
   {
     id: 'hatch',
