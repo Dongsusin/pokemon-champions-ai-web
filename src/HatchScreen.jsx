@@ -214,12 +214,9 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
     onDraw(activeBanner.id)
   }
 
-  const revealResultAt = (index) => {
-    const result = results[index]
-    if (!result || hatchingSlotId) return
-
-    setSelectedIndex(index)
-    if (revealedSlotIds.has(result.slotId)) return
+  const hatchSelectedResult = () => {
+    const result = selectedResult
+    if (!result || hatchingSlotId || revealedSlotIds.has(result.slotId)) return
 
     setRevealBurstSlotId(null)
     setHatchingSlotId(result.slotId)
@@ -395,7 +392,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
                   type="button"
                   disabled={selectedIsHatching}
                   aria-label={`${selectedRarity.label} 알 열기`}
-                  onClick={() => revealResultAt(selectedIndex)}
+                  onClick={hatchSelectedResult}
                   key={selectedResult.slotId}
                 >
                   <span className="draw-egg-aura" aria-hidden="true" />
@@ -447,7 +444,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
             <div className="draw-dock-toolbar">
               <div className="draw-guide">
                 <Sparkles size={16} />
-                <span>{selectedIsRevealed ? `${selectedRarity.label} · ${activeBanner.title}` : `${selectedRarity.label} 알 · 클릭해서 확인`}</span>
+                <span>{selectedIsRevealed ? `${selectedRarity.label} · ${activeBanner.title}` : `${selectedRarity.label} 알 · 중앙 알을 클릭해 부화`}</span>
               </div>
               <div className="draw-actions">
                 <button type="button" onClick={() => setView('banner')}><Sparkles size={16} /> 배너 선택</button>
@@ -471,10 +468,10 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
                     key={result.slotId}
                     type="button"
                     style={{ '--draw-index': index }}
-                    aria-label={isRevealed ? `${result.isShiny ? '이로치 ' : ''}${result.name}, ${rarity.label}` : `${rarity.label} 알 열기`}
+                    aria-label={isRevealed ? `${result.isShiny ? '이로치 ' : ''}${result.name}, ${rarity.label}` : `${rarity.label} 알 선택`}
                     aria-pressed={isSelected}
                     disabled={Boolean(hatchingSlotId && !isHatching)}
-                    onClick={() => revealResultAt(index)}
+                    onClick={() => setSelectedIndex(index)}
                   >
                     <span className="draw-slot-number">{String(index + 1).padStart(2, '0')}</span>
                     {isRevealed ? (
