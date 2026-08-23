@@ -8,19 +8,65 @@ import {
 } from './trainingData.js'
 
 export const BASE_SHINY_ODDS = 4096
-export const SHINY_COPY_BONUS = 0.01
-export const MAX_SHINY_MULTIPLIER = 4
+export const LEGENDARY_DRAW_RATE = 0.001
+export const PICKUP_ROTATION_MS = 60 * 60 * 1000
+
+export const DRAW_BANNERS = {
+  standard: {
+    id: 'standard',
+    eyebrow: 'CHAMPIONS SCOUT',
+    title: '일반 뽑기',
+    price: 1000,
+    shinyOnly: false,
+  },
+  pickup: {
+    id: 'pickup',
+    eyebrow: 'LEGEND PICKUP',
+    title: '전설 픽업 뽑기',
+    price: 1800,
+    shinyOnly: false,
+  },
+  shiny: {
+    id: 'shiny',
+    eyebrow: 'SHINY FESTIVAL',
+    title: '이로치 뽑기',
+    price: 3600,
+    shinyOnly: true,
+  },
+}
+
+export const DRAW_BANNER_ORDER = ['standard', 'pickup', 'shiny']
 
 export const RARITY_META = {
-  standard: { label: '전국도감', stars: 'ALL' },
-  legendary: { label: '전설의 포켓몬', stars: 'LEGEND' },
-  mythical: { label: '환상의 포켓몬', stars: 'MYTHICAL' },
+  common: { label: 'C · 루키', stars: '★', rate: 0.5, minBaseStatTotal: 0, maxBaseStatTotal: 449 },
+  rare: { label: 'B · 레어', stars: '★★', rate: 0.32, minBaseStatTotal: 450, maxBaseStatTotal: 499 },
+  elite: { label: 'A · 엘리트', stars: '★★★', rate: 0.14, minBaseStatTotal: 500, maxBaseStatTotal: 549 },
+  champion: { label: 'S · 챔피언', stars: '★★★★', rate: 0.039, minBaseStatTotal: 550, maxBaseStatTotal: Infinity },
+  legend: { label: 'EX · 전설·환상', stars: '★★★★★', rate: LEGENDARY_DRAW_RATE, minBaseStatTotal: 0, maxBaseStatTotal: Infinity },
 }
+
+export const DRAW_RARITY_ORDER = ['common', 'rare', 'elite', 'champion', 'legend']
 
 function classificationFor(profile) {
   if (profile.isMythical) return 'mythical'
   if (profile.isLegendary) return 'legendary'
   return 'standard'
+}
+
+export function getBaseStatTotal(profile) {
+  return Array.isArray(profile?.stats)
+    ? profile.stats.reduce((total, value) => total + (Number(value) || 0), 0)
+    : 0
+}
+
+export function getPokemonRarity(profile) {
+  if (profile?.isLegendary || profile?.isMythical) return 'legend'
+
+  const baseStatTotal = getBaseStatTotal(profile)
+  if (baseStatTotal <= RARITY_META.common.maxBaseStatTotal) return 'common'
+  if (baseStatTotal <= RARITY_META.rare.maxBaseStatTotal) return 'rare'
+  if (baseStatTotal <= RARITY_META.elite.maxBaseStatTotal) return 'elite'
+  return 'champion'
 }
 
 const NATIONAL_DEX_IDS = new Set(NATIONAL_DEX.map((profile) => profile.id))
@@ -39,30 +85,63 @@ export function isFinalEvolutionSpecies(speciesId) {
 export const POKEMON_POOL = NATIONAL_DEX.filter((profile) => (
   isFinalEvolutionSpecies(profile.id)
 )).map((profile) => {
-  const rarity = classificationFor(profile)
+  const classification = classificationFor(profile)
   return {
     ...profile,
-    rarity,
-    classification: rarity,
+    rarity: getPokemonRarity(profile),
+    classification,
+    baseStatTotal: getBaseStatTotal(profile),
     ability: profile.abilities[0],
     image: profile.spriteFront,
   }
 })
 
-export function getShinyChance(directDrawCount = 0) {
-  const multiplier = Math.min(
-    MAX_SHINY_MULTIPLIER,
-    1 + Math.max(0, Number(directDrawCount) || 0) * SHINY_COPY_BONUS,
-  )
-  return Math.min(1, multiplier / BASE_SHINY_ODDS)
+export const LEGENDARY_MYTHICAL_POOL = POKEMON_POOL.filter((pokemon) => pokemon.rarity === 'legend')
+
+export const DRAW_RARITY_POOLS = Object.fromEntries(
+  DRAW_RARITY_ORDER.map((rarity) => [
+    rarity,
+    rarity === 'legend'
+      ? LEGENDARY_MYTHICAL_POOL
+      : POKEMON_POOL.filter((pokemon) => pokemon.rarity === rarity),
+  ]),
+)
+
+function normalizedTimestamp(value = Date.now()) {
+  const timestamp = value instanceof Date ? value.getTime() : Number(value)
+  return Number.isFinite(timestamp) ? timestamp : Date.now()
+}
+
+export function getCurrentLegendaryPickup(now = Date.now()) {
+  const rotation = Math.floor(normalizedTimestamp(now) / PICKUP_ROTATION_MS)
+  const index = ((rotation % LEGENDARY_MYTHICAL_POOL.length) + LEGENDARY_MYTHICAL_POOL.length)
+    % LEGENDARY_MYTHICAL_POOL.length
+  return LEGENDARY_MYTHICAL_POOL[index]
+}
+
+export function getPickupRotationRemainingMs(now = Date.now()) {
+  const timestamp = normalizedTimestamp(now)
+  const elapsed = ((timestamp % PICKUP_ROTATION_MS) + PICKUP_ROTATION_MS) % PICKUP_ROTATION_MS
+  return PICKUP_ROTATION_MS - elapsed
+}
+
+export function getDrawBanner(bannerId = 'standard', now = Date.now()) {
+  const banner = DRAW_BANNERS[bannerId] ?? DRAW_BANNERS.standard
+  return banner.id === 'pickup'
+    ? { ...banner, pickup: getCurrentLegendaryPickup(now) }
+    : banner
+}
+
+export function getShinyChance() {
+  return 1 / BASE_SHINY_ODDS
 }
 
 export function getShinyOdds(directDrawCount = 0) {
   return Math.round(1 / getShinyChance(directDrawCount))
 }
 
-export function rollShiny(random = Math.random, directDrawCount = 0) {
-  return random() < getShinyChance(directDrawCount)
+export function rollShiny(random = Math.random) {
+  return random() < getShinyChance()
 }
 
 function collectionDrawCounts(collection) {
@@ -72,23 +151,57 @@ function collectionDrawCounts(collection) {
   ]))
 }
 
-export function createPokemonDraw(count = 10, collection = [], random = Math.random) {
+function randomPoolEntry(pool, random) {
+  const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0))
+  return pool[Math.floor(roll * pool.length)]
+}
+
+function rollPokemonRarity(random) {
+  const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0))
+  let cumulativeRate = 0
+
+  for (const rarity of DRAW_RARITY_ORDER) {
+    cumulativeRate += RARITY_META[rarity].rate
+    if (roll < cumulativeRate) return rarity
+  }
+
+  return 'legend'
+}
+
+function rollPokemonForBanner(bannerId, random, now) {
+  const rarity = rollPokemonRarity(random)
+  const pool = rarity === 'legend' && bannerId === 'pickup'
+    ? [getCurrentLegendaryPickup(now)]
+    : DRAW_RARITY_POOLS[rarity]
+  return randomPoolEntry(pool, random)
+}
+
+export function createPokemonDraw(count = 10, collection = [], random = Math.random, options = {}) {
   if (typeof collection === 'function') {
     random = collection
     collection = []
   }
 
+  if (typeof random !== 'function') {
+    options = random ?? {}
+    random = options.random ?? Math.random
+  }
+
   const drawCounts = collectionDrawCounts(collection)
+  const banner = getDrawBanner(options.bannerId, options.now)
+  const drawTimestamp = normalizedTimestamp(options.now)
 
   return Array.from({ length: count }, (_, index) => {
-    const pokemon = POKEMON_POOL[Math.floor(random() * POKEMON_POOL.length)]
+    const pokemon = rollPokemonForBanner(banner.id, random, drawTimestamp)
     const previousDrawCount = drawCounts.get(pokemon.id) ?? 0
-    const shinyChance = getShinyChance(previousDrawCount)
-    const isShiny = random() < shinyChance
+    const shinyChance = banner.shinyOnly ? 1 : getShinyChance()
+    const isShiny = banner.shinyOnly || rollShiny(random)
     drawCounts.set(pokemon.id, previousDrawCount + 1)
 
     return {
       ...pokemon,
+      bannerId: banner.id,
+      pickupSpeciesId: banner.pickup?.id ?? null,
       isShiny,
       spriteFront: isShiny ? pokemon.spriteFrontShiny : pokemon.spriteFront,
       spriteBack: isShiny ? pokemon.spriteBackShiny : pokemon.spriteBack,
@@ -98,7 +211,7 @@ export function createPokemonDraw(count = 10, collection = [], random = Math.ran
       previousDrawCount,
       shinyChance,
       shinyOdds: Math.round(1 / shinyChance),
-      slotId: `${Date.now()}-${index}-${random().toString(36).slice(2)}`,
+      slotId: `${drawTimestamp}-${index}-${random().toString(36).slice(2)}`,
       status: 'revealed',
     }
   })
@@ -111,7 +224,8 @@ function createCollectionPokemon(speciesId, overrides = {}) {
     captureId: `dex-${speciesId}`,
     dexSpeciesId: speciesId,
     speciesId,
-    rarity: classificationFor(species),
+    rarity: getPokemonRarity(species),
+    classification: classificationFor(species),
     isShiny: false,
     shinyObtained: false,
     directDrawCount: 0,

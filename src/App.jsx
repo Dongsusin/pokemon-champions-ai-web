@@ -31,6 +31,7 @@ import {
 import {
   createCompletePokemonCollection,
   createPokemonDraw,
+  getDrawBanner,
   getPokemonEvolutionFamilyKey,
   getTrainingRosterPokemon,
   mergePokemonDraws,
@@ -379,22 +380,36 @@ function App() {
     showNotice('설정을 기본값으로 복원했습니다.')
   }
 
-  const createAndStoreDraw = () => {
-    const nextResults = createPokemonDraw(10, boxPokemon)
+  const createAndStoreDraw = (bannerId = 'standard') => {
+    const drawTimestamp = Date.now()
+    const banner = getDrawBanner(bannerId, drawTimestamp)
+
+    if (vp < banner.price) {
+      showNotice(`${banner.title}에 필요한 ${(banner.price - vp).toLocaleString()} VP가 부족합니다.`)
+      return false
+    }
+
+    const nextResults = createPokemonDraw(10, boxPokemon, Math.random, {
+      bannerId: banner.id,
+      now: drawTimestamp,
+    })
     const mergedDraw = mergePokemonDraws(boxPokemon, nextResults)
+    const nextBalance = vp - banner.price
 
     setDrawResults(nextResults)
     setBoxPokemon(mergedDraw.collection)
+    setVp(nextBalance)
     gameAudioRef.current?.playEvent(mergedDraw.shinyCount > 0 ? 'shiny' : 'draw')
     showNotice(
       mergedDraw.shinyCount > 0
-        ? `도감 ${mergedDraw.newlyUnlockedCount}칸 해금 · 이로치 ${mergedDraw.shinyCount}마리 발견!`
-        : `10회 뽑기 완료 · 진화 계통 포함 ${mergedDraw.newlyUnlockedCount}칸을 해금했습니다.`,
+        ? `${banner.title} 완료 · 이로치 ${mergedDraw.shinyCount}마리 · 남은 ${nextBalance.toLocaleString()} VP`
+        : `${banner.title} 완료 · 도감 ${mergedDraw.newlyUnlockedCount}칸 해금 · 남은 ${nextBalance.toLocaleString()} VP`,
     )
+    return true
   }
 
   const enterHatchScreen = () => {
-    createAndStoreDraw()
+    setDrawResults([])
     setScreen('hatch')
   }
 
@@ -427,10 +442,6 @@ function App() {
       return
     }
 
-  }
-
-  const resetDraw = () => {
-    createAndStoreDraw()
   }
 
   const returnToLobby = () => {
@@ -863,10 +874,11 @@ function App() {
         />
       ) : screen === 'hatch' ? (
         <HatchScreen
+          balance={vp}
           results={drawResults}
           onBack={returnToLobby}
+          onDraw={createAndStoreDraw}
           onOpenBox={openBox}
-          onReset={resetDraw}
         />
       ) : screen === 'training' ? (
         <TrainingScreen
