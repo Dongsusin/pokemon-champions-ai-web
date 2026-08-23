@@ -50,7 +50,28 @@ const defaultPokemon = normalizePokemon({
   moves: ['잠재파워'],
 })
 assert.equal(defaultPokemon.hiddenPowerType, '노말')
+assert.equal(defaultPokemon.hiddenPowerTypeConfigured, false)
 assert.equal(resolveMoveForPokemon(hiddenPowerMoves[0], defaultPokemon).type, '노말')
+
+const legacyIcePokemon = normalizePokemon({
+  captureId: 'hidden-power-legacy-validation',
+  speciesId: hiddenPowerLearner.id,
+  hiddenPowerType: '얼음',
+  moves: ['잠재파워'],
+})
+assert.equal(legacyIcePokemon.hiddenPowerType, '노말')
+assert.equal(legacyIcePokemon.hiddenPowerTypeConfigured, false)
+assert.equal(resolveMoveForPokemon(hiddenPowerMoves[0], legacyIcePokemon).type, '노말')
+
+const configuredIcePokemon = normalizePokemon({
+  captureId: 'hidden-power-ice-validation',
+  speciesId: hiddenPowerLearner.id,
+  hiddenPowerType: '얼음',
+  hiddenPowerTypeConfigured: true,
+  moves: ['잠재파워'],
+})
+assert.equal(configuredIcePokemon.hiddenPowerType, '얼음')
+assert.equal(configuredIcePokemon.hiddenPowerTypeConfigured, true)
 
 const configuredPokemon = normalizePokemon({
   captureId: 'hidden-power-validation',

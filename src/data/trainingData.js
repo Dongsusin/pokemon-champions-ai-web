@@ -148,6 +148,20 @@ export function normalizeHiddenPowerType(type) {
   return HIDDEN_POWER_TYPES.includes(type) ? type : '노말'
 }
 
+function resolveHiddenPowerConfiguration(pokemon = {}) {
+  const hasConfigurationMarker = typeof pokemon.hiddenPowerTypeConfigured === 'boolean'
+  const hiddenPowerTypeConfigured = hasConfigurationMarker
+    ? pokemon.hiddenPowerTypeConfigured
+    : Boolean(pokemon.hiddenPowerType && pokemon.hiddenPowerType !== '얼음')
+
+  return {
+    hiddenPowerType: normalizeHiddenPowerType(
+      hiddenPowerTypeConfigured ? pokemon.hiddenPowerType : undefined,
+    ),
+    hiddenPowerTypeConfigured,
+  }
+}
+
 export function canGigantamax(speciesId) {
   const species = getSpeciesProfile(speciesId)
   const baseSpeciesId = Number(species?.parentSpeciesId ?? species?.id ?? speciesId)
@@ -461,7 +475,7 @@ export function getMoveById(moveId) {
 export function resolveMoveForPokemon(move, pokemon) {
   if (!move || move.id !== 'hiddenpower') return move
 
-  const type = normalizeHiddenPowerType(pokemon?.hiddenPowerType)
+  const { hiddenPowerType: type } = resolveHiddenPowerConfiguration(pokemon)
   return {
     ...move,
     type,
@@ -601,7 +615,7 @@ export function normalizePokemon(pokemon) {
   const ability = species.abilities.includes(pokemon.ability) ? pokemon.ability : species.abilities[0]
   const teraType = normalizeTeraType(pokemon.teraType, species.types[0])
   const dynamaxMode = normalizeDynamaxMode(pokemon.dynamaxMode, species.id)
-  const hiddenPowerType = normalizeHiddenPowerType(pokemon.hiddenPowerType)
+  const { hiddenPowerType, hiddenPowerTypeConfigured } = resolveHiddenPowerConfiguration(pokemon)
   const isShiny = Boolean(pokemon.isShiny)
   const shinyObtained = Boolean(pokemon.shinyObtained ?? pokemon.isShiny)
   const spriteFront = isShiny ? species.spriteFrontShiny : species.spriteFront
@@ -628,6 +642,7 @@ export function normalizePokemon(pokemon) {
     teraType,
     dynamaxMode,
     hiddenPowerType,
+    hiddenPowerTypeConfigured,
     ability,
     nature,
     moves,

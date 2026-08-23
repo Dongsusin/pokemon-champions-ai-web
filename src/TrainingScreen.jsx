@@ -75,6 +75,7 @@ function trainingSignature(pokemon) {
     ability: pokemon.ability,
     moves: pokemon.moves,
     hiddenPowerType: pokemon.hiddenPowerType,
+    hiddenPowerTypeConfigured: pokemon.hiddenPowerTypeConfigured,
     trainingPoints: STAT_META.map(({ key }) => Number(pokemon.trainingPoints?.[key] ?? 0)),
   })
 }
@@ -117,7 +118,10 @@ function BattleTooltip({
 }
 
 function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onOpenHatch }) {
-  const trainingPokemon = useMemo(() => getTrainingRosterPokemon(pokemon), [pokemon])
+  const trainingPokemon = useMemo(
+    () => getTrainingRosterPokemon(pokemon).map((entry) => normalizePokemon(entry)),
+    [pokemon],
+  )
   const [selectedId, setSelectedId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [pokemonSearch, setPokemonSearch] = useState('')
   const [pokemonSort, setPokemonSort] = useState('obtained')
@@ -315,7 +319,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
   }
 
   const chooseHiddenPowerType = (hiddenPowerType) => {
-    updateSelected({ hiddenPowerType })
+    updateSelected({ hiddenPowerType, hiddenPowerTypeConfigured: true })
     setProfilePicker(null)
   }
 
