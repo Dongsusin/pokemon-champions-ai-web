@@ -400,11 +400,6 @@ function App() {
     setBoxPokemon(mergedDraw.collection)
     setVp(nextBalance)
     gameAudioRef.current?.playEvent(mergedDraw.shinyCount > 0 ? 'shiny' : 'draw')
-    showNotice(
-      mergedDraw.shinyCount > 0
-        ? `${banner.title} 완료 · 이로치 ${mergedDraw.shinyCount}마리 · 남은 ${nextBalance.toLocaleString()} VP`
-        : `${banner.title} 완료 · 도감 ${mergedDraw.newlyUnlockedCount}칸 해금 · 남은 ${nextBalance.toLocaleString()} VP`,
-    )
     return true
   }
 
