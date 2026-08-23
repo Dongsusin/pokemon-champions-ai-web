@@ -5,6 +5,7 @@ import {
   getMoveById,
   getSpeciesProfile,
   normalizePokemon,
+  resolveMoveForPokemon,
 } from './trainingData.js'
 import { BATTLE_TERRAINS, BATTLE_WEATHERS } from './battleRules.js'
 import { resolveMaxMove } from './maxMoveData.js'
@@ -248,7 +249,9 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     captureId: entry.captureId ?? `ai-${entry.speciesId}-${index}`,
     moves: resolvedMoves.map((move) => move.name),
   })
-  const normalizedMoves = normalized.moves.map((moveName) => getMove(moveName))
+  const normalizedMoves = normalized.moves.map((moveName) => (
+    resolveMoveForPokemon(getMove(moveName), normalized)
+  ))
   const profile = getSpeciesProfile(normalized.speciesId)
   const stats = statObject(normalized)
   const matchingGimmick = teamGimmicks.find((gimmick) => (

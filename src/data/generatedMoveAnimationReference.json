@@ -51,15 +51,15 @@
       "P2": 18,
       "P3": 18
     },
-    "activeMoves": 846,
-    "activeReferenceMatches": 846,
-    "dedicatedEbdx": 508,
+    "activeMoves": 847,
+    "activeReferenceMatches": 847,
+    "dedicatedEbdx": 509,
     "fallbackEbdx": 338,
     "activeAvailability": {
       "COMMUNITY_AVAILABLE": 267,
       "MISSING_MANUAL": 20,
       "MISSING_OR_PLUGIN_VERIFY": 1,
-      "OFFICIAL_SOURCE_AVAILABLE": 557,
+      "OFFICIAL_SOURCE_AVAILABLE": 558,
       "PARTIAL_MANUAL": 1
     }
   },
@@ -301,6 +301,7 @@
     "morningsun": 234,
     "synthesis": 235,
     "moonlight": 236,
+    "hiddenpower": 237,
     "crosschop": 238,
     "twister": 239,
     "raindance": 240,

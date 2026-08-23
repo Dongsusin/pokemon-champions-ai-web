@@ -106,6 +106,10 @@ export const TERA_TYPES = [
   '스텔라',
 ]
 
+export const HIDDEN_POWER_TYPES = TERA_TYPES.filter((type) => (
+  !['페어리', '스텔라'].includes(type)
+))
+
 export const DYNAMAX_MODES = [
   {
     id: 'dynamax',
@@ -138,6 +142,10 @@ export function typeClassName(type) {
 export function normalizeTeraType(teraType, fallbackType = '노말') {
   if (TERA_TYPES.includes(teraType)) return teraType
   return TERA_TYPES.includes(fallbackType) ? fallbackType : '노말'
+}
+
+export function normalizeHiddenPowerType(type) {
+  return HIDDEN_POWER_TYPES.includes(type) ? type : '노말'
 }
 
 export function canGigantamax(speciesId) {
@@ -450,6 +458,18 @@ export function getMoveById(moveId) {
   return MOVE_BY_ID[moveId] ?? null
 }
 
+export function resolveMoveForPokemon(move, pokemon) {
+  if (!move || move.id !== 'hiddenpower') return move
+
+  const type = normalizeHiddenPowerType(pokemon?.hiddenPowerType)
+  return {
+    ...move,
+    type,
+    typeId: TYPE_CLASS[type],
+    description: `개체의 잠재력에 따라 타입이 달라지는 위력 60의 특수 기술이다. 현재 설정은 ${type}타입이다.`,
+  }
+}
+
 const LEARNABLE_MOVES_BY_PROFILE_ID = new Map()
 const SUPPLEMENTAL_FORM_MOVE_IDS = new Map([
   [10155, ['sunsteelstrike']],
@@ -464,12 +484,6 @@ export function getLearnableMoves(speciesId) {
 
   const species = getSpeciesProfile(profileId)
   if (!species) return []
-
-  if (species.slug === 'unown') {
-    const fallbackMoves = [MOVE_BY_ID.struggle].filter(isBattleMoveSupported)
-    LEARNABLE_MOVES_BY_PROFILE_ID.set(profileId, fallbackMoves)
-    return fallbackMoves
-  }
 
   if (species.slug === 'smeargle') {
     const sketchableMoves = MOVE_CATALOG.filter((move) => (
@@ -587,6 +601,7 @@ export function normalizePokemon(pokemon) {
   const ability = species.abilities.includes(pokemon.ability) ? pokemon.ability : species.abilities[0]
   const teraType = normalizeTeraType(pokemon.teraType, species.types[0])
   const dynamaxMode = normalizeDynamaxMode(pokemon.dynamaxMode, species.id)
+  const hiddenPowerType = normalizeHiddenPowerType(pokemon.hiddenPowerType)
   const isShiny = Boolean(pokemon.isShiny)
   const shinyObtained = Boolean(pokemon.shinyObtained ?? pokemon.isShiny)
   const spriteFront = isShiny ? species.spriteFrontShiny : species.spriteFront
@@ -612,6 +627,7 @@ export function normalizePokemon(pokemon) {
     types: species.types,
     teraType,
     dynamaxMode,
+    hiddenPowerType,
     ability,
     nature,
     moves,

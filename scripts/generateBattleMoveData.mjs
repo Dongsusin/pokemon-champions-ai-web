@@ -160,6 +160,9 @@ function fallbackDescription(move) {
 }
 
 function resolvedDescription(showdownId, showdownMove, localized) {
+  if (showdownId === 'hiddenpower') {
+    return '개체의 잠재력에 따라 타입이 달라지는 위력 60의 특수 기술이다. 트레이닝에서 타입을 설정할 수 있다.'
+  }
   if (localized.description && !localized.description.startsWith(UNAVAILABLE_DESCRIPTION_PREFIX)) {
     return localized.description
   }
@@ -219,7 +222,7 @@ const localizedById = new Map(localizedMoves.map((move) => [toId(move.pokeApiSlu
 const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove]) => {
   if (showdownMove.num <= 0 || showdownMove.isZ || showdownMove.isMax) return []
   if (['CAP', 'Custom'].includes(showdownMove.isNonstandard)) return []
-  if (showdownId.startsWith('hiddenpower')) return []
+  if (showdownId.startsWith('hiddenpower') && showdownId !== 'hiddenpower') return []
 
   const localized = localizedByNumber.get(showdownMove.num) ?? localizedById.get(showdownId)
   if (!localized?.name || !TYPE_LABELS[localized.typeId] || !CATEGORY_LABELS[localized.categoryId]) return []
@@ -243,7 +246,6 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     description: resolvedDescription(showdownId, showdownMove, localized),
     flags: Object.keys(showdownMove.flags ?? {}),
     ...battleMechanics(showdownMove),
-    ...(showdownId === 'struggle' ? { recoil: [1, 4] } : {}),
     ...(CURRENT_HP_FRACTION_MOVE_IDS.has(showdownId) ? { currentHpFraction: [1, 2] } : {}),
   }]
 }).sort((left, right) => left.number - right.number || left.name.localeCompare(right.name, 'ko'))

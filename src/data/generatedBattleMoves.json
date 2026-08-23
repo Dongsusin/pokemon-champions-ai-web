@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-23T11:33:49.739Z",
+  "generatedAt": "2026-08-23T11:43:27.286Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
   },
-  "moveCount": 846,
+  "moveCount": 847,
   "moves": [
     {
       "id": "pound",
@@ -4577,10 +4577,6 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ],
-      "recoil": [
-        1,
-        4
       ]
     },
     {
@@ -6572,6 +6568,29 @@
       "zMove": {
         "effect": "clearnegativeboost"
       }
+    },
+    {
+      "id": "hiddenpower",
+      "number": 237,
+      "name": "잠재파워",
+      "englishName": "Hidden Power",
+      "type": "노말",
+      "typeId": "normal",
+      "category": "특수",
+      "categoryId": "special",
+      "power": 60,
+      "pp": 15,
+      "accuracy": 100,
+      "accuracyLabel": null,
+      "priority": 0,
+      "target": "normal",
+      "generation": 2,
+      "description": "개체의 잠재력에 따라 타입이 달라지는 위력 60의 특수 기술이다. 트레이닝에서 타입을 설정할 수 있다.",
+      "flags": [
+        "protect",
+        "mirror",
+        "metronome"
+      ]
     },
     {
       "id": "crosschop",
