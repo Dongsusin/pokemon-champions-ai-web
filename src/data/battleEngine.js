@@ -5,9 +5,11 @@ import {
   getMoveById,
   getSpeciesProfile,
   normalizePokemon,
+  resolveMoveForPokemon,
 } from './trainingData.js'
 import { BATTLE_TERRAINS, BATTLE_WEATHERS } from './battleRules.js'
 import { resolveMaxMove } from './maxMoveData.js'
+import { HEAL_MOVE_IDS, PROTECT_MOVE_IDS, STATUS_MOVE_EFFECTS } from './moveSupportData.js'
 import { canUseZMove, normalizeZCrystalId, resolveZMove } from './zMoveData.js'
 
 const TYPE_CHART = {
@@ -31,52 +33,6 @@ const TYPE_CHART = {
   페어리: { 불꽃: 0.5, 격투: 2, 독: 0.5, 드래곤: 2, 악: 2, 강철: 0.5 },
   스텔라: {},
 }
-
-const STATUS_MOVE_EFFECTS = {
-  swordsdance: { self: { attack: 2 } },
-  nastyplot: { self: { specialAttack: 2 } },
-  dragondance: { self: { attack: 1, speed: 1 } },
-  quiverdance: { self: { specialAttack: 1, specialDefense: 1, speed: 1 } },
-  irondefense: { self: { defense: 2 } },
-  agility: { self: { speed: 2 } },
-  rockpolish: { self: { speed: 2 } },
-  bulkup: { self: { attack: 1, defense: 1 } },
-  workup: { self: { attack: 1, specialAttack: 1 } },
-  amnesia: { self: { specialDefense: 2 } },
-  calmmind: { self: { specialAttack: 1, specialDefense: 1 } },
-  shellsmash: {
-    self: { attack: 2, specialAttack: 2, speed: 2, defense: -1, specialDefense: -1 },
-  },
-  growl: { target: { attack: -1 } },
-  charm: { target: { attack: -2 } },
-  screech: { target: { defense: -2 } },
-  faketears: { target: { specialDefense: -2 } },
-  fakeout: {},
-}
-
-const PROTECT_MOVE_IDS = new Set([
-  'protect',
-  'detect',
-  'spikyshield',
-  'kingsshield',
-  'banefulbunker',
-  'silktrap',
-  'burningbulwark',
-  'maxguard',
-])
-
-const HEAL_MOVE_IDS = new Set([
-  'recover',
-  'roost',
-  'softboiled',
-  'slackoff',
-  'moonlight',
-  'synthesis',
-  'morningsun',
-  'milkdrink',
-  'shoreup',
-  'lifedew',
-])
 
 const STATUS_LABELS = {
   burn: '화상',
@@ -293,7 +249,9 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     captureId: entry.captureId ?? `ai-${entry.speciesId}-${index}`,
     moves: resolvedMoves.map((move) => move.name),
   })
-  const normalizedMoves = normalized.moves.map((moveName) => getMove(moveName))
+  const normalizedMoves = normalized.moves.map((moveName) => (
+    resolveMoveForPokemon(getMove(moveName), normalized)
+  ))
   const profile = getSpeciesProfile(normalized.speciesId)
   const stats = statObject(normalized)
   const matchingGimmick = teamGimmicks.find((gimmick) => (
@@ -351,6 +309,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     megaActive: false,
     primalActive: false,
     ultraActive: false,
+    transformSnapshot: null,
     consumedItem: false,
     battleMechanics: [...(entry.battleMechanics ?? [])],
     gimmickFormId: matchingGimmick?.targetFormId ?? null,
@@ -1281,6 +1240,45 @@ function healingMoveFraction(state, move) {
   return move.heal ?? [1, 2]
 }
 
+function applyTransform(state, attacker, defender) {
+  if (!defender || defender.fainted || defender.hp <= 0 || attacker === defender) return false
+
+  if (!attacker.transformSnapshot) {
+    attacker.transformSnapshot = {
+      speciesId: attacker.speciesId,
+      name: attacker.name,
+      types: [...attacker.types],
+      originalTypes: [...attacker.originalTypes],
+      ability: attacker.ability,
+      stats: { ...attacker.stats },
+      moves: attacker.moves.map((move) => ({ ...move })),
+      spriteFront: attacker.spriteFront,
+      spriteBack: attacker.spriteBack,
+      spriteFrontFallback: attacker.spriteFrontFallback,
+      spriteBackFallback: attacker.spriteBackFallback,
+    }
+  }
+
+  const originalHpStat = attacker.stats.hp
+  attacker.speciesId = defender.speciesId
+  attacker.name = defender.name
+  attacker.types = [...defender.types]
+  attacker.originalTypes = [...defender.types]
+  attacker.ability = defender.ability
+  attacker.stats = { ...defender.stats, hp: originalHpStat }
+  attacker.moves = defender.moves.map((move, index) => ({
+    ...moveRuntime(move, index),
+    maxPp: 5,
+    currentPp: 5,
+  }))
+  attacker.spriteFront = defender.spriteFront
+  attacker.spriteBack = defender.spriteBack
+  attacker.spriteFrontFallback = defender.spriteFrontFallback
+  attacker.spriteBackFallback = defender.spriteBackFallback
+  appendLog(state, `${attacker.transformSnapshot.name}은(는) ${defender.name}의 모습으로 변신했다!`, 'status')
+  return true
+}
+
 function applyStatusMove(state, attacker, defender, move, random) {
   if (PROTECT_MOVE_IDS.has(move.id)) {
     const successRate = 1 / Math.max(1, 3 ** attacker.protectChain)
@@ -1299,6 +1297,11 @@ function applyStatusMove(state, attacker, defender, move, random) {
 
   attacker.protectChain = 0
   const environmentApplied = applyEnvironmentFromMove(state, attacker, move)
+
+  if (move.id === 'transform') {
+    if (!applyTransform(state, attacker, defender)) appendLog(state, '그러나 변신에 실패했다!', 'muted')
+    return true
+  }
 
   if (move.id === 'rest') {
     const previousStatus = attacker.status
@@ -2308,6 +2311,10 @@ function activateEntryAbility(state, sideId, activeSlot = null) {
 }
 
 function clearSwitchVolatiles(pokemon) {
+  if (pokemon.transformSnapshot) {
+    Object.assign(pokemon, pokemon.transformSnapshot)
+    pokemon.transformSnapshot = null
+  }
   pokemon.statStages = Object.fromEntries(Object.keys(pokemon.statStages).map((key) => [key, 0]))
   pokemon.protected = false
   pokemon.protectMode = null

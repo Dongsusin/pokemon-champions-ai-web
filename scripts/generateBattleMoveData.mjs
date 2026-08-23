@@ -51,6 +51,9 @@ const GENERATION_NUMBERS = {
   'generation-ix': 9,
 }
 
+const UNAVAILABLE_DESCRIPTION_PREFIX = '사용할 수 없는 기술입니다.'
+const CURRENT_HP_FRACTION_MOVE_IDS = new Set(['superfang', 'naturesmadness', 'ruination'])
+
 const cleanText = (value = '') => value.replace(/[\n\f\r]+/g, ' ').replace(/\s+/g, ' ').trim()
 const toId = (value = '') => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 
@@ -152,7 +155,28 @@ async function loadShowdownMoves() {
 
 function fallbackDescription(move) {
   if (move.categoryId === 'status') return `배틀의 흐름을 바꾸는 ${TYPE_LABELS[move.typeId]}타입 변화 기술이다.`
-  return `상대를 공격하는 ${TYPE_LABELS[move.typeId]}타입 기술이다.`
+  const power = Number(move.power) || 0
+  return `${power > 0 ? `위력 ${power}의 ` : ''}${TYPE_LABELS[move.typeId]}타입 공격 기술이다.`
+}
+
+function resolvedDescription(showdownId, showdownMove, localized) {
+  if (showdownId === 'hiddenpower') {
+    return '개체의 잠재력에 따라 타입이 달라지는 위력 60의 특수 기술이다. 트레이닝에서 타입을 설정할 수 있다.'
+  }
+  if (localized.description && !localized.description.startsWith(UNAVAILABLE_DESCRIPTION_PREFIX)) {
+    return localized.description
+  }
+  if (CURRENT_HP_FRACTION_MOVE_IDS.has(showdownId)) {
+    return '상대의 현재 HP를 절반으로 줄이는 공격 기술이다.'
+  }
+  if (showdownMove.damage !== undefined) {
+    const damage = showdownMove.damage === 'level' ? '사용자의 레벨만큼' : showdownMove.damage
+    return `상대에게 ${damage}의 고정 데미지를 주는 기술이다.`
+  }
+  return fallbackDescription({
+    ...localized,
+    power: showdownMove.basePower ?? localized.power,
+  })
 }
 
 const BATTLE_MECHANIC_FIELDS = [
@@ -169,6 +193,7 @@ const BATTLE_MECHANIC_FIELDS = [
   'multihit',
   'ohko',
   'damage',
+  'currentHpFraction',
   'hasCrashDamage',
   'forceSwitch',
   'selfSwitch',
@@ -197,6 +222,7 @@ const localizedById = new Map(localizedMoves.map((move) => [toId(move.pokeApiSlu
 const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove]) => {
   if (showdownMove.num <= 0 || showdownMove.isZ || showdownMove.isMax) return []
   if (['CAP', 'Custom'].includes(showdownMove.isNonstandard)) return []
+  if (showdownId.startsWith('hiddenpower') && showdownId !== 'hiddenpower') return []
 
   const localized = localizedByNumber.get(showdownMove.num) ?? localizedById.get(showdownId)
   if (!localized?.name || !TYPE_LABELS[localized.typeId] || !CATEGORY_LABELS[localized.categoryId]) return []
@@ -217,9 +243,10 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     priority: Number(showdownMove.priority ?? localized.priority) || 0,
     target: showdownMove.target ?? localized.target,
     generation: generationForMoveNumber(showdownMove.num) ?? localized.generation,
-    description: localized.description || fallbackDescription(localized),
+    description: resolvedDescription(showdownId, showdownMove, localized),
     flags: Object.keys(showdownMove.flags ?? {}),
     ...battleMechanics(showdownMove),
+    ...(CURRENT_HP_FRACTION_MOVE_IDS.has(showdownId) ? { currentHpFraction: [1, 2] } : {}),
   }]
 }).sort((left, right) => left.number - right.number || left.name.localeCompare(right.name, 'ko'))
 

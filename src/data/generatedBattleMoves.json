@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-21T10:33:18.781Z",
+  "generatedAt": "2026-08-23T07:54:49.885Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
   },
-  "moveCount": 863,
+  "moveCount": 847,
   "moves": [
     {
       "id": "pound",
@@ -46,7 +46,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 50의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -71,7 +71,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 15의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -99,7 +99,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 18의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -339,7 +339,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 80의 노말타입 공격 기술이다.",
       "flags": [
         "charge",
         "protect",
@@ -687,7 +687,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 100의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -713,7 +713,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -1103,7 +1103,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 25의 벌레타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -1354,7 +1354,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "상대에게 20의 고정 데미지를 주는 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -2255,7 +2255,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "상대에게 40의 고정 데미지를 주는 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -2634,7 +2634,7 @@
       "priority": 0,
       "target": "self",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 에스퍼타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -2716,7 +2716,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 20의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -3101,7 +3101,7 @@
       "priority": 0,
       "target": "self",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 에스퍼타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -3236,7 +3236,7 @@
       "priority": 1,
       "target": "self",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -3288,7 +3288,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 비행타입 변화 기술이다.",
       "flags": [
         "failencore",
         "nosleeptalk",
@@ -3344,7 +3344,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 100의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -3450,7 +3450,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 65의 땅타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -3532,7 +3532,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 35의 물타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -3607,7 +3607,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 20의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -3634,7 +3634,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 10의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -3868,7 +3868,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 15의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -4016,7 +4016,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 40의 물타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -4045,7 +4045,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 70의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -4103,7 +4103,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -4135,7 +4135,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -4397,7 +4397,7 @@
       "priority": 0,
       "target": "self",
       "generation": 1,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -4490,6 +4490,10 @@
         "protect",
         "mirror",
         "metronome"
+      ],
+      "currentHpFraction": [
+        1,
+        2
       ]
     },
     {
@@ -4683,7 +4687,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 벌레타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -4740,7 +4744,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 고스트타입 변화 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -5127,7 +5131,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 악타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -5350,7 +5354,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -6003,7 +6007,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -6053,7 +6057,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -6164,7 +6168,7 @@
       "priority": 0,
       "target": "allAdjacent",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "땅타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -6329,7 +6333,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 40의 악타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -6581,363 +6585,11 @@
       "priority": 0,
       "target": "normal",
       "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "개체의 잠재력에 따라 타입이 달라지는 위력 60의 특수 기술이다. 트레이닝에서 타입을 설정할 수 있다.",
       "flags": [
         "protect",
         "mirror",
         "metronome"
-      ]
-    },
-    {
-      "id": "hiddenpowerbug",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Bug",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerdark",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Dark",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerdragon",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Dragon",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerelectric",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Electric",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerfighting",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Fighting",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerfire",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Fire",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerflying",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Flying",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerghost",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Ghost",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowergrass",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Grass",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerground",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Ground",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerice",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Ice",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerpoison",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Poison",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerpsychic",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Psychic",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerrock",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Rock",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowersteel",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Steel",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
-      ]
-    },
-    {
-      "id": "hiddenpowerwater",
-      "number": 237,
-      "name": "잠재파워",
-      "englishName": "Hidden Power Water",
-      "type": "노말",
-      "typeId": "normal",
-      "category": "특수",
-      "categoryId": "special",
-      "power": 60,
-      "pp": 15,
-      "accuracy": 100,
-      "accuracyLabel": null,
-      "priority": 0,
-      "target": "normal",
-      "generation": 2,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
-      "flags": [
-        "protect",
-        "mirror"
       ]
     },
     {
@@ -7698,7 +7350,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 70의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -7949,7 +7601,7 @@
       "priority": 0,
       "target": "self",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "failencore",
         "nosleeptalk",
@@ -8301,7 +7953,7 @@
       "priority": 0,
       "target": "self",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -8352,7 +8004,7 @@
       "priority": 4,
       "target": "self",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 악타입 변화 기술이다.",
       "flags": [
         "bypasssub",
         "mustpressure",
@@ -8382,7 +8034,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 70의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -8467,7 +8119,7 @@
       "priority": 0,
       "target": "self",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -8494,7 +8146,7 @@
       "priority": 0,
       "target": "self",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 벌레타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -8674,7 +8326,7 @@
       "priority": 0,
       "target": "all",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 땅타입 변화 기술이다.",
       "flags": [
         "nonsky",
         "metronome"
@@ -8701,7 +8353,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 30의 얼음타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -8728,7 +8380,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 풀타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -9125,7 +8777,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -9186,7 +8838,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 벌레타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -9256,7 +8908,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 풀타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -9376,7 +9028,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 75의 벌레타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -9455,7 +9107,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 85의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -9991,7 +9643,7 @@
       "priority": 0,
       "target": "all",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 물타입 변화 기술이다.",
       "flags": [
         "nonsky",
         "metronome"
@@ -10208,7 +9860,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 3,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 140의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -10296,7 +9948,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 에스퍼타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -10327,7 +9979,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 70의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -10456,7 +10108,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -10707,7 +10359,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 악타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -10791,7 +10443,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -10818,7 +10470,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 에스퍼타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -10848,7 +10500,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -10934,7 +10586,7 @@
       "priority": 0,
       "target": "allySide",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "snatch",
         "metronome"
@@ -10961,7 +10613,7 @@
       "priority": 0,
       "target": "adjacentFoe",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "protect",
         "bypasssub",
@@ -11086,7 +10738,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "악타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -11220,7 +10872,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 에스퍼타입 변화 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -12197,7 +11849,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 65의 땅타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -12280,7 +11932,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 65의 강철타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -12338,7 +11990,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 90의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -12670,7 +12322,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 강철타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -12718,7 +12370,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -13025,7 +12677,7 @@
       "priority": 0,
       "target": "self",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 벌레타입 변화 기술이다.",
       "flags": [
         "snatch",
         "heal",
@@ -13296,7 +12948,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 4,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 고스트타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -13599,7 +13251,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 에스퍼타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -13708,7 +13360,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 70의 불꽃타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -13818,7 +13470,7 @@
       "priority": 0,
       "target": "allAdjacent",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 120의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -14181,7 +13833,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 70의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -14422,7 +14074,7 @@
       "priority": 0,
       "target": "any",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 비행타입 공격 기술이다.",
       "flags": [
         "contact",
         "charge",
@@ -14663,7 +14315,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "mirror",
         "bypasssub",
@@ -15067,7 +14719,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 에스퍼타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -15238,7 +14890,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 5,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 65의 벌레타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -15962,7 +15614,7 @@
       "priority": 0,
       "target": "all",
       "generation": 6,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 땅타입 변화 기술이다.",
       "flags": [
         "distance",
         "nonsky",
@@ -16137,7 +15789,7 @@
       "priority": 1,
       "target": "all",
       "generation": 6,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 전기타입 변화 기술이다.",
       "flags": [
         "metronome"
       ],
@@ -17957,7 +17609,7 @@
       "priority": 3,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "배틀의 흐름을 바꾸는 노말타입 변화 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -18964,6 +18616,10 @@
       "flags": [
         "protect",
         "mirror"
+      ],
+      "currentHpFraction": [
+        1,
+        2
       ]
     },
     {
@@ -19078,7 +18734,7 @@
       "priority": 2,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 80의 전기타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -19109,7 +18765,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 90의 물타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19135,7 +18791,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 90의 비행타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -19163,7 +18819,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "전기타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19185,7 +18841,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 물타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -19212,7 +18868,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 전기타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19238,7 +18894,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 60의 불꽃타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -19266,7 +18922,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 80의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19291,7 +18947,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 80의 악타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19316,7 +18972,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 100의 풀타입 공격 기술이다.",
       "flags": [
         "protect",
         "reflectable",
@@ -19339,7 +18995,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 100의 얼음타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19361,7 +19017,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "위력 120의 페어리타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -19384,7 +19040,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 7,
-      "description": "사용할 수 없는 기술입니다. 다시 배우게 할 수 없지만 기술을 잊게 하는 것을 권장합니다.",
+      "description": "노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21099,7 +20755,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 독타입 기술이다.",
+      "description": "위력 80의 독타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21126,7 +20782,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 70의 에스퍼타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21180,7 +20836,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 바위타입 기술이다.",
+      "description": "위력 65의 바위타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21206,7 +20862,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 8,
-      "description": "상대를 공격하는 페어리타입 기술이다.",
+      "description": "위력 100의 페어리타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21235,7 +20891,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 70의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21266,7 +20922,7 @@
       "priority": 0,
       "target": "randomNormal",
       "generation": 8,
-      "description": "상대를 공격하는 불꽃타입 기술이다.",
+      "description": "위력 120의 불꽃타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -21291,7 +20947,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 120의 물타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21319,7 +20975,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 풀타입 기술이다.",
+      "description": "위력 150의 풀타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21342,7 +20998,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 얼음타입 기술이다.",
+      "description": "위력 100의 얼음타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21397,7 +21053,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 땅타입 기술이다.",
+      "description": "위력 120의 땅타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21428,7 +21084,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 독타입 기술이다.",
+      "description": "위력 60의 독타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21455,7 +21111,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 80의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21487,7 +21143,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 고스트타입 기술이다.",
+      "description": "위력 75의 고스트타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21541,7 +21197,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 격투타입 기술이다.",
+      "description": "위력 90의 격투타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21577,7 +21233,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 고스트타입 기술이다.",
+      "description": "위력 60의 고스트타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21604,7 +21260,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 8,
-      "description": "상대를 공격하는 악타입 기술이다.",
+      "description": "위력 65의 악타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21630,7 +21286,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 8,
-      "description": "상대를 공격하는 비행타입 기술이다.",
+      "description": "위력 100의 비행타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21660,7 +21316,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 8,
-      "description": "상대를 공격하는 전기타입 기술이다.",
+      "description": "위력 100의 전기타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21688,7 +21344,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 8,
-      "description": "상대를 공격하는 땅타입 기술이다.",
+      "description": "위력 100의 땅타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21761,7 +21417,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 노말타입 기술이다.",
+      "description": "위력 80의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21805,7 +21461,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 격투타입 기술이다.",
+      "description": "위력 120의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21834,7 +21490,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 고스트타입 기술이다.",
+      "description": "위력 50의 고스트타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21857,7 +21513,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 80의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -21886,7 +21542,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 드래곤타입 기술이다.",
+      "description": "위력 80의 드래곤타입 공격 기술이다.",
       "flags": [
         "protect"
       ]
@@ -21907,7 +21563,7 @@
       "priority": 1,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 60의 물타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21958,7 +21614,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 강철타입 기술이다.",
+      "description": "위력 100의 강철타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -21987,7 +21643,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 노말타입 기술이다.",
+      "description": "위력 20의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22012,7 +21668,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 얼음타입 기술이다.",
+      "description": "위력 80의 얼음타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22036,7 +21692,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 드래곤타입 기술이다.",
+      "description": "위력 120의 드래곤타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22086,7 +21742,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 바위타입 기술이다.",
+      "description": "위력 40의 바위타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -22112,7 +21768,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 30의 물타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22137,7 +21793,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 9,
-      "description": "상대를 공격하는 독타입 기술이다.",
+      "description": "위력 30의 독타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22210,7 +21866,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 악타입 기술이다.",
+      "description": "위력 85의 악타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22235,7 +21891,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 풀타입 기술이다.",
+      "description": "위력 70의 풀타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -22259,7 +21915,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 불꽃타입 기술이다.",
+      "description": "위력 80의 불꽃타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -22292,7 +21948,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 80의 물타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22325,7 +21981,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 노말타입 기술이다.",
+      "description": "위력 90의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22348,7 +22004,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 9,
-      "description": "상대를 공격하는 강철타입 기술이다.",
+      "description": "위력 120의 강철타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -22375,7 +22031,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 80의 에스퍼타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22400,7 +22056,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 80의 물타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -22424,10 +22080,14 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 악타입 기술이다.",
+      "description": "상대의 현재 HP를 절반으로 줄이는 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
+      ],
+      "currentHpFraction": [
+        1,
+        2
       ]
     },
     {
@@ -22446,7 +22106,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 격투타입 기술이다.",
+      "description": "위력 100의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22469,7 +22129,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 전기타입 기술이다.",
+      "description": "위력 100의 전기타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22577,7 +22237,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 벌레타입 기술이다.",
+      "description": "위력 50의 벌레타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22606,7 +22266,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 풀타입 기술이다.",
+      "description": "위력 50의 풀타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22637,7 +22297,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 50의 물타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -22665,7 +22325,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 노말타입 기술이다.",
+      "description": "위력 100의 노말타입 공격 기술이다.",
       "flags": [
         "contact",
         "mirror"
@@ -22687,7 +22347,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 40의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -22710,7 +22370,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 고스트타입 기술이다.",
+      "description": "위력 50의 고스트타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22734,7 +22394,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 불꽃타입 기술이다.",
+      "description": "위력 120의 불꽃타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror"
@@ -22762,7 +22422,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 불꽃타입 기술이다.",
+      "description": "위력 90의 불꽃타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22792,7 +22452,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 전기타입 기술이다.",
+      "description": "위력 120의 전기타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22816,7 +22476,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 강철타입 기술이다.",
+      "description": "위력 160의 강철타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -22840,7 +22500,7 @@
       "priority": 0,
       "target": "scripted",
       "generation": 9,
-      "description": "상대를 공격하는 악타입 기술이다.",
+      "description": "악타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -22864,7 +22524,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 물타입 기술이다.",
+      "description": "위력 70의 물타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -22889,7 +22549,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 불꽃타입 기술이다.",
+      "description": "위력 80의 불꽃타입 공격 기술이다.",
       "flags": [
         "protect",
         "failencore",
@@ -22922,7 +22582,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 악타입 기술이다.",
+      "description": "위력 80의 악타입 공격 기술이다.",
       "flags": [
         "protect",
         "failencore",
@@ -22955,7 +22615,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 독타입 기술이다.",
+      "description": "위력 100의 독타입 공격 기술이다.",
       "flags": [
         "protect",
         "failencore",
@@ -22988,7 +22648,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 격투타입 기술이다.",
+      "description": "위력 100의 격투타입 공격 기술이다.",
       "flags": [
         "protect",
         "failencore",
@@ -23021,7 +22681,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 페어리타입 기술이다.",
+      "description": "위력 100의 페어리타입 공격 기술이다.",
       "flags": [
         "protect",
         "failencore",
@@ -23054,7 +22714,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 노말타입 기술이다.",
+      "description": "위력 140의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23078,7 +22738,7 @@
       "priority": 0,
       "target": "allAdjacentFoes",
       "generation": 9,
-      "description": "상대를 공격하는 풀타입 기술이다.",
+      "description": "위력 80의 풀타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23111,7 +22771,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 풀타입 기술이다.",
+      "description": "위력 60의 풀타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23139,7 +22799,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 풀타입 기술이다.",
+      "description": "위력 100의 풀타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23163,7 +22823,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 전기타입 기술이다.",
+      "description": "위력 130의 전기타입 공격 기술이다.",
       "flags": [
         "charge",
         "protect",
@@ -23187,7 +22847,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 노말타입 기술이다.",
+      "description": "위력 120의 노말타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23213,7 +22873,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 드래곤타입 기술이다.",
+      "description": "위력 80의 드래곤타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23260,7 +22920,7 @@
       "priority": 1,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 전기타입 기술이다.",
+      "description": "위력 70의 전기타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23283,7 +22943,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 바위타입 기술이다.",
+      "description": "위력 95의 바위타입 공격 기술이다.",
       "flags": [
         "contact",
         "mirror",
@@ -23307,7 +22967,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 강철타입 기술이다.",
+      "description": "위력 50의 강철타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23335,7 +22995,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 강철타입 기술이다.",
+      "description": "강철타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -23383,7 +23043,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 페어리타입 기술이다.",
+      "description": "위력 80의 페어리타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23411,7 +23071,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 불꽃타입 기술이다.",
+      "description": "위력 75의 불꽃타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -23435,7 +23095,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 전기타입 기술이다.",
+      "description": "위력 100의 전기타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -23461,7 +23121,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 에스퍼타입 기술이다.",
+      "description": "위력 75의 에스퍼타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
@@ -23490,7 +23150,7 @@
       "priority": 3,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 격투타입 기술이다.",
+      "description": "위력 65의 격투타입 공격 기술이다.",
       "flags": [
         "contact",
         "protect",
@@ -23518,7 +23178,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "상대를 공격하는 독타입 기술이다.",
+      "description": "위력 100의 독타입 공격 기술이다.",
       "flags": [
         "protect",
         "mirror",
