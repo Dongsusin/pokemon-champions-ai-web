@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Boxes,
@@ -33,6 +33,17 @@ const BANNER_FEATURED_SPECIES = {
   standard: [6, 448, 700],
   shiny: [130, 282, 635],
 }
+
+const EGG_SPRITES = {
+  common: '/assets/draw/eggs/common.png',
+  rare: '/assets/draw/eggs/rare.png',
+  elite: '/assets/draw/eggs/elite.png',
+  champion: '/assets/draw/eggs/champion.png',
+  legend: '/assets/draw/eggs/legend.png',
+}
+
+const EGG_HATCH_DURATION_MS = 920
+const EGG_REVEAL_BURST_MS = 680
 
 function formatRate(rate) {
   const percentage = Math.round(rate * 1000) / 10
@@ -112,6 +123,11 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [view, setView] = useState(results.length > 0 ? 'results' : 'banner')
   const [now, setNow] = useState(Date.now)
+  const [revealedSlotIds, setRevealedSlotIds] = useState(() => new Set())
+  const [hatchingSlotId, setHatchingSlotId] = useState(null)
+  const [revealBurstSlotId, setRevealBurstSlotId] = useState(null)
+  const hatchTimerRef = useRef(null)
+  const burstTimerRef = useRef(null)
   const drawKey = results[0]?.slotId
   const resultBannerId = results[0]?.bannerId
   const selectedBannerId = DRAW_BANNER_ORDER[selectedBannerIndex]
@@ -120,7 +136,13 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
   const selectedResult = results[selectedIndex] ?? results[0] ?? null
   const selectedProfile = selectedResult ? getSpeciesProfile(selectedResult.id) : null
   const selectedRarity = selectedResult ? RARITY_META[selectedResult.rarity] : null
-  const shinyCount = results.filter((result) => result.isShiny).length
+  const selectedIsRevealed = Boolean(selectedResult && revealedSlotIds.has(selectedResult.slotId))
+  const selectedIsHatching = selectedResult?.slotId === hatchingSlotId
+  const selectedHasRevealBurst = selectedResult?.slotId === revealBurstSlotId
+  const revealedCount = results.filter((result) => revealedSlotIds.has(result.slotId)).length
+  const revealedShinyCount = results.filter((result) => (
+    revealedSlotIds.has(result.slotId) && result.isShiny
+  )).length
   const showingResults = view === 'results' && selectedResult
   const canAfford = balance >= activeBanner.price
   const selectedStats = useMemo(
@@ -143,11 +165,21 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
       return
     }
 
+    window.clearTimeout(hatchTimerRef.current)
+    window.clearTimeout(burstTimerRef.current)
     const resultBannerIndex = DRAW_BANNER_ORDER.indexOf(resultBannerId)
     if (resultBannerIndex >= 0) setSelectedBannerIndex(resultBannerIndex)
     setSelectedIndex(0)
+    setRevealedSlotIds(new Set())
+    setHatchingSlotId(null)
+    setRevealBurstSlotId(null)
     setView('results')
   }, [drawKey, resultBannerId])
+
+  useEffect(() => () => {
+    window.clearTimeout(hatchTimerRef.current)
+    window.clearTimeout(burstTimerRef.current)
+  }, [])
 
   const cycleBanner = (direction) => {
     setSelectedBannerIndex((currentIndex) => (
@@ -157,6 +189,29 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
 
   const requestDraw = () => {
     onDraw(activeBanner.id)
+  }
+
+  const revealResultAt = (index) => {
+    const result = results[index]
+    if (!result || hatchingSlotId) return
+
+    setSelectedIndex(index)
+    if (revealedSlotIds.has(result.slotId)) return
+
+    setRevealBurstSlotId(null)
+    setHatchingSlotId(result.slotId)
+    hatchTimerRef.current = window.setTimeout(() => {
+      setRevealedSlotIds((currentSlotIds) => {
+        const nextSlotIds = new Set(currentSlotIds)
+        nextSlotIds.add(result.slotId)
+        return nextSlotIds
+      })
+      setHatchingSlotId(null)
+      setRevealBurstSlotId(result.slotId)
+      burstTimerRef.current = window.setTimeout(() => {
+        setRevealBurstSlotId(null)
+      }, EGG_REVEAL_BURST_MS)
+    }, EGG_HATCH_DURATION_MS)
   }
 
   return (
@@ -174,16 +229,16 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
 
         <div
           className="draw-count"
-          aria-label={showingResults ? `${results.length}마리 획득, 이로치 ${shinyCount}마리` : `보유 ${balance} VP`}
+          aria-label={showingResults ? `${revealedCount}마리 개봉, 이로치 ${revealedShinyCount}마리` : `보유 ${balance} VP`}
         >
           {showingResults ? <Boxes size={17} /> : <Zap size={17} fill="currentColor" />}
           <span>{showingResults ? '획득' : '보유 VP'}</span>
           <strong>
-            {showingResults ? results.length : balance.toLocaleString()}
+            {showingResults ? revealedCount : balance.toLocaleString()}
             <em>{showingResults ? '/10' : 'VP'}</em>
           </strong>
-          {showingResults && shinyCount > 0 && (
-            <i className="draw-shiny-count"><Star size={10} fill="currentColor" /> {shinyCount}</i>
+          {showingResults && revealedShinyCount > 0 && (
+            <i className="draw-shiny-count"><Star size={10} fill="currentColor" /> {revealedShinyCount}</i>
           )}
         </div>
       </header>
@@ -240,77 +295,115 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
         </section>
       ) : (
         <>
-          <section className={`draw-showcase${selectedResult.isShiny ? ' is-shiny' : ''}`}>
-            <aside className="draw-data-panel draw-stat-panel">
-              <div className="draw-panel-heading">
-                <span>능력치</span>
-                <strong>종족값 {selectedResult.baseStatTotal}</strong>
-              </div>
-
-              <div className="draw-pokemon-heading">
-                <small>NO. {String(selectedProfile.id).padStart(4, '0')}</small>
-                <h2>{selectedProfile.name}</h2>
-                <div className="type-chip-list">
-                  {selectedProfile.types.map((type) => (
-                    <span className={`game-type-chip type-${typeClassName(type)}`} key={type}>{type}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="game-stat-list">
-                {selectedStats.map((stat) => (
-                  <div className="game-stat-row" key={stat.key}>
-                    <span>{stat.shortLabel}</span>
-                    <strong>{stat.value}</strong>
-                    <i><b style={{ width: `${Math.max(6, stat.ratio * 100)}%` }} /></i>
-                    <em>{stat.trainingPoint}</em>
+          <section className={`draw-showcase${selectedIsRevealed && selectedResult.isShiny ? ' is-shiny' : ''}`}>
+            <aside className={`draw-data-panel draw-stat-panel${selectedIsRevealed ? '' : ' is-concealed'}`}>
+              {selectedIsRevealed ? (
+                <>
+                  <div className="draw-panel-heading">
+                    <span>능력치</span>
+                    <strong>종족값 {selectedResult.baseStatTotal}</strong>
                   </div>
-                ))}
-              </div>
-              <div className="draw-nature-strip"><span>성격</span><strong>노력</strong></div>
+
+                  <div className="draw-pokemon-heading">
+                    <small>NO. {String(selectedProfile.id).padStart(4, '0')}</small>
+                    <h2>{selectedProfile.name}</h2>
+                    <div className="type-chip-list">
+                      {selectedProfile.types.map((type) => (
+                        <span className={`game-type-chip type-${typeClassName(type)}`} key={type}>{type}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="game-stat-list">
+                    {selectedStats.map((stat) => (
+                      <div className="game-stat-row" key={stat.key}>
+                        <span>{stat.shortLabel}</span>
+                        <strong>{stat.value}</strong>
+                        <i><b style={{ width: `${Math.max(6, stat.ratio * 100)}%` }} /></i>
+                        <em>{stat.trainingPoint}</em>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="draw-nature-strip"><span>성격</span><strong>노력</strong></div>
+                </>
+              ) : (
+                <div className="draw-concealed-panel" aria-hidden="true">
+                  <span>?</span>
+                  <strong>능력치 미확인</strong>
+                </div>
+              )}
             </aside>
 
             <div className="draw-center-stage" aria-live="polite">
               <span className="draw-stage-ring" aria-hidden="true" />
               <span className="draw-stage-light" aria-hidden="true" />
-              <div
-                className={`draw-revealed-pokemon rarity-${selectedResult.rarity}${selectedResult.isShiny ? ' is-shiny' : ''}`}
-                key={selectedResult.slotId}
-              >
-                {selectedResult.isShiny && <span className="draw-shiny-aura" aria-hidden="true" />}
-                <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
-                {selectedResult.isShiny && (
-                  <span className="draw-shiny-label"><Star size={11} fill="currentColor" /> 이로치</span>
-                )}
-                <PokemonSprite
-                  className="pokemon-battle-sprite"
-                  frameClassName="draw-main-sprite-frame"
-                  animatedSrc={selectedResult.spriteFront}
-                  fallbackSrc={selectedResult.spriteFrontFallback}
-                  alt={`${selectedResult.isShiny ? '이로치 ' : ''}${selectedResult.name} 앞모습`}
-                  draggable="false"
-                />
-                <strong>{selectedResult.name}</strong>
-              </div>
+              {selectedIsRevealed ? (
+                <div
+                  className={`draw-revealed-pokemon rarity-${selectedResult.rarity}${selectedResult.isShiny ? ' is-shiny' : ''}`}
+                  key={selectedResult.slotId}
+                >
+                  {selectedHasRevealBurst && <span className="draw-hatch-burst" aria-hidden="true" />}
+                  {selectedResult.isShiny && <span className="draw-shiny-aura" aria-hidden="true" />}
+                  <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
+                  {selectedResult.isShiny && (
+                    <span className="draw-shiny-label"><Star size={11} fill="currentColor" /> 이로치</span>
+                  )}
+                  <PokemonSprite
+                    className="pokemon-battle-sprite"
+                    frameClassName="draw-main-sprite-frame"
+                    animatedSrc={selectedResult.spriteFront}
+                    fallbackSrc={selectedResult.spriteFrontFallback}
+                    alt={`${selectedResult.isShiny ? '이로치 ' : ''}${selectedResult.name} 앞모습`}
+                    draggable="false"
+                  />
+                  <strong>{selectedResult.name}</strong>
+                </div>
+              ) : (
+                <button
+                  className={`draw-egg-reveal rarity-${selectedResult.rarity}${selectedIsHatching ? ' is-hatching' : ''}`}
+                  type="button"
+                  disabled={selectedIsHatching}
+                  aria-label={`${selectedRarity.label} 알 열기`}
+                  onClick={() => revealResultAt(selectedIndex)}
+                  key={selectedResult.slotId}
+                >
+                  <span className="draw-egg-aura" aria-hidden="true" />
+                  <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
+                  <img src={EGG_SPRITES[selectedResult.rarity]} alt="" draggable="false" />
+                  <span className="draw-egg-cracks" aria-hidden="true"><i /><i /><i /></span>
+                  <span className="draw-egg-flash" aria-hidden="true" />
+                  <strong>{selectedIsHatching ? '부화 중...' : '알을 클릭해 확인'}</strong>
+                  <small>{String(selectedIndex + 1).padStart(2, '0')} / 10</small>
+                </button>
+              )}
             </div>
 
-            <aside className="draw-data-panel draw-move-panel">
-              <div className="draw-panel-heading">
-                <span>기술</span>
-                <strong>4</strong>
-              </div>
-              <div className="draw-move-list">
-                {selectedMoves.map((move) => (
-                  <div className="draw-move-row" key={move.name}>
-                    <span className={`move-type-icon type-${typeClassName(move.type)}`}>{move.type.slice(0, 1)}</span>
-                    <strong>{move.name}</strong>
-                    <em>PP {move.pp}</em>
+            <aside className={`draw-data-panel draw-move-panel${selectedIsRevealed ? '' : ' is-concealed'}`}>
+              {selectedIsRevealed ? (
+                <>
+                  <div className="draw-panel-heading">
+                    <span>기술</span>
+                    <strong>4</strong>
                   </div>
-                ))}
-              </div>
-              <div className="draw-ability-box">
-                <span>특성</span>
-                <strong>{selectedProfile.abilities[0]}</strong>
-              </div>
+                  <div className="draw-move-list">
+                    {selectedMoves.map((move) => (
+                      <div className="draw-move-row" key={move.name}>
+                        <span className={`move-type-icon type-${typeClassName(move.type)}`}>{move.type.slice(0, 1)}</span>
+                        <strong>{move.name}</strong>
+                        <em>PP {move.pp}</em>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="draw-ability-box">
+                    <span>특성</span>
+                    <strong>{selectedProfile.abilities[0]}</strong>
+                  </div>
+                </>
+              ) : (
+                <div className="draw-concealed-panel" aria-hidden="true">
+                  <span>?</span>
+                  <strong>기술·특성 미확인</strong>
+                </div>
+              )}
             </aside>
           </section>
 
@@ -318,7 +411,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
             <div className="draw-dock-toolbar">
               <div className="draw-guide">
                 <Sparkles size={16} />
-                <span>{selectedRarity.label} · 종족값 {selectedResult.baseStatTotal} · {activeBanner.title}</span>
+                <span>{selectedIsRevealed ? `${selectedRarity.label} · ${activeBanner.title}` : `${selectedRarity.label} 알 · 클릭해서 확인`}</span>
               </div>
               <div className="draw-actions">
                 <button type="button" onClick={() => setView('banner')}><Sparkles size={16} /> 배너 선택</button>
@@ -333,33 +426,45 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
               {results.map((result, index) => {
                 const rarity = RARITY_META[result.rarity]
                 const isSelected = index === selectedIndex
+                const isRevealed = revealedSlotIds.has(result.slotId)
+                const isHatching = hatchingSlotId === result.slotId
 
                 return (
                   <button
-                    className={`draw-slot revealed rarity-${result.rarity}${result.isShiny ? ' is-shiny' : ''}${isSelected ? ' selected' : ''}`}
+                    className={`draw-slot ${isRevealed ? 'revealed' : 'sealed'} rarity-${result.rarity}${isRevealed && result.isShiny ? ' is-shiny' : ''}${isHatching ? ' cracking' : ''}${isSelected ? ' selected' : ''}`}
                     key={result.slotId}
                     type="button"
                     style={{ '--draw-index': index }}
-                    aria-label={`${result.isShiny ? '이로치 ' : ''}${result.name}, ${rarity.label}`}
+                    aria-label={isRevealed ? `${result.isShiny ? '이로치 ' : ''}${result.name}, ${rarity.label}` : `${rarity.label} 알 열기`}
                     aria-pressed={isSelected}
-                    onClick={() => setSelectedIndex(index)}
+                    disabled={Boolean(hatchingSlotId && !isHatching)}
+                    onClick={() => revealResultAt(index)}
                   >
                     <span className="draw-slot-number">{String(index + 1).padStart(2, '0')}</span>
-                    {result.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
-                    <span className="pokemon-icon-frame draw-result-frame" aria-hidden="true">
-                      <img
-                        className="draw-result-sprite pokemon-box-icon"
-                        src={result.icon}
-                        alt=""
-                        draggable="false"
-                        onError={(event) => {
-                          if (event.currentTarget.dataset.fallbackApplied) return
-                          event.currentTarget.dataset.fallbackApplied = 'true'
-                          event.currentTarget.src = result.iconFallback
-                        }}
-                      />
-                    </span>
-                    <strong>{result.name}</strong>
+                    {isRevealed ? (
+                      <>
+                        {result.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
+                        <span className="pokemon-icon-frame draw-result-frame" aria-hidden="true">
+                          <img
+                            className="draw-result-sprite pokemon-box-icon"
+                            src={result.icon}
+                            alt=""
+                            draggable="false"
+                            onError={(event) => {
+                              if (event.currentTarget.dataset.fallbackApplied) return
+                              event.currentTarget.dataset.fallbackApplied = 'true'
+                              event.currentTarget.src = result.iconFallback
+                            }}
+                          />
+                        </span>
+                        <strong>{result.name}</strong>
+                      </>
+                    ) : (
+                      <>
+                        <img className="draw-slot-egg" src={EGG_SPRITES[result.rarity]} alt="" draggable="false" />
+                        <strong>{isHatching ? '부화 중...' : rarity.label}</strong>
+                      </>
+                    )}
                   </button>
                 )
               })}
