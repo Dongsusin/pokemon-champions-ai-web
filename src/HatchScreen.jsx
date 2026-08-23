@@ -35,11 +35,11 @@ const BANNER_FEATURED_SPECIES = {
 }
 
 const EGG_SPRITES = {
-  common: '/assets/draw/eggs/common.png',
-  rare: '/assets/draw/eggs/rare.png',
-  elite: '/assets/draw/eggs/elite.png',
-  champion: '/assets/draw/eggs/champion.png',
-  legend: '/assets/draw/eggs/legend.png',
+  common: '/assets/draw/eggs/common.png?v=2',
+  rare: '/assets/draw/eggs/rare.png?v=2',
+  elite: '/assets/draw/eggs/elite.png?v=2',
+  champion: '/assets/draw/eggs/champion.png?v=2',
+  legend: '/assets/draw/eggs/legend.png?v=2',
 }
 
 const EGG_HATCH_DURATION_MS = 920
