@@ -42,8 +42,9 @@ const EGG_SPRITES = {
   legend: '/assets/draw/eggs/legend.png?v=2',
 }
 
-const EGG_HATCH_DURATION_MS = 920
-const EGG_REVEAL_BURST_MS = 680
+const EGG_HATCH_DURATION_MS = 620
+const EGG_REVEAL_BURST_MS = 720
+const HATCH_PARTICLE_INDEXES = Array.from({ length: 12 }, (value, particleIndex) => particleIndex)
 
 function formatRate(rate) {
   const percentage = Math.round(rate * 1000) / 10
@@ -128,6 +129,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
   const [revealBurstSlotId, setRevealBurstSlotId] = useState(null)
   const hatchTimerRef = useRef(null)
   const burstTimerRef = useRef(null)
+  const preloadedImagesRef = useRef([])
   const drawKey = results[0]?.slotId
   const resultBannerId = results[0]?.bannerId
   const selectedBannerId = DRAW_BANNER_ORDER[selectedBannerIndex]
@@ -176,9 +178,30 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
     setView('results')
   }, [drawKey, resultBannerId])
 
+  useEffect(() => {
+    if (!drawKey) return
+
+    const imageSources = results.flatMap((result) => [
+      result.spriteFront,
+      ...(Array.isArray(result.spriteFrontFallback) ? result.spriteFrontFallback : [result.spriteFrontFallback]),
+      result.icon,
+      ...(Array.isArray(result.iconFallback) ? result.iconFallback : [result.iconFallback]),
+      EGG_SPRITES[result.rarity],
+    ])
+
+    preloadedImagesRef.current = [...new Set(imageSources.filter(Boolean))].map((source) => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = source
+      image.decode?.().catch(() => undefined)
+      return image
+    })
+  }, [drawKey, results])
+
   useEffect(() => () => {
     window.clearTimeout(hatchTimerRef.current)
     window.clearTimeout(burstTimerRef.current)
+    preloadedImagesRef.current = []
   }, [])
 
   const cycleBanner = (direction) => {
@@ -333,31 +356,40 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
               )}
             </aside>
 
-            <div className="draw-center-stage" aria-live="polite">
+            <div
+              className={`draw-center-stage${selectedIsHatching ? ' is-hatching' : ''}${selectedHasRevealBurst ? ' is-revealing' : ''}`}
+              aria-live="polite"
+            >
               <span className="draw-stage-ring" aria-hidden="true" />
               <span className="draw-stage-light" aria-hidden="true" />
-              {selectedIsRevealed ? (
-                <div
-                  className={`draw-revealed-pokemon rarity-${selectedResult.rarity}${selectedResult.isShiny ? ' is-shiny' : ''}`}
-                  key={selectedResult.slotId}
-                >
-                  {selectedHasRevealBurst && <span className="draw-hatch-burst" aria-hidden="true" />}
-                  {selectedResult.isShiny && <span className="draw-shiny-aura" aria-hidden="true" />}
-                  <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
-                  {selectedResult.isShiny && (
-                    <span className="draw-shiny-label"><Star size={11} fill="currentColor" /> 이로치</span>
-                  )}
-                  <PokemonSprite
-                    className="pokemon-battle-sprite"
-                    frameClassName="draw-main-sprite-frame"
-                    animatedSrc={selectedResult.spriteFront}
-                    fallbackSrc={selectedResult.spriteFrontFallback}
-                    alt={`${selectedResult.isShiny ? '이로치 ' : ''}${selectedResult.name} 앞모습`}
-                    draggable="false"
-                  />
-                  <strong>{selectedResult.name}</strong>
-                </div>
-              ) : (
+              {selectedHasRevealBurst && (
+                <span className={`draw-hatch-burst rarity-${selectedResult.rarity}`} aria-hidden="true">
+                  {HATCH_PARTICLE_INDEXES.map((particleIndex) => (
+                    <i style={{ '--hatch-particle-angle': `${particleIndex * 30}deg` }} key={particleIndex} />
+                  ))}
+                </span>
+              )}
+              <div
+                className={`draw-revealed-pokemon rarity-${selectedResult.rarity}${selectedResult.isShiny ? ' is-shiny' : ''}${selectedIsRevealed ? ' is-visible' : ' is-preloaded'}${selectedHasRevealBurst ? ' is-newly-hatched' : ''}`}
+                aria-hidden={!selectedIsRevealed}
+                key={selectedResult.slotId}
+              >
+                {selectedResult.isShiny && <span className="draw-shiny-aura" aria-hidden="true" />}
+                <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
+                {selectedResult.isShiny && (
+                  <span className="draw-shiny-label"><Star size={11} fill="currentColor" /> 이로치</span>
+                )}
+                <PokemonSprite
+                  className="pokemon-battle-sprite"
+                  frameClassName="draw-main-sprite-frame"
+                  animatedSrc={selectedResult.spriteFront}
+                  fallbackSrc={selectedResult.spriteFrontFallback}
+                  alt={`${selectedResult.isShiny ? '이로치 ' : ''}${selectedResult.name} 앞모습`}
+                  draggable="false"
+                />
+                <strong>{selectedResult.name}</strong>
+              </div>
+              {!selectedIsRevealed && (
                 <button
                   className={`draw-egg-reveal rarity-${selectedResult.rarity}${selectedIsHatching ? ' is-hatching' : ''}`}
                   type="button"
@@ -368,7 +400,11 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
                 >
                   <span className="draw-egg-aura" aria-hidden="true" />
                   <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
-                  <img src={EGG_SPRITES[selectedResult.rarity]} alt="" draggable="false" />
+                  <span className="draw-egg-shell" aria-hidden="true">
+                    <img className="draw-egg-whole" src={EGG_SPRITES[selectedResult.rarity]} alt="" draggable="false" />
+                    <img className="draw-egg-piece draw-egg-piece-top" src={EGG_SPRITES[selectedResult.rarity]} alt="" draggable="false" />
+                    <img className="draw-egg-piece draw-egg-piece-bottom" src={EGG_SPRITES[selectedResult.rarity]} alt="" draggable="false" />
+                  </span>
                   <span className="draw-egg-cracks" aria-hidden="true"><i /><i /><i /></span>
                   <span className="draw-egg-flash" aria-hidden="true" />
                   <strong>{selectedIsHatching ? '부화 중...' : '알을 클릭해 확인'}</strong>
