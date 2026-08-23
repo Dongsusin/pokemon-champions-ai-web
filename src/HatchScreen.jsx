@@ -290,10 +290,6 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
                   draggable="false"
                 />
                 <strong>{selectedResult.name}</strong>
-                <small>
-                  종족값 {selectedResult.baseStatTotal} · 직접 획득 {selectedResult.previousDrawCount + 1}회
-                  {selectedResult.isShiny ? ' · SHINY' : ` · 이로치 1/${BASE_SHINY_ODDS.toLocaleString()}`}
-                </small>
               </div>
             </div>
 
