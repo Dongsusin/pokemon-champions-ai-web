@@ -30,10 +30,8 @@ import {
   getLearnableMoves,
   getMove,
   getSpeciesProfile,
-  HIDDEN_POWER_TYPES,
   NATURE_OPTIONS,
   normalizePokemon,
-  resolveMoveForPokemon,
   STAT_META,
   STAT_POINT_PER_STAT,
   STAT_POINT_TOTAL,
@@ -74,7 +72,6 @@ function trainingSignature(pokemon) {
     nature: pokemon.nature,
     ability: pokemon.ability,
     moves: pokemon.moves,
-    hiddenPowerType: pokemon.hiddenPowerType,
     trainingPoints: STAT_META.map(({ key }) => Number(pokemon.trainingPoints?.[key] ?? 0)),
   })
 }
@@ -216,13 +213,11 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
   const hasChanges = trainingSignature(editablePokemon) !== trainingSignature(savedPokemon)
   const canSave = hasChanges && !isPreviewForm
   const activePickerMove = movePickerSlot !== null && selectedPokemon
-    ? resolveMoveForPokemon(getMove(selectedPokemon.moves[movePickerSlot]), selectedPokemon)
+    ? getMove(selectedPokemon.moves[movePickerSlot])
     : null
   const learnableMoves = useMemo(
-    () => (selectedPokemon
-      ? getLearnableMoves(selectedPokemon.speciesId).map((move) => resolveMoveForPokemon(move, selectedPokemon))
-      : []),
-    [selectedPokemon?.hiddenPowerType, selectedPokemon?.speciesId],
+    () => (selectedPokemon ? getLearnableMoves(selectedPokemon.speciesId) : []),
+    [selectedPokemon?.speciesId],
   )
   const filteredMoves = useMemo(() => {
     const query = moveSearch.trim().toLocaleLowerCase('ko-KR')
@@ -271,16 +266,15 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
     setMoveCategory('전체')
   }
 
-  const chooseMove = (move) => {
+  const chooseMove = (moveName) => {
     if (
       movePickerSlot === null
       || !selectedPokemon
-      || !canPokemonLearnMove(selectedPokemon.speciesId, move.name)
+      || !canPokemonLearnMove(selectedPokemon.speciesId, moveName)
     ) return
-    updateMove(movePickerSlot, move.name)
+    updateMove(movePickerSlot, moveName)
     setMovePickerSlot(null)
     setMovePickerTooltip(null)
-    if (move.id === 'hiddenpower') setProfilePicker('hidden-power')
   }
 
   const openProfilePicker = (picker) => {
@@ -311,11 +305,6 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
   const chooseAbility = (ability) => {
     updateSelected({ ability })
     setAbilityPickerTooltip(null)
-    setProfilePicker(null)
-  }
-
-  const chooseHiddenPowerType = (hiddenPowerType) => {
-    updateSelected({ hiddenPowerType })
     setProfilePicker(null)
   }
 
@@ -452,7 +441,6 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
 
   const isEvolutionPicker = profilePicker === 'evolution'
   const isBattleFormPicker = profilePicker === 'battle-form'
-  const isHiddenPowerPicker = profilePicker === 'hidden-power'
   const isFormPicker = isEvolutionPicker || isBattleFormPicker
   const formPickerOptions = isBattleFormPicker
     ? [editableSpecies, ...battleFormOptions].filter(Boolean)
@@ -834,7 +822,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                   </div>
                   <div className="training-move-list">
                     {selectedPokemon.moves.map((moveName, index) => {
-                      const move = resolveMoveForPokemon(getMove(moveName), selectedPokemon)
+                      const move = getMove(moveName)
                       const tooltipId = `move-tooltip-${selectedPokemon.captureId}-${index}`
                       const accuracy = move.accuracyLabel ?? move.accuracy ?? '—'
                       const categoryClass = move.category === '물리'
@@ -850,20 +838,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                           <span className="training-move-slot">0{index + 1}</span>
                           <span className={`training-move-type type-${typeClassName(move.type)}`}>{move.type}</span>
                           <div className="training-move-select">
-                            <span className="training-move-select-heading">
-                              <small>MOVE {index + 1}</small>
-                              {move.id === 'hiddenpower' && !isPreviewForm && (
-                                <button
-                                  className={`training-hidden-power-config type-${typeClassName(move.type)}`}
-                                  type="button"
-                                  aria-label={`잠재파워 타입 설정, 현재 ${move.type}타입`}
-                                  onClick={() => openProfilePicker('hidden-power')}
-                                >
-                                  <Sparkles size={8} />
-                                  {move.type} 설정
-                                </button>
-                              )}
-                            </span>
+                            <small>MOVE {index + 1}</small>
                             <button
                               className="training-move-select-button"
                               type="button"
@@ -1036,7 +1011,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                               aria-selected={isSelected}
                               aria-describedby={optionTooltipId}
                               disabled={usedInOtherSlot}
-                              onClick={() => chooseMove(option)}
+                              onClick={() => chooseMove(option.name)}
                             >
                               <span className={`move-picker-choice-type type-${typeClassName(option.type)}`}>{option.type}</span>
                               <span className="move-picker-choice-name">
@@ -1116,9 +1091,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                           ? <Dna size={23} />
                           : isBattleFormPicker
                             ? <Sparkles size={23} />
-                            : isHiddenPowerPicker
-                              ? <Sparkles size={23} />
-                              : profilePicker === 'nature' ? <Sparkles size={23} /> : <Gauge size={23} />}
+                          : profilePicker === 'nature' ? <Sparkles size={23} /> : <Gauge size={23} />}
                       </span>
                       <div>
                         <small>
@@ -1126,29 +1099,23 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                             ? 'EVOLUTION PATH'
                             : isBattleFormPicker
                               ? 'BATTLE FORM PREVIEW'
-                              : isHiddenPowerPicker
-                                ? 'HIDDEN POWER TYPE'
-                                : profilePicker === 'nature' ? 'NATURE LIBRARY' : 'ABILITY LIBRARY'}
+                            : profilePicker === 'nature' ? 'NATURE LIBRARY' : 'ABILITY LIBRARY'}
                         </small>
                         <h3 id="profile-picker-title">
                           {isEvolutionPicker
                             ? '진화 형태 선택'
                             : isBattleFormPicker
                               ? '배틀 기믹 폼 확인'
-                              : isHiddenPowerPicker
-                                ? '잠재파워 타입 설정'
-                                : profilePicker === 'nature' ? '성격 선택' : '특성 선택'}
+                            : profilePicker === 'nature' ? '성격 선택' : '특성 선택'}
                         </h3>
                         <p>
                           {isEvolutionPicker
                             ? '진화 계통의 모습과 타입, 능력치를 비교해 사용할 형태를 선택하세요.'
                             : isBattleFormPicker
                               ? '배틀 중에만 변하는 모습을 확인합니다. 포켓몬의 진화나 저장 데이터에는 적용되지 않습니다.'
-                              : isHiddenPowerPicker
-                                ? '잠재파워가 배틀에서 사용할 타입을 선택하세요.'
-                                : profilePicker === 'nature'
-                                  ? '능력치 보정을 비교하고 배틀에 맞는 성격을 선택하세요.'
-                                  : `${species.name}의 사용 가능한 특성과 발동 효과를 확인하세요.`}
+                            : profilePicker === 'nature'
+                              ? '능력치 보정을 비교하고 배틀에 맞는 성격을 선택하세요.'
+                              : `${species.name}의 사용 가능한 특성과 발동 효과를 확인하세요.`}
                         </p>
                       </div>
                       <button type="button" aria-label="선택창 닫기" onClick={() => setProfilePicker(null)}>
@@ -1163,9 +1130,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                           ? editableSpecies.name
                           : isBattleFormPicker
                             ? isPreviewForm ? species.name : '선택 안 함'
-                            : isHiddenPowerPicker
-                              ? `${selectedPokemon.hiddenPowerType}타입`
-                              : profilePicker === 'nature' ? selectedPokemon.nature : selectedPokemon.ability}
+                          : profilePicker === 'nature' ? selectedPokemon.nature : selectedPokemon.ability}
                       </strong>
                       <em>
                           {isEvolutionPicker
@@ -1176,9 +1141,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                             : `진화 단계 ${selectedEvolutionIndex + 1} / ${evolutionOptions.length}`
                           : isBattleFormPicker
                             ? '확인 전용 · 진화 및 저장 불가'
-                            : isHiddenPowerPicker
-                              ? '위력 60 · 특수 기술 · 타입 자유 설정'
-                              : profilePicker === 'nature' ? selectedNatureEffect.summary : selectedAbility.trigger}
+                          : profilePicker === 'nature' ? selectedNatureEffect.summary : selectedAbility.trigger}
                       </em>
                     </div>
 
@@ -1265,37 +1228,6 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                                     ? <><Eye size={12} /> 미리보기 중</>
                                     : <><Check size={12} /> 선택됨</>
                                 )}
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ) : isHiddenPowerPicker ? (
-                      <div
-                        className="profile-picker-list hidden-power-picker-list"
-                        role="listbox"
-                        aria-label="잠재파워 타입 목록"
-                      >
-                        {HIDDEN_POWER_TYPES.map((type) => {
-                          const isSelected = selectedPokemon.hiddenPowerType === type
-
-                          return (
-                            <button
-                              className={`profile-picker-choice hidden-power-picker-choice move-type-${typeClassName(type)}${isSelected ? ' selected' : ''}`}
-                              type="button"
-                              role="option"
-                              aria-selected={isSelected}
-                              autoFocus={isSelected}
-                              key={type}
-                              onClick={() => chooseHiddenPowerType(type)}
-                            >
-                              <span className={`hidden-power-choice-type type-${typeClassName(type)}`}>{type}</span>
-                              <span className="profile-choice-copy">
-                                <strong>{type}타입</strong>
-                                <small>잠재파워가 {type}타입 특수 기술로 발동합니다.</small>
-                              </span>
-                              <span className="profile-choice-state">
-                                {isSelected && <><Check size={12} /> 선택됨</>}
                               </span>
                             </button>
                           )
@@ -1390,8 +1322,6 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                           ? '이 메뉴에서는 전국도감 번호가 있는 일반 진화만 변경하고 저장할 수 있습니다.'
                           : profilePicker === 'battle-form'
                             ? '메가진화·거다이맥스 등 배틀 기믹 폼은 확인 전용이며 포켓몬 데이터에 저장되지 않습니다.'
-                            : profilePicker === 'hidden-power'
-                              ? '잠재파워는 노말·페어리·스텔라를 제외한 16개 타입 중 하나로 설정할 수 있습니다.'
                           : profilePicker === 'nature'
                             ? '상승 능력치는 1.1배, 하락 능력치는 0.9배로 계산됩니다.'
                             : '현재 진화 형태에서 사용할 수 있는 특성만 표시됩니다.'}

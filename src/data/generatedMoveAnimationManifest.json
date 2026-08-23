@@ -15,8 +15,8 @@
   "assetCount": 573,
   "scriptCount": 405,
   "definitionCount": 597,
-  "moveCount": 847,
-  "specificMoveCount": 509,
+  "moveCount": 846,
+  "specificMoveCount": 508,
   "fallbackMoveCount": 338,
   "moves": {
     "pound": {
@@ -9303,48 +9303,6 @@
         {
           "file": "eb619_6.png",
           "width": 36,
-          "height": 36,
-          "kind": "sprite"
-        }
-      ]
-    },
-    "hiddenpower": {
-      "generation": 2,
-      "specific": true,
-      "sourceKind": "ebdx-bw2-style-specific",
-      "templateMoveId": "hiddenpower",
-      "script": "HIDDENPOWER.rb",
-      "durationMs": 3000,
-      "backgrounds": [
-        {
-          "file": "eb263_bg_4.png",
-          "width": 512,
-          "height": 384,
-          "kind": "background"
-        }
-      ],
-      "assets": [
-        {
-          "file": "eb263_4.png",
-          "width": 166,
-          "height": 134,
-          "kind": "sprite"
-        },
-        {
-          "file": "eb263_3_4.png",
-          "width": 130,
-          "height": 70,
-          "kind": "sprite"
-        },
-        {
-          "file": "eb263.png",
-          "width": 326,
-          "height": 326,
-          "kind": "sprite"
-        },
-        {
-          "file": "eb263_2.png",
-          "width": 204,
           "height": 36,
           "kind": "sprite"
         }

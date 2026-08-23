@@ -3,21 +3,16 @@ import assert from 'node:assert/strict'
 import battleMoveData from '../src/data/generatedBattleMoves.json' with { type: 'json' }
 import {
   createBattle,
-  createBattlePreviewPokemon,
   createBattleTurnTimeline,
 } from '../src/data/battleEngine.js'
 import { isBattleMoveSupported } from '../src/data/moveSupportData.js'
 import {
   getLearnableMoves,
-  HIDDEN_POWER_TYPES,
-  normalizePokemon,
-  resolveMoveForPokemon,
   SPECIES_PROFILES,
 } from '../src/data/trainingData.js'
 
 const hiddenPowerMoves = battleMoveData.moves.filter((move) => move.id.startsWith('hiddenpower'))
-assert.deepEqual(hiddenPowerMoves.map((move) => move.id), ['hiddenpower'])
-assert.equal(HIDDEN_POWER_TYPES.length, 16)
+assert.deepEqual(hiddenPowerMoves, [])
 
 const duplicateNames = Object.entries(Object.groupBy(battleMoveData.moves, (move) => move.name))
   .filter(([, moves]) => moves.length > 1)
@@ -36,26 +31,10 @@ profiles.forEach((profile) => {
   })
 })
 
-const hiddenPowerLearner = profiles.find((profile) => (
-  getLearnableMoves(profile.id).some((move) => move.id === 'hiddenpower')
-))
-assert.ok(hiddenPowerLearner, '잠재파워를 배울 수 있는 포켓몬이 필요합니다.')
-
-const configuredPokemon = normalizePokemon({
-  captureId: 'hidden-power-validation',
-  speciesId: hiddenPowerLearner.id,
-  hiddenPowerType: '불꽃',
-  moves: ['잠재파워'],
-})
-const resolvedHiddenPower = resolveMoveForPokemon(hiddenPowerMoves[0], configuredPokemon)
-assert.equal(resolvedHiddenPower.type, '불꽃')
-assert.match(resolvedHiddenPower.description, /현재 설정은 불꽃타입/)
-
-const battlePokemon = createBattlePreviewPokemon({
-  ...configuredPokemon,
-  moveIds: ['hiddenpower'],
-})
-assert.equal(battlePokemon.moves.find((move) => move.id === 'hiddenpower')?.type, '불꽃')
+const unown = profiles.find((profile) => profile.slug === 'unown')
+assert.ok(unown)
+assert.deepEqual(getLearnableMoves(unown.id).map((move) => move.id), ['struggle'])
+assert.deepEqual(battleMoveData.moves.find((move) => move.id === 'struggle')?.recoil, [1, 4])
 
 const transformBattle = createBattle({
   playerPokemon: [{ captureId: 'ditto-validation', speciesId: 132, moves: ['변신'] }],
@@ -77,7 +56,6 @@ assert.equal(transformedTurn.state.player.team[0].moves[0].currentPp, 5)
 
 const emptyProfiles = profiles.filter((profile) => getLearnableMoves(profile.id).length === 0)
 console.log(`Training move validation passed: ${battleMoveData.moves.length - unsupportedMoves.length} supported, ${unsupportedMoves.length} excluded.`)
-console.log(`Hidden Power types: ${HIDDEN_POWER_TYPES.join(', ')}`)
 if (emptyProfiles.length > 0) {
   console.log(`Profiles without an engine-supported move: ${emptyProfiles.map((profile) => profile.name).join(', ')}`)
 }
