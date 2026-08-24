@@ -45,6 +45,7 @@ import {
   normalizeDynamaxMode,
   normalizePokemon,
 } from './data/trainingData'
+import { getTrainingCostBreakdown } from './data/trainingCosts'
 import {
   attemptItemEquip,
   attemptItemPurchase,
@@ -717,16 +718,38 @@ function App() {
     if (profile?.parentSpeciesId) {
       gameAudioRef.current?.playEvent('error')
       showNotice('배틀 기믹 폼은 미리보기 전용입니다. 일반 형태로 돌아온 뒤 저장해주세요.')
-      return
+      return false
     }
+
+    const savedPokemon = boxPokemon.find((entry) => entry.captureId === pokemon.captureId)
+    if (!savedPokemon) {
+      gameAudioRef.current?.playEvent('error')
+      showNotice('트레이닝할 포켓몬을 찾을 수 없습니다.')
+      return false
+    }
+
+    const normalizedPokemon = normalizePokemon(pokemon)
+    const trainingCost = getTrainingCostBreakdown(normalizePokemon(savedPokemon), normalizedPokemon)
+
+    if (trainingCost.total > vpBalance.current) {
+      const shortfall = trainingCost.total - vpBalance.current
+      gameAudioRef.current?.playEvent('error')
+      showNotice(`트레이닝에 필요한 ${shortfall.toLocaleString()} VP가 부족합니다.`)
+      return false
+    }
+
+    const nextVp = vpBalance.current - trainingCost.total
+    vpBalance.current = nextVp
 
     setBoxPokemon((currentPokemon) => currentPokemon.map((entry) => (
       entry.captureId === pokemon.captureId
-        ? normalizePokemon(pokemon)
+        ? normalizedPokemon
         : entry
     )))
+    setVp(nextVp)
     gameAudioRef.current?.playEvent('save')
-    showNotice(`${pokemon.name}의 트레이닝 설정을 저장했습니다.`)
+    showNotice(`${normalizedPokemon.name} 트레이닝 완료 · ${trainingCost.total.toLocaleString()} VP 사용 · 남은 ${nextVp.toLocaleString()} VP`)
+    return true
   }
 
   return (
@@ -877,6 +900,7 @@ function App() {
         />
       ) : screen === 'training' ? (
         <TrainingScreen
+          balance={vp}
           pokemon={boxPokemon}
           teams={teams}
           activeTeamId={activeTeam?.id}

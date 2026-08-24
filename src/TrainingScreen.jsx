@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   X,
+  Zap,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
 import { getPokemonEvolutionFamilyKey, getTrainingRosterPokemon } from './data/pokemonPool'
@@ -39,6 +40,7 @@ import {
   STAT_POINT_TOTAL,
   typeClassName,
 } from './data/trainingData'
+import { getTrainingCostBreakdown, TRAINING_COSTS } from './data/trainingCosts'
 import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
 
 const MOVE_CATEGORY_FILTERS = ['전체', '물리', '특수', '변화']
@@ -117,7 +119,7 @@ function BattleTooltip({
   )
 }
 
-function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onOpenHatch }) {
+function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack, onSave, onOpenHatch }) {
   const trainingPokemon = useMemo(
     () => getTrainingRosterPokemon(pokemon).map((entry) => normalizePokemon(entry)),
     [pokemon],
@@ -218,7 +220,13 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
     : -1
   const hasBranchingEvolution = evolutionOptions.length > 3
   const hasChanges = trainingSignature(editablePokemon) !== trainingSignature(savedPokemon)
-  const canSave = hasChanges && !isPreviewForm
+  const trainingCost = useMemo(
+    () => getTrainingCostBreakdown(savedPokemon, editablePokemon),
+    [editablePokemon, savedPokemon],
+  )
+  const trainingShortfall = Math.max(0, trainingCost.total - balance)
+  const canAffordTraining = trainingShortfall === 0
+  const canSave = hasChanges && !isPreviewForm && canAffordTraining
   const activePickerMove = movePickerSlot !== null && selectedPokemon
     ? resolveMoveForPokemon(getMove(selectedPokemon.moves[movePickerSlot]), selectedPokemon)
     : null
@@ -440,7 +448,14 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
 
   const saveTraining = () => {
     if (!editablePokemon || !canSave) return
-    onSave(editablePokemon)
+    const didSave = onSave(editablePokemon)
+    if (didSave === false) return
+
+    setDraftPokemonById((currentDrafts) => {
+      const nextDrafts = { ...currentDrafts }
+      delete nextDrafts[editablePokemon.captureId]
+      return nextDrafts
+    })
   }
 
   const selectPokemon = (captureId) => {
@@ -662,7 +677,10 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
 
                   <div className="training-select-stack">
                     <div className="training-picker-field">
-                      <span><Dna size={14} /> 진화 형태</span>
+                      <span>
+                        <Dna size={14} /> 진화 형태
+                        <em className="training-field-cost">변경 {TRAINING_COSTS.evolution} VP</em>
+                      </span>
                       <button
                         className="training-profile-picker-button"
                         type="button"
@@ -708,7 +726,10 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                       </div>
                     )}
                     <div className="training-picker-field">
-                      <span>성격</span>
+                      <span>
+                        성격
+                        <em className="training-field-cost">변경 {TRAINING_COSTS.nature} VP</em>
+                      </span>
                       <button
                         className="training-profile-picker-button"
                         type="button"
@@ -739,6 +760,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                         >
                           <Info size={11} />
                         </button>
+                        <em className="training-field-cost">변경 {TRAINING_COSTS.ability} VP</em>
                       </span>
                       <button
                         className="training-profile-picker-button"
@@ -773,7 +795,10 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
 
                 <div className="training-stat-column">
                   <div className="training-section-title">
-                    <span><SlidersHorizontal size={15} /> 능력 포인트</span>
+                    <span>
+                      <SlidersHorizontal size={15} /> 능력 포인트
+                      <em className="training-field-cost">1P · {TRAINING_COSTS.trainingPoint} VP</em>
+                    </span>
                     <div className="training-point-summary">
                       <small>남은 포인트 {trainingPointRemaining}</small>
                       <strong>{trainingPointTotal}<em>/{STAT_POINT_TOTAL}</em></strong>
@@ -834,7 +859,7 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
                 <div className="training-move-column">
                   <div className="training-section-title">
                     <span>배틀 기술</span>
-                    <strong>MOVE SET 4/4</strong>
+                    <strong>1개 변경 · {TRAINING_COSTS.move} VP</strong>
                   </div>
                   <div className="training-move-list">
                     {selectedPokemon.moves.map((moveName, index) => {
@@ -943,17 +968,45 @@ function TrainingScreen({ pokemon, teams = [], activeTeamId, onBack, onSave, onO
               </div>
 
               <div className="training-editor-actions">
-                <span className={`training-save-state${hasChanges ? ' changed' : ''}${isPreviewForm ? ' preview-only' : ''}`}>
-                  {isPreviewForm
-                    ? '배틀 기믹 폼은 미리보기 전용이며 저장할 수 없습니다.'
-                    : hasChanges ? '저장하지 않은 변경사항이 있습니다.' : '현재 저장된 설정입니다.'}
-                </span>
+                <div className="training-save-summary">
+                  <span className={`training-save-state${hasChanges ? ' changed' : ''}${isPreviewForm ? ' preview-only' : ''}${hasChanges && !canAffordTraining ? ' insufficient' : ''}`}>
+                    {isPreviewForm
+                      ? '배틀 기믹 폼은 미리보기 전용이며 저장할 수 없습니다.'
+                      : hasChanges
+                        ? canAffordTraining
+                          ? '변경한 항목만 계산됩니다.'
+                          : `${trainingShortfall.toLocaleString()} VP가 부족합니다.`
+                        : '현재 저장된 설정입니다.'}
+                  </span>
+                  {hasChanges && !isPreviewForm && (
+                    <div className="training-cost-breakdown" aria-label={`트레이닝 비용 ${trainingCost.total.toLocaleString()} VP`}>
+                      <div>
+                        {trainingCost.items.map((item) => (
+                          <span key={item.id}>
+                            <small>{item.label} {item.units}{item.unitLabel}</small>
+                            <strong>{item.cost.toLocaleString()} VP</strong>
+                          </span>
+                        ))}
+                      </div>
+                      <strong className={`training-cost-total${canAffordTraining ? '' : ' insufficient'}`}>
+                        <Zap size={13} fill="currentColor" />
+                        {trainingCost.total.toLocaleString()} <em>VP</em>
+                      </strong>
+                    </div>
+                  )}
+                </div>
                 <button type="button" disabled={!hasChanges && !isPreviewForm} onClick={resetTraining}>
                   <RotateCcw size={16} /> {isPreviewForm ? '미리보기 종료' : '저장값으로 초기화'}
                 </button>
                 <button className="primary" type="button" disabled={!canSave} onClick={saveTraining}>
-                  {isPreviewForm ? <LockKeyhole size={17} /> : <Check size={17} />}
-                  {isPreviewForm ? '미리보기는 저장 불가' : '설정 저장'}
+                  {isPreviewForm ? <LockKeyhole size={17} /> : hasChanges ? <Zap size={17} /> : <Check size={17} />}
+                  {isPreviewForm
+                    ? '미리보기는 저장 불가'
+                    : hasChanges
+                      ? canAffordTraining
+                        ? `트레이닝 · ${trainingCost.total.toLocaleString()} VP`
+                        : `${trainingShortfall.toLocaleString()} VP 부족`
+                      : '설정 저장'}
                 </button>
               </div>
 

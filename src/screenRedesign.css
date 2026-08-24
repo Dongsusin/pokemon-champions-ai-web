@@ -1825,6 +1825,28 @@
   font-weight: 900;
 }
 
+.training-field-cost {
+  display: inline-flex;
+  min-height: 17px;
+  margin-left: auto;
+  padding: 0 6px;
+  align-items: center;
+  border: 1px solid rgba(104, 83, 190, 0.2);
+  border-radius: 999px;
+  color: #6753b5;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+  background: rgba(239, 235, 255, 0.9);
+}
+
+.training-section-title .training-field-cost {
+  min-height: 18px;
+  color: #5c4caf;
+  font-size: 6px;
+}
+
 .training-select-stack select,
 .training-move-select select {
   min-width: 0;
@@ -3527,12 +3549,18 @@
 }
 
 .training-editor-actions {
-  grid-template-columns: minmax(170px, 1fr) 160px 190px;
+  grid-template-columns: minmax(260px, 1fr) 150px 200px;
   align-items: center;
   justify-content: end;
-  min-height: 50px;
+  min-height: 64px;
   padding: 6px 10px 9px;
   border-top: 1px solid rgba(93, 77, 167, 0.16);
+}
+
+.training-save-summary {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
 }
 
 .training-save-state {
@@ -3569,6 +3597,88 @@
 .training-save-state.preview-only::before {
   background: #54bddd;
   box-shadow: 0 0 0 3px rgba(84, 189, 221, 0.17);
+}
+
+.training-save-state.insufficient {
+  color: #b44f68;
+}
+
+.training-save-state.insufficient::before {
+  background: #ec6579;
+  box-shadow: 0 0 0 3px rgba(236, 101, 121, 0.16);
+}
+
+.training-cost-breakdown {
+  display: flex;
+  min-width: 0;
+  gap: 6px;
+  align-items: center;
+}
+
+.training-cost-breakdown > div {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.training-cost-breakdown > div::-webkit-scrollbar {
+  display: none;
+}
+
+.training-cost-breakdown > div > span {
+  display: inline-flex;
+  min-height: 24px;
+  padding: 0 7px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(102, 82, 181, 0.14);
+  border-radius: 7px;
+  color: #667094;
+  background: rgba(247, 245, 255, 0.88);
+}
+
+.training-cost-breakdown small {
+  font-size: 6px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.training-cost-breakdown > div strong {
+  color: #55459f;
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.training-cost-total {
+  display: inline-flex;
+  min-height: 27px;
+  padding: 0 9px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(141, 101, 224, 0.28);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 11px;
+  background: linear-gradient(135deg, #7960d8, #4f5abb);
+  box-shadow: 0 5px 12px rgba(73, 59, 145, 0.16);
+}
+
+.training-cost-total svg {
+  color: #dff65c;
+}
+
+.training-cost-total em {
+  font-size: 7px;
+  font-style: normal;
+}
+
+.training-cost-total.insufficient {
+  border-color: rgba(226, 94, 118, 0.36);
+  background: linear-gradient(135deg, #c65d79, #985073);
 }
 
 .training-editor-actions button:disabled {
@@ -4558,8 +4668,11 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .training-save-state {
+  .training-save-summary {
     grid-column: 1 / -1;
+  }
+
+  .training-save-state {
     justify-content: center;
   }
 
@@ -4711,7 +4824,7 @@
   }
 
   .training-editor-actions {
-    min-height: 44px;
+    min-height: 58px;
     padding-block: 4px 6px;
   }
 }
@@ -11560,7 +11673,7 @@
   }
 
   .training-editor-actions {
-    min-height: 46px;
+    min-height: 60px;
     padding-block: 4px 6px;
   }
 
