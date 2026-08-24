@@ -53,6 +53,7 @@ const GENERATION_NUMBERS = {
 
 const UNAVAILABLE_DESCRIPTION_PREFIX = '사용할 수 없는 기술입니다.'
 const CURRENT_HP_FRACTION_MOVE_IDS = new Set(['superfang', 'naturesmadness', 'ruination'])
+const FIRST_TURN_ONLY_MOVE_IDS = new Set(['fakeout', 'firstimpression', 'matblock'])
 
 const cleanText = (value = '') => value.replace(/[\n\f\r]+/g, ' ').replace(/\s+/g, ' ').trim()
 const toId = (value = '') => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
@@ -247,6 +248,7 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     flags: Object.keys(showdownMove.flags ?? {}),
     ...battleMechanics(showdownMove),
     ...(CURRENT_HP_FRACTION_MOVE_IDS.has(showdownId) ? { currentHpFraction: [1, 2] } : {}),
+    ...(FIRST_TURN_ONLY_MOVE_IDS.has(showdownId) ? { firstTurnOnly: true } : {}),
   }]
 }).sort((left, right) => left.number - right.number || left.name.localeCompare(right.name, 'ko'))
 

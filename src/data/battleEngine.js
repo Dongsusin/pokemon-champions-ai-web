@@ -351,6 +351,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     mimicryActive: false,
     paradoxBoosterActive: false,
     activeTurnCount: 0,
+    activeMoveActions: 0,
     entryAbilityActivations: {},
     hadHeldItem: Boolean(entry.heldItemId),
     consumedItem: false,
@@ -2624,6 +2625,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     appendLog(state, `${attacker.name}은(는) 같은 기술을 연속해서 사용할 수 없다!`, 'status')
     return
   }
+  const isFirstMoveAction = (attacker.activeMoveActions ?? 0) === 0
+  attacker.activeMoveActions = (attacker.activeMoveActions ?? 0) + 1
   if (attacker.destinyBondActive && move.id !== 'destinybond') attacker.destinyBondActive = false
   if (!canPokemonAct(state, attacker, random, move)) {
     if (isChargeContinuation) clearChargeState(attacker)
@@ -2743,6 +2746,17 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     message: `${attacker.name}의 ${move.name}!`,
   }
   pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
+
+  if (moveSlot.firstTurnOnly && !isFirstMoveAction && move.id === moveSlot.id) {
+    appendLog(state, `${move.name}은(는) 실패했다!`, 'muted')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'failed',
+      message: latestLogMessage(state, `${move.name}은(는) 실패했다!`),
+    })
+    return
+  }
 
   const requiresCharge = move.flags?.includes('charge')
     && !isChargeContinuation
@@ -3181,6 +3195,7 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.semiInvulnerable = null
   pokemon.proteanUsed = false
   pokemon.activeTurnCount = 0
+  pokemon.activeMoveActions = 0
   if (pokemon.status?.id === 'toxic') pokemon.status.toxicCounter = 1
 }
 
@@ -4058,6 +4073,14 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   const projectedAttacker = resolved.attacker
   const targetHp = Math.max(1, Number(context.targetHp ?? defender.hp) || defender.hp)
   const priority = environmentMovePriority(state, projectedAttacker, resolvedMove)
+
+  if (
+    move.firstTurnOnly
+    && (attacker.activeMoveActions ?? 0) > 0
+    && resolvedMove.id === move.id
+  ) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
 
   if (isStatusMove(resolvedMove)) {
     const accuracy = aiMoveAccuracy(state, projectedAttacker, defender, resolvedMove)

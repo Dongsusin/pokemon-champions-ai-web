@@ -6995,7 +6995,8 @@
       "secondary": {
         "chance": 100,
         "volatileStatus": "flinch"
-      }
+      },
+      "firstTurnOnly": true
     },
     {
       "id": "uproar",
@@ -15569,7 +15570,8 @@
         "boost": {
           "def": 1
         }
-      }
+      },
+      "firstTurnOnly": true
     },
     {
       "id": "belch",
@@ -17321,7 +17323,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "firstTurnOnly": true
     },
     {
       "id": "banefulbunker",
