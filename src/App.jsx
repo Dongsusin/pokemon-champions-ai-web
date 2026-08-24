@@ -3,6 +3,7 @@ import {
   Boxes,
   ChevronRight,
   Dumbbell,
+  LogOut,
   PawPrint,
   Settings,
   ShoppingBag,
@@ -21,6 +22,8 @@ import LobbyTeamPanel from './LobbyTeamPanel'
 import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
+import LoginScreen, { AuthLoadingScreen } from './LoginScreen'
+import { useAuth } from './auth/AuthProvider'
 import { createGameAudio } from './gameAudio'
 import {
   SETTINGS_STORAGE_KEY,
@@ -220,7 +223,7 @@ const modes = [
   },
 ]
 
-function App() {
+function GameApp({ user, accountError, onSignOut }) {
   const initialCollection = useRef(null)
   if (initialCollection.current === null) initialCollection.current = loadStoredBox()
   const initialTeamState = useRef(null)
@@ -250,6 +253,8 @@ function App() {
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
   const soundEnabled = settings.audio.enabled
+  const trainerName = user.displayName?.trim() || user.email?.split('@')[0] || '트레이너'
+  const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
 
   useEffect(() => {
     return () => {
@@ -784,6 +789,19 @@ function App() {
             </span>
           </button>
 
+          <div
+            className={`player-account${accountError ? ' sync-error' : ''}`}
+            title={accountError || user.email || trainerName}
+          >
+            <span className="player-account-avatar">
+              {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : trainerInitial}
+            </span>
+            <span className="player-account-copy">
+              <small>{accountError ? 'SYNC ERROR' : 'GOOGLE TRAINER'}</small>
+              <strong>{trainerName}</strong>
+            </span>
+          </div>
+
           <button
             className="icon-button"
             type="button"
@@ -800,6 +818,15 @@ function App() {
             onClick={() => setSettingsOpen(true)}
           >
             <Settings size={21} />
+          </button>
+
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Google 계정 로그아웃"
+            onClick={onSignOut}
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </header>
@@ -944,6 +971,42 @@ function App() {
         <span>{notice}</span>
       </div>
     </div>
+  )
+}
+
+function App() {
+  const {
+    user,
+    ready,
+    busy,
+    error,
+    profileSyncError,
+    configured,
+    missingConfiguration,
+    signInWithGoogle,
+    signOut,
+  } = useAuth()
+
+  if (!ready) return <AuthLoadingScreen />
+
+  if (!user) {
+    return (
+      <LoginScreen
+        configured={configured}
+        busy={busy}
+        error={error}
+        missingConfiguration={missingConfiguration}
+        onGoogleSignIn={signInWithGoogle}
+      />
+    )
+  }
+
+  return (
+    <GameApp
+      user={user}
+      accountError={profileSyncError || error}
+      onSignOut={signOut}
+    />
   )
 }
 

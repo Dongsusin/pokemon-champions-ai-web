@@ -1,0 +1,406 @@
+.auth-shell {
+  position: relative;
+  display: grid;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  color: #f7fbff;
+  background:
+    linear-gradient(90deg, rgba(4, 8, 27, 0.9), rgba(4, 8, 27, 0.28) 48%, rgba(4, 8, 27, 0.82)),
+    linear-gradient(180deg, rgba(5, 9, 31, 0.5), rgba(4, 8, 27, 0.82)),
+    url('/assets/champions-lobby-bg.png') center / cover;
+}
+
+.auth-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  opacity: 0.2;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 100% 4px;
+  mix-blend-mode: soft-light;
+}
+
+.auth-ambient {
+  position: absolute;
+  z-index: -1;
+  width: min(620px, 52vw);
+  aspect-ratio: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.34;
+}
+
+.auth-ambient-one {
+  top: -27%;
+  right: -12%;
+  background: #7655ff;
+}
+
+.auth-ambient-two {
+  bottom: -38%;
+  left: 9%;
+  background: #00c9ff;
+}
+
+.auth-brand {
+  position: absolute;
+  top: clamp(24px, 4vw, 50px);
+  left: clamp(24px, 4vw, 60px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-brand img {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(53, 221, 255, 0.48));
+}
+
+.auth-brand span {
+  display: grid;
+  gap: 2px;
+}
+
+.auth-brand small {
+  color: #63eaff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+}
+
+.auth-brand strong {
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.auth-login-card {
+  position: relative;
+  display: grid;
+  width: min(440px, calc(100vw - 36px));
+  gap: 24px;
+  padding: 42px 42px 28px;
+  overflow: hidden;
+  border: 1px solid rgba(145, 210, 255, 0.32);
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(22, 31, 81, 0.94), rgba(10, 17, 54, 0.9)),
+    rgba(7, 12, 40, 0.88);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.16),
+    0 30px 90px rgba(1, 5, 28, 0.52),
+    0 0 50px rgba(53, 178, 255, 0.08);
+  backdrop-filter: blur(24px);
+}
+
+.auth-card-glow {
+  position: absolute;
+  top: -110px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(135, 97, 255, 0.42), transparent 68%);
+}
+
+.auth-login-emblem {
+  position: relative;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid rgba(137, 231, 255, 0.54);
+  border-radius: 18px;
+  color: #d9fbff;
+  background: linear-gradient(145deg, rgba(83, 218, 255, 0.28), rgba(111, 75, 255, 0.34));
+  box-shadow: 0 12px 36px rgba(35, 160, 255, 0.2), inset 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.auth-login-heading {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.auth-login-heading > span {
+  color: #68eaff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+}
+
+.auth-login-heading h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 43px);
+  font-weight: 950;
+  line-height: 1.08;
+  letter-spacing: -0.055em;
+}
+
+.auth-login-heading p {
+  margin: 0;
+  color: #aebddd;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.google-login-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 22px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px 14px 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 16px;
+  color: #17233f;
+  background: linear-gradient(180deg, #fff, #edf3ff);
+  box-shadow: 0 14px 34px rgba(2, 7, 31, 0.34), inset 0 1px #fff;
+  cursor: pointer;
+  transition: transform 170ms ease, box-shadow 170ms ease, filter 170ms ease;
+}
+
+.google-login-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(2, 7, 31, 0.44), 0 0 28px rgba(88, 218, 255, 0.14);
+  filter: brightness(1.03);
+}
+
+.google-login-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.google-login-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  opacity: 0.58;
+}
+
+.google-login-button strong {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.google-login-button > span:last-child {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.google-login-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 3px 11px rgba(16, 32, 71, 0.13);
+}
+
+.google-login-mark svg {
+  width: 23px;
+  height: 23px;
+}
+
+.google-login-spinner,
+.auth-loading-spinner {
+  animation: authSpin 800ms linear infinite;
+}
+
+.auth-setup-message,
+.auth-error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: -10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.auth-setup-message {
+  border: 1px solid rgba(255, 208, 97, 0.28);
+  color: #ffe7a7;
+  background: rgba(89, 58, 8, 0.26);
+}
+
+.auth-setup-message span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.auth-setup-message small {
+  overflow-wrap: anywhere;
+  color: rgba(255, 231, 167, 0.72);
+  font-size: 9px;
+}
+
+.auth-error-message {
+  border: 1px solid rgba(255, 121, 137, 0.32);
+  color: #ffc1c9;
+  background: rgba(103, 21, 40, 0.3);
+}
+
+.auth-login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding-top: 4px;
+  color: #8092b8;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.auth-loading-screen {
+  place-items: center;
+}
+
+.auth-loading-emblem {
+  position: relative;
+  display: grid;
+  width: 120px;
+  height: 120px;
+  place-items: center;
+}
+
+.auth-loading-emblem img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(73, 224, 255, 0.5));
+  animation: authPulse 1.3s ease-in-out infinite;
+}
+
+.auth-loading-emblem .auth-loading-spinner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: #79efff;
+}
+
+.player-account {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 150px;
+  max-width: 210px;
+  min-height: 47px;
+  padding: 5px 12px 5px 5px;
+  border: 1px solid rgba(164, 205, 255, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 23, 59, 0.88), rgba(16, 24, 61, 0.58));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 8px 26px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(16px);
+}
+
+.player-account.sync-error {
+  border-color: rgba(255, 120, 137, 0.54);
+}
+
+.player-account-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(122, 233, 255, 0.48);
+  border-radius: 11px;
+  color: #e9fcff;
+  font-size: 14px;
+  font-weight: 950;
+  background: linear-gradient(145deg, #3caedf, #6351d8);
+}
+
+.player-account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-account-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.player-account-copy small {
+  color: #7feaff;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.player-account-copy strong {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes authPulse {
+  0%, 100% { transform: scale(0.94); opacity: 0.75; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .auth-brand {
+    top: 20px;
+    left: 20px;
+  }
+
+  .auth-brand img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .auth-brand span {
+    display: none;
+  }
+
+  .auth-login-card {
+    gap: 20px;
+    padding: 34px 24px 24px;
+  }
+
+  .player-account {
+    min-width: 46px;
+    width: 46px;
+    padding: 5px;
+  }
+
+  .player-account-copy {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .player-account {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .google-login-spinner,
+  .auth-loading-spinner,
+  .auth-loading-emblem img {
+    animation: none;
+  }
+}
