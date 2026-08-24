@@ -17,10 +17,10 @@ import BattleScreen from './BattleScreen'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
+import LobbyTeamPanel from './LobbyTeamPanel'
 import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
-import TrainerSprite from './TrainerSprite'
 import { createGameAudio } from './gameAudio'
 import {
   SETTINGS_STORAGE_KEY,
@@ -806,19 +806,13 @@ function App() {
 
       {screen === 'lobby' ? (
       <main className="lobby-layout">
-        <aside className="profile-panel glass-panel" aria-label="트레이너 프로필">
-          <div className="trainer-card trainer-card-minimal">
-            <TrainerSprite
-              isPlayer
-              playerGender={settings.game.playerGender}
-              className="trainer-avatar"
-              alt="PLAYER_01 트레이너"
-            />
-            <div className="trainer-copy">
-              <strong>PLAYER_01</strong>
-            </div>
-          </div>
-        </aside>
+        <LobbyTeamPanel
+          pokemon={boxPokemon}
+          teams={teams}
+          activeTeamId={activeTeam?.id}
+          onSelectTeam={selectSavedTeam}
+          onOpenBox={openBox}
+        />
 
         <section className="mode-panel glass-panel" aria-labelledby="mode-title">
           <div className="mode-heading">
