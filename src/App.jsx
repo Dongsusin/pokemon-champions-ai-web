@@ -772,6 +772,10 @@ function GameApp({ user, accountError, onSignOut }) {
               draggable="false"
             />
           </span>
+          <span className="brand-title" aria-hidden="true">
+            <small>Pokémon</small>
+            <strong>Champions Arena</strong>
+          </span>
         </div>
 
         <div className="top-status">

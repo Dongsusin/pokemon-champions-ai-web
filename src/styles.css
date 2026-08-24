@@ -142,6 +142,35 @@ button:focus-visible {
   user-select: none;
 }
 
+.brand {
+  gap: 14px;
+  min-width: 0;
+}
+
+.brand-title {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  filter: drop-shadow(0 4px 10px rgba(2, 7, 30, 0.62));
+}
+
+.brand-title small {
+  color: var(--cyan);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+}
+
+.brand-title strong {
+  color: #f7fbff;
+  font-size: clamp(1rem, 1.45vw, 1.34rem);
+  font-weight: 950;
+  letter-spacing: 0.085em;
+  white-space: nowrap;
+}
+
 .section-kicker,
 .mode-copy small {
   letter-spacing: 0.15em;
@@ -2341,6 +2370,20 @@ button:focus-visible {
     width: 46px;
     height: 46px;
     flex-basis: 46px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand-title small {
+    font-size: 0.56rem;
+    letter-spacing: 0.2em;
+  }
+
+  .brand-title strong {
+    font-size: 0.82rem;
+    letter-spacing: 0.045em;
   }
 
   .top-status {
