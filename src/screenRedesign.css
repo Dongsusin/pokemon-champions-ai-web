@@ -18772,25 +18772,6 @@
   box-shadow: 0 7px 22px rgba(8, 10, 42, 0.28);
 }
 
-.draw-banner-tags {
-  display: flex;
-  gap: 7px;
-  margin-top: 20px;
-  flex-wrap: wrap;
-}
-
-.draw-banner-tags span {
-  padding: 6px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 7px;
-  color: rgba(244, 249, 255, 0.9);
-  font-size: 9px;
-  font-weight: 850;
-  background: rgba(7, 17, 61, 0.46);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
-}
-
 .draw-banner-art {
   position: absolute;
   z-index: 2;
@@ -19449,10 +19430,6 @@
     font-size: clamp(37px, 9vw, 56px);
   }
 
-  .draw-banner-tags {
-    margin-top: 12px;
-  }
-
   .draw-banner-art {
     top: 36%;
     right: 4%;
@@ -19527,11 +19504,6 @@
   .draw-banner-copy > strong {
     padding: 6px 10px;
     font-size: 11px;
-  }
-
-  .draw-banner-tags span {
-    padding: 5px 7px;
-    font-size: 7px;
   }
 
   .draw-banner-art {

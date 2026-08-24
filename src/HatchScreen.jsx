@@ -13,10 +13,8 @@ import {
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
 import {
-  BASE_SHINY_ODDS,
   DRAW_BANNER_ORDER,
   DRAW_RARITY_ORDER,
-  POKEMON_POOL,
   RARITY_META,
   getDrawBanner,
   getPickupRotationRemainingMs,
@@ -84,11 +82,6 @@ function DrawBannerCard({ banner, pickupRemainingMs }) {
         <span>{banner.eyebrow}</span>
         <h2>{banner.title}</h2>
         {banner.pickup && <strong>{banner.pickup.name} 픽업</strong>}
-        <div className="draw-banner-tags">
-          <span>최종 진화형 {POKEMON_POOL.length}종</span>
-          <span>EX {formatRate(RARITY_META.legend.rate)}</span>
-          <span>{banner.shinyOnly ? '이로치 100%' : `이로치 1/${BASE_SHINY_ODDS.toLocaleString()}`}</span>
-        </div>
       </div>
 
       <div className={`draw-banner-art${featuredProfiles.length === 1 ? ' solo' : ''}`}>
