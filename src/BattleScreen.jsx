@@ -742,7 +742,7 @@ const GIMMICK_PRESENTATION = {
 
 function gimmickDetail(cue) {
   if (cue.mechanicId === 'tera') return `${cue.mechanicType ?? '노말'} TERA TYPE`
-  if (cue.mechanicId === 'dynamax') return cue.mechanicMode === 'gigantamax' ? 'GIGANTAMAX' : 'DYNAMAX'
+  if (cue.mechanicId === 'dynamax') return cue.mechanicMode === 'gigantamax' ? '거다이맥스' : '다이맥스'
   if (cue.mechanicId === 'zmove') return cue.chargedMoveName ?? 'Z-MOVE CHARGED'
   if (cue.actorPreviousName && cue.actorPreviousName !== cue.actorName) {
     return `${cue.actorPreviousName}  →  ${cue.actorName}`

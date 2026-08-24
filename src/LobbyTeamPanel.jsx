@@ -118,7 +118,7 @@ function LobbyTeamPanel({ pokemon, teams, activeTeamId, onSelectTeam, onOpenBox 
                   </b>
                   <i className={isGigantamax ? 'gigantamax' : 'dynamax'}>
                     {isGigantamax ? <Crown size={8} /> : <Maximize2 size={8} />}
-                    {isGigantamax ? 'G-MAX' : 'D-MAX'}
+                    {isGigantamax ? '거다이맥스' : '다이맥스'}
                   </i>
                 </span>
               </span>

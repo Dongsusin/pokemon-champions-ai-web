@@ -454,7 +454,7 @@ function BoxScreen({
                           title={entry.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}
                         >
                           {entry.dynamaxMode === 'gigantamax' ? <Crown size={8} /> : <Maximize2 size={8} />}
-                          {entry.dynamaxMode === 'gigantamax' ? 'G-MAX' : 'D-MAX'}
+                          {entry.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}
                         </span>
                       </small>
                     </span>
@@ -1035,7 +1035,7 @@ function BoxScreen({
             <header className="dynamax-picker-header">
               <span className="dynamax-picker-header-icon"><Maximize2 size={24} /></span>
               <div>
-                <small>DYNAMAX CONFIGURATION</small>
+                <small>다이맥스 설정</small>
                 <h2 id="dynamax-picker-title">{selectedPokemon.name}의 거대화 설정</h2>
                 <p>배틀에서 사용할 다이맥스 방식을 포켓몬별로 지정합니다.</p>
               </div>
@@ -1055,14 +1055,14 @@ function BoxScreen({
                 />
               </span>
               <div>
-                <small>CURRENT MAX MODE</small>
+                <small>현재 거대화 방식</small>
                 <strong>{selectedPokemon.name}</strong>
                 <span>{selectedCanGigantamax ? '거다이맥스 가능 종' : '일반 다이맥스 전용'}</span>
               </div>
               <span className={`dynamax-current-mode ${selectedDynamaxMode}`}>
                 {selectedDynamaxMode === 'gigantamax' ? <Crown size={20} /> : <Maximize2 size={20} />}
                 <span>
-                  <small>{selectedDynamaxMode === 'gigantamax' ? 'G-MAX' : 'D-MAX'}</small>
+                  <small>{selectedDynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}</small>
                   <strong>{selectedDynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}</strong>
                 </span>
               </span>
@@ -1113,7 +1113,7 @@ function BoxScreen({
 
             <footer className="dynamax-picker-footer">
               <span><Sparkles size={14} /> 거다이맥스는 고유 거다이맥스 폼이 존재하는 포켓몬만 설정할 수 있습니다.</span>
-              <strong>{selectedCanGigantamax ? 'G-MAX READY' : 'D-MAX ONLY'}</strong>
+              <strong>{selectedCanGigantamax ? '거다이맥스 가능' : '다이맥스 전용'}</strong>
             </footer>
           </section>
         </div>

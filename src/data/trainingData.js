@@ -114,13 +114,13 @@ export const DYNAMAX_MODES = [
   {
     id: 'dynamax',
     label: '다이맥스',
-    shortLabel: 'D-MAX',
+    shortLabel: '다이맥스',
     description: '포켓몬이 거대해지며 기술이 다이맥스 기술로 변화합니다.',
   },
   {
     id: 'gigantamax',
     label: '거다이맥스',
-    shortLabel: 'G-MAX',
+    shortLabel: '거다이맥스',
     description: '고유한 모습으로 거대해지며 전용 거다이맥스 기술을 사용할 수 있습니다.',
   },
 ]

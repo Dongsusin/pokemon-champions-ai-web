@@ -1551,7 +1551,7 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
     available.push({
       id: 'dynamax',
       label: pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스',
-      shortLabel: pokemon.dynamaxMode === 'gigantamax' ? 'G-MAX' : 'D-MAX',
+      shortLabel: pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스',
     })
   }
 
