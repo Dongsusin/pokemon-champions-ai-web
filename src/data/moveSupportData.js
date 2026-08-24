@@ -100,11 +100,15 @@ export const MOVE_DAMAGE_STAT_RULES = {
   terablast: { adaptive: 'tera-only' },
 }
 
-const SUPPORTED_VOLATILE_STATUS_IDS = new Set([
+export const SUPPORTED_VOLATILE_STATUS_IDS = new Set([
   'confusion',
   'flinch',
   'yawn',
   'destinybond',
+  'sparklingaria',
+  'saltcure',
+  'syrupbomb',
+  'healblock',
 ])
 
 const SCRIPTED_STATUS_MOVE_IDS = new Set([

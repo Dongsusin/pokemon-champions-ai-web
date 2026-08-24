@@ -16,6 +16,7 @@
     "validate:move-sounds": "node scripts/validateMoveSoundCoverage.mjs",
     "validate:battle-ai": "node scripts/validateBattleAi.mjs",
     "validate:battle-move-conditions": "node scripts/validateBattleMoveConditions.mjs",
+    "validate:battle-move-effects": "node scripts/validateBattleMoveEffects.mjs",
     "benchmark:battle-ai": "node scripts/benchmarkBattleAi.mjs",
     "validate:battle-gimmicks": "node scripts/validateBattleGimmickLimit.mjs",
     "validate:battle-abilities": "node scripts/validateBattleAbilityForms.mjs",

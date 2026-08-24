@@ -352,6 +352,9 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     paradoxBoosterActive: false,
     activeTurnCount: 0,
     activeMoveActions: 0,
+    saltCureActive: false,
+    syrupBombTurns: 0,
+    healBlockTurns: 0,
     entryAbilityActivations: {},
     hadHeldItem: Boolean(entry.heldItemId),
     consumedItem: false,
@@ -760,6 +763,29 @@ function isStatusMove(move) {
   return move?.categoryId === 'status' || move?.category === '변화'
 }
 
+function moveSecondaryEffects(move) {
+  return move?.secondaries ?? (move?.secondary ? [move.secondary] : [])
+}
+
+function hasSheerForceEffect(move) {
+  return moveSecondaryEffects(move).length > 0 || Number(move?.self?.chance) > 0
+}
+
+function secondaryEffectChance(attacker, effect) {
+  const multiplier = attacker.ability === '하늘의은총' ? 2 : 1
+  return Math.min(100, Number(effect?.chance ?? 100) * multiplier)
+}
+
+function isHealingMove(move) {
+  return Boolean(
+    move?.heal
+    || move?.drain
+    || move?.id === 'rest'
+    || HEAL_MOVE_IDS.has(move?.id)
+    || move?.flags?.includes('heal'),
+  )
+}
+
 function normalizedStageChanges(boosts = {}) {
   return Object.fromEntries(Object.entries(boosts).flatMap(([statId, amount]) => {
     const statKey = SHOWDOWN_STAT_IDS[statId] ?? statId
@@ -1090,6 +1116,7 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
 
   if (attacker.heldItemId === 'life-orb') modifier *= 1.3
   if (attacker.heldItemId === 'expert-belt' && effectiveness > 1) modifier *= 1.2
+  if (attacker.ability === '우격다짐' && hasSheerForceEffect(move)) modifier *= 1.3
   modifier *= lowHpMoveAbilityMultiplier(attacker, move)
   modifier *= supremeOverlordMultiplier(state, attacker)
   if (!move.ignoreAbility) {
@@ -1177,7 +1204,11 @@ function changeStages(state, pokemon, changes) {
   if (messages.length > 0) appendLog(state, `${pokemon.name}의 ${messages.join(' · ')}!`, 'status')
 }
 
-function healPokemon(state, pokemon, amount, source) {
+function healPokemon(state, pokemon, amount, source, { bypassHealBlock = false } = {}) {
+  if (!bypassHealBlock && pokemon.healBlockTurns > 0) {
+    appendLog(state, `${pokemon.name}은(는) 회복봉인 때문에 HP를 회복할 수 없다!`, 'status')
+    return 0
+  }
   const healed = Math.min(Math.max(0, Math.floor(amount)), pokemon.maxHp - pokemon.hp)
   if (healed <= 0) return 0
   pokemon.hp += healed
@@ -1185,7 +1216,7 @@ function healPokemon(state, pokemon, amount, source) {
   return healed
 }
 
-function applyVolatileEffect(state, target, volatileStatus, sourceName, random) {
+function applyVolatileEffect(state, target, volatileStatus, sourceName, random, sourceMoveId = '') {
   if (!target || target.fainted || target.hp <= 0) return false
 
   if (volatileStatus === 'confusion') {
@@ -1197,7 +1228,7 @@ function applyVolatileEffect(state, target, volatileStatus, sourceName, random) 
   }
 
   if (volatileStatus === 'flinch') {
-    if (target.ability === '정신력') return false
+    if (target.flinched || target.ability === '정신력') return false
     target.flinched = true
     appendLog(state, `${target.name}은(는) 풀죽었다!`, 'status')
     return true
@@ -1217,25 +1248,62 @@ function applyVolatileEffect(state, target, volatileStatus, sourceName, random) 
     return true
   }
 
+  if (volatileStatus === 'sparklingaria') {
+    if (target.status?.id !== 'burn') return false
+    target.status = null
+    appendLog(state, `${target.name}의 화상이 ${sourceName}으로 나았다!`, 'heal')
+    return true
+  }
+
+  if (volatileStatus === 'saltcure') {
+    if (target.saltCureActive) return false
+    target.saltCureActive = true
+    appendLog(state, `${target.name}은(는) 소금절이가 되어 버렸다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'syrupbomb') {
+    if (target.syrupBombTurns > 0) return false
+    target.syrupBombTurns = 3
+    appendLog(state, `${target.name}은(는) 끈적끈적한 시럽에 뒤덮였다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'healblock') {
+    if (target.healBlockTurns > 0) return false
+    target.healBlockTurns = sourceMoveId === 'psychicnoise' ? 2 : 5
+    appendLog(state, `${target.name}은(는) HP를 회복할 수 없게 되었다!`, 'status')
+    return true
+  }
+
   return false
 }
 
-function applyEffectPayload(state, attacker, defender, effect, random, sourceName) {
+function applyEffectPayload(state, attacker, defender, effect, random, sourceMove) {
   if (!effect) return false
+  const sourceName = sourceMove?.name ?? String(sourceMove ?? '')
+  const sourceMoveId = sourceMove?.id ?? ''
   let applied = false
 
   if (effect.status) {
     applied = setStatus(state, defender, SHOWDOWN_STATUS_IDS[effect.status] ?? effect.status, sourceName) || applied
   }
   if (effect.volatileStatus && !['lockedmove', 'mustrecharge'].includes(effect.volatileStatus)) {
-    applied = applyVolatileEffect(state, defender, effect.volatileStatus, sourceName, random) || applied
+    applied = applyVolatileEffect(
+      state,
+      defender,
+      effect.volatileStatus,
+      sourceName,
+      random,
+      sourceMoveId,
+    ) || applied
   }
   if (effect.boosts && defender.hp > 0) {
     changeStages(state, defender, effect.boosts)
     applied = true
   }
   if (effect.self) {
-    applied = applyEffectPayload(state, attacker, attacker, effect.self, random, sourceName) || applied
+    applied = applyEffectPayload(state, attacker, attacker, effect.self, random, sourceMove) || applied
   }
 
   return applied
@@ -1248,8 +1316,15 @@ function applyPrimaryMoveEffects(state, attacker, defender, move, random) {
     volatileStatus: move.volatileStatus,
     boosts: move.boosts,
   }
-  const applied = applyEffectPayload(state, attacker, target, primaryEffect, random, move.name)
-  const selfApplied = applyEffectPayload(state, attacker, attacker, move.self, random, move.name)
+  const applied = applyEffectPayload(state, attacker, target, primaryEffect, random, move)
+  let selfEffect = move.self
+  if (Number(selfEffect?.chance) > 0) {
+    selfEffect = attacker.ability !== '우격다짐'
+      && random() * 100 < secondaryEffectChance(attacker, selfEffect)
+      ? selfEffect
+      : null
+  }
+  const selfApplied = applyEffectPayload(state, attacker, attacker, selfEffect, random, move)
   return applied || selfApplied
 }
 
@@ -1374,7 +1449,7 @@ function applyMaxMoveEffect(state, sideId, attacker, defender, move, random) {
   }
   if (effect.kind === 'volatile') {
     return targets.reduce((applied, pokemon) => (
-      applyVolatileEffect(state, pokemon, effect.volatileStatus, move.name, random) || applied
+      applyVolatileEffect(state, pokemon, effect.volatileStatus, move.name, random, move.id) || applied
     ), false)
   }
   if (effect.kind === 'critical') {
@@ -1470,7 +1545,7 @@ function applyMaxMoveEffect(state, sideId, attacker, defender, move, random) {
   if (effect.kind === 'yawn') {
     return targets.reduce((applied, pokemon) => (
       random() * 100 < effect.chance
-        ? applyVolatileEffect(state, pokemon, 'yawn', move.name, random) || applied
+        ? applyVolatileEffect(state, pokemon, 'yawn', move.name, random, move.id) || applied
         : applied
     ), false)
   }
@@ -1662,26 +1737,32 @@ function secondaryStatusFromDescription(state, defender, move, random) {
   if (description.includes('마비')) return setStatus(state, defender, 'paralysis', move.name)
   if (description.includes('얼음 상태')) return setStatus(state, defender, 'freeze', move.name)
   if (description.includes('독 상태')) return setStatus(state, defender, 'poison', move.name)
-  if (description.includes('풀죽')) return applyVolatileEffect(state, defender, 'flinch', move.name, random)
+  if (description.includes('풀죽')) {
+    return applyVolatileEffect(state, defender, 'flinch', move.name, random, move.id)
+  }
   return false
 }
 
-function applyMoveSecondaries(state, attacker, defender, move, random) {
-  const effects = move.secondaries ?? (move.secondary ? [move.secondary] : [])
+function applyMoveSecondaries(state, attacker, defender, move, random, attempts = 1) {
+  const effects = moveSecondaryEffects(move)
   if (effects.length === 0) return secondaryStatusFromDescription(state, defender, move, random)
+  if (attacker.ability === '우격다짐') return false
 
   let applied = false
-  effects.forEach((effect) => {
-    const baseChance = Number(effect.chance ?? 100)
-    const chance = Math.min(100, baseChance * (attacker.ability === '하늘의은총' ? 2 : 1))
-    if (random() * 100 >= chance) return
+  const targetEffectBlocked = defender.ability === '인분' || defender.heldItemId === 'covert-cloak'
+  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+    effects.forEach((effect) => {
+      if (random() * 100 >= secondaryEffectChance(attacker, effect)) return
 
-    if (defender.ability === '인분') {
-      if (effect.self) applied = applyEffectPayload(state, attacker, attacker, effect.self, random, move.name) || applied
-      return
-    }
-    applied = applyEffectPayload(state, attacker, defender, effect, random, move.name) || applied
-  })
+      if (targetEffectBlocked) {
+        if (effect.self) {
+          applied = applyEffectPayload(state, attacker, attacker, effect.self, random, move) || applied
+        }
+        return
+      }
+      applied = applyEffectPayload(state, attacker, defender, effect, random, move) || applied
+    })
+  }
   return applied
 }
 
@@ -2021,7 +2102,9 @@ function activateTraceAbility(state, sideId, activeSlot, pokemon) {
 
 function prepareSwitchOutForm(state, pokemon) {
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
-  if (pokemon.ability === '재생력') healPokemon(state, pokemon, pokemon.maxHp / 3, pokemon.ability)
+  if (pokemon.ability === '재생력') {
+    healPokemon(state, pokemon, pokemon.maxHp / 3, pokemon.ability, { bypassHealBlock: true })
+  }
   if (pokemon.ability === '자연회복' && pokemon.status) {
     const statusLabel = pokemon.status.label
     pokemon.status = null
@@ -2758,6 +2841,17 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
+  if (attacker.healBlockTurns > 0 && isHealingMove(move)) {
+    appendLog(state, `${attacker.name}은(는) 회복봉인 때문에 ${move.name}을(를) 사용할 수 없다!`, 'status')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'failed',
+      message: latestLogMessage(state, `${move.name}은(는) 실패했다!`),
+    })
+    return
+  }
+
   const requiresCharge = move.flags?.includes('charge')
     && !isChargeContinuation
     && resolvedGimmick !== 'zmove'
@@ -3029,12 +3123,17 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   if (damage > 0) {
     applyPrimaryMoveEffects(state, attacker, defender, move, random)
-    applyMoveSecondaries(state, attacker, defender, move, random)
+    applyMoveSecondaries(state, attacker, defender, move, random, landedHits)
     applyHpCrossingAbility(state, defender, defenderHpBeforeMove)
     applyReactiveFormAbility(state, attacker, defender, move, damage)
     applyMoveRecoil(state, attacker, move, damage)
 
-    if (attacker.heldItemId === 'life-orb' && attacker.ability !== '매직가드' && attacker.hp > 0) {
+    if (
+      attacker.heldItemId === 'life-orb'
+      && attacker.ability !== '매직가드'
+      && !(attacker.ability === '우격다짐' && hasSheerForceEffect(move))
+      && attacker.hp > 0
+    ) {
       loseHp(state, attacker, attacker.maxHp / 10, `${attacker.name}은(는) 생명의구슬로 HP가 줄었다.`, 'item')
     }
 
@@ -3196,6 +3295,9 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.proteanUsed = false
   pokemon.activeTurnCount = 0
   pokemon.activeMoveActions = 0
+  pokemon.saltCureActive = false
+  pokemon.syrupBombTurns = 0
+  pokemon.healBlockTurns = 0
   if (pokemon.status?.id === 'toxic') pokemon.status.toxicCounter = 1
 }
 
@@ -3337,6 +3439,13 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     appendLog(state, `${pokemon.name}은(는) ${pokemon.status.label}의 데미지를 입었다.`, 'damage')
   }
 
+  if (pokemon.hp > 0 && pokemon.saltCureActive && pokemon.ability !== '매직가드') {
+    const saltCureDenominator = pokemon.types.some((type) => ['물', '강철'].includes(type)) ? 4 : 8
+    const saltCureDamage = Math.max(1, Math.floor(pokemon.maxHp / saltCureDenominator))
+    pokemon.hp = Math.max(0, pokemon.hp - saltCureDamage)
+    appendLog(state, `${pokemon.name}은(는) 소금절이의 데미지를 입었다!`, 'damage')
+  }
+
   if (
     pokemon.hp > 0
     && pokemon.status?.id === 'sleep'
@@ -3418,6 +3527,21 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     }
   }
 
+  if (pokemon.hp > 0 && pokemon.syrupBombTurns > 0) {
+    changeStages(state, pokemon, { speed: -1 })
+    pokemon.syrupBombTurns -= 1
+    if (pokemon.syrupBombTurns <= 0) {
+      appendLog(state, `${pokemon.name}을(를) 뒤덮은 시럽의 효과가 사라졌다.`, 'heal')
+    }
+  }
+
+  if (pokemon.healBlockTurns > 0) {
+    pokemon.healBlockTurns -= 1
+    if (pokemon.healBlockTurns <= 0) {
+      appendLog(state, `${pokemon.name}은(는) 다시 HP를 회복할 수 있게 되었다.`, 'heal')
+    }
+  }
+
   if (pokemon.hp > 0 && pokemon.perishCount != null) {
     pokemon.perishCount -= 1
     if (pokemon.perishCount <= 0) {
@@ -3443,6 +3567,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     && pokemon.hp <= pokemon.maxHp / 2
     && pokemon.heldItemId === 'sitrus-berry'
     && !pokemon.consumedItem
+    && pokemon.healBlockTurns <= 0
   ) {
     pokemon.consumedItem = true
     healPokemon(state, pokemon, pokemon.maxHp / 4, '자뭉열매')
@@ -3815,6 +3940,7 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
 
     if (attacker.heldItemId === 'life-orb') modifier *= 1.3
     if (attacker.heldItemId === 'expert-belt' && effectiveness > 1) modifier *= 1.2
+    if (attacker.ability === '우격다짐' && hasSheerForceEffect(move)) modifier *= 1.3
     modifier *= lowHpMoveAbilityMultiplier(attacker, move)
     modifier *= supremeOverlordMultiplier(state, attacker)
     if (!move.ignoreAbility) {
@@ -3900,6 +4026,7 @@ function aiStatusMoveScore(state, attacker, defender, move) {
   const hpRatio = attacker.hp / Math.max(1, attacker.maxHp)
   const missingHpRatio = 1 - hpRatio
   const accuracy = aiMoveAccuracy(state, attacker, defender, move)
+  if (attacker.healBlockTurns > 0 && isHealingMove(move)) return -Infinity
   const weatherId = SHOWDOWN_WEATHER_IDS[String(move.weather ?? move.id).toLowerCase()]
   const terrainId = SHOWDOWN_TERRAIN_IDS[String(move.terrain ?? move.id).toLowerCase()]
   if (weatherId) return aiEnvironmentUtility(state, attacker, 'weather', weatherId)
@@ -3989,6 +4116,10 @@ function aiStatusMoveScore(state, attacker, defender, move) {
   if (move.volatileStatus === 'confusion' && target.confusionTurns <= 0 && target.ability !== '마이페이스') utility += 55
   if (move.volatileStatus === 'yawn' && !target.status && target.yawnTurns <= 0) utility += 82
   if (move.volatileStatus === 'destinybond' && hpRatio < 0.4) utility += 76
+  if (move.volatileStatus === 'healblock') {
+    if (target.healBlockTurns > 0) return -Infinity
+    utility += 58
+  }
 
   const scriptedEffect = STATUS_MOVE_EFFECTS[move.id]
   if (move.target === 'self') {
@@ -4004,18 +4135,26 @@ function aiStatusMoveScore(state, attacker, defender, move) {
 }
 
 function aiSecondaryUtility(state, attacker, defender, move) {
-  const effects = move.secondaries ?? (move.secondary ? [move.secondary] : [])
+  const effects = moveSecondaryEffects(move)
+  if (attacker.ability === '우격다짐') return 0
+  const targetEffectBlocked = defender.ability === '인분' || defender.heldItemId === 'covert-cloak'
+  const expectedHitCount = move.multihit ? aiExpectedHitCount(attacker, move) : 1
   return effects.reduce((total, effect) => {
-    const chance = Math.min(100, Number(effect.chance ?? 100) * (attacker.ability === '하늘의은총' ? 2 : 1)) / 100
+    const chancePerHit = secondaryEffectChance(attacker, effect) / 100
+    const chance = 1 - (1 - chancePerHit) ** expectedHitCount
     let utility = 0
     const statusId = SHOWDOWN_STATUS_IDS[effect.status] ?? effect.status
-    if (statusId && aiCanApplyStatus(state, defender, statusId)) {
+    if (!targetEffectBlocked && statusId && aiCanApplyStatus(state, defender, statusId)) {
       const cureMultiplier = matchingStatusCureBerry(defender, statusId) ? 0.2 : 1
       utility += (statusId === 'sleep' ? 52 : 30) * cureMultiplier
     }
-    if (effect.volatileStatus === 'flinch' && effectiveStat(state, attacker, 'speed') > effectiveStat(state, defender, 'speed')) utility += 34
-    if (effect.volatileStatus === 'confusion' && defender.confusionTurns <= 0) utility += 24
-    utility += aiStageUtility(defender, effect.boosts, false) * 0.55
+    if (!targetEffectBlocked && effect.volatileStatus === 'flinch' && effectiveStat(state, attacker, 'speed') > effectiveStat(state, defender, 'speed')) utility += 34
+    if (!targetEffectBlocked && effect.volatileStatus === 'confusion' && defender.confusionTurns <= 0) utility += 24
+    if (!targetEffectBlocked && effect.volatileStatus === 'saltcure' && !defender.saltCureActive) utility += 52
+    if (!targetEffectBlocked && effect.volatileStatus === 'syrupbomb' && defender.syrupBombTurns <= 0) utility += 34
+    if (!targetEffectBlocked && effect.volatileStatus === 'healblock' && defender.healBlockTurns <= 0) utility += 38
+    if (!targetEffectBlocked && effect.volatileStatus === 'sparklingaria' && defender.status?.id === 'burn') utility -= 24
+    if (!targetEffectBlocked) utility += aiStageUtility(defender, effect.boosts, false) * 0.55
     utility += aiStageUtility(attacker, effect.self?.boosts, true) * 0.55
     return total + utility * chance
   }, 0)
@@ -4079,6 +4218,9 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
     && (attacker.activeMoveActions ?? 0) > 0
     && resolvedMove.id === move.id
   ) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
+  if (attacker.healBlockTurns > 0 && isHealingMove(resolvedMove)) {
     return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
   }
 
