@@ -15,6 +15,7 @@
     "validate:move-animations": "node scripts/validateMoveAnimationCoverage.mjs",
     "validate:move-sounds": "node scripts/validateMoveSoundCoverage.mjs",
     "validate:battle-ai": "node scripts/validateBattleAi.mjs",
+    "benchmark:battle-ai": "node scripts/benchmarkBattleAi.mjs",
     "validate:battle-gimmicks": "node scripts/validateBattleGimmickLimit.mjs",
     "validate:signature-z-moves": "node scripts/validateSignatureZMoves.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",

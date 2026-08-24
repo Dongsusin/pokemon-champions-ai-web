@@ -3,6 +3,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import generatedBattleItems from '../src/data/generatedBattleItems.js'
+import { isBattleMoveSupported } from '../src/data/moveSupportData.js'
 import { canUseZMove } from '../src/data/zMoveData.js'
 import { getZaMegaStoneByFormSlug, isZaMegaForm } from '../src/data/zaMegaData.js'
 import { mechanicPreferencesFor } from './trainerBattleRules.mjs'
@@ -453,10 +454,12 @@ function addLearnsetMoves(moveIds, showdownId) {
 }
 
 function legalMovesFor(slot) {
-  if (toId(slot.slug) === 'smeargle') return new Set(moveById.keys())
+  if (toId(slot.slug) === 'smeargle') {
+    return new Set([...moveById.keys()].filter((moveId) => isBattleMoveSupported(moveById.get(moveId))))
+  }
   const legalMoveIds = new Set()
   for (const showdownId of showdownCandidates(slot)) addLearnsetMoves(legalMoveIds, showdownId)
-  return legalMoveIds
+  return new Set([...legalMoveIds].filter((moveId) => isBattleMoveSupported(moveById.get(moveId))))
 }
 
 function abilityFor(species, statsResult) {
@@ -1099,6 +1102,7 @@ function validateTrainerLoadouts(data) {
         slot.moveIds.forEach((moveId, index) => {
           const move = moveById.get(moveId)
           if (!move || move.name !== slot.moves[index]) throw new Error(`${trainer.name} ${slot.name}: invalid move ${moveId}`)
+          if (!isBattleMoveSupported(move)) throw new Error(`${trainer.name} ${slot.name}: unsupported move ${moveId}`)
           if (!legalMoveIds.has(moveId) && toId(slot.slug) !== 'smeargle') {
             throw new Error(`${trainer.name} ${slot.name}: illegal move ${moveId}`)
           }

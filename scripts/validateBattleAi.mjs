@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import {
   chooseAiAction,
+  chooseAiActionsForSide,
+  chooseAiReplacementIndex,
   createBattle,
   createBattleTurnTimeline,
+  getActivePokemon,
 } from '../src/data/battleEngine.js'
 import { getMoveById } from '../src/data/trainingData.js'
 
@@ -33,7 +36,7 @@ function makeBattle({
   activeSlots = 1,
   opponentEntry = {},
 } = {}) {
-  return createBattle({
+  const state = createBattle({
     playerPokemon: Array.from({ length: playerCount }, (_, index) => ({
       speciesId: [9, 450, 3][index] ?? 9,
       captureId: `player-${index}`,
@@ -50,6 +53,9 @@ function makeBattle({
     },
     rules: battleRules(activeSlots),
   })
+  state.opponent.activeIndexes = Array.from({ length: activeSlots }, (_, index) => index)
+  state.opponent.activeIndex = state.opponent.activeIndexes[0] ?? 0
+  return state
 }
 
 {
@@ -187,4 +193,50 @@ function makeBattle({
   assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'tackle')
 }
 
-process.stdout.write('Validated 11 predictive battle AI decisions.\n')
+{
+  const state = makeBattle()
+  state.opponent.team[0].moves = [runtimeMove('thunder'), runtimeMove('thunderbolt')]
+  state.player.team[0].types = ['물']
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'thunderbolt')
+}
+
+{
+  const state = makeBattle({ opponentCount: 3 })
+  state.opponent.team[0].hp = 0
+  state.opponent.team[0].fainted = true
+  state.opponent.team[1].types = ['전기']
+  state.opponent.team[1].moves = [runtimeMove('thunderbolt')]
+  state.opponent.team[2].types = ['비행']
+  state.opponent.team[2].moves = [runtimeMove('icebeam')]
+  state.player.team[0].types = ['땅']
+  state.player.team[0].moves = [runtimeMove('earthquake')]
+  assert.equal(chooseAiReplacementIndex(state, 'opponent', 0), 2)
+}
+
+{
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove('thunderbolt'), runtimeMove('tackle')]
+  state.opponent.team[0].types = ['물']
+  const [action] = chooseAiActionsForSide(state, 'player', () => 0)
+  assert.equal(state.player.team[0].moves[action.moveIndex].id, 'thunderbolt')
+}
+
+{
+  const state = createBattle({
+    playerPokemon: [{ speciesId: 9, moveIds: ['surf', 'icebeam'] }],
+    opponent: { name: '선발 검증 AI', tier: 'S' },
+    opponentTeam: {
+      pokemon: [
+        { speciesId: 6, moveIds: ['flamethrower', 'airslash'], role: '특수 어태커' },
+        { speciesId: 25, moveIds: ['thunderbolt', 'voltswitch'], role: '선봉·교대' },
+      ],
+      battleGimmicks: [],
+      strategy: { lead: '리자몽' },
+    },
+    rules: battleRules(1),
+  })
+  assert.equal(getActivePokemon(state, 'opponent').name, '피카츄')
+}
+
+process.stdout.write('Validated 15 predictive battle AI decisions.\n')

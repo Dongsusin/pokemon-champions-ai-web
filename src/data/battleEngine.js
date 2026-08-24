@@ -2686,7 +2686,7 @@ function settleFaints(state, timeline = null) {
     .map((pokemon, slot) => (pokemon.fainted ? slot : -1))
     .filter((slot) => slot >= 0)
   opponentFaintedSlots.forEach((slot) => {
-    const nextIndex = availableBenchIndexes(state.opponent)[0]
+    const nextIndex = chooseAiReplacementIndex(state, 'opponent', slot)
     if (nextIndex != null) performSwitch(state, 'opponent', nextIndex, true, timeline, null, slot)
   })
 
@@ -3120,12 +3120,14 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   const priority = environmentMovePriority(state, projectedAttacker, resolvedMove)
 
   if (isStatusMove(resolvedMove)) {
+    const accuracy = aiMoveAccuracy(state, projectedAttacker, defender, resolvedMove)
     let score = aiStatusMoveScore(state, attacker, defender, resolvedMove)
     const evaluation = {
       score,
       estimatedDamage: 0,
       rawDamage: 0,
       effectiveness: 1,
+      accuracy,
       knockout: false,
       priority,
       resolvedMove,
@@ -3195,6 +3197,7 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
     estimatedDamage: Math.min(targetHp, estimate.expectedDamage),
     rawDamage: estimate.rawDamage,
     effectiveness: estimate.effectiveness,
+    accuracy: estimate.accuracy,
     knockout,
     priority,
     resolvedMove,
@@ -3222,8 +3225,25 @@ function aiPositiveStageTotal(pokemon) {
 }
 
 const AI_ROLE_KEYWORDS = ['에이스', '스위퍼', '피니셔', '승리', '전개', '날씨', '필드', '트릭룸']
-const AI_MAX_PLAN_COUNT = 96
-const AI_MAX_RESPONSE_PLAN_COUNT = 8
+const AI_LEAD_ROLE_KEYWORDS = ['선봉', '전개', '교대', '필드', '날씨', '벽']
+const AI_LEAD_MOVE_IDS = new Set([
+  'fakeout',
+  'uturn',
+  'voltswitch',
+  'flipturn',
+  'partingshot',
+  'sunnyday',
+  'raindance',
+  'sandstorm',
+  'snowscape',
+  'electricterrain',
+  'grassyterrain',
+  'psychicterrain',
+  'mistyterrain',
+])
+const AI_MAX_PLAN_COUNT = 128
+const AI_MAX_RESPONSE_PLAN_COUNT = 12
+const AI_RESPONSE_TEMPERATURE = 18
 const AI_SIMULATION_RANDOM = () => 0.5
 
 function aiRoleUtility(state, pokemon, sideId) {
@@ -3333,6 +3353,33 @@ function aiPokemonBoardValue(state, pokemon, sideId, active) {
     - volatilePenalty
 }
 
+function aiActiveTacticalValue(state, sideId) {
+  const targetSideId = getOtherSide(state, sideId).id
+  const targetSlots = aiLivingActiveSlots(state, targetSideId)
+  if (targetSlots.length === 0) return 0
+
+  return aiLivingActiveSlots(state, sideId).reduce((total, activeSlot) => {
+    const attacker = getActivePokemon(state, sideId, activeSlot)
+    if (!attacker) return total
+    const bestMove = bestAiMoveForPokemon(state, attacker, targetSlots)
+    const defenders = targetSlots.map((slot) => getActivePokemon(state, targetSideId, slot)).filter(Boolean)
+    const incomingThreat = aiIncomingThreatRatio(state, attacker, defenders)
+    const fastestDefender = defenders.reduce((fastest, defender) => (
+      effectiveStat(state, defender, 'speed') > effectiveStat(state, fastest, 'speed') ? defender : fastest
+    ), defenders[0])
+    const speedAdvantage = fastestDefender
+      && effectiveStat(state, attacker, 'speed') > effectiveStat(state, fastestDefender, 'speed')
+      ? 10
+      : 0
+    const knockoutPressure = bestMove?.knockout ? 28 * (bestMove.accuracy ?? 1) : 0
+    const offensivePressure = Number.isFinite(bestMove?.score)
+      ? Math.max(-12, Math.min(42, bestMove.score * 0.16))
+      : -24
+    const survivalPressure = Math.max(-72, Math.min(18, (0.55 - incomingThreat) * 58))
+    return total + offensivePressure + knockoutPressure + speedAdvantage + survivalPressure
+  }, 0)
+}
+
 function aiSideBoardValue(state, sideId) {
   const side = getSide(state, sideId)
   const activeIndexes = new Set(side.activeIndexes ?? [side.activeIndex])
@@ -3352,6 +3399,7 @@ function aiSideBoardValue(state, sideId) {
   return pokemonValue
     + aiEnvironmentAffinityScore(state, sideId)
     + aiTeamCoverageScore(state, sideId)
+    + aiActiveTacticalValue(state, sideId)
     + (side.auroraVeilTurns > 0 ? 24 : 0)
     + activePressure
     - hazardPenalty
@@ -3388,6 +3436,107 @@ function bestAiMoveForPokemon(state, attacker, targetSlots) {
     })
   })
   return best
+}
+
+function aiLeadUtility(pokemon, preferredLeadName = '') {
+  const role = String(pokemon.role ?? '')
+  const roleUtility = AI_LEAD_ROLE_KEYWORDS.reduce((total, keyword) => (
+    total + (role.includes(keyword) ? 11 : 0)
+  ), 0)
+  const moveUtility = pokemon.moves.reduce((total, move) => (
+    total + (AI_LEAD_MOVE_IDS.has(move.id) || move.selfSwitch ? 8 : 0)
+  ), 0)
+  const itemUtility = ['focus-sash', 'mental-herb', 'light-clay'].includes(pokemon.heldItemId) ? 10 : 0
+  return roleUtility + moveUtility + itemUtility + (pokemon.name === preferredLeadName ? 18 : 0)
+}
+
+function aiLeadCandidateScore(state, sideId, pokemon, targetSlots, preferredLeadName) {
+  const opposingSide = getOtherSide(state, sideId)
+  const opposingAttackers = targetSlots.map((slot) => getActivePokemon(state, opposingSide.id, slot)).filter(Boolean)
+  const offense = bestAiMoveForPokemon(state, pokemon, targetSlots)
+  const incomingThreat = aiIncomingThreatRatio(state, pokemon, opposingAttackers)
+  const speedEdges = opposingAttackers.filter((opponent) => (
+    effectiveStat(state, pokemon, 'speed') > effectiveStat(state, opponent, 'speed')
+  )).length
+  return Math.max(0, offense?.score ?? 0) * 0.5
+    - incomingThreat * 82
+    + speedEdges * 10
+    + aiEntryAbilityUtility(pokemon)
+    + aiLeadUtility(pokemon, preferredLeadName)
+    + aiRosterMatchupUtility(state, pokemon, opposingSide.team)
+}
+
+function chooseAiLeadIndexes(state, sideId, count, preferredLeadName = '') {
+  const side = getSide(state, sideId)
+  const targetSlots = aiLivingActiveSlots(state, getOtherSide(state, sideId).id)
+  const selected = []
+  const candidateIndexes = side.team.map((pokemon, index) => (
+    pokemon.hp > 0 && !pokemon.fainted ? index : -1
+  )).filter((index) => index >= 0)
+
+  while (selected.length < Math.min(count, candidateIndexes.length)) {
+    const next = candidateIndexes
+      .filter((index) => !selected.includes(index))
+      .map((index) => {
+        const pokemon = side.team[index]
+        const overlapPenalty = selected.reduce((penalty, selectedIndex) => {
+          const selectedPokemon = side.team[selectedIndex]
+          return penalty + pokemon.types.filter((type) => selectedPokemon.types.includes(type)).length * 8
+        }, 0)
+        return {
+          index,
+          score: aiLeadCandidateScore(state, sideId, pokemon, targetSlots, preferredLeadName) - overlapPenalty,
+        }
+      })
+      .sort((first, second) => second.score - first.score || first.index - second.index)[0]
+    if (!next) break
+    selected.push(next.index)
+  }
+  return selected
+}
+
+function aiReplacementCandidates(state, sideId, activeSlot = 0) {
+  const side = getSide(state, sideId)
+  const opposingSide = getOtherSide(state, sideId)
+  const targetSlots = aiLivingActiveSlots(state, opposingSide.id)
+  const opposingAttackers = targetSlots.map((slot) => getActivePokemon(state, opposingSide.id, slot)).filter(Boolean)
+
+  return availableBenchIndexes(side)
+    .map((targetIndex) => {
+      const pokemon = side.team[targetIndex]
+      const hazardRatio = aiHazardDamageRatio(state, side, pokemon)
+      if (hazardRatio * pokemon.maxHp >= pokemon.hp) return { targetIndex, score: -Infinity }
+      const offense = bestAiMoveForPokemon(state, pokemon, targetSlots)
+      const incomingThreat = aiIncomingThreatRatio(state, pokemon, opposingAttackers)
+      const remainingHpRatio = Math.max(0, pokemon.hp / Math.max(1, pokemon.maxHp) - hazardRatio)
+      const speedEdges = opposingAttackers.filter((opponent) => (
+        effectiveStat(state, pokemon, 'speed') > effectiveStat(state, opponent, 'speed')
+      )).length
+      const partnerTypePenalty = (side.activeIndexes ?? [])
+        .filter((_, slot) => slot !== activeSlot)
+        .map((index) => side.team[index])
+        .filter((partner) => partner && partner.hp > 0 && !partner.fainted)
+        .reduce((penalty, partner) => (
+          penalty + pokemon.types.filter((type) => partner.types.includes(type)).length * 6
+        ), 0)
+      return {
+        targetIndex,
+        score: Math.max(0, offense?.score ?? 0) * 0.56
+          + remainingHpRatio * 78
+          - incomingThreat * 102
+          + speedEdges * 9
+          + aiEntryAbilityUtility(pokemon)
+          + aiRoleUtility(state, pokemon, sideId) * 0.4
+          + aiRosterMatchupUtility(state, pokemon, opposingSide.team)
+          - partnerTypePenalty,
+      }
+    })
+    .sort((first, second) => second.score - first.score || first.targetIndex - second.targetIndex)
+}
+
+export function chooseAiReplacementIndex(state, sideId = 'opponent', activeSlot = 0) {
+  return aiReplacementCandidates(state, sideId, activeSlot)
+    .find((candidate) => Number.isFinite(candidate.score))?.targetIndex ?? null
 }
 
 function chooseStrategicSwitch(
@@ -3685,10 +3834,24 @@ function prepareAiSimulationState(state) {
   return simulation
 }
 
-function simulateAiActionPlans(state, opponentDecisions, playerDecisions) {
+function settleAiSimulationFaints(state) {
+  settleFaints(state)
+  while (!state.winner && state.awaitingPlayerSwitchSlots.length > 0) {
+    const activeSlot = state.awaitingPlayerSwitchSlots[0]
+    const targetIndex = chooseAiReplacementIndex(state, 'player', activeSlot)
+    if (targetIndex == null) break
+    performSwitch(state, 'player', targetIndex, true, null, null, activeSlot)
+    state.awaitingPlayerSwitchSlots = state.awaitingPlayerSwitchSlots.slice(1)
+  }
+  state.awaitingPlayerSwitch = state.awaitingPlayerSwitchSlots.length > 0
+}
+
+function simulateAiActionPlans(state, sideId, ownDecisions, responseDecisions) {
   const simulation = prepareAiSimulationState(state)
-  const opponentActions = opponentDecisions.map((decision) => decision.action)
-  const playerActions = playerDecisions.map((decision) => decision.action)
+  const ownActions = ownDecisions.map((decision) => decision.action)
+  const responseActions = responseDecisions.map((decision) => decision.action)
+  const playerActions = sideId === 'player' ? ownActions : responseActions
+  const opponentActions = sideId === 'opponent' ? ownActions : responseActions
   const actions = orderedActions(simulation, playerActions, opponentActions, AI_SIMULATION_RANDOM)
 
   actions.forEach(({ sideId, action }) => {
@@ -3723,59 +3886,93 @@ function simulateAiActionPlans(state, opponentDecisions, playerDecisions) {
   })
   advanceSideConditionTimers(simulation)
   advanceEnvironmentTimers(simulation)
+  settleAiSimulationFaints(simulation)
   return simulation
 }
 
 function aiResponseWeights(responsePlans) {
   if (responsePlans.length === 0) return []
   const bestScore = responsePlans[0].score
-  const rawWeights = responsePlans.map((plan) => Math.exp(Math.max(-7, (plan.score - bestScore) / 32)))
+  const rawWeights = responsePlans.map((plan) => Math.exp(
+    Math.max(-8, (plan.score - bestScore) / AI_RESPONSE_TEMPERATURE),
+  ))
   const total = rawWeights.reduce((sum, weight) => sum + weight, 0)
   return rawWeights.map((weight) => weight / Math.max(1, total))
 }
 
-function scorePredictiveAiPlan(state, opponentPlan, responsePlans, baseAdvantage) {
+function aiPlanReliabilityPenalty(plan) {
+  return plan.decisions.reduce((total, decision) => {
+    if (decision.action.type !== 'move') return total
+    const accuracy = Math.max(0, Math.min(1, Number(decision.accuracy ?? 1)))
+    if (accuracy >= 1) return total
+    const impact = (decision.knockout ? 105 : 36)
+      + Math.min(80, Math.max(0, Number(decision.rawDamage ?? 0)) * 0.35)
+    return total + (1 - accuracy) * impact
+  }, 0)
+}
+
+function scorePredictiveAiPlan(state, sideId, ownPlan, responsePlans, baseAdvantage) {
   const resolvedResponses = responsePlans.length > 0 ? responsePlans : [{ decisions: [], score: 0 }]
   const responseWeights = aiResponseWeights(resolvedResponses)
   const outcomes = resolvedResponses.map((responsePlan, index) => {
-    const simulation = simulateAiActionPlans(state, opponentPlan.decisions, responsePlan.decisions)
+    const simulation = simulateAiActionPlans(state, sideId, ownPlan.decisions, responsePlan.decisions)
     return {
-      score: aiBoardAdvantage(simulation, 'opponent') - baseAdvantage,
+      score: aiBoardAdvantage(simulation, sideId) - baseAdvantage,
       weight: responseWeights[index] ?? 1,
     }
   })
   const expectedScore = outcomes.reduce((total, outcome) => total + outcome.score * outcome.weight, 0)
   const worstScore = outcomes.reduce((worst, outcome) => Math.min(worst, outcome.score), Infinity)
-  return opponentPlan.score * 0.08 + expectedScore * 0.68 + worstScore * 0.32
+  const tailCount = Math.max(1, Math.ceil(outcomes.length * 0.35))
+  const tailScore = outcomes
+    .map((outcome) => outcome.score)
+    .sort((first, second) => first - second)
+    .slice(0, tailCount)
+    .reduce((total, score) => total + score, 0) / tailCount
+  return ownPlan.score * 0.12
+    + expectedScore * 0.64
+    + worstScore * 0.2
+    + tailScore * 0.16
+    - aiPlanReliabilityPenalty(ownPlan) * 0.5
 }
 
-function choosePredictiveAiPlan(state, random, restrictedSlots = null) {
-  const opponentGroups = createSideCandidateGroups(
+function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
+  const responseSideId = getOtherSide(state, sideId).id
+  const ownGroups = createSideCandidateGroups(
     state,
-    'opponent',
+    sideId,
     random,
     state.rules?.format?.activeSlots > 1 ? 5 : 8,
     restrictedSlots,
   )
-  if (opponentGroups.length === 0 || opponentGroups.some((group) => group.length === 0)) return null
-  const opponentPlans = buildAiActionPlans(state, 'opponent', opponentGroups, AI_MAX_PLAN_COUNT)
-  const playerGroups = createSideCandidateGroups(state, 'player', () => 0, 4)
-  const responsePlans = playerGroups.length > 0
-    ? buildAiActionPlans(state, 'player', playerGroups, AI_MAX_RESPONSE_PLAN_COUNT)
+  if (ownGroups.length === 0 || ownGroups.some((group) => group.length === 0)) return null
+  const ownPlans = buildAiActionPlans(state, sideId, ownGroups, AI_MAX_PLAN_COUNT)
+  const responseGroups = createSideCandidateGroups(
+    state,
+    responseSideId,
+    () => 0,
+    state.rules?.format?.activeSlots > 1 ? 4 : 6,
+  )
+  const responsePlans = responseGroups.length > 0
+    ? buildAiActionPlans(state, responseSideId, responseGroups, AI_MAX_RESPONSE_PLAN_COUNT)
     : []
-  const baseAdvantage = aiBoardAdvantage(state, 'opponent')
-  const finalNoise = (AI_TIER_NOISE[String(state.opponentMeta?.tier ?? 'S').toUpperCase()] ?? 1.4) * 0.15
+  const baseAdvantage = aiBoardAdvantage(state, sideId)
+  const sideNoise = sideId === 'opponent'
+    ? AI_TIER_NOISE[String(state.opponentMeta?.tier ?? 'S').toUpperCase()] ?? 1.4
+    : AI_TIER_NOISE.S
+  const finalNoise = sideNoise * 0.1
 
-  return opponentPlans
+  return ownPlans
     .map((plan) => ({
       ...plan,
-      predictiveScore: scorePredictiveAiPlan(state, plan, responsePlans, baseAdvantage) + random() * finalNoise,
+      predictiveScore: scorePredictiveAiPlan(state, sideId, plan, responsePlans, baseAdvantage)
+        + random() * finalNoise,
     }))
     .sort((first, second) => second.predictiveScore - first.predictiveScore)[0] ?? null
 }
 
 export function chooseAiAction(state, random = Math.random, activeSlot = 0, targetSlot = 0) {
-  const plan = choosePredictiveAiPlan(state, random, [activeSlot])
+  const plan = choosePredictiveAiPlan(state, 'opponent', random, [activeSlot])
   return plan?.decisions[0]?.action ?? {
     type: 'move',
     actorSlot: activeSlot,
@@ -3785,9 +3982,13 @@ export function chooseAiAction(state, random = Math.random, activeSlot = 0, targ
   }
 }
 
-function chooseAiActions(state, random) {
-  const plan = choosePredictiveAiPlan(state, random)
+export function chooseAiActionsForSide(state, sideId = 'opponent', random = Math.random) {
+  const plan = choosePredictiveAiPlan(state, sideId, random)
   return plan?.decisions.map((decision) => decision.action) ?? []
+}
+
+function chooseAiActions(state, random) {
+  return chooseAiActionsForSide(state, 'opponent', random)
 }
 
 export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null }) {
@@ -3831,6 +4032,18 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     eventNonce: 0,
   }
 
+  const opponentLeadIndexes = chooseAiLeadIndexes(
+    state,
+    'opponent',
+    activeSlots,
+    opponentTeam.strategy?.lead,
+  )
+  if (opponentLeadIndexes.length > 0) {
+    state.opponent.activeIndexes = opponentLeadIndexes
+    state.opponent.activeIndex = opponentLeadIndexes[0]
+    state.opponent.rotationSlot = 0
+  }
+
   appendLog(state, `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
   appendLog(state, `${resolvedRules.weather.label} · ${resolvedRules.terrain.label} · ${resolvedRules.format.label}`, 'field')
   appendLog(
@@ -3844,7 +4057,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   return state
 }
 
-function resolveBattleTurn(state, playerAction, random, captureTimeline) {
+function resolveBattleTurn(state, playerAction, random, captureTimeline, opponentActionOverride = null) {
   if (!state || state.winner || state.awaitingPlayerSwitch) {
     return { state, timeline: [] }
   }
@@ -3871,7 +4084,10 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline) {
     const requestedAction = requestedPlayerActions.find((action) => (action.actorSlot ?? 0) === actorSlot)
     return { ...(forcedAction ?? requestedAction ?? { type: 'move', moveIndex: 0 }), actorSlot }
   })
-  const opponentActions = chooseAiActions(nextState, random).map((action) => {
+  const requestedOpponentActions = opponentActionOverride == null
+    ? chooseAiActions(nextState, random)
+    : (Array.isArray(opponentActionOverride) ? opponentActionOverride : [opponentActionOverride]).filter(Boolean)
+  const opponentActions = requestedOpponentActions.map((action) => {
     const forcedAction = forcedActionForPokemon(getActivePokemon(nextState, 'opponent', action.actorSlot))
     return forcedAction ? { ...forcedAction, actorSlot: action.actorSlot, targetSlot: action.targetSlot } : action
   })
@@ -3922,6 +4138,15 @@ export function createBattleTurnTimeline(state, playerAction, random = Math.rand
 
 export function playBattleTurn(state, playerAction, random = Math.random) {
   return resolveBattleTurn(state, playerAction, random, false).state
+}
+
+export function playBattleTurnWithActions(
+  state,
+  playerActions,
+  opponentActions,
+  random = Math.random,
+) {
+  return resolveBattleTurn(state, playerActions, random, false, opponentActions).state
 }
 
 export function forcePlayerSwitch(state, targetIndex) {
