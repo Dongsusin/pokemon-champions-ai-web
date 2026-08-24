@@ -309,6 +309,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     megaActive: false,
     primalActive: false,
     ultraActive: false,
+    usedBattleMechanicId: null,
     transformSnapshot: null,
     consumedItem: false,
     battleMechanics: [...(entry.battleMechanics ?? [])],
@@ -1539,6 +1540,7 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
   const side = getSide(state, sideId)
   const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted) return []
+  if (pokemon.usedBattleMechanicId) return []
   const configured = sideId === 'opponent' ? inferConfiguredMechanics(pokemon) : []
   const available = []
   const allow = (mechanicId) => sideId === 'player' || configured.includes(mechanicId)
@@ -1575,6 +1577,14 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
   return available.filter((mechanic) => mechanic.id !== state.rules?.disabledGimmickId)
 }
 
+function resolveAvailableActionGimmick(state, sideId, activeSlot, gimmickId) {
+  if (!gimmickId) return null
+  return getAvailableBattleMechanics(state, sideId, activeSlot)
+    .some((mechanic) => mechanic.id === gimmickId)
+    ? gimmickId
+    : null
+}
+
 function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
   if (!mechanicId) return 1
   const available = getAvailableBattleMechanics(state, sideId, activeSlot)
@@ -1582,12 +1592,14 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
   const side = getSide(state, sideId)
   const pokemon = getActivePokemon(state, sideId, activeSlot)
   const trainerName = sideId === 'player' ? '플레이어' : side.name
+  let activated = false
 
   if (mechanicId === 'tera') {
     side.usedMechanics.tera = true
     pokemon.teraActive = true
     pokemon.types = [pokemon.teraType]
     appendLog(state, `${trainerName}의 ${pokemon.name}이(가) ${pokemon.teraType}타입으로 테라스탈했다!`, 'gimmick')
+    activated = true
   } else if (mechanicId === 'dynamax') {
     const originalName = pokemon.name
     side.usedMechanics.dynamax = true
@@ -1601,18 +1613,23 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
       `${trainerName}의 ${originalName}이(가) ${pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}했다!`,
       'gimmick',
     )
+    activated = true
   } else if (mechanicId === 'mega' || mechanicId === 'primal') {
     if (transformPokemon(state, pokemon, pokemon.gimmickFormId, mechanicId)) {
       side.usedMechanics[mechanicId] = true
       appendLog(state, `${trainerName}의 ${pokemon.name}! ${MECHANIC_LABELS[mechanicId]} 성공!`, 'gimmick')
       activateEntryAbility(state, sideId, activeSlot)
+      activated = true
     }
   } else if (mechanicId === 'zmove') {
     activateUltraBurst(state, pokemon)
     side.usedMechanics.zmove = true
     appendLog(state, `${trainerName}와 ${pokemon.name}의 전력! Z파워가 기술에 모인다!`, 'gimmick')
+    activated = true
   }
 
+  if (!activated) return 1
+  pokemon.usedBattleMechanicId = mechanicId
   state.lastEvent = {
     kind: 'gimmick',
     sideId,
@@ -1664,11 +1681,12 @@ export function getBattleMovePreview(
   const defender = getActivePokemon(state, sideId === 'player' ? 'opponent' : 'player', targetSlot)
   const move = attacker?.moves?.[moveIndex]
   if (!attacker || !defender || !move) return move ?? null
+  const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, activeSlot, gimmick)
   const environmentMove = resolveEnvironmentMove(state, attacker, defender, move)
-  const zMove = gimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
-  const resolvedMove = gimmick === 'zmove'
+  const zMove = resolvedGimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
+  const resolvedMove = resolvedGimmick === 'zmove'
     ? zMove ?? { ...environmentMove, zMoveCompatible: false }
-    : resolveBattleMaxMove(attacker, environmentMove, gimmick === 'dynamax', move)
+    : resolveBattleMaxMove(attacker, environmentMove, resolvedGimmick === 'dynamax', move)
   return {
     ...resolvedMove,
     priority: environmentMovePriority(state, attacker, resolvedMove),
@@ -1914,21 +1932,32 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
-  const mechanicWasUsed = action.gimmick ? side.usedMechanics[action.gimmick] : false
-  const mechanicBefore = action.gimmick ? mechanicPokemonSnapshot(attacker) : null
+  const requestedGimmick = action.gimmick
+  const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, actorSlot, requestedGimmick)
+  const resolvedAction = resolvedGimmick === requestedGimmick
+    ? action
+    : { ...action, gimmick: resolvedGimmick }
+  if (requestedGimmick && !resolvedGimmick) {
+    const message = attacker.usedBattleMechanicId
+      ? `${attacker.name}은(는) 이미 ${MECHANIC_LABELS[attacker.usedBattleMechanicId]} 기믹을 사용해 다른 배틀 기믹을 사용할 수 없다!`
+      : '선택한 배틀 기믹은 더 이상 사용할 수 없다!'
+    appendLog(state, message, 'muted')
+  }
+  const mechanicWasUsed = resolvedGimmick ? side.usedMechanics[resolvedGimmick] : false
+  const mechanicBefore = resolvedGimmick ? mechanicPokemonSnapshot(attacker) : null
   const environmentMove = resolveEnvironmentMove(state, attacker, defender, moveSlot)
-  const requestedZMove = action.gimmick === 'zmove'
+  const requestedZMove = resolvedGimmick === 'zmove'
     ? resolveBattleZMove(attacker, environmentMove, moveSlot)
     : null
-  if (action.gimmick === 'zmove' && !requestedZMove) {
+  if (resolvedGimmick === 'zmove' && !requestedZMove) {
     appendLog(state, `${moveSlot.name}에는 현재 Z크리스탈의 힘을 담을 수 없다!`, 'muted')
     return
   }
-  const powerMultiplier = activateMechanic(state, sideId, action.gimmick, actorSlot)
+  const powerMultiplier = activateMechanic(state, sideId, resolvedGimmick, actorSlot)
   move = requestedZMove ?? resolveBattleMaxMove(attacker, environmentMove, false, moveSlot)
   moveCategory = move.categoryId
     ?? (move.category === '물리' ? 'physical' : move.category === '변화' ? 'status' : 'special')
-  if (action.gimmick && !mechanicWasUsed && side.usedMechanics[action.gimmick]) {
+  if (resolvedGimmick && !mechanicWasUsed && side.usedMechanics[resolvedGimmick]) {
     const mechanicAfter = mechanicPokemonSnapshot(attacker)
     pushTimelineStep(timeline, state, {
       phase: 'gimmick',
@@ -1941,11 +1970,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       actorSpeciesId: mechanicAfter.speciesId,
       actorOriginalSpeciesId: mechanicAfter.originalSpeciesId,
       actorPreviousName: mechanicBefore.name,
-      mechanicId: action.gimmick,
-      mechanicLabel: MECHANIC_LABELS[action.gimmick],
-      mechanicType: action.gimmick === 'tera' ? attacker.teraType : null,
-      mechanicMode: action.gimmick === 'dynamax' ? attacker.dynamaxMode : null,
-      chargedMoveName: action.gimmick === 'zmove' ? move.name : null,
+      mechanicId: resolvedGimmick,
+      mechanicLabel: MECHANIC_LABELS[resolvedGimmick],
+      mechanicType: resolvedGimmick === 'tera' ? attacker.teraType : null,
+      mechanicMode: resolvedGimmick === 'dynamax' ? attacker.dynamaxMode : null,
+      chargedMoveName: resolvedGimmick === 'zmove' ? move.name : null,
       spriteBeforeFront: mechanicBefore.spriteFront,
       spriteBeforeBack: mechanicBefore.spriteBack,
       spriteBeforeFrontFallback: mechanicBefore.spriteFrontFallback,
@@ -1954,7 +1983,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       spriteAfterBack: mechanicAfter.spriteBack,
       spriteAfterFrontFallback: mechanicAfter.spriteFrontFallback,
       spriteAfterBackFallback: mechanicAfter.spriteBackFallback,
-      message: `${attacker.name}의 ${MECHANIC_LABELS[action.gimmick]}이(가) 발동했다!`,
+      message: `${attacker.name}의 ${MECHANIC_LABELS[resolvedGimmick]}이(가) 발동했다!`,
     })
   }
 
@@ -1962,7 +1991,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   if (!isChargeContinuation && !isLockedContinuation) moveSlot.currentPp = Math.max(0, moveSlot.currentPp - 1)
   attacker.lastMoveIndex = action.moveIndex
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
-  const animationMetadata = moveAnimationMetadata(attacker, move, action, moveCategory)
+  const animationMetadata = moveAnimationMetadata(attacker, move, resolvedAction, moveCategory)
 
   const moveStep = {
     actionOrder,
@@ -1998,7 +2027,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   const requiresCharge = move.flags?.includes('charge')
     && !isChargeContinuation
-    && action.gimmick !== 'zmove'
+    && resolvedGimmick !== 'zmove'
     && !attacker.dynamaxActive
     && !(effectiveWeatherId(state) === 'sun' && ['solarbeam', 'solarblade'].includes(move.id))
     && !(effectiveWeatherId(state) === 'rain' && move.id === 'electroshot')
@@ -2688,9 +2717,10 @@ function actionPriority(state, sideId, action) {
     action.targetSlot,
   )
   const move = pokemon.moves[action.moveIndex]
+  const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
   const environmentMove = defender ? resolveEnvironmentMove(state, pokemon, defender, move) : move
-  const zMove = action.gimmick === 'zmove' ? resolveBattleZMove(pokemon, environmentMove, move) : null
-  const resolvedMove = zMove ?? resolveBattleMaxMove(pokemon, environmentMove, action.gimmick === 'dynamax', move)
+  const zMove = resolvedGimmick === 'zmove' ? resolveBattleZMove(pokemon, environmentMove, move) : null
+  const resolvedMove = zMove ?? resolveBattleMaxMove(pokemon, environmentMove, resolvedGimmick === 'dynamax', move)
   return environmentMovePriority(state, pokemon, resolvedMove)
 }
 
