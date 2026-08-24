@@ -26,10 +26,29 @@ export const PROTECT_MOVE_IDS = new Set([
   'spikyshield',
   'kingsshield',
   'banefulbunker',
+  'obstruct',
   'silktrap',
   'burningbulwark',
   'maxguard',
 ])
+
+export const PROTECT_CONTACT_EFFECTS = {
+  spikyshield: { damageFraction: [1, 8] },
+  kingsshield: { stages: { attack: -1 } },
+  banefulbunker: { status: 'poison' },
+  obstruct: { stages: { defense: -2 } },
+  silktrap: { stages: { speed: -1 } },
+  burningbulwark: { status: 'burn' },
+}
+
+export const STATUS_CURE_BERRIES = {
+  'cheri-berry': { name: '버치열매', statuses: ['paralysis'] },
+  'chesto-berry': { name: '유루열매', statuses: ['sleep'] },
+  'pecha-berry': { name: '복슝열매', statuses: ['poison', 'toxic'] },
+  'rawst-berry': { name: '복분열매', statuses: ['burn'] },
+  'aspear-berry': { name: '배리열매', statuses: ['freeze'] },
+  'lum-berry': { name: '리샘열매', statuses: ['burn', 'paralysis', 'poison', 'toxic', 'sleep', 'freeze'] },
+}
 
 export const HEAL_MOVE_IDS = new Set([
   'recover',
@@ -43,6 +62,43 @@ export const HEAL_MOVE_IDS = new Set([
   'shoreup',
   'lifedew',
 ])
+
+export const MOVE_DAMAGE_STAT_RULES = {
+  bodypress: {
+    category: 'physical',
+    attackSource: 'attacker',
+    attackStat: 'defense',
+    defenseStat: 'defense',
+  },
+  foulplay: {
+    category: 'physical',
+    attackSource: 'defender',
+    attackStat: 'attack',
+    defenseStat: 'defense',
+  },
+  psyshock: {
+    category: 'special',
+    attackSource: 'attacker',
+    attackStat: 'specialAttack',
+    defenseStat: 'defense',
+  },
+  psystrike: {
+    category: 'special',
+    attackSource: 'attacker',
+    attackStat: 'specialAttack',
+    defenseStat: 'defense',
+  },
+  secretsword: {
+    category: 'special',
+    attackSource: 'attacker',
+    attackStat: 'specialAttack',
+    defenseStat: 'defense',
+  },
+  shellsidearm: { adaptive: 'best-damage' },
+  photongeyser: { adaptive: 'higher-offense' },
+  lightthatburnsthesky: { adaptive: 'higher-offense' },
+  terablast: { adaptive: 'tera-only' },
+}
 
 const SUPPORTED_VOLATILE_STATUS_IDS = new Set([
   'confusion',

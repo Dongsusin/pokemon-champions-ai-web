@@ -6,6 +6,7 @@ import {
   createBattle,
   createBattleTurnTimeline,
   getActivePokemon,
+  playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
 import { getMoveById } from '../src/data/trainingData.js'
 
@@ -56,6 +57,25 @@ function makeBattle({
   state.opponent.activeIndexes = Array.from({ length: activeSlots }, (_, index) => index)
   state.opponent.activeIndex = state.opponent.activeIndexes[0] ?? 0
   return state
+}
+
+function playerMoveDamage(moveId, configure = () => {}) {
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove(moveId)]
+  state.opponent.team[0].moves = [runtimeMove('splash')]
+  state.opponent.team[0].stats.hp = 1000
+  state.opponent.team[0].maxHp = 1000
+  state.opponent.team[0].originalMaxHp = 1000
+  state.opponent.team[0].hp = 1000
+  configure(state)
+  const initialHp = state.opponent.team[0].hp
+  const nextState = playBattleTurnWithActions(
+    state,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    () => 0.5,
+  )
+  return initialHp - nextState.opponent.team[0].hp
 }
 
 {
@@ -202,6 +222,111 @@ function makeBattle({
 }
 
 {
+  const state = makeBattle({ opponentCount: 2 })
+  state.opponent.team[0].moves = [runtimeMove('revivalblessing'), runtimeMove('tackle')]
+  state.opponent.team[1].hp = 0
+  state.opponent.team[1].fainted = true
+  state.player.team[0].moves = [runtimeMove('splash')]
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'revivalblessing')
+  const nextState = playBattleTurnWithActions(
+    state,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [action],
+    () => 0.5,
+  )
+  assert.equal(nextState.opponent.team[1].fainted, false)
+  assert.equal(nextState.opponent.team[1].hp, Math.floor(nextState.opponent.team[1].maxHp / 2))
+  assert.equal(nextState.opponent.activeIndexes[0], 0)
+}
+
+{
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove('tackle'), runtimeMove('scratch')]
+  state.player.team[0].lastMoveIndex = 1
+  state.opponent.team[0].moves = [runtimeMove('splash')]
+  const [action] = chooseAiActionsForSide(state, 'player', () => 0)
+  assert.equal(state.player.team[0].moves[action.moveIndex].id, 'tackle')
+}
+
+{
+  const standardDamage = playerMoveDamage('bodypress')
+  const boostedDamage = playerMoveDamage('bodypress', (state) => {
+    state.player.team[0].statStages.defense = 2
+  })
+  assert.ok(boostedDamage >= standardDamage * 1.8)
+}
+
+{
+  const standardDamage = playerMoveDamage('foulplay')
+  const boostedDamage = playerMoveDamage('foulplay', (state) => {
+    state.opponent.team[0].statStages.attack = 2
+  })
+  assert.ok(boostedDamage >= standardDamage * 1.8)
+}
+
+{
+  const lowDefenseDamage = playerMoveDamage('psyshock', (state) => {
+    state.opponent.team[0].stats.defense = 60
+    state.opponent.team[0].stats.specialDefense = 240
+  })
+  const highDefenseDamage = playerMoveDamage('psyshock', (state) => {
+    state.opponent.team[0].stats.defense = 240
+    state.opponent.team[0].stats.specialDefense = 60
+  })
+  assert.ok(lowDefenseDamage >= highDefenseDamage * 2)
+}
+
+{
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove('rest')]
+  state.player.team[0].heldItemId = 'chesto-berry'
+  state.player.team[0].heldItemName = '유루열매'
+  state.player.team[0].hp = Math.floor(state.player.team[0].maxHp / 3)
+  state.opponent.team[0].moves = [runtimeMove('splash')]
+  const nextState = playBattleTurnWithActions(
+    state,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    () => 0.5,
+  )
+  assert.equal(nextState.player.team[0].hp, nextState.player.team[0].maxHp)
+  assert.equal(nextState.player.team[0].status, null)
+  assert.equal(nextState.player.team[0].consumedItem, true)
+}
+
+{
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove('rest')]
+  state.player.team[0].heldItemId = 'leftovers'
+  state.player.team[0].hp = Math.floor(state.player.team[0].maxHp / 3)
+  state.opponent.team[0].moves = [runtimeMove('splash')]
+  const nextState = playBattleTurnWithActions(
+    state,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    () => 0.5,
+  )
+  assert.equal(nextState.player.team[0].status?.id, 'sleep')
+  assert.equal(nextState.player.team[0].consumedItem, false)
+}
+
+{
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove('tackle')]
+  state.opponent.team[0].moves = [runtimeMove('kingsshield')]
+  state.opponent.team[0].stats.speed = state.player.team[0].stats.speed + 100
+  const nextState = playBattleTurnWithActions(
+    state,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    () => 0.5,
+  )
+  assert.equal(nextState.player.team[0].statStages.attack, -1)
+  assert.equal(nextState.opponent.team[0].hp, nextState.opponent.team[0].maxHp)
+}
+
+{
   const state = makeBattle({ opponentCount: 3 })
   state.opponent.team[0].hp = 0
   state.opponent.team[0].fainted = true
@@ -239,4 +364,4 @@ function makeBattle({
   assert.equal(getActivePokemon(state, 'opponent').name, '피카츄')
 }
 
-process.stdout.write('Validated 15 predictive battle AI decisions.\n')
+process.stdout.write('Validated 23 predictive battle AI and damage decisions.\n')

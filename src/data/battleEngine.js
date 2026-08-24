@@ -9,7 +9,14 @@ import {
 } from './trainingData.js'
 import { BATTLE_TERRAINS, BATTLE_WEATHERS } from './battleRules.js'
 import { resolveMaxMove } from './maxMoveData.js'
-import { HEAL_MOVE_IDS, PROTECT_MOVE_IDS, STATUS_MOVE_EFFECTS } from './moveSupportData.js'
+import {
+  HEAL_MOVE_IDS,
+  MOVE_DAMAGE_STAT_RULES,
+  PROTECT_CONTACT_EFFECTS,
+  PROTECT_MOVE_IDS,
+  STATUS_CURE_BERRIES,
+  STATUS_MOVE_EFFECTS,
+} from './moveSupportData.js'
 import { canUseZMove, normalizeZCrystalId, resolveZMove } from './zMoveData.js'
 
 const TYPE_CHART = {
@@ -702,6 +709,13 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
   if (move.id === 'growth' && weatherId === 'sun') {
     resolvedMove.boosts = { atk: 2, spa: 2 }
   }
+  if (move.id === 'terablast' && attacker.teraActive) resolvedMove.type = attacker.teraType
+
+  if (!isStatusMove(resolvedMove)) {
+    const damageProfile = moveDamageStatProfile(state, attacker, defender, resolvedMove)
+    resolvedMove.categoryId = damageProfile.category
+    resolvedMove.category = damageProfile.category === 'physical' ? '물리' : '특수'
+  }
 
   return resolvedMove
 }
@@ -801,21 +815,47 @@ function abilityImmunity(defender, moveType) {
   return null
 }
 
+function moveDamageStatProfile(state, attacker, defender, move) {
+  const rule = MOVE_DAMAGE_STAT_RULES[move.id]
+  let category = move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
+  const adaptiveMode = rule?.adaptive ?? (move.adaptiveOffense ? 'higher-offense' : null)
+
+  if (adaptiveMode === 'higher-offense' || adaptiveMode === 'tera-only' && attacker.teraActive) {
+    category = effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack')
+      ? 'physical'
+      : 'special'
+  } else if (adaptiveMode === 'best-damage') {
+    const physicalPressure = effectiveStat(state, attacker, 'attack')
+      / Math.max(1, effectiveStat(state, defender, 'defense'))
+    const specialPressure = effectiveStat(state, attacker, 'specialAttack')
+      / Math.max(1, effectiveStat(state, defender, 'specialDefense'))
+    category = physicalPressure > specialPressure ? 'physical' : 'special'
+  }
+
+  return {
+    category,
+    attackPokemon: rule?.attackSource === 'defender' ? defender : attacker,
+    attackKey: rule?.attackStat ?? (category === 'physical' ? 'attack' : 'specialAttack'),
+    defenseKey: rule?.defenseStat ?? (category === 'physical' ? 'defense' : 'specialDefense'),
+  }
+}
+
 function calculateDamage(state, attacker, defender, move, random, powerMultiplier = 1) {
-  const category = move.adaptiveOffense
-    ? (effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack') ? 'physical' : 'special')
-    : move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
-  const attackKey = category === 'physical' ? 'attack' : 'specialAttack'
-  const defenseKey = category === 'physical' ? 'defense' : 'specialDefense'
+  const { category, attackPokemon, attackKey, defenseKey } = moveDamageStatProfile(
+    state,
+    attacker,
+    defender,
+    move,
+  )
   const power = Math.max(1, Number(move.power) || 1) * powerMultiplier
-  let attack = effectiveStat(state, attacker, attackKey)
+  let attack = effectiveStat(state, attackPokemon, attackKey)
   let defense = effectiveStat(state, defender, defenseKey)
 
   if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
-  if (attacker.ability === '의욕' && category === 'physical') attack *= 1.5
-  if (attacker.ability === '근성' && attacker.status) attack *= 1.5
-  if (effectiveWeatherId(state) === 'snow' && category === 'physical' && defender.types.includes('얼음')) defense *= 1.5
-  if (effectiveWeatherId(state) === 'sandstorm' && category === 'special' && defender.types.includes('바위')) defense *= 1.5
+  if (attacker.ability === '의욕' && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
+  if (attacker.ability === '근성' && attacker.status && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
+  if (effectiveWeatherId(state) === 'snow' && defenseKey === 'defense' && defender.types.includes('얼음')) defense *= 1.5
+  if (effectiveWeatherId(state) === 'sandstorm' && defenseKey === 'specialDefense' && defender.types.includes('바위')) defense *= 1.5
   const baseDamage = (((2 * 50) / 5 + 2) * power * attack / defense) / 50 + 2
   const effectiveness = getBattleTypeEffectiveness(state, move.type, defender.types)
   const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
@@ -854,6 +894,22 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   }
 }
 
+function matchingStatusCureBerry(target, statusId) {
+  if (target.consumedItem) return null
+  const berry = STATUS_CURE_BERRIES[target.heldItemId]
+  return berry?.statuses.includes(statusId) ? berry : null
+}
+
+function consumeStatusCureBerry(state, target) {
+  const berry = matchingStatusCureBerry(target, target.status?.id)
+  if (!berry) return false
+  const statusLabel = target.status.label
+  target.consumedItem = true
+  target.status = null
+  appendLog(state, `${target.name}은(는) ${berry.name}로 ${statusLabel} 상태를 회복했다!`, 'item')
+  return true
+}
+
 function setStatus(state, target, statusId, sourceName) {
   if (!STATUS_LABELS[statusId] || target.status || target.fainted || target.hp <= 0) return false
   if (target.ability === '정화의소금') return false
@@ -879,6 +935,7 @@ function setStatus(state, target, statusId, sourceName) {
   }
   appendLog(state, `${target.name}은(는) ${STATUS_LABELS[statusId]} 상태가 되었다!`, 'status')
   state.lastEvent = { kind: 'status', targetId: target.battleId, sourceName }
+  consumeStatusCureBerry(state, target)
   return true
 }
 
@@ -1285,7 +1342,7 @@ function applyStatusMove(state, attacker, defender, move, random) {
     const successRate = 1 / Math.max(1, 3 ** attacker.protectChain)
     if (random() <= successRate) {
       attacker.protected = true
-      attacker.protectMode = move.id === 'maxguard' ? 'maxguard' : 'protect'
+      attacker.protectMode = move.id
       attacker.protectChain += 1
       appendLog(state, `${attacker.name}은(는) 몸을 지키고 있다!`, 'status')
     } else {
@@ -1301,6 +1358,27 @@ function applyStatusMove(state, attacker, defender, move, random) {
 
   if (move.id === 'transform') {
     if (!applyTransform(state, attacker, defender)) appendLog(state, '그러나 변신에 실패했다!', 'muted')
+    return true
+  }
+
+  if (move.id === 'revivalblessing') {
+    const side = getPokemonSide(state, attacker)
+    const target = side.team
+      .filter((pokemon) => pokemon.fainted || pokemon.hp <= 0)
+      .sort((first, second) => {
+        const firstStats = Object.values(first.stats).reduce((total, value) => total + Number(value || 0), 0)
+        const secondStats = Object.values(second.stats).reduce((total, value) => total + Number(value || 0), 0)
+        return secondStats - firstStats || second.maxHp - first.maxHp
+      })[0]
+    if (!target) {
+      appendLog(state, '그러나 되살릴 포켓몬이 없었다!', 'muted')
+      return true
+    }
+    target.fainted = false
+    target.hp = Math.max(1, Math.floor(target.maxHp / 2))
+    target.status = null
+    clearSwitchVolatiles(target)
+    appendLog(state, `${target.name}은(는) 회생의기도로 다시 일어났다!`, 'heal')
     return true
   }
 
@@ -1789,6 +1867,27 @@ function applySurvivalEffects(state, defender, requestedDamage, move) {
   return damage
 }
 
+function applyProtectContactEffect(state, attacker, defender, move) {
+  if (!move.flags?.includes('contact')) return false
+  if (attacker.ability === '원격' || attacker.heldItemId === 'protective-pads') return false
+
+  const effect = PROTECT_CONTACT_EFFECTS[defender.protectMode]
+  if (!effect) return false
+
+  if (effect.damageFraction) {
+    const [numerator, denominator] = effect.damageFraction
+    loseHp(
+      state,
+      attacker,
+      attacker.maxHp * numerator / denominator,
+      `${attacker.name}은(는) ${defender.name}의 방어에 닿아 데미지를 입었다!`,
+    )
+  }
+  if (effect.stages) changeStages(state, attacker, effect.stages)
+  if (effect.status) setStatus(state, attacker, effect.status, defender.protectMode)
+  return true
+}
+
 function loseHp(state, pokemon, amount, message, tone = 'damage') {
   if (!pokemon || pokemon.hp <= 0) return 0
   const damage = Math.min(pokemon.hp, Math.max(1, Math.floor(amount)))
@@ -1878,7 +1977,7 @@ function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, 
     }
   }
 
-  if (move.selfSwitch && attacker?.hp > 0) {
+  if (move.selfSwitch && move.id !== 'revivalblessing' && attacker?.hp > 0) {
     const switchOptions = availableBenchIndexes(side)
     if (switchOptions.length > 0) {
       const targetIndex = switchOptions[Math.floor(random() * switchOptions.length)]
@@ -2157,13 +2256,22 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   if (defender.protected && move.flags?.includes('protect') && !move.bypassesMaxGuard) {
     if (defender.protectMode === 'maxguard' || !move.isMaxMove && !move.isZMove) {
       appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
-      applyFailedMoveConsequences(state, attacker, move)
       pushTimelineStep(timeline, state, {
         phase: 'resolve',
         ...moveStep,
         result: 'blocked',
         message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
       })
+      if (applyProtectContactEffect(state, attacker, defender, move)) {
+        pushTimelineStep(timeline, state, {
+          phase: 'status',
+          ...moveStep,
+          result: 'protect-contact',
+          message: latestLogMessage(state, `${attacker.name}에게 방어의 접촉 효과가 발동했다!`),
+        })
+      }
+      applyFailedMoveConsequences(state, attacker, move)
+      markActiveFaints(state, timeline, actionOrder)
       return
     }
     protectionMultiplier = 0.25
@@ -2864,19 +2972,20 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
   } else if (move.damage !== undefined) {
     rawDamage = move.damage === 'level' ? 50 : Number(move.damage)
   } else {
-    const category = move.adaptiveOffense
-      ? (effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack') ? 'physical' : 'special')
-      : move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
-    const attackKey = category === 'physical' ? 'attack' : 'specialAttack'
-    const defenseKey = category === 'physical' ? 'defense' : 'specialDefense'
-    let attack = effectiveStat(state, attacker, attackKey)
+    const { category, attackPokemon, attackKey, defenseKey } = moveDamageStatProfile(
+      state,
+      attacker,
+      defender,
+      move,
+    )
+    let attack = effectiveStat(state, attackPokemon, attackKey)
     let defense = effectiveStat(state, defender, defenseKey)
 
     if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
-    if (attacker.ability === '의욕' && category === 'physical') attack *= 1.5
-    if (attacker.ability === '근성' && attacker.status) attack *= 1.5
-    if (effectiveWeatherId(state) === 'snow' && category === 'physical' && defender.types.includes('얼음')) defense *= 1.5
-    if (effectiveWeatherId(state) === 'sandstorm' && category === 'special' && defender.types.includes('바위')) defense *= 1.5
+    if (attacker.ability === '의욕' && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
+    if (attacker.ability === '근성' && attacker.status && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
+    if (effectiveWeatherId(state) === 'snow' && defenseKey === 'defense' && defender.types.includes('얼음')) defense *= 1.5
+    if (effectiveWeatherId(state) === 'sandstorm' && defenseKey === 'specialDefense' && defender.types.includes('바위')) defense *= 1.5
 
     const baseDamage = (((2 * 50) / 5 + 2) * Math.max(1, Number(move.power) || 1) * attack / defense) / 50 + 2
     const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
@@ -2984,12 +3093,39 @@ function aiStatusMoveScore(state, attacker, defender, move) {
   if (PROTECT_MOVE_IDS.has(move.id)) {
     const chainPenalty = Math.max(1, 3 ** (attacker.protectChain ?? 0))
     const residualPressure = attacker.status || attacker.perishCount != null || defender.dynamaxActive ? 22 : 0
-    return (34 + residualPressure + (hpRatio < 0.45 ? 28 : 0)) / chainPenalty
+    const contactMoves = defender.moves.filter((candidate) => (
+      candidate.currentPp > 0 && !isStatusMove(candidate) && candidate.flags?.includes('contact')
+    ))
+    const contactRatio = contactMoves.length / Math.max(1, defender.moves.filter((candidate) => (
+      candidate.currentPp > 0 && !isStatusMove(candidate)
+    )).length)
+    const contactEffect = PROTECT_CONTACT_EFFECTS[move.id]
+    let contactUtility = 0
+    if (contactEffect?.damageFraction) contactUtility += 24 * contactRatio
+    if (contactEffect?.stages?.attack && effectiveStat(state, defender, 'attack') >= effectiveStat(state, defender, 'specialAttack')) {
+      contactUtility += Math.abs(contactEffect.stages.attack) * 18 * contactRatio
+    }
+    if (contactEffect?.stages?.defense) contactUtility += Math.abs(contactEffect.stages.defense) * 12 * contactRatio
+    if (contactEffect?.stages?.speed) contactUtility += Math.abs(contactEffect.stages.speed) * 14 * contactRatio
+    if (contactEffect?.status && aiCanApplyStatus(state, defender, contactEffect.status)) contactUtility += 28 * contactRatio
+    return (34 + residualPressure + (hpRatio < 0.45 ? 28 : 0) + contactUtility) / chainPenalty
+  }
+
+  if (move.id === 'revivalblessing') {
+    const side = getPokemonSide(state, attacker)
+    const faintedTargets = side.team.filter((pokemon) => pokemon.fainted || pokemon.hp <= 0)
+    if (faintedTargets.length === 0) return -Infinity
+    const strongestTarget = faintedTargets.reduce((strongest, pokemon) => {
+      const strength = Object.values(pokemon.stats).reduce((total, value) => total + Number(value || 0), 0)
+      return Math.max(strongest, strength)
+    }, 0)
+    return 170 + Math.min(60, strongestTarget / 12)
   }
 
   if (move.id === 'rest') {
     if (missingHpRatio < 0.18 && !attacker.status) return -Infinity
-    return 70 + missingHpRatio * 90 + (attacker.status ? 25 : 0)
+    const instantWake = matchingStatusCureBerry(attacker, 'sleep') ? 38 : 0
+    return 70 + missingHpRatio * 90 + (attacker.status ? 25 : 0) + instantWake
   }
 
   if (['healingwish', 'lunardance'].includes(move.id)) {
@@ -3024,13 +3160,14 @@ function aiStatusMoveScore(state, attacker, defender, move) {
   const statusId = SHOWDOWN_STATUS_IDS[move.status] ?? move.status
   if (statusId) {
     if (!aiCanApplyStatus(state, defender, statusId)) return -Infinity
-    if (statusId === 'sleep') utility += 105
-    else if (statusId === 'toxic') utility += 82
+    const cureMultiplier = matchingStatusCureBerry(defender, statusId) ? 0.2 : 1
+    if (statusId === 'sleep') utility += 105 * cureMultiplier
+    else if (statusId === 'toxic') utility += 82 * cureMultiplier
     else if (statusId === 'burn') {
-      utility += effectiveStat(state, defender, 'attack') >= effectiveStat(state, defender, 'specialAttack') ? 88 : 55
+      utility += (effectiveStat(state, defender, 'attack') >= effectiveStat(state, defender, 'specialAttack') ? 88 : 55) * cureMultiplier
     } else if (statusId === 'paralysis') {
-      utility += effectiveStat(state, defender, 'speed') > effectiveStat(state, attacker, 'speed') ? 82 : 58
-    } else utility += 56
+      utility += (effectiveStat(state, defender, 'speed') > effectiveStat(state, attacker, 'speed') ? 82 : 58) * cureMultiplier
+    } else utility += 56 * cureMultiplier
   }
 
   const target = move.target === 'self' ? attacker : defender
@@ -3057,7 +3194,10 @@ function aiSecondaryUtility(state, attacker, defender, move) {
     const chance = Math.min(100, Number(effect.chance ?? 100) * (attacker.ability === '하늘의은총' ? 2 : 1)) / 100
     let utility = 0
     const statusId = SHOWDOWN_STATUS_IDS[effect.status] ?? effect.status
-    if (statusId && aiCanApplyStatus(state, defender, statusId)) utility += statusId === 'sleep' ? 52 : 30
+    if (statusId && aiCanApplyStatus(state, defender, statusId)) {
+      const cureMultiplier = matchingStatusCureBerry(defender, statusId) ? 0.2 : 1
+      utility += (statusId === 'sleep' ? 52 : 30) * cureMultiplier
+    }
     if (effect.volatileStatus === 'flinch' && effectiveStat(state, attacker, 'speed') > effectiveStat(state, defender, 'speed')) utility += 34
     if (effect.volatileStatus === 'confusion' && defender.confusionTurns <= 0) utility += 24
     utility += aiStageUtility(defender, effect.boosts, false) * 0.55
@@ -3658,6 +3798,7 @@ function rankSideDecisions(
   planning,
   random,
   limit = 6,
+  prediction = false,
 ) {
   const attacker = getActivePokemon(state, sideId, activeSlot)
   const targetSideId = getOtherSide(state, sideId).id
@@ -3700,7 +3841,7 @@ function rankSideDecisions(
           targetHp: Math.max(1, projectedHp),
           targetReserved,
         })
-        const repeatPredictionBias = sideId === 'player' && attacker.lastMoveIndex === moveIndex ? 8 : 0
+        const repeatPredictionBias = prediction && attacker.lastMoveIndex === moveIndex ? 16 : 0
         const score = evaluation.score + repeatPredictionBias
           + (Number.isFinite(evaluation.score) ? random() * noiseRange : 0)
         candidates.push({
@@ -3735,7 +3876,7 @@ function rankSideDecisions(
     moveDecision,
     targetSlots,
     planning,
-    sideId === 'player',
+    prediction,
   )
   if (switchDecision) candidates.push(switchDecision)
   candidates.sort((first, second) => second.score - first.score)
@@ -3802,7 +3943,14 @@ function buildAiActionPlans(state, sideId, candidateGroups, limit) {
   return plans
 }
 
-function createSideCandidateGroups(state, sideId, random, decisionLimit, restrictedSlots = null) {
+function createSideCandidateGroups(
+  state,
+  sideId,
+  random,
+  decisionLimit,
+  restrictedSlots = null,
+  prediction = false,
+) {
   const fallbackTargetSlots = aiLivingActiveSlots(state, getOtherSide(state, sideId).id)
   const activeSlots = (restrictedSlots ?? aiLivingActiveSlots(state, sideId))
   const planning = aiPlanningState(state, sideId)
@@ -3814,6 +3962,7 @@ function createSideCandidateGroups(state, sideId, random, decisionLimit, restric
     planning,
     random,
     decisionLimit,
+    prediction,
   ))
   if (!state.rules?.format?.rotation) return groups
   const rotationCandidates = groups.flat()
@@ -3944,6 +4093,7 @@ function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
     random,
     state.rules?.format?.activeSlots > 1 ? 5 : 8,
     restrictedSlots,
+    false,
   )
   if (ownGroups.length === 0 || ownGroups.some((group) => group.length === 0)) return null
   const ownPlans = buildAiActionPlans(state, sideId, ownGroups, AI_MAX_PLAN_COUNT)
@@ -3952,6 +4102,8 @@ function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
     responseSideId,
     () => 0,
     state.rules?.format?.activeSlots > 1 ? 4 : 6,
+    null,
+    true,
   )
   const responsePlans = responseGroups.length > 0
     ? buildAiActionPlans(state, responseSideId, responseGroups, AI_MAX_RESPONSE_PLAN_COUNT)

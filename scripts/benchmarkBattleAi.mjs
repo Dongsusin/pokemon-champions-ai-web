@@ -14,11 +14,102 @@ import {
 } from '../src/data/battleEngine.js'
 import { getTrainer, getTrainerTeam } from '../src/data/trainerTeams.js'
 
-const BENCHMARK_TRAINERS = ['레드', '난천', '단델', '아이리스', '성호', '네모', '지우', 'N']
+const DEFAULT_BENCHMARK_TRAINERS = ['레드', '난천', '단델', '아이리스', '성호', '네모', '지우', 'N']
+const BENCHMARK_TRAINERS = (process.env.BATTLE_AI_BENCHMARK_TRAINERS ?? '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean)
+const SELECTED_TRAINERS = BENCHMARK_TRAINERS.length > 0 ? BENCHMARK_TRAINERS : DEFAULT_BENCHMARK_TRAINERS
+const BENCHMARK_TEAMS = (process.env.BATTLE_AI_BENCHMARK_TEAMS ?? '1,2,3')
+  .split(',')
+  .map((value) => Number.parseInt(value.trim(), 10))
+  .filter((value) => value >= 1 && value <= 3)
+const BENCHMARK_SIDES = (process.env.BATTLE_AI_BENCHMARK_SIDES ?? 'player,opponent')
+  .split(',')
+  .map((value) => value.trim())
+  .filter((value) => ['player', 'opponent'].includes(value))
 const BENCHMARK_REPEATS = Math.max(
   1,
   Number.parseInt(process.env.BATTLE_AI_BENCHMARK_REPEATS ?? '1', 10) || 1,
 )
+const INCLUDE_ANALYSIS = process.env.BATTLE_AI_BENCHMARK_ANALYSIS === '1'
+const TRACE_SEED = Number.parseInt(process.env.BATTLE_AI_TRACE_SEED ?? '', 10)
+const MIN_WIN_RATE = Math.max(0, Math.min(
+  1,
+  Number.parseFloat(process.env.BATTLE_AI_MIN_WIN_RATE ?? '0.6') || 0,
+))
+
+function incrementCount(counts, key) {
+  if (!key) return
+  counts[key] = (counts[key] ?? 0) + 1
+}
+
+function topCounts(counts, limit = 5) {
+  return Object.entries(counts)
+    .sort((first, second) => second[1] - first[1] || first[0].localeCompare(second[0], 'ko'))
+    .slice(0, limit)
+    .map(([id, count]) => ({ id, count }))
+}
+
+function mergeCounts(target, source) {
+  Object.entries(source).forEach(([id, count]) => {
+    target[id] = (target[id] ?? 0) + count
+  })
+}
+
+function lossLinkedCounts(lossCounts, winCounts, losses, wins, limit = 5) {
+  return Object.entries(lossCounts)
+    .map(([id, count]) => {
+      const lossUsesPerMatch = count / Math.max(1, losses)
+      const winUsesPerMatch = (winCounts[id] ?? 0) / Math.max(1, wins)
+      return {
+        id,
+        lossUsesPerMatch: Number(lossUsesPerMatch.toFixed(2)),
+        winUsesPerMatch: Number(winUsesPerMatch.toFixed(2)),
+        excessUses: Number((lossUsesPerMatch - winUsesPerMatch).toFixed(2)),
+      }
+    })
+    .filter((entry) => entry.excessUses > 0)
+    .sort((first, second) => second.excessUses - first.excessUses || first.id.localeCompare(second.id, 'ko'))
+    .slice(0, limit)
+}
+
+function sideSnapshot(side) {
+  const activeIndexSet = new Set(side.activeIndexes)
+  return {
+    active: side.activeIndexes.map((index) => {
+      const pokemon = side.team[index]
+      return {
+        index,
+        name: pokemon.name,
+        hp: pokemon.hp,
+        maxHp: pokemon.maxHp,
+        stages: { ...pokemon.statStages },
+      }
+    }),
+    bench: side.team
+      .map((pokemon, index) => ({ pokemon, index }))
+      .filter(({ pokemon, index }) => !activeIndexSet.has(index) && pokemon.hp > 0 && !pokemon.fainted)
+      .map(({ pokemon, index }) => ({ index, name: pokemon.name, hp: pokemon.hp, maxHp: pokemon.maxHp })),
+    fainted: side.team.filter((pokemon) => pokemon.hp <= 0 || pokemon.fainted).length,
+  }
+}
+
+function actionSnapshot(state, sideId, action) {
+  const attacker = getActivePokemon(state, sideId, action.actorSlot)
+  if (action.type === 'switch') {
+    return {
+      actor: attacker?.name ?? '?',
+      action: 'switch',
+      target: state[sideId].team[action.targetIndex]?.name ?? '?',
+    }
+  }
+  return {
+    actor: attacker?.name ?? '?',
+    action: attacker?.moves[action.moveIndex]?.id ?? '?',
+    gimmick: action.gimmick ?? null,
+  }
+}
 
 function seededRandom(seed) {
   let value = seed >>> 0
@@ -148,6 +239,8 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
     advanced: { moves: 0, switches: 0, gimmicks: 0, statusMoves: 0 },
     baseline: { moves: 0, switches: 0, gimmicks: 0, statusMoves: 0 },
   }
+  const advancedChoices = { moves: {}, switches: {}, gimmicks: {} }
+  const trace = seed === TRACE_SEED ? [] : null
 
   while (!state.winner && state.turn <= 80) {
     state = resolveAutomatedPlayerSwitches(state)
@@ -158,6 +251,15 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
     const opponentActions = advancedSide === 'opponent'
       ? chooseAiActionsForSide(state, 'opponent', random)
       : chooseBaselineActions(state, 'opponent')
+    const traceEntry = trace ? {
+      turn: state.turn,
+      before: {
+        player: sideSnapshot(state.player),
+        opponent: sideSnapshot(state.opponent),
+      },
+      playerActions: playerActions.map((action) => actionSnapshot(state, 'player', action)),
+      opponentActions: opponentActions.map((action) => actionSnapshot(state, 'opponent', action)),
+    } : null
     ;[
       ['player', playerActions],
       ['opponent', opponentActions],
@@ -166,16 +268,32 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
       actions.forEach((action) => {
         if (action.type === 'switch') {
           policyStats.switches += 1
+          if (sideId === advancedSide) {
+            const source = getActivePokemon(state, sideId, action.actorSlot)
+            const target = state[sideId].team[action.targetIndex]
+            incrementCount(advancedChoices.switches, `${source?.name ?? '?'} -> ${target?.name ?? '?'}`)
+          }
           return
         }
         policyStats.moves += 1
-        if (action.gimmick) policyStats.gimmicks += 1
+        if (action.gimmick) {
+          policyStats.gimmicks += 1
+          if (sideId === advancedSide) incrementCount(advancedChoices.gimmicks, action.gimmick)
+        }
         const attacker = getActivePokemon(state, sideId, action.actorSlot)
         const move = attacker?.moves[action.moveIndex]
+        if (sideId === advancedSide) incrementCount(advancedChoices.moves, move?.id)
         if (move?.categoryId === 'status') policyStats.statusMoves += 1
       })
     })
     state = playBattleTurnWithActions(state, playerActions, opponentActions, random)
+    if (traceEntry) {
+      traceEntry.after = {
+        player: sideSnapshot(state.player),
+        opponent: sideSnapshot(state.opponent),
+      }
+      trace.push(traceEntry)
+    }
   }
 
   const winner = resolveTimedWinner(state)
@@ -184,24 +302,99 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
     opponentName,
     advancedSide,
     teamNumber,
+    seed,
     winner,
     advancedWon: winner === advancedSide,
     turns: Math.min(80, state.turn - 1),
     decisionStats,
+    advancedChoices,
+    finalState: {
+      advancedRemaining: state[advancedSide].team.filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted).length,
+      baselineRemaining: state[advancedSide === 'player' ? 'opponent' : 'player'].team
+        .filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted).length,
+      timedOut: !state.winner,
+    },
+    ...(trace ? { trace } : {}),
   }
 }
 
-const results = BENCHMARK_TRAINERS.flatMap((trainerName, trainerIndex) => (
-  [1, 2, 3].flatMap((teamNumber) => {
+function createLossAnalysis(results) {
+  const matchupGroups = new Map()
+  results.forEach((result) => {
+    const key = `${result.playerName} · 팀 ${result.teamNumber}`
+    const group = matchupGroups.get(key) ?? {
+      matchup: key,
+      matches: 0,
+      wins: 0,
+      losses: 0,
+      winMoves: {},
+      winSwitches: {},
+      lossMoves: {},
+      lossSwitches: {},
+      lossGimmicks: {},
+      lossExamples: [],
+    }
+    group.matches += 1
+    if (result.advancedWon) {
+      group.wins += 1
+      mergeCounts(group.winMoves, result.advancedChoices.moves)
+      mergeCounts(group.winSwitches, result.advancedChoices.switches)
+    } else {
+      group.losses += 1
+      mergeCounts(group.lossMoves, result.advancedChoices.moves)
+      mergeCounts(group.lossSwitches, result.advancedChoices.switches)
+      mergeCounts(group.lossGimmicks, result.advancedChoices.gimmicks)
+      if (group.lossExamples.length < 6) {
+        group.lossExamples.push({
+          seed: result.seed,
+          advancedSide: result.advancedSide,
+          turns: result.turns,
+          advancedRemaining: result.finalState.advancedRemaining,
+          baselineRemaining: result.finalState.baselineRemaining,
+        })
+      }
+    }
+    matchupGroups.set(key, group)
+  })
+
+  return [...matchupGroups.values()]
+    .map((group) => ({
+      matchup: group.matchup,
+      matches: group.matches,
+      wins: group.wins,
+      losses: group.losses,
+      winRate: Number((group.wins / Math.max(1, group.matches) * 100).toFixed(1)),
+      topLossMoves: topCounts(group.lossMoves),
+      topLossSwitches: topCounts(group.lossSwitches, 3),
+      lossLinkedMoves: lossLinkedCounts(group.lossMoves, group.winMoves, group.losses, group.wins),
+      lossLinkedSwitches: lossLinkedCounts(
+        group.lossSwitches,
+        group.winSwitches,
+        group.losses,
+        group.wins,
+        3,
+      ),
+      lossGimmicks: topCounts(group.lossGimmicks, 5),
+      lossExamples: group.lossExamples,
+    }))
+    .sort((first, second) => first.winRate - second.winRate || second.losses - first.losses)
+}
+
+const results = SELECTED_TRAINERS.flatMap((trainerName) => {
+  const trainerIndex = DEFAULT_BENCHMARK_TRAINERS.indexOf(trainerName)
+  return BENCHMARK_TEAMS.flatMap((teamNumber) => {
     return Array.from({ length: BENCHMARK_REPEATS }, (_, repeatIndex) => {
       const seed = trainerIndex * 1000 + teamNumber * 100 + repeatIndex * 10
-      return [
-        runMatch(trainerName, trainerName, 'player', teamNumber, seed + 1),
-        runMatch(trainerName, trainerName, 'opponent', teamNumber, seed + 2),
-      ]
+      return BENCHMARK_SIDES.map((advancedSide) => runMatch(
+        trainerName,
+        trainerName,
+        advancedSide,
+        teamNumber,
+        seed + (advancedSide === 'player' ? 1 : 2),
+      ))
     }).flat()
   })
-))
+})
 const wins = results.filter((result) => result.advancedWon).length
 const draws = results.filter((result) => result.winner == null).length
 const losses = results.length - wins - draws
@@ -233,6 +426,10 @@ const outcomeStats = ['wins', 'losses'].reduce((summary, outcome) => {
   return summary
 }, {})
 const summary = {
+  trainers: SELECTED_TRAINERS,
+  teams: BENCHMARK_TEAMS,
+  advancedSides: BENCHMARK_SIDES,
+  minimumWinRate: Number((MIN_WIN_RATE * 100).toFixed(1)),
   repeats: BENCHMARK_REPEATS,
   matches: results.length,
   wins,
@@ -243,9 +440,15 @@ const summary = {
   decisionStats,
   advancedAverages: outcomeStats,
 }
+if (INCLUDE_ANALYSIS) summary.weakMatchups = createLossAnalysis(results)
+const tracedResult = results.find((result) => result.trace)
+if (tracedResult) summary.traceMatch = tracedResult
 
 process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
-if (process.env.BATTLE_AI_BENCHMARK_DETAILS === '1' || winRate < 0.6) {
+if (process.env.BATTLE_AI_BENCHMARK_DETAILS === '1' || winRate < MIN_WIN_RATE) {
   process.stderr.write(`${JSON.stringify(results, null, 2)}\n`)
 }
-assert.ok(winRate >= 0.6, `Predictive AI benchmark win rate was only ${(winRate * 100).toFixed(1)}%`)
+assert.ok(
+  winRate >= MIN_WIN_RATE,
+  `Predictive AI benchmark win rate was only ${(winRate * 100).toFixed(1)}%`,
+)
