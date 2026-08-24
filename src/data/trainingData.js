@@ -437,14 +437,19 @@ export function getEvolutionOptions(speciesId) {
   return speciesIds.map((id) => getSpeciesProfile(id)).filter(Boolean)
 }
 
-export function getBattleFormOptions(speciesId) {
+export function getRelatedFormOptions(speciesId) {
   const profile = getSpeciesProfile(speciesId)
   const route = EVOLUTION_ROUTE_BY_ID.get(Number(speciesId))
     ?? EVOLUTION_ROUTE_BY_ID.get(profile?.parentSpeciesId)
-  const profileIds = route?.profileIds ?? [Number(speciesId)]
+  const profileIds = route?.profileIds ?? [profile?.parentSpeciesId, Number(speciesId)]
 
-  return profileIds
+  return [...new Set(profileIds)]
     .map((id) => getSpeciesProfile(id))
+    .filter(Boolean)
+}
+
+export function getBattleFormOptions(speciesId) {
+  return getRelatedFormOptions(speciesId)
     .filter((option) => (
       option?.parentSpeciesId
       && (

@@ -7,6 +7,32 @@ export const BATTLE_WEATHERS = [
   { id: 'fog', label: '안개', shortLabel: '안개', description: '대부분 기술의 명중률이 크게 낮아집니다.' },
 ]
 
+export const STRONG_BATTLE_WEATHERS = [
+  {
+    id: 'desolateland',
+    label: '강한 햇살',
+    shortLabel: '강한 햇살',
+    description: '끝의대지가 만든 강한 햇살입니다. 불꽃타입 기술은 강해지고 공격하는 물타입 기술은 실패하며, 일반 날씨로 덮어쓸 수 없습니다.',
+  },
+  {
+    id: 'primordialsea',
+    label: '강한 비',
+    shortLabel: '강한 비',
+    description: '시작의바다가 만든 강한 비입니다. 물타입 기술은 강해지고 공격하는 불꽃타입 기술은 실패하며, 일반 날씨로 덮어쓸 수 없습니다.',
+  },
+  {
+    id: 'deltastream',
+    label: '난기류',
+    shortLabel: '난기류',
+    description: '델타스트림이 만든 난기류입니다. 비행타입 포켓몬의 약점이 되는 타입 상성을 중화하며, 일반 날씨로 덮어쓸 수 없습니다.',
+  },
+]
+
+export const BATTLE_WEATHER_DEFINITIONS = [
+  ...BATTLE_WEATHERS,
+  ...STRONG_BATTLE_WEATHERS,
+]
+
 export const BATTLE_TERRAINS = [
   { id: 'neutral', label: '일반 필드', shortLabel: '일반', description: '특별한 필드 보정이 적용되지 않는 기본 상태입니다.' },
   { id: 'grassy', label: '그래스필드', shortLabel: '그래스', description: '땅에 있는 포켓몬의 풀타입 기술이 1.3배가 되고 매 턴 HP를 회복합니다. 일부 땅 기술의 위력은 절반이 됩니다.' },
@@ -38,7 +64,7 @@ export const BATTLE_GIMMICK_RESTRICTIONS = [
 ]
 
 const BATTLE_RULE_COLLECTIONS = {
-  weather: BATTLE_WEATHERS,
+  weather: BATTLE_WEATHER_DEFINITIONS,
   terrain: BATTLE_TERRAINS,
   format: BATTLE_FORMATS,
   team: BATTLE_TEAM_RULES,

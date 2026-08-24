@@ -932,6 +932,9 @@ function BattleFieldEffects({ terrainId }) {
 
 const WEATHER_PARTICLE_COUNTS = Object.freeze({
   clear: { back: 9, front: 4 },
+  deltastream: { back: 18, front: 20 },
+  desolateland: { back: 18, front: 10 },
+  primordialsea: { back: 36, front: 30 },
   sun: { back: 13, front: 7 },
   rain: { back: 28, front: 22 },
   sandstorm: { back: 21, front: 25 },
@@ -941,6 +944,9 @@ const WEATHER_PARTICLE_COUNTS = Object.freeze({
 
 const WEATHER_DURATION_RANGES = Object.freeze({
   clear: [4.8, 7.4],
+  deltastream: [1.2, 2.1],
+  desolateland: [2.2, 4.2],
+  primordialsea: [0.44, 0.76],
   sun: [2.8, 5.2],
   rain: [0.58, 0.94],
   sandstorm: [1.45, 2.5],
