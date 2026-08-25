@@ -15,7 +15,7 @@ export const TRAINER_LOCAL_SPRITES = {
   철이: '/assets/trainers/generated/cameron-gen5.png',
   승태: '/assets/trainers/generated/sawyer-gen5.png',
   고우: '/assets/trainers/generated/goh-gen5.png',
-  채하루: '/assets/trainers/generated/chloe-gen5.png',
+  채하루: '/assets/trainers/generated/chloe-cerise-gen5.png',
 }
 
 export const TRAINER_SPRITE_SLUGS = {
