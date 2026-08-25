@@ -364,6 +364,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     paradoxBoosterActive: false,
     activeTurnCount: 0,
     activeMoveActions: 0,
+    truantLoafing: false,
     saltCureActive: false,
     syrupBombTurns: 0,
     healBlockTurns: 0,
@@ -1858,17 +1859,13 @@ function confusionSelfDamage(state, pokemon, random) {
 function canPokemonAct(state, pokemon, random, move) {
   if (pokemon.rechargeTurns > 0) {
     pokemon.rechargeTurns -= 1
+    pokemon.truantLoafing = false
     appendLog(state, `${pokemon.name}은(는) 공격의 반동으로 움직일 수 없다!`, 'status')
     return false
   }
 
-  if (pokemon.flinched) {
-    pokemon.flinched = false
-    appendLog(state, `${pokemon.name}은(는) 풀죽어서 움직일 수 없다!`, 'status')
-    return false
-  }
-
   if (pokemon.status?.id === 'sleep') {
+    pokemon.truantLoafing = false
     pokemon.status.counter -= 1
     if (pokemon.status.counter > 0) {
       appendLog(state, `${pokemon.name}은(는) 쿨쿨 잠들어 있다.`, 'status')
@@ -1889,6 +1886,21 @@ function canPokemonAct(state, pokemon, random, move) {
       pokemon.status = null
       appendLog(state, `${pokemon.name}의 얼음이 녹았다!`, 'heal')
     }
+  }
+
+  if (pokemon.ability === '게으름') {
+    if (pokemon.truantLoafing) {
+      pokemon.truantLoafing = false
+      appendLog(state, `${pokemon.name}은(는) 게으름 때문에 농땡이를 피우고 있다!`, 'ability')
+      return false
+    }
+    pokemon.truantLoafing = true
+  }
+
+  if (pokemon.flinched) {
+    pokemon.flinched = false
+    appendLog(state, `${pokemon.name}은(는) 풀죽어서 움직일 수 없다!`, 'status')
+    return false
   }
 
   if (pokemon.status?.id === 'paralysis' && random() < 0.25) {
@@ -3353,6 +3365,7 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.proteanUsed = false
   pokemon.activeTurnCount = 0
   pokemon.activeMoveActions = 0
+  pokemon.truantLoafing = false
   pokemon.saltCureActive = false
   pokemon.syrupBombTurns = 0
   pokemon.healBlockTurns = 0
@@ -4268,6 +4281,9 @@ function aiMechanicUtility(state, attacker, defender, move, gimmick, evaluation)
 
 function evaluateAiMove(state, attacker, defender, move, gimmick = null, context = {}) {
   if (!move || move.currentPp <= 0) return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
+  if (attacker.ability === '게으름' && attacker.truantLoafing) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
+  }
   const resolved = resolveAiMove(state, attacker, defender, move, gimmick)
   if (!resolved) return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
   const resolvedMove = resolved.move

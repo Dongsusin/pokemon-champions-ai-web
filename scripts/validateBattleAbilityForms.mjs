@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import pokemonData from '../src/data/generatedPokemonData.json' with { type: 'json' }
 import {
+  chooseAiAction,
   createBattle,
   getAvailableBattleMechanics,
   getBattleMovePreview,
@@ -597,4 +598,80 @@ function turn(state, playerAction, opponentAction) {
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('greninja-ash').id)
 }
 
-console.log('Validated strong weather and battle-state form abilities.')
+{
+  let state = battle(
+    [pokemon('slaking', ['scratch'])],
+    [pokemon('snorlax', ['raindance'])],
+  )
+  state.opponent.team[0].hp = state.opponent.team[0].maxHp = 5000
+  const startingPp = state.player.team[0].moves[0].currentPp
+
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  const hpAfterFirstMove = state.opponent.team[0].hp
+  assert(hpAfterFirstMove < 5000)
+  assert.equal(state.player.team[0].moves[0].currentPp, startingPp - 1)
+  assert.equal(state.player.team[0].truantLoafing, true)
+
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.opponent.team[0].hp, hpAfterFirstMove)
+  assert.equal(state.player.team[0].moves[0].currentPp, startingPp - 1)
+  assert.equal(state.player.team[0].truantLoafing, false)
+  assert(state.log.some((entry) => entry.message.includes('게으름') && entry.message.includes('농땡이')))
+
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert(state.opponent.team[0].hp < hpAfterFirstMove)
+  assert.equal(state.player.team[0].moves[0].currentPp, startingPp - 2)
+}
+
+{
+  let state = battle(
+    [pokemon('slaking', ['hyperbeam']), pokemon('snorlax', ['protect'])],
+    [pokemon('snorlax', ['raindance'])],
+  )
+  state.opponent.team[0].hp = state.opponent.team[0].maxHp = 5000
+
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].rechargeTurns, 1)
+  assert.equal(state.player.team[0].truantLoafing, true)
+
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].rechargeTurns, 0)
+  assert.equal(state.player.team[0].truantLoafing, false)
+
+  state = turn(state, { type: 'switch', targetIndex: 1 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].truantLoafing, false)
+  state = turn(state, { type: 'switch', targetIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].truantLoafing, false)
+}
+
+{
+  let state = battle(
+    [pokemon('slaking', ['scratch']), pokemon('snorlax', ['protect'])],
+    [pokemon('snorlax', ['raindance'])],
+  )
+  state.opponent.team[0].hp = state.opponent.team[0].maxHp = 5000
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].truantLoafing, true)
+  state = turn(state, { type: 'switch', targetIndex: 1 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].truantLoafing, false)
+  state = turn(state, { type: 'switch', targetIndex: 0 }, { type: 'move', moveIndex: 0 })
+  const hpBeforeReturnMove = state.opponent.team[0].hp
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert(state.opponent.team[0].hp < hpBeforeReturnMove)
+}
+
+{
+  let state = battle(
+    [pokemon('snorlax', ['protect'])],
+    [pokemon('slaking', ['scratch']), pokemon('snorlax', ['protect'])],
+  )
+  state.opponent.activeIndexes = [0]
+  state.opponent.activeIndex = 0
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.opponent.team[0].truantLoafing, true)
+  const action = chooseAiAction(state, () => 0.5)
+  assert.equal(action.type, 'switch')
+  assert.equal(action.targetIndex, 1)
+}
+
+console.log('Validated weather, battle-state forms, and action-limiting abilities.')
