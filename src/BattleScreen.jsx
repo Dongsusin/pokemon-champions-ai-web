@@ -57,7 +57,7 @@ import {
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
 import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/battleRules'
-import { getRelatedFormOptions, typeClassName } from './data/trainingData'
+import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
 function animationClassToken(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
@@ -119,10 +119,10 @@ function getBattleSpriteAssets(pokemon) {
   const battleBaseSpeciesId = Number(
     pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId ?? pokemon.speciesId,
   )
-  const formAssets = getRelatedFormOptions(battleBaseSpeciesId)
+  const formAssets = getBattleFormOptions(battleBaseSpeciesId)
     .filter((form) => (
-      Number(form.id) === battleBaseSpeciesId
-      || Number(form.parentSpeciesId) === battleBaseSpeciesId
+      form.formMetadata?.formKind !== 'item'
+      || Number(form.id) === Number(pokemon.speciesId)
     ))
     .flatMap((form) => [
       form.spriteFront,

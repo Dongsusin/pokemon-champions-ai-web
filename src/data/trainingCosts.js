@@ -1,10 +1,11 @@
-import { STAT_META } from './trainingData.js'
+import { getSpeciesProfile, STAT_META } from './trainingData.js'
 
 export const TRAINING_COSTS = Object.freeze({
   trainingPoint: 2,
   move: 100,
   nature: 200,
   ability: 400,
+  form: 250,
   evolution: 400,
 })
 
@@ -44,6 +45,13 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
   const moveUnits = changedMoveSlots.length + Number(
     hiddenPowerConfigurationChanged && !hiddenPowerMoveAlreadyChanged,
   )
+  const savedProfile = getSpeciesProfile(savedPokemon.speciesId)
+  const draftProfile = getSpeciesProfile(draftPokemon.speciesId)
+  const savedBaseSpeciesId = Number(savedProfile?.parentSpeciesId ?? savedProfile?.id ?? savedPokemon.speciesId)
+  const draftBaseSpeciesId = Number(draftProfile?.parentSpeciesId ?? draftProfile?.id ?? draftPokemon.speciesId)
+  const speciesChanged = Number(savedPokemon.speciesId) !== Number(draftPokemon.speciesId)
+  const formChanged = speciesChanged && savedBaseSpeciesId === draftBaseSpeciesId
+  const evolutionChanged = speciesChanged && savedBaseSpeciesId !== draftBaseSpeciesId
 
   const items = [
     {
@@ -79,12 +87,20 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
       cost: savedPokemon.ability !== draftPokemon.ability ? TRAINING_COSTS.ability : 0,
     },
     {
+      id: 'form',
+      label: '폼',
+      units: Number(formChanged),
+      unitLabel: '회',
+      unitCost: TRAINING_COSTS.form,
+      cost: formChanged ? TRAINING_COSTS.form : 0,
+    },
+    {
       id: 'evolution',
       label: '진화',
-      units: Number(savedPokemon.speciesId !== draftPokemon.speciesId),
+      units: Number(evolutionChanged),
       unitLabel: '회',
       unitCost: TRAINING_COSTS.evolution,
-      cost: savedPokemon.speciesId !== draftPokemon.speciesId ? TRAINING_COSTS.evolution : 0,
+      cost: evolutionChanged ? TRAINING_COSTS.evolution : 0,
     },
   ].filter((item) => item.cost > 0)
 

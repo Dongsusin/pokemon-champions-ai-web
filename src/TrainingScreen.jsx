@@ -28,13 +28,16 @@ import {
   getAbility,
   getBattleFormOptions,
   getEvolutionOptions,
+  getFormMetadata,
   getLearnableMoves,
   getMove,
+  getPersistentFormOptions,
   getSpeciesProfile,
   HIDDEN_POWER_TYPES,
   NATURE_OPTIONS,
   normalizePokemon,
   resolveMoveForPokemon,
+  resolveMoveTriggeredFormSpeciesId,
   STAT_META,
   STAT_POINT_PER_STAT,
   STAT_POINT_TOTAL,
@@ -203,6 +206,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   const isPreviewForm = Boolean(previewSpecies)
   const zaMegaStone = species ? getZaMegaStoneByFormSlug(species.slug) : null
   const evolutionOptions = editablePokemon ? getEvolutionOptions(editablePokemon.speciesId) : []
+  const persistentFormOptions = editablePokemon ? getPersistentFormOptions(editablePokemon.speciesId) : []
   const battleFormOptions = editablePokemon ? getBattleFormOptions(editablePokemon.speciesId) : []
   const stats = useMemo(
     () => (selectedPokemon ? calculateStats(selectedPokemon) : []),
@@ -215,8 +219,12 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
     ? NATURE_OPTIONS.find((option) => option.label === selectedPokemon.nature) ?? NATURE_OPTIONS[0]
     : null
   const selectedNatureEffect = getNatureEffect(selectedNature)
+  const editableFormMetadata = getFormMetadata(editableSpecies)
+  const editableEvolutionSpeciesId = Number(editableSpecies?.parentSpeciesId ?? editableSpecies?.id)
+  const editableEvolutionSpecies = evolutionOptions.find((option) => option.id === editableEvolutionSpeciesId)
+    ?? editableSpecies
   const selectedEvolutionIndex = editablePokemon
-    ? evolutionOptions.findIndex((option) => option.id === editablePokemon.speciesId)
+    ? evolutionOptions.findIndex((option) => option.id === editableEvolutionSpeciesId)
     : -1
   const hasBranchingEvolution = evolutionOptions.length > 3
   const hasChanges = trainingSignature(editablePokemon) !== trainingSignature(savedPokemon)
@@ -269,7 +277,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   const updateMove = (slotIndex, moveName) => {
     const moves = [...selectedPokemon.moves]
     moves[slotIndex] = moveName
-    updateSelected({ moves })
+    const speciesId = resolveMoveTriggeredFormSpeciesId(editableSpecies.id, moves)
+    updateSelected({ moves, speciesId })
   }
 
   const openMovePicker = (slotIndex) => {
@@ -296,7 +305,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   }
 
   const openProfilePicker = (picker) => {
-    if (isPreviewForm && !['evolution', 'battle-form'].includes(picker)) return
+    if (isPreviewForm && !['evolution', 'persistent-form', 'battle-form'].includes(picker)) return
     setActiveTooltipId(null)
     setMovePickerTooltip(null)
     setAbilityPickerTooltip(null)
@@ -312,6 +321,22 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   const chooseEvolution = (speciesId) => {
     setPreviewSpeciesId(null)
     writeSelected({ speciesId })
+    setProfilePicker(null)
+  }
+
+  const choosePersistentForm = (speciesId) => {
+    const targetForm = getSpeciesProfile(speciesId)
+    if (!targetForm || !editablePokemon) return
+    const metadata = getFormMetadata(targetForm)
+    const moves = [...editablePokemon.moves]
+
+    if (metadata.requiredMove && !moves.includes(metadata.requiredMove)) {
+      if (moves.length < 4) moves.push(metadata.requiredMove)
+      else moves[moves.length - 1] = metadata.requiredMove
+    }
+
+    setPreviewSpeciesId(null)
+    writeSelected({ speciesId, moves })
     setProfilePicker(null)
   }
 
@@ -470,12 +495,15 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   }
 
   const isEvolutionPicker = profilePicker === 'evolution'
+  const isPersistentFormPicker = profilePicker === 'persistent-form'
   const isBattleFormPicker = profilePicker === 'battle-form'
   const isHiddenPowerPicker = profilePicker === 'hidden-power'
-  const isFormPicker = isEvolutionPicker || isBattleFormPicker
+  const isFormPicker = isEvolutionPicker || isPersistentFormPicker || isBattleFormPicker
   const formPickerOptions = isBattleFormPicker
-    ? [editableSpecies, ...battleFormOptions].filter(Boolean)
-    : evolutionOptions
+    ? [...new Map([editableSpecies, ...battleFormOptions].filter(Boolean).map((option) => [option.id, option])).values()]
+    : isPersistentFormPicker
+      ? persistentFormOptions
+      : evolutionOptions
 
   return (
     <main className="training-screen">
@@ -684,18 +712,50 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                       <button
                         className="training-profile-picker-button"
                         type="button"
-                        aria-label={`진화 형태 변경, 현재 ${editableSpecies.name}`}
+                        disabled={editableFormMetadata.evolutionLocked}
+                        aria-label={`진화 형태 변경, 현재 ${editableEvolutionSpecies.name}`}
                         aria-haspopup="dialog"
                         aria-expanded={profilePicker === 'evolution'}
                         onClick={() => openProfilePicker('evolution')}
                       >
                         <span>
-                          <strong>{editableSpecies.name}</strong>
-                          <small>NO. {String(editableSpecies.id).padStart(4, '0')} · {editableSpecies.types.join(' / ')}</small>
+                          <strong>{editableEvolutionSpecies.name}</strong>
+                          <small>
+                            {editableFormMetadata.evolutionLocked
+                              ? '이 모습은 진화할 수 없음'
+                              : `NO. ${String(editableEvolutionSpecies.id).padStart(4, '0')} · ${editableEvolutionSpecies.types.join(' / ')}`}
+                          </small>
                         </span>
                         <ChevronDown size={14} />
                       </button>
                     </div>
+                    {persistentFormOptions.length > 1 && (
+                      <div className="training-picker-field persistent-form-picker-field">
+                        <span>
+                          <Dna size={14} /> 폼 설정
+                          <em className="training-field-cost">변경 {TRAINING_COSTS.form} VP</em>
+                        </span>
+                        <button
+                          className="training-profile-picker-button"
+                          type="button"
+                          aria-label={`폼 변경, 현재 ${editableSpecies.name}`}
+                          aria-haspopup="dialog"
+                          aria-expanded={profilePicker === 'persistent-form'}
+                          onClick={() => openProfilePicker('persistent-form')}
+                        >
+                          <span>
+                            <strong>{editableSpecies.name}</strong>
+                            <small>
+                              {editableFormMetadata.label}
+                              {editableFormMetadata.requirement
+                                ? ` · ${editableFormMetadata.requirement}`
+                                : ''}
+                            </small>
+                          </span>
+                          <ChevronDown size={14} />
+                        </button>
+                      </div>
+                    )}
                     {battleFormOptions.length > 0 && (
                       <div className={`training-picker-field battle-form-picker-field${isPreviewForm ? ' is-previewing' : ''}`}>
                         <span><Sparkles size={14} /> 배틀 기믹 폼 확인</span>
@@ -1169,7 +1229,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                   >
                     <header className="move-picker-header profile-picker-header">
                       <span className={`profile-picker-icon picker-${profilePicker}`}>
-                        {isEvolutionPicker
+                        {isEvolutionPicker || isPersistentFormPicker
                           ? <Dna size={23} />
                           : isBattleFormPicker
                             ? <Sparkles size={23} />
@@ -1181,6 +1241,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                         <small>
                           {isEvolutionPicker
                             ? 'EVOLUTION PATH'
+                            : isPersistentFormPicker
+                              ? 'FORM LIBRARY'
                             : isBattleFormPicker
                               ? 'BATTLE FORM PREVIEW'
                               : isHiddenPowerPicker
@@ -1190,6 +1252,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                         <h3 id="profile-picker-title">
                           {isEvolutionPicker
                             ? '진화 형태 선택'
+                            : isPersistentFormPicker
+                              ? '폼 설정'
                             : isBattleFormPicker
                               ? '배틀 기믹 폼 확인'
                               : isHiddenPowerPicker
@@ -1199,6 +1263,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                         <p>
                           {isEvolutionPicker
                             ? '진화 계통의 모습과 타입, 능력치를 비교해 사용할 형태를 선택하세요.'
+                            : isPersistentFormPicker
+                              ? '기본·외형·성별·특성·기술 폼 중 저장할 모습을 선택하세요.'
                             : isBattleFormPicker
                               ? '배틀 중에만 변하는 모습을 확인합니다. 포켓몬의 진화나 저장 데이터에는 적용되지 않습니다.'
                               : isHiddenPowerPicker
@@ -1217,25 +1283,29 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                       <span>현재 설정</span>
                       <strong>
                         {isEvolutionPicker
-                          ? editableSpecies.name
-                          : isBattleFormPicker
-                            ? isPreviewForm ? species.name : '선택 안 함'
-                            : isHiddenPowerPicker
-                              ? `${selectedPokemon.hiddenPowerType}타입`
-                              : profilePicker === 'nature' ? selectedPokemon.nature : selectedPokemon.ability}
+                          ? editableEvolutionSpecies.name
+                          : isPersistentFormPicker
+                            ? editableSpecies.name
+                            : isBattleFormPicker
+                              ? isPreviewForm ? species.name : '선택 안 함'
+                              : isHiddenPowerPicker
+                                ? `${selectedPokemon.hiddenPowerType}타입`
+                                : profilePicker === 'nature' ? selectedPokemon.nature : selectedPokemon.ability}
                       </strong>
                       <em>
-                          {isEvolutionPicker
+                        {isEvolutionPicker
                           ? hasBranchingEvolution
                             ? selectedEvolutionIndex === 0
                               ? '기본 형태'
                               : `분기 진화 ${selectedEvolutionIndex} / ${evolutionOptions.length - 1}`
                             : `진화 단계 ${selectedEvolutionIndex + 1} / ${evolutionOptions.length}`
-                          : isBattleFormPicker
-                            ? '확인 전용 · 진화 및 저장 불가'
-                            : isHiddenPowerPicker
-                              ? '위력 60 · 특수 기술 · 타입 자유 설정'
-                              : profilePicker === 'nature' ? selectedNatureEffect.summary : selectedAbility.trigger}
+                          : isPersistentFormPicker
+                            ? `${editableFormMetadata.label}${editableFormMetadata.requirement ? ` · ${editableFormMetadata.requirement}` : ''}`
+                            : isBattleFormPicker
+                              ? '확인 전용 · 진화 및 저장 불가'
+                              : isHiddenPowerPicker
+                                ? '위력 60 · 특수 기술 · 타입 자유 설정'
+                                : profilePicker === 'nature' ? selectedNatureEffect.summary : selectedAbility.trigger}
                       </em>
                     </div>
 
@@ -1243,7 +1313,13 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                       <div
                         className="profile-picker-list evolution-picker-list"
                         role="listbox"
-                        aria-label={isBattleFormPicker ? `${editableSpecies.name} 배틀 기믹 폼` : `${editableSpecies.name} 진화 계통`}
+                        aria-label={
+                          isBattleFormPicker
+                            ? `${editableSpecies.name} 배틀 기믹 폼`
+                            : isPersistentFormPicker
+                              ? `${editableSpecies.name} 저장 가능 폼`
+                              : `${editableSpecies.name} 진화 계통`
+                        }
                       >
                         {formPickerOptions.map((option, index) => {
                           const isBasePreviewOption = isBattleFormPicker && option.id === editableSpecies.id
@@ -1251,6 +1327,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                             ? option.id === (previewSpeciesId ?? editableSpecies.id)
                             : editablePokemon.speciesId === option.id
                           const isPreviewOnly = isBattleFormPicker && !isBasePreviewOption
+                          const formMetadata = getFormMetadata(option)
                           const baseStatTotal = option.stats.reduce((total, stat) => total + stat, 0)
                           const optionZaMegaStone = getZaMegaStoneByFormSlug(option.slug)
                           const sprite = selectedPokemon.isShiny
@@ -1265,11 +1342,11 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                               aria-selected={isSelected}
                               autoFocus={isSelected}
                               key={option.id}
-                              onClick={() => (
-                                isBattleFormPicker
-                                  ? chooseBattleForm(isBasePreviewOption ? null : option.id)
-                                  : chooseEvolution(option.id)
-                              )}
+                              onClick={() => {
+                                if (isBattleFormPicker) chooseBattleForm(isBasePreviewOption ? null : option.id)
+                                else if (isPersistentFormPicker) choosePersistentForm(option.id)
+                                else chooseEvolution(option.id)
+                              }}
                             >
                               <span className="evolution-choice-sprite">
                                 <img
@@ -1284,7 +1361,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                                 />
                               </span>
                               <span className="evolution-choice-copy">
-                                <small>NO. {String(option.id).padStart(4, '0')}</small>
+                                <small>NO. {String(option.parentSpeciesId ?? option.id).padStart(4, '0')}</small>
                                 <strong>{option.name}</strong>
                                 <span className="evolution-type-list">
                                   {option.types.map((type) => (
@@ -1308,12 +1385,20 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                                   ? <><Sparkles size={11} /> ZA MEGA</>
                                   : isPreviewOnly
                                   ? <><Eye size={11} /> PREVIEW ONLY</>
+                                  : isPersistentFormPicker
+                                  ? formMetadata.eyebrow
                                   : hasBranchingEvolution
                                   ? index === 0 ? 'BASE FORM' : `BRANCH ${String(index).padStart(2, '0')}`
                                   : `STAGE ${String(index + 1).padStart(2, '0')}`}
                               </span>
                               <span className="evolution-stat-total">
-                                <small>{isPreviewOnly ? `특성 ${option.abilities[0]}` : '종족값 합계'}</small>
+                                <small>
+                                  {isPreviewOnly
+                                    ? `특성 ${option.abilities[0]}`
+                                    : isPersistentFormPicker && formMetadata.requirement
+                                      ? formMetadata.requirement
+                                      : '종족값 합계'}
+                                </small>
                                 <b>{baseStatTotal}</b>
                               </span>
                               <span className="profile-choice-state">
@@ -1445,6 +1530,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                       <span>
                         {profilePicker === 'evolution'
                           ? '이 메뉴에서는 전국도감 번호가 있는 일반 진화만 변경하고 저장할 수 있습니다.'
+                          : profilePicker === 'persistent-form'
+                            ? '기술·특성이 필요한 폼은 선택할 때 조건을 함께 적용하며, 외형·성별 폼도 저장됩니다.'
                           : profilePicker === 'battle-form'
                             ? '메가진화·거다이맥스 등 배틀 기믹 폼은 확인 전용이며 포켓몬 데이터에 저장되지 않습니다.'
                             : profilePicker === 'hidden-power'

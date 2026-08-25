@@ -3,6 +3,7 @@ import {
   NATIONAL_DEX_COUNT,
   getEvolutionSpeciesIds,
   getSpeciesProfile,
+  isSavablePokemonForm,
   normalizePokemon,
   randomNature,
 } from './trainingData.js'
@@ -344,7 +345,11 @@ export function migratePokemonCollection(storedPokemon = []) {
       }))
     } else {
       const storedProfile = getSpeciesProfile(rawPokemon.speciesId)
-      const speciesId = Number(storedProfile?.parentSpeciesId ?? storedProfile?.id ?? dexSpeciesId)
+      const speciesId = Number(
+        isSavablePokemonForm(storedProfile)
+          ? storedProfile?.id ?? dexSpeciesId
+          : storedProfile?.parentSpeciesId ?? storedProfile?.id ?? dexSpeciesId,
+      )
       collectionMap.set(dexSpeciesId, normalizePokemon({
         ...rawPokemon,
         captureId: `dex-${dexSpeciesId}`,

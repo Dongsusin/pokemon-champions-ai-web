@@ -27,6 +27,7 @@
     "validate:signature-z-moves": "node scripts/validateSignatureZMoves.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",
     "validate:pokemon-learnsets": "node scripts/validatePokemonLearnsets.mjs",
+    "validate:pokemon-forms": "node scripts/validatePokemonForms.mjs",
     "validate:training-moves": "node scripts/validateTrainingMoves.mjs",
     "validate:draw-pool": "node scripts/validatePokemonDrawPool.mjs",
     "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",

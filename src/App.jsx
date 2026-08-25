@@ -44,6 +44,7 @@ import {
   TERA_TYPES,
   canGigantamax,
   getSpeciesProfile,
+  isSavablePokemonForm,
   normalizeDynamaxMode,
   normalizePokemon,
 } from './data/trainingData'
@@ -732,9 +733,9 @@ function GameApp({
   const saveTraining = (pokemon) => {
     const profile = getSpeciesProfile(pokemon.speciesId)
 
-    if (profile?.parentSpeciesId) {
+    if (profile?.parentSpeciesId && !isSavablePokemonForm(profile)) {
       gameAudioRef.current?.playEvent('error')
-      showNotice('배틀 기믹 폼은 미리보기 전용입니다. 일반 형태로 돌아온 뒤 저장해주세요.')
+      showNotice('배틀 중에만 변하는 폼은 미리보기 전용입니다. 저장 가능한 폼을 선택해주세요.')
       return false
     }
 

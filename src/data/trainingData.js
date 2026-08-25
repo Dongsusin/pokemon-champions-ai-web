@@ -2,6 +2,12 @@ import pokemonData from './generatedPokemonData.json' with { type: 'json' }
 import gen5SpriteManifest from './generatedGen5SpriteManifest.json' with { type: 'json' }
 import battleMoveData from './generatedBattleMoves.json' with { type: 'json' }
 import { isBattleMoveSupported } from './moveSupportData.js'
+import {
+  createVirtualPokemonFormProfiles,
+  decorateGeneratedPokemonProfile,
+  getPokemonFormMetadata,
+  isSavablePokemonForm as isSavableFormProfile,
+} from './pokemonFormData.js'
 
 const POKEAPI_SPRITE_ROOT = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
 const SHOWDOWN_SPRITE_ROOT = 'https://play.pokemonshowdown.com/sprites'
@@ -14,11 +20,14 @@ const MIRRORED_SHOWDOWN_BACK_KEYS = new Set(['koraidon', 'miraidon'])
 const uniqueSpriteSources = (...sources) => [...new Set(sources.filter(Boolean))]
 
 const spriteSetFor = (entry) => {
-  const [spriteKey, animationMask = 0] = gen5SpriteManifest.profiles[entry.id] ?? []
+  const [manifestSpriteKey, manifestAnimationMask = 0] = gen5SpriteManifest.profiles[entry.id] ?? []
+  const spriteKey = entry.spriteKey ?? manifestSpriteKey
+  const animationMask = Number(entry.animationMask ?? manifestAnimationMask)
+  const isVirtualProfile = Boolean(entry.spriteKey && !gen5SpriteManifest.profiles[entry.id])
   const staticFront = spriteKey
     ? `${SHOWDOWN_SPRITE_ROOT}/gen5/${spriteKey}.png`
     : `${POKEAPI_SPRITE_ROOT}/${entry.id}.png`
-  const pokeApiBack = `${POKEAPI_SPRITE_ROOT}/back/${entry.id}.png`
+  const pokeApiBack = isVirtualProfile ? '' : `${POKEAPI_SPRITE_ROOT}/back/${entry.id}.png`
   const showdownBack = spriteKey ? `${SHOWDOWN_SPRITE_ROOT}/gen5-back/${spriteKey}.png` : ''
   const parentBack = entry.parentSpeciesId
     ? `${POKEAPI_SPRITE_ROOT}/back/${entry.parentSpeciesId}.png`
@@ -27,21 +36,29 @@ const spriteSetFor = (entry) => {
     ? uniqueSpriteSources(pokeApiBack, parentBack, showdownBack)
     : uniqueSpriteSources(pokeApiBack, showdownBack, parentBack)
   const staticBack = staticBackSources[0]
-  const staticFrontShiny = spriteKey
+  const staticFrontShiny = entry.shinyUnavailable
+    ? staticFront
+    : spriteKey
     ? `${SHOWDOWN_SPRITE_ROOT}/gen5-shiny/${spriteKey}.png`
     : `${POKEAPI_SPRITE_ROOT}/shiny/${entry.id}.png`
-  const pokeApiBackShiny = `${POKEAPI_SPRITE_ROOT}/back/shiny/${entry.id}.png`
+  const pokeApiBackShiny = isVirtualProfile || entry.shinyUnavailable
+    ? ''
+    : `${POKEAPI_SPRITE_ROOT}/back/shiny/${entry.id}.png`
   const showdownBackShiny = spriteKey ? `${SHOWDOWN_SPRITE_ROOT}/gen5-back-shiny/${spriteKey}.png` : ''
   const parentBackShiny = entry.parentSpeciesId
     ? `${POKEAPI_SPRITE_ROOT}/back/shiny/${entry.parentSpeciesId}.png`
     : ''
-  const staticBackShinySources = MIRRORED_SHOWDOWN_BACK_KEYS.has(spriteKey)
+  const staticBackShinySources = entry.shinyUnavailable
+    ? staticBackSources
+    : MIRRORED_SHOWDOWN_BACK_KEYS.has(spriteKey)
     ? uniqueSpriteSources(pokeApiBackShiny, parentBackShiny, showdownBackShiny)
     : uniqueSpriteSources(pokeApiBackShiny, showdownBackShiny, parentBackShiny)
   const staticBackShiny = staticBackShinySources[0]
 
   return {
-    icon: `${POKEAPI_SPRITE_ROOT}/versions/generation-viii/icons/${entry.id}.png`,
+    icon: isVirtualProfile
+      ? staticFront
+      : `${POKEAPI_SPRITE_ROOT}/versions/generation-viii/icons/${entry.id}.png`,
     iconFallback: staticFront,
     spriteFront: animationMask & ANIMATED_FRONT
       ? `${SHOWDOWN_SPRITE_ROOT}/gen5ani/${spriteKey}.gif`
@@ -49,10 +66,18 @@ const spriteSetFor = (entry) => {
     spriteBack: animationMask & ANIMATED_BACK
       ? `${SHOWDOWN_SPRITE_ROOT}/gen5ani-back/${spriteKey}.gif`
       : staticBack,
-    spriteFrontShiny: animationMask & ANIMATED_FRONT_SHINY
+    spriteFrontShiny: entry.shinyUnavailable
+      ? animationMask & ANIMATED_FRONT
+        ? `${SHOWDOWN_SPRITE_ROOT}/gen5ani/${spriteKey}.gif`
+        : staticFront
+      : animationMask & ANIMATED_FRONT_SHINY
       ? `${SHOWDOWN_SPRITE_ROOT}/gen5ani-shiny/${spriteKey}.gif`
       : staticFrontShiny,
-    spriteBackShiny: animationMask & ANIMATED_BACK_SHINY
+    spriteBackShiny: entry.shinyUnavailable
+      ? animationMask & ANIMATED_BACK
+        ? `${SHOWDOWN_SPRITE_ROOT}/gen5ani-back/${spriteKey}.gif`
+        : staticBack
+      : animationMask & ANIMATED_BACK_SHINY
       ? `${SHOWDOWN_SPRITE_ROOT}/gen5ani-back-shiny/${spriteKey}.gif`
       : staticBackShiny,
     spriteFrontFallback: staticFront,
@@ -381,6 +406,7 @@ const CURATED_ABILITY_CATALOG = {
   변환자재: { trigger: '기술 사용', description: '배틀에 나온 뒤 처음 사용하는 기술과 같은 타입으로 자신의 타입이 변한다.' },
   천진: { trigger: '능력 변화', description: '공격하거나 공격받을 때 상대의 관련 능력 랭크 변화를 무시한다.' },
   자기과신: { trigger: '상대 쓰러뜨림', description: '자신의 공격으로 상대를 쓰러뜨리면 공격이 1랭크 올라간다.' },
+  초상투영: { trigger: '테라스탈', description: '테라스탈하면 가면에 담긴 기억을 비추어 모습이 변하고 가면에 대응하는 능력이 1랭크 올라간다.' },
 }
 
 export const ABILITY_CATALOG = {
@@ -415,7 +441,18 @@ const profile = (entry) => ({
   ...spriteSetFor(entry),
 })
 
-const PROFILE_LIST = [...pokemonData.species, ...pokemonData.forms].map(profile)
+const GENERATED_PROFILE_LIST = [...pokemonData.species, ...pokemonData.forms]
+  .map(decorateGeneratedPokemonProfile)
+const VIRTUAL_FORM_PROFILES = createVirtualPokemonFormProfiles(GENERATED_PROFILE_LIST)
+const PROFILE_LIST = [...GENERATED_PROFILE_LIST, ...VIRTUAL_FORM_PROFILES].map(profile)
+const RELATED_PROFILE_OPTIONS_BY_BASE_ID = new Map()
+
+PROFILE_LIST.forEach((option) => {
+  const baseSpeciesId = Number(option.parentSpeciesId ?? option.id)
+  const relatedOptions = RELATED_PROFILE_OPTIONS_BY_BASE_ID.get(baseSpeciesId) ?? []
+  relatedOptions.push(option)
+  RELATED_PROFILE_OPTIONS_BY_BASE_ID.set(baseSpeciesId, relatedOptions)
+})
 
 export const SPECIES_PROFILES = Object.fromEntries(PROFILE_LIST.map((entry) => [entry.id, entry]))
 export const NATIONAL_DEX = pokemonData.species.map((entry) => SPECIES_PROFILES[entry.id])
@@ -425,6 +462,11 @@ const EVOLUTION_ROUTE_BY_ID = new Map()
 
 pokemonData.routes.forEach((route) => {
   route.profileIds.forEach((profileId) => EVOLUTION_ROUTE_BY_ID.set(profileId, route))
+})
+
+VIRTUAL_FORM_PROFILES.forEach((form) => {
+  const route = EVOLUTION_ROUTE_BY_ID.get(Number(form.parentSpeciesId))
+  if (route) EVOLUTION_ROUTE_BY_ID.set(form.id, route)
 })
 
 export function getSpeciesProfile(speciesId) {
@@ -439,27 +481,49 @@ export function getEvolutionOptions(speciesId) {
 
 export function getRelatedFormOptions(speciesId) {
   const profile = getSpeciesProfile(speciesId)
-  const route = EVOLUTION_ROUTE_BY_ID.get(Number(speciesId))
-    ?? EVOLUTION_ROUTE_BY_ID.get(profile?.parentSpeciesId)
-  const profileIds = route?.profileIds ?? [profile?.parentSpeciesId, Number(speciesId)]
+  const baseSpeciesId = Number(profile?.parentSpeciesId ?? profile?.id ?? speciesId)
+  return RELATED_PROFILE_OPTIONS_BY_BASE_ID.get(baseSpeciesId) ?? []
+}
 
-  return [...new Set(profileIds)]
-    .map((id) => getSpeciesProfile(id))
-    .filter(Boolean)
+export function getPersistentFormOptions(speciesId) {
+  return getRelatedFormOptions(speciesId)
+    .filter((option) => isSavableFormProfile(option))
+}
+
+export function resolveMoveTriggeredFormSpeciesId(speciesId, moveNames = []) {
+  const profile = getSpeciesProfile(speciesId)
+  if (!profile) return Number(speciesId)
+  const selectedMoves = new Set(moveNames)
+  const matchingForm = getPersistentFormOptions(speciesId).find((option) => {
+    const requiredMove = getPokemonFormMetadata(option).requiredMove
+    return requiredMove && selectedMoves.has(requiredMove)
+  })
+
+  if (matchingForm) return matchingForm.id
+  const currentRequiredMove = getPokemonFormMetadata(profile).requiredMove
+  if (currentRequiredMove && !selectedMoves.has(currentRequiredMove)) {
+    return Number(profile.parentSpeciesId ?? profile.id)
+  }
+  return profile.id
+}
+
+export function getFormMetadata(speciesOrProfile) {
+  const profile = typeof speciesOrProfile === 'object'
+    ? speciesOrProfile
+    : getSpeciesProfile(speciesOrProfile)
+  return getPokemonFormMetadata(profile)
+}
+
+export function isSavablePokemonForm(speciesOrProfile) {
+  const profile = typeof speciesOrProfile === 'object'
+    ? speciesOrProfile
+    : getSpeciesProfile(speciesOrProfile)
+  return isSavableFormProfile(profile)
 }
 
 export function getBattleFormOptions(speciesId) {
   return getRelatedFormOptions(speciesId)
-    .filter((option) => (
-      option?.parentSpeciesId
-      && (
-        option.slug.includes('-mega')
-        || option.slug.endsWith('-gmax')
-        || option.slug.endsWith('-primal')
-        || option.slug.endsWith('-ultra')
-        || option.slug.endsWith('-eternamax')
-      )
-    ))
+    .filter((option) => option?.parentSpeciesId && !isSavableFormProfile(option))
 }
 
 export function getEvolutionSpeciesIds(speciesId) {
@@ -599,10 +663,15 @@ export function normalizePokemon(pokemon) {
   const defaultMoves = getDefaultMoves(species.id)
   const learnableMoveNames = new Set(getLearnableMoves(species.id).map((move) => move.name))
   const requestedMoves = Array.isArray(pokemon.moves) ? pokemon.moves : []
-  const moves = [...new Set([
-    ...requestedMoves.filter((moveName) => learnableMoveNames.has(moveName)),
-    ...defaultMoves,
-  ])].slice(0, 4)
+  const requestedLearnableMoves = [...new Set(
+    requestedMoves.filter((moveName) => learnableMoveNames.has(moveName)),
+  )].slice(0, 4)
+  const requiredMove = getPokemonFormMetadata(species).requiredMove
+  if (requiredMove && !requestedLearnableMoves.includes(requiredMove)) {
+    if (requestedLearnableMoves.length < 4) requestedLearnableMoves.push(requiredMove)
+    else requestedLearnableMoves[requestedLearnableMoves.length - 1] = requiredMove
+  }
+  const moves = [...new Set([...requestedLearnableMoves, ...defaultMoves])].slice(0, 4)
   const defaultTrainingPoints = getDefaultTrainingPoints(species)
   const trainingPoints = Object.fromEntries(STAT_META.map(({ key }) => [
     key,
@@ -649,6 +718,7 @@ export function normalizePokemon(pokemon) {
     hiddenPowerType,
     hiddenPowerTypeConfigured,
     ability,
+    gender: species.gender ?? pokemon.gender ?? null,
     nature,
     moves,
     trainingPoints,

@@ -11,6 +11,7 @@ import {
   normalizePokemon,
   resolveMoveForPokemon,
 } from './trainingData.js'
+import { TYPE_FORM_SLUG_BY_KO } from './pokemonFormData.js'
 import {
   ABILITY_BYPASS_NAMES,
   CONTACT_HIT_ABILITY_RULES,
@@ -341,6 +342,36 @@ const HELD_ITEM_FORM_RULES = Object.freeze({
   'wellspring-mask': { species: 'ogerpon', form: 'ogerpon-wellspring-mask' },
 })
 
+const OGERPON_TERA_FORM_RULES = Object.freeze({
+  ogerpon: { form: 'ogerpon-teal-tera', teraType: '풀', boost: { speed: 1 } },
+  'ogerpon-wellspring-mask': {
+    form: 'ogerpon-wellspring-tera',
+    teraType: '물',
+    boost: { specialDefense: 1 },
+  },
+  'ogerpon-hearthflame-mask': {
+    form: 'ogerpon-hearthflame-tera',
+    teraType: '불꽃',
+    boost: { attack: 1 },
+  },
+  'ogerpon-cornerstone-mask': {
+    form: 'ogerpon-cornerstone-tera',
+    teraType: '바위',
+    boost: { defense: 1 },
+  },
+})
+
+const ENTRY_BATTLE_MODE_FORM_RULES = Object.freeze({
+  'koraidon-limited-build': 'koraidon',
+  'koraidon-sprinting-build': 'koraidon',
+  'koraidon-swimming-build': 'koraidon',
+  'koraidon-gliding-build': 'koraidon',
+  'miraidon-low-power-mode': 'miraidon',
+  'miraidon-drive-mode': 'miraidon',
+  'miraidon-aquatic-mode': 'miraidon',
+  'miraidon-glide-mode': 'miraidon',
+})
+
 function showdownVisualForm(speciesId, slug, name) {
   return Object.freeze({
     speciesId,
@@ -577,7 +608,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     flinched: false,
     confusionTurns: 0,
     infatuated: false,
-    gender: entry.gender ?? null,
+    gender: normalized.gender ?? entry.gender ?? null,
     yawnTurns: 0,
     perishCount: null,
     destinyBondActive: false,
@@ -5071,7 +5102,19 @@ function refreshHeldItemTypeAbility(state, pokemon) {
     ? /(?:-plate|ium-z--held)$/.test(pokemon.heldItemId ?? '')
     : pokemon.heldItemId?.endsWith('-memory')
   const itemType = itemMatchesAbility ? HELD_ITEM_TYPE_BY_ID[pokemon.heldItemId] ?? '노말' : '노말'
-  if (pokemon.types.length === 1 && pokemon.types[0] === itemType) return false
+  const baseProfile = getSpeciesProfile(pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId)
+  const typeFormSlug = TYPE_FORM_SLUG_BY_KO[itemType]
+  const targetFormSlug = itemType === '노말' || !typeFormSlug
+    ? baseProfile?.slug
+    : `${baseProfile?.slug}-${typeFormSlug}`
+  const formChanged = targetFormSlug
+    ? changeBattleForm(state, pokemon, targetFormSlug, pokemon.ability, {
+      hpMode: 'damage',
+      log: false,
+    })
+    : false
+  const typeChanged = pokemon.types.length !== 1 || pokemon.types[0] !== itemType
+  if (!formChanged && !typeChanged) return false
   pokemon.types = [itemType]
   appendLog(state, `${pokemon.name}의 ${pokemon.ability}! ${itemType}타입이 되었다!`, 'ability')
   return true
@@ -5177,7 +5220,7 @@ function refreshEnvironmentDependentAbilities(state, kind = null) {
 function miniorFormSlug(pokemon, meteor) {
   const slug = currentSpeciesSlug(pokemon)
   const color = slug.match(/^minior-(orange|yellow|green|blue|indigo|violet)/)?.[1] ?? 'red'
-  if (meteor) return color === 'red' ? 'minior' : `minior-${color}-meteor`
+  if (meteor) return color === 'red' ? 'minior-red-meteor' : `minior-${color}-meteor`
   return `minior-${color}`
 }
 
@@ -5215,6 +5258,10 @@ function refreshHpFormAbility(state, pokemon, trigger = 'residual') {
 }
 
 function activateFormEntryAbility(state, sideId, activeSlot, pokemon) {
+  const battleModeForm = ENTRY_BATTLE_MODE_FORM_RULES[currentSpeciesSlug(pokemon)]
+  if (battleModeForm) {
+    changeBattleForm(state, pokemon, battleModeForm, '배틀 모드', { hpMode: 'damage' })
+  }
   refreshHeldItemForm(state, pokemon)
   if (pokemon.ability === '테라체인지' && currentSpeciesSlug(pokemon) === 'terapagos') {
     changeBattleForm(state, pokemon, 'terapagos-terastal', pokemon.ability, { hpMode: 'damage' })
@@ -5534,6 +5581,9 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
 
   if (mechanicId === 'tera') {
     side.usedMechanics.tera = true
+    const ogerponTeraRule = pokemon.battleBaseSpeciesId === 1017
+      ? OGERPON_TERA_FORM_RULES[currentSpeciesSlug(pokemon)] ?? OGERPON_TERA_FORM_RULES.ogerpon
+      : null
     const terapagosStellar = pokemon.battleBaseSpeciesId === 1024
       ? relatedFormBySlug(pokemon, 'terapagos-stellar')
       : null
@@ -5545,9 +5595,21 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
       })
       pokemon.teraType = '스텔라'
     }
+    if (ogerponTeraRule) {
+      changeBattleForm(state, pokemon, ogerponTeraRule.form, '테라스탈', {
+        hpMode: 'damage',
+        log: false,
+        animate: false,
+      })
+      pokemon.teraType = ogerponTeraRule.teraType
+    }
     pokemon.teraActive = true
     pokemon.types = terapagosStellar ? [...terapagosStellar.types] : [pokemon.teraType]
     appendLog(state, `${trainerName}의 ${pokemon.name}이(가) ${pokemon.teraType}타입으로 테라스탈했다!`, 'gimmick')
+    if (ogerponTeraRule) {
+      appendLog(state, `${pokemon.name}의 초상투영! 가면에 담긴 힘이 넘쳐흐른다!`, 'ability')
+      changeStages(state, pokemon, ogerponTeraRule.boost)
+    }
     if (pokemon.ability === '제로포밍') {
       clearBattleEnvironment(state, 'weather', pokemon.ability)
       clearBattleEnvironment(state, 'terrain', pokemon.ability)

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import pokemonData from '../src/data/generatedPokemonData.json' with { type: 'json' }
 import {
   chooseAiAction,
   createBattle,
@@ -10,9 +9,9 @@ import {
   getEffectiveBattleStat,
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
-import { getLearnableMoves, getMoveById } from '../src/data/trainingData.js'
+import { getLearnableMoves, getMoveById, SPECIES_PROFILES } from '../src/data/trainingData.js'
 
-const profiles = [...pokemonData.species, ...pokemonData.forms]
+const profiles = Object.values(SPECIES_PROFILES)
 const profileBySlug = new Map(profiles.map((profile) => [profile.slug, profile]))
 
 function pokemon(slug, moveIds = ['protect'], overrides = {}) {
@@ -69,6 +68,18 @@ function turn(state, playerAction, opponentAction) {
     [{ actorSlot: 0, targetSlot: 0, gimmick: null, ...opponentAction }],
     () => 0.5,
   )
+}
+
+{
+  const state = battle([pokemon('jellicent-f')], [pokemon('snorlax')])
+  assert.equal(state.player.team[0].gender, 'F')
+}
+
+{
+  const koraidonState = battle([pokemon('koraidon-limited-build')], [pokemon('snorlax')])
+  assert.equal(koraidonState.player.team[0].slug, 'koraidon')
+  const miraidonState = battle([pokemon('miraidon-low-power-mode')], [pokemon('snorlax')])
+  assert.equal(miraidonState.player.team[0].slug, 'miraidon')
 }
 
 {
@@ -205,6 +216,7 @@ function turn(state, playerAction, opponentAction) {
 
 {
   let state = battle([pokemon('minior')], [pokemon('snorlax')])
+  assert.equal(state.player.team[0].speciesId, profileBySlug.get('minior-red-meteor').id)
   state.player.team[0].hp = Math.floor(state.player.team[0].maxHp / 2)
   state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('minior-red').id)
@@ -369,6 +381,8 @@ function turn(state, playerAction, opponentAction) {
     [pokemon('snorlax')],
   )
   assert.deepEqual(state.player.team[0].types, ['불꽃'])
+  assert.equal(state.player.team[0].slug, 'arceus-fire')
+  assert(state.player.team[0].spriteFront.includes('/arceus-fire.gif'))
 }
 
 {
@@ -386,7 +400,26 @@ function turn(state, playerAction, opponentAction) {
     [pokemon('snorlax')],
   )
   assert.deepEqual(state.player.team[0].types, ['물'])
+  assert.equal(state.player.team[0].slug, 'silvally-water')
+  assert(state.player.team[0].spriteFront.includes('/silvally-water.gif'))
   assert.equal(getBattleMovePreview(state, 'player', 0).type, '물')
+}
+
+{
+  let state = battle(
+    [pokemon('ogerpon', ['protect'], { heldItemId: 'wellspring-mask' })],
+    [pokemon('snorlax', ['protect'])],
+  )
+  assert.equal(state.player.team[0].slug, 'ogerpon-wellspring-mask')
+  state = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'tera' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(state.player.team[0].slug, 'ogerpon-wellspring-tera')
+  assert.equal(state.player.team[0].ability, '초상투영')
+  assert.equal(state.player.team[0].teraType, '물')
+  assert.equal(state.player.team[0].statStages.specialDefense, 1)
 }
 
 {
