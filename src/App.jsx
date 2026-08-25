@@ -67,9 +67,9 @@ import {
   resolveCompetitionMatch,
 } from './data/competitionData'
 import {
-  selectOpponentBattlePokemon,
   selectPlayerBattlePokemon,
 } from './data/battleRules'
+import { selectCounterBattlePokemon } from './data/aiTeamSelection'
 
 const BOX_STORAGE_KEY = 'champions-dex-v2'
 const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
@@ -519,7 +519,7 @@ function GameApp({
 
     const rules = currentMatch.rules
     const playerTeam = selectPlayerBattlePokemon(competition.playerTeam, rules, selectedCaptureIds)
-    const selectedOpponentPokemon = selectOpponentBattlePokemon(opponentTeam.pokemon, rules)
+    const selectedOpponentPokemon = selectCounterBattlePokemon(opponentTeam.pokemon, playerTeam, rules)
 
     setBattleMatch({
       opponent: currentMatch.opponent,

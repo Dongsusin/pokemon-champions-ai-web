@@ -12,6 +12,7 @@ import {
   getForcedBattleAction,
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
+import { selectCounterTeamNumber } from '../src/data/aiTeamSelection.js'
 import { getTrainer, getTrainerTeam } from '../src/data/trainerTeams.js'
 
 const DEFAULT_BENCHMARK_TRAINERS = ['레드', '난천', '단델', '아이리스', '성호', '네모', '지우', 'N']
@@ -24,16 +25,21 @@ const BENCHMARK_TEAMS = (process.env.BATTLE_AI_BENCHMARK_TEAMS ?? '1,2,3')
   .split(',')
   .map((value) => Number.parseInt(value.trim(), 10))
   .filter((value) => value >= 1 && value <= 3)
-const BENCHMARK_SIDES = (process.env.BATTLE_AI_BENCHMARK_SIDES ?? 'player,opponent')
+const BENCHMARK_SIDES = (process.env.BATTLE_AI_BENCHMARK_SIDES ?? 'opponent')
   .split(',')
   .map((value) => value.trim())
   .filter((value) => ['player', 'opponent'].includes(value))
 const BENCHMARK_REPEATS = Math.max(
   1,
-  Number.parseInt(process.env.BATTLE_AI_BENCHMARK_REPEATS ?? '1', 10) || 1,
+  Number.parseInt(process.env.BATTLE_AI_BENCHMARK_REPEATS ?? '3', 10) || 1,
 )
 const INCLUDE_ANALYSIS = process.env.BATTLE_AI_BENCHMARK_ANALYSIS === '1'
 const TRACE_SEED = Number.parseInt(process.env.BATTLE_AI_TRACE_SEED ?? '', 10)
+const USE_COUNTER_TEAMS = (process.env.BATTLE_AI_COUNTER_TEAMS ?? '1') === '1'
+const FORCED_OPPONENT_TEAM_NUMBER = Number.parseInt(
+  process.env.BATTLE_AI_OPPONENT_TEAM ?? '',
+  10,
+)
 const MIN_WIN_RATE = Math.max(0, Math.min(
   1,
   Number.parseFloat(process.env.BATTLE_AI_MIN_WIN_RATE ?? '0.68') || 0,
@@ -225,10 +231,17 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
   const playerTrainer = getTrainer(playerName)
   const opponentTrainer = getTrainer(opponentName)
   const playerTeam = getTrainerTeam(playerName, teamNumber)
-  const opponentTeam = getTrainerTeam(opponentName, teamNumber)
+  const opponentTeamNumber = FORCED_OPPONENT_TEAM_NUMBER >= 1 && FORCED_OPPONENT_TEAM_NUMBER <= 3
+    ? FORCED_OPPONENT_TEAM_NUMBER
+    : USE_COUNTER_TEAMS
+      ? selectCounterTeamNumber(opponentTrainer, playerTeam?.pokemon)
+      : teamNumber
+  const opponentTeam = getTrainerTeam(opponentName, opponentTeamNumber)
   assert(playerTrainer && opponentTrainer && playerTeam && opponentTeam)
 
-  const random = seededRandom(seed * 7919 + 17)
+  const playerDecisionRandom = seededRandom(seed * 7919 + 17)
+  const opponentDecisionRandom = seededRandom(seed * 7919 + 31)
+  const battleRandom = seededRandom(seed * 7919 + 47)
   let state = createBattle({
     playerPokemon: playerTeam.pokemon,
     opponent: { ...opponentTrainer, tier: 'S' },
@@ -246,10 +259,10 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
     state = resolveAutomatedPlayerSwitches(state)
     if (state.winner || state.awaitingPlayerSwitch) break
     const playerActions = advancedSide === 'player'
-      ? chooseAiActionsForSide(state, 'player', random)
+      ? chooseAiActionsForSide(state, 'player', playerDecisionRandom)
       : chooseBaselineActions(state, 'player')
     const opponentActions = advancedSide === 'opponent'
-      ? chooseAiActionsForSide(state, 'opponent', random)
+      ? chooseAiActionsForSide(state, 'opponent', opponentDecisionRandom)
       : chooseBaselineActions(state, 'opponent')
     const traceEntry = trace ? {
       turn: state.turn,
@@ -286,7 +299,7 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
         if (move?.categoryId === 'status') policyStats.statusMoves += 1
       })
     })
-    state = playBattleTurnWithActions(state, playerActions, opponentActions, random)
+    state = playBattleTurnWithActions(state, playerActions, opponentActions, battleRandom)
     if (traceEntry) {
       traceEntry.after = {
         player: sideSnapshot(state.player),
@@ -302,6 +315,7 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
     opponentName,
     advancedSide,
     teamNumber,
+    opponentTeamNumber,
     seed,
     winner,
     advancedWon: winner === advancedSide,
@@ -442,6 +456,10 @@ const summary = {
   trainers: SELECTED_TRAINERS,
   teams: BENCHMARK_TEAMS,
   advancedSides: BENCHMARK_SIDES,
+  counterTeams: USE_COUNTER_TEAMS,
+  forcedOpponentTeam: FORCED_OPPONENT_TEAM_NUMBER >= 1 && FORCED_OPPONENT_TEAM_NUMBER <= 3
+    ? FORCED_OPPONENT_TEAM_NUMBER
+    : null,
   minimumWinRate: Number((MIN_WIN_RATE * 100).toFixed(1)),
   repeats: BENCHMARK_REPEATS,
   matches: results.length,

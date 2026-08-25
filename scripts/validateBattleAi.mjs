@@ -8,7 +8,10 @@ import {
   getActivePokemon,
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
-import { selectCounterTeamNumber } from '../src/data/aiTeamSelection.js'
+import {
+  selectCounterBattlePokemon,
+  selectCounterTeamNumber,
+} from '../src/data/aiTeamSelection.js'
 import { getMoveById } from '../src/data/trainingData.js'
 
 function runtimeMove(moveId) {
@@ -126,6 +129,24 @@ function playerMoveDamage(moveId, configure = () => {}) {
 }
 
 {
+  const state = makeBattle({ opponentCount: 3 })
+  state.opponent.team[0].moves = [runtimeMove('thunderbolt')]
+  state.opponent.team[0].types = ['전기']
+  state.opponent.team[0].hp = 1
+  state.opponent.team[1].moves = [runtimeMove('icebeam')]
+  state.opponent.team[1].types = ['노말']
+  state.opponent.team[1].hp = Math.ceil(state.opponent.team[1].maxHp * 0.3)
+  state.opponent.team[2].moves = [runtimeMove('tackle')]
+  state.opponent.team[2].types = ['비행']
+  state.player.team[0].moves = [runtimeMove('earthquake')]
+  state.player.team[0].types = ['땅']
+  state.player.team[0].stats.attack = 300
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(action.type, 'switch')
+  assert.equal(action.targetIndex, 2)
+}
+
+{
   const state = makeBattle({ opponentCount: 2 })
   state.opponent.team[0].moves = [runtimeMove('icebeam')]
   state.opponent.team[0].stats.speed = 220
@@ -166,6 +187,23 @@ function playerMoveDamage(moveId, configure = () => {}) {
   }
   const playerTeam = [{ speciesId: 485, moveIds: ['magmastorm'], moves: ['마그마스톰'] }]
   assert.equal(selectCounterTeamNumber(trainer, playerTeam, () => 0), 2)
+}
+
+{
+  const roster = [
+    { speciesId: 3, moveIds: ['gigadrain'], moves: ['기가드레인'] },
+    { speciesId: 6, moveIds: ['flamethrower'], moves: ['화염방사'] },
+    { speciesId: 445, moveIds: ['earthquake'], moves: ['지진'] },
+    { speciesId: 25, moveIds: ['thunderbolt'], moves: ['10만볼트'] },
+    { speciesId: 9, moveIds: ['surf'], moves: ['파도타기'] },
+    { speciesId: 143, moveIds: ['bodyslam'], moves: ['누르기'] },
+  ]
+  const playerTeam = [{ speciesId: 485, moveIds: ['magmastorm'], moves: ['마그마스톰'] }]
+  const selection = selectCounterBattlePokemon(roster, playerTeam, {
+    teamRule: { id: 'pick3', battleSize: 3 },
+  })
+  assert.equal(selection.length, 3)
+  assert.ok(selection.some((pokemon) => pokemon.speciesId === 445))
 }
 
 {
@@ -417,4 +455,4 @@ function playerMoveDamage(moveId, configure = () => {}) {
   assert.equal(getActivePokemon(state, 'opponent').name, '피카츄')
 }
 
-process.stdout.write('Validated 27 predictive battle AI and damage decisions.\n')
+process.stdout.write('Validated 29 predictive battle AI and damage decisions.\n')

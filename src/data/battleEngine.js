@@ -3770,11 +3770,11 @@ function orderedActions(state, playerActions, opponentActions, random) {
 }
 
 const AI_TIER_NOISE = {
-  S: 0.4,
-  A: 0.8,
-  B: 1.4,
-  C: 2,
-  D: 2.8,
+  S: 0,
+  A: 0.25,
+  B: 0.55,
+  C: 0.9,
+  D: 1.35,
 }
 
 const AI_STAGE_WEIGHTS = {
@@ -4353,6 +4353,9 @@ const AI_MAX_PLAN_COUNT = 128
 const AI_MAX_RESPONSE_PLAN_COUNT = 12
 const AI_RESPONSE_TEMPERATURE = 18
 const AI_SIMULATION_RANDOM = () => 0.5
+const AI_CONTINUATION_WEIGHT = 0.38
+const AI_CONTINUATION_RESPONSE_COUNT = AI_MAX_RESPONSE_PLAN_COUNT
+const AI_MAX_SWITCH_CANDIDATES = 3
 
 function aiRoleUtility(state, pokemon, sideId) {
   const role = String(pokemon.role ?? '')
@@ -4647,7 +4650,7 @@ export function chooseAiReplacementIndex(state, sideId = 'opponent', activeSlot 
     .find((candidate) => Number.isFinite(candidate.score))?.targetIndex ?? null
 }
 
-function chooseStrategicSwitch(
+function chooseStrategicSwitches(
   state,
   sideId,
   attacker,
@@ -4657,12 +4660,12 @@ function chooseStrategicSwitch(
   planning,
   prediction = false,
 ) {
-  if (attacker.trappedTurns > 0 || attacker.dynamaxActive) return null
+  if (attacker.trappedTurns > 0 || attacker.dynamaxActive) return []
   const side = getSide(state, sideId)
   const opposingSide = getOtherSide(state, sideId)
   const switchOptions = availableBenchIndexes(side)
     .filter((index) => !planning.reservedBenchIndexes?.has(index))
-  if (switchOptions.length === 0) return null
+  if (switchOptions.length === 0) return []
 
   const opposingAttackers = targetSlots.map((slot) => getActivePokemon(state, opposingSide.id, slot)).filter(Boolean)
   const candidates = switchOptions.map((targetIndex) => {
@@ -4684,8 +4687,7 @@ function chooseStrategicSwitch(
         + aiRosterMatchupUtility(state, pokemon, opposingSide.team),
     }
   }).sort((first, second) => second.score - first.score)
-  const bestSwitch = candidates[0]
-  if (!bestSwitch || !Number.isFinite(bestSwitch.score)) return null
+  if (!candidates.some((candidate) => Number.isFinite(candidate.score))) return []
 
   const currentThreat = aiIncomingThreatRatio(state, attacker, opposingAttackers)
   const currentHpRatio = attacker.hp / Math.max(1, attacker.maxHp)
@@ -4716,26 +4718,31 @@ function chooseStrategicSwitch(
   const urgentSwitch = attacker.perishCount === 1 || attacker.yawnTurns === 1
   const expectedKnockout = currentThreat * attacker.maxHp >= attacker.hp && !canKnockOutBeforeHit
   const badMatchup = !Number.isFinite(moveDecision?.score) || moveDecision.score < (prediction ? 58 : 48)
-  const advantage = bestSwitch.score - stayScore
+  if (!urgentSwitch && canKnockOutBeforeHit) return []
+  if (!urgentSwitch && aiPositiveStageTotal(attacker) >= 3) return []
+  if (!urgentSwitch && !expectedKnockout && !badMatchup) return []
 
-  if (!urgentSwitch && canKnockOutBeforeHit) return null
-  if (!urgentSwitch && aiPositiveStageTotal(attacker) >= 3) return null
-  if (!urgentSwitch && !expectedKnockout && !badMatchup) return null
-  if (!urgentSwitch && advantage < (expectedKnockout ? 12 : prediction ? 10 : 18)) return null
-  return {
-    action: {
-      type: 'switch',
-      actorSlot: activeSlot,
-      targetIndex: bestSwitch.targetIndex,
-    },
-    score: bestSwitch.score
-      + (urgentSwitch ? 100 : 0)
-      + (expectedKnockout ? 96 : 0)
-      + (badMatchup ? 18 : 0),
-    estimatedDamage: 0,
-    rawDamage: 0,
-    priority: 10,
-  }
+  const minimumAdvantage = expectedKnockout ? 12 : prediction ? 10 : 18
+  return candidates
+    .filter((candidate) => (
+      Number.isFinite(candidate.score)
+      && (urgentSwitch || candidate.score - stayScore >= minimumAdvantage)
+    ))
+    .slice(0, AI_MAX_SWITCH_CANDIDATES)
+    .map((candidate) => ({
+      action: {
+        type: 'switch',
+        actorSlot: activeSlot,
+        targetIndex: candidate.targetIndex,
+      },
+      score: candidate.score
+        + (urgentSwitch ? 100 : 0)
+        + (expectedKnockout ? 96 : 0)
+        + (badMatchup ? 18 : 0),
+      estimatedDamage: 0,
+      rawDamage: 0,
+      priority: 10,
+    }))
 }
 
 function aiDecisionKey(decision) {
@@ -4764,12 +4771,21 @@ function selectDiverseAiDecisions(candidates, limit) {
   })
   const requiredCandidates = [
     candidates.find((candidate) => candidate.action.type === 'move' && !candidate.action.gimmick),
-    candidates.find((candidate) => candidate.action.type === 'switch'),
+    ...candidates
+      .filter((candidate) => candidate.action.type === 'switch')
+      .slice(0, AI_MAX_SWITCH_CANDIDATES),
   ].filter(Boolean)
+  const requiredKeys = new Set(requiredCandidates.map(aiDecisionKey))
   requiredCandidates.forEach((candidate) => {
     const key = aiDecisionKey(candidate)
     if (selected.some((selectedCandidate) => aiDecisionKey(selectedCandidate) === key)) return
-    if (selected.length >= limit) selected.pop()
+    if (selected.length >= limit) {
+      const replaceIndex = selected.findLastIndex((selectedCandidate) => (
+        !requiredKeys.has(aiDecisionKey(selectedCandidate))
+      ))
+      if (replaceIndex >= 0) selected.splice(replaceIndex, 1)
+      else selected.pop()
+    }
     selected.push(candidate)
   })
   return selected.sort((first, second) => second.score - first.score)
@@ -4828,7 +4844,7 @@ function rankSideDecisions(
         })
         const repeatPredictionBias = prediction && attacker.lastMoveIndex === moveIndex ? 16 : 0
         const score = evaluation.score + repeatPredictionBias
-          + (Number.isFinite(evaluation.score) ? random() * noiseRange : 0)
+          + (Number.isFinite(evaluation.score) && noiseRange > 0 ? random() * noiseRange : 0)
         candidates.push({
           action: {
             ...(forcedAction ?? { type: 'move', moveIndex }),
@@ -4853,7 +4869,7 @@ function rankSideDecisions(
   }
   if (forcedAction) return [moveDecision]
 
-  const switchDecision = chooseStrategicSwitch(
+  const switchDecisions = chooseStrategicSwitches(
     state,
     sideId,
     attacker,
@@ -4863,7 +4879,7 @@ function rankSideDecisions(
     planning,
     prediction,
   )
-  if (switchDecision) candidates.push(switchDecision)
+  candidates.push(...switchDecisions)
   candidates.sort((first, second) => second.score - first.score)
   return selectDiverseAiDecisions(candidates, limit)
 }
@@ -5024,6 +5040,25 @@ function simulateAiActionPlans(state, sideId, ownDecisions, responseDecisions) {
   return simulation
 }
 
+function simulateAiGreedyContinuation(state, sideId) {
+  if (state.winner || state.rules?.format?.activeSlots !== 1 || state.rules?.format?.rotation) return state
+  const responseSideId = getOtherSide(state, sideId).id
+  const ownGroups = createSideCandidateGroups(state, sideId, () => 0, 5, null, false)
+  const responseGroups = createSideCandidateGroups(state, responseSideId, () => 0, 5, null, true)
+  if (
+    ownGroups.length === 0
+    || responseGroups.length === 0
+    || ownGroups.some((group) => group.length === 0)
+    || responseGroups.some((group) => group.length === 0)
+  ) return state
+  const ownPlan = buildAiActionPlans(state, sideId, ownGroups, 1)[0]
+  const responsePlan = buildAiActionPlans(state, responseSideId, responseGroups, 1)[0]
+  if (!ownPlan || !responsePlan) return state
+  const continuation = cloneBattle(state)
+  continuation.turn += 1
+  return simulateAiActionPlans(continuation, sideId, ownPlan.decisions, responsePlan.decisions)
+}
+
 function aiResponseWeights(responsePlans) {
   if (responsePlans.length === 0) return []
   const bestScore = responsePlans[0].score
@@ -5050,8 +5085,14 @@ function scorePredictiveAiPlan(state, sideId, ownPlan, responsePlans, baseAdvant
   const responseWeights = aiResponseWeights(resolvedResponses)
   const outcomes = resolvedResponses.map((responsePlan, index) => {
     const simulation = simulateAiActionPlans(state, sideId, ownPlan.decisions, responsePlan.decisions)
+    const immediateScore = aiBoardAdvantage(simulation, sideId) - baseAdvantage
+    const continuation = index < AI_CONTINUATION_RESPONSE_COUNT
+      ? simulateAiGreedyContinuation(simulation, sideId)
+      : simulation
+    const continuationScore = aiBoardAdvantage(continuation, sideId) - baseAdvantage
     return {
-      score: aiBoardAdvantage(simulation, sideId) - baseAdvantage,
+      score: immediateScore * (1 - AI_CONTINUATION_WEIGHT)
+        + continuationScore * AI_CONTINUATION_WEIGHT,
       weight: responseWeights[index] ?? 1,
     }
   })
@@ -5103,7 +5144,7 @@ function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
     .map((plan) => ({
       ...plan,
       predictiveScore: scorePredictiveAiPlan(state, sideId, plan, responsePlans, baseAdvantage)
-        + random() * finalNoise,
+        + (finalNoise > 0 ? random() * finalNoise : 0),
     }))
     .sort((first, second) => second.predictiveScore - first.predictiveScore)[0] ?? null
 }

@@ -53,6 +53,7 @@ const SPEED_CONTROL_MOVE_IDS = new Set([
   'electroweb',
   'stickyweb',
 ])
+const MATCHUP_POKEMON_CACHE = new WeakMap()
 
 function resolveMoves(entry) {
   const movesById = (entry.moveIds ?? []).map((moveId) => getMoveById(moveId)).filter(Boolean)
@@ -66,6 +67,8 @@ function resolveMoves(entry) {
 }
 
 function createMatchupPokemon(entry) {
+  const cached = entry && typeof entry === 'object' ? MATCHUP_POKEMON_CACHE.get(entry) : null
+  if (cached) return cached
   const species = getSpeciesProfile(entry.speciesId)
   const nature = NATURE_OPTIONS.find((option) => option.label === entry.nature)
   const stats = Object.fromEntries(STAT_META.map((stat, index) => {
@@ -77,12 +80,14 @@ function createMatchupPokemon(entry) {
       : Math.floor((baseStat + trainingPoint + 20) * natureMultiplier)
     return [stat.key, value]
   }))
-  return {
+  const matchupPokemon = {
     ...entry,
     types: entry.types ?? species?.types ?? ['노말'],
     stats,
     moves: resolveMoves(entry),
   }
+  if (entry && typeof entry === 'object') MATCHUP_POKEMON_CACHE.set(entry, matchupPokemon)
+  return matchupPokemon
 }
 
 function abilityTypeImmunity(pokemon) {
@@ -169,7 +174,11 @@ export function scoreTrainerTeamAgainstPlayer(team, playerTeam) {
     total + Math.max(...playerPokemon.map((target) => duelScore(pokemon, target))) * 0.2
   ), 0)
   const typeDiversity = new Set(candidatePokemon.flatMap((pokemon) => pokemon.types)).size * 3
-  const mechanicScore = Math.min(24, (team.battleGimmicks?.length ?? 0) * 6)
+  const configuredMechanics = new Set(candidatePokemon.flatMap((pokemon) => pokemon.battleMechanics ?? []))
+  const mechanicScore = Math.min(30, Math.max(
+    team.battleGimmicks?.length ?? 0,
+    configuredMechanics.size,
+  ) * 6)
 
   return counterCoverage
     + rosterUsefulness
@@ -192,4 +201,37 @@ export function selectCounterTeamNumber(trainer, playerTeam, random = Math.rando
       score: scoreTrainerTeamAgainstPlayer(team, playerTeam),
     }))
     .sort((first, second) => second.score - first.score || first.number - second.number)[0]?.number ?? 1
+}
+
+function buildCombinations(entries, count, startIndex = 0, selected = [], combinations = []) {
+  if (selected.length === count) {
+    combinations.push([...selected])
+    return combinations
+  }
+
+  for (let index = startIndex; index <= entries.length - (count - selected.length); index += 1) {
+    selected.push(entries[index])
+    buildCombinations(entries, count, index + 1, selected, combinations)
+    selected.pop()
+  }
+  return combinations
+}
+
+export function selectCounterBattlePokemon(pokemon, playerTeam, rules) {
+  const battleSize = Math.min(
+    pokemon.length,
+    Math.max(1, Math.floor(Number(rules?.teamRule?.battleSize) || pokemon.length)),
+  )
+  if (battleSize >= pokemon.length || !Array.isArray(playerTeam) || playerTeam.length === 0) {
+    return [...pokemon]
+  }
+
+  return buildCombinations(pokemon, battleSize)
+    .map((selection) => ({
+      selection,
+      score: scoreTrainerTeamAgainstPlayer({ pokemon: selection }, playerTeam),
+      key: selection.map((entry) => entry.speciesId).join(':'),
+    }))
+    .sort((first, second) => second.score - first.score || first.key.localeCompare(second.key))[0]?.selection
+    ?? pokemon.slice(0, battleSize)
 }
