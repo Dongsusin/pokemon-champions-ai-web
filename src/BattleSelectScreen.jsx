@@ -17,6 +17,12 @@ import {
 import { BATTLE_ITEMS } from './data/shopData'
 import { BATTLE_TEAM_SIZE } from './data/teamData'
 import { typeClassName } from './data/trainingData'
+import {
+  AI_BATTLE_DIFFICULTIES,
+  HARD_AI_BOOST_STAGES,
+  getAiBattleDifficultyLabel,
+  normalizeAiBattleDifficulty,
+} from './data/battleRules'
 
 const ITEM_BY_ID = new Map(BATTLE_ITEMS.map((item) => [item.id, item]))
 
@@ -61,6 +67,8 @@ function BattleSelectScreen({
   onStartMode,
 }) {
   const [selectedModeId, setSelectedModeId] = useState(BATTLE_MODES[0].id)
+  const [selectedDifficultyId, setSelectedDifficultyId] = useState('normal')
+  const [hardBoostStage, setHardBoostStage] = useState(HARD_AI_BOOST_STAGES[0])
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const activeTeamPokemon = useMemo(() => (
     (activeTeam?.pokemonIds ?? [])
@@ -68,6 +76,10 @@ function BattleSelectScreen({
       .filter(Boolean)
   ), [activeTeam?.pokemonIds, pokemon])
   const selectedMode = BATTLE_MODES.find((mode) => mode.id === selectedModeId) ?? BATTLE_MODES[0]
+  const selectedDifficulty = normalizeAiBattleDifficulty({
+    id: selectedDifficultyId,
+    boostStage: hardBoostStage,
+  })
   const partySlots = Array.from(
     { length: BATTLE_TEAM_SIZE },
     (_, index) => activeTeamPokemon[index] ?? null,
@@ -215,6 +227,50 @@ function BattleSelectScreen({
             })}
           </div>
 
+          <section className={`battle-ai-difficulty difficulty-${selectedDifficulty.id}`} aria-label="AI 난이도 선택">
+            <header>
+              <span>
+                <small>AI DIFFICULTY</small>
+                <strong>{getAiBattleDifficultyLabel(selectedDifficulty)}</strong>
+              </span>
+              <em>{selectedDifficulty.description}</em>
+            </header>
+            <div className="battle-ai-difficulty-controls">
+              <div className="battle-ai-difficulty-options">
+                {AI_BATTLE_DIFFICULTIES.map((difficulty) => (
+                  <button
+                    className={difficulty.id === selectedDifficulty.id ? 'selected' : ''}
+                    type="button"
+                    aria-pressed={difficulty.id === selectedDifficulty.id}
+                    key={difficulty.id}
+                    onClick={() => setSelectedDifficultyId(difficulty.id)}
+                  >
+                    <small>{difficulty.shortLabel}</small>
+                    <strong>{difficulty.label}</strong>
+                  </button>
+                ))}
+              </div>
+              <div className={`battle-hard-boost-selector${selectedDifficulty.id === 'hard' ? ' visible' : ''}`}>
+                <span>시작 능력 단계</span>
+                <div>
+                  {HARD_AI_BOOST_STAGES.map((stage) => (
+                    <button
+                      className={stage === hardBoostStage ? 'selected' : ''}
+                      type="button"
+                      disabled={selectedDifficulty.id !== 'hard'}
+                      aria-label={`하드 난이도 시작 능력 ${stage}단계`}
+                      aria-pressed={stage === hardBoostStage}
+                      key={stage}
+                      onClick={() => setHardBoostStage(stage)}
+                    >
+                      +{stage}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
           <footer className="battle-mode-confirm-bar">
             <span className={`battle-mode-confirm-icon accent-${selectedMode.accent}`}>
               {selectedMode.id === 'tournament' ? <Crown size={23} /> : <Medal size={23} />}
@@ -222,12 +278,14 @@ function BattleSelectScreen({
             <span>
               <small>SELECTED COMPETITION</small>
               <strong>{selectedMode.title}</strong>
-              <em>{activeTeam?.name ?? '팀 1'} · {activeTeamPokemon.length}/{BATTLE_TEAM_SIZE}마리</em>
+              <em>
+                {activeTeam?.name ?? '팀 1'} · {activeTeamPokemon.length}/{BATTLE_TEAM_SIZE}마리 · AI {getAiBattleDifficultyLabel(selectedDifficulty)}
+              </em>
             </span>
             <button
               type="button"
               disabled={!isBattleReady}
-              onClick={() => onStartMode(selectedMode.id)}
+              onClick={() => onStartMode(selectedMode.id, selectedDifficulty)}
             >
               <Swords size={18} />
               {isBattleReady ? '이 모드로 시작' : '팀 편성 후 참가'}

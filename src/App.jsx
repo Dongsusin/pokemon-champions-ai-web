@@ -67,6 +67,7 @@ import {
   resolveCompetitionMatch,
 } from './data/competitionData'
 import {
+  getAiBattleDifficultyLabel,
   selectPlayerBattlePokemon,
 } from './data/battleRules'
 import { selectCounterBattlePokemon } from './data/aiTeamSelection'
@@ -483,7 +484,7 @@ function GameApp({
     setActiveTeamId(teamId)
   }
 
-  const startBattleMode = (battleMode) => {
+  const startBattleMode = (battleMode, aiDifficulty = 'normal') => {
     if (teamIds.length !== BATTLE_TEAM_SIZE) {
       gameAudioRef.current?.playEvent('error')
       showNotice(`배틀에 참가하려면 ${activeTeam?.name ?? '선택한 팀'}에 포켓몬 6마리를 편성해주세요.`)
@@ -497,6 +498,7 @@ function GameApp({
       battleMode,
       activeTeamPokemon,
       activeTeam.name,
+      aiDifficulty,
     )
     const battleModeName = battleMode === 'league' ? '8인 리그전' : '128강 토너먼트'
 
@@ -504,7 +506,7 @@ function GameApp({
     setBattleMatch(null)
     setScreen('competition')
     gameAudioRef.current?.playEvent('competition')
-    showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 등록을 완료했습니다.`)
+    showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 완료 · AI ${getAiBattleDifficultyLabel(nextCompetition.aiDifficulty)}`)
   }
 
   const startCompetitionBattle = (selectedCaptureIds = []) => {

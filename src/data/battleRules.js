@@ -60,12 +60,61 @@ export const BATTLE_GIMMICK_RESTRICTIONS = [
   { id: 'primal', label: '원시회귀 사용 불가', shortLabel: '원시회귀 금지', description: '이번 대전에서는 원시회귀를 사용할 수 없습니다. 다른 배틀 기믹은 사용할 수 있습니다.' },
 ]
 
+export const AI_BATTLE_DIFFICULTIES = [
+  {
+    id: 'easy',
+    label: '이지',
+    shortLabel: 'EASY',
+    description: '상대 포켓몬은 지닌 도구 없이 출전하며 모든 배틀 기믹을 사용하지 않습니다.',
+  },
+  {
+    id: 'normal',
+    label: '노말',
+    shortLabel: 'NORMAL',
+    description: '상대 팀과 AI가 현재 설정 그대로 대전합니다.',
+  },
+  {
+    id: 'hard',
+    label: '하드',
+    shortLabel: 'HARD',
+    description: '상대의 모든 포켓몬은 HP를 제외한 능력 랭크가 선택한 단계만큼 오른 상태로 시작합니다.',
+  },
+]
+
+export const HARD_AI_BOOST_STAGES = [1, 2, 3]
+
+export function normalizeAiBattleDifficulty(value = 'normal') {
+  const requestedId = typeof value === 'string' ? value : value?.id
+  const definition = AI_BATTLE_DIFFICULTIES.find((entry) => entry.id === requestedId)
+    ?? AI_BATTLE_DIFFICULTIES.find((entry) => entry.id === 'normal')
+  const requestedBoostStage = Number(value?.boostStage)
+  const boostStage = definition.id === 'hard'
+    ? Math.max(1, Math.min(3, Number.isFinite(requestedBoostStage) ? Math.floor(requestedBoostStage) : 1))
+    : 0
+
+  return {
+    ...definition,
+    boostStage,
+    description: definition.id === 'hard'
+      ? `상대의 모든 포켓몬은 HP를 제외한 능력 랭크가 ${boostStage}단계 오른 상태로 시작합니다. 이후 능력 변화는 기존처럼 -6~+6단계까지 적용됩니다.`
+      : definition.description,
+  }
+}
+
+export function getAiBattleDifficultyLabel(value) {
+  const difficulty = normalizeAiBattleDifficulty(value)
+  return difficulty.id === 'hard'
+    ? `${difficulty.label} · +${difficulty.boostStage}단계`
+    : difficulty.label
+}
+
 const BATTLE_RULE_COLLECTIONS = {
   weather: BATTLE_WEATHER_DEFINITIONS,
   terrain: BATTLE_TERRAINS,
   format: BATTLE_FORMATS,
   team: BATTLE_TEAM_RULES,
   gimmick: BATTLE_GIMMICK_RESTRICTIONS,
+  difficulty: AI_BATTLE_DIFFICULTIES,
 }
 
 export function getBattleRuleDescription(kind, rule) {
@@ -96,7 +145,7 @@ function stableShuffle(entries, seed) {
   return shuffled
 }
 
-export function createBattleMatchRules(random = Math.random) {
+export function createBattleMatchRules(random = Math.random, aiDifficulty = 'normal') {
   const weather = randomEntry(BATTLE_WEATHERS, random)
   const terrain = randomEntry(BATTLE_TERRAINS, random)
   const format = randomEntry(BATTLE_FORMATS, random)
@@ -111,6 +160,7 @@ export function createBattleMatchRules(random = Math.random) {
     teamRule,
     disabledGimmickId: gimmickRestriction.id,
     gimmickRestriction,
+    aiDifficulty: normalizeAiBattleDifficulty(aiDifficulty),
     opponentSelectionSeed: Math.floor(random() * 2_147_483_647),
   }
 }
@@ -122,6 +172,7 @@ export function getBattleRuleSummary(rules) {
     { id: 'format', label: rules.format.label },
     { id: 'gimmick', label: rules.gimmickRestriction.label },
     { id: 'team', label: rules.teamRule.label },
+    { id: 'difficulty', label: getAiBattleDifficultyLabel(rules.aiDifficulty) },
   ]
 }
 

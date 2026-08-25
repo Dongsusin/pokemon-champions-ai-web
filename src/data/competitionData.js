@@ -1,5 +1,5 @@
 import { TRAINERS, getTrainerTeam } from './trainerTeams.js'
-import { createBattleMatchRules } from './battleRules.js'
+import { createBattleMatchRules, normalizeAiBattleDifficulty } from './battleRules.js'
 import { selectCounterTeamNumber } from './aiTeamSelection.js'
 
 export const PLAYER_PARTICIPANT_ID = 'player'
@@ -69,7 +69,17 @@ function createLeagueSchedule(participantIds) {
   return rounds
 }
 
-export function createCompetition(mode, playerTeam, teamName, random = Math.random) {
+export function createCompetition(
+  mode,
+  playerTeam,
+  teamName,
+  difficultyOrRandom = 'normal',
+  fallbackRandom = Math.random,
+) {
+  const random = typeof difficultyOrRandom === 'function' ? difficultyOrRandom : fallbackRandom
+  const aiDifficulty = normalizeAiBattleDifficulty(
+    typeof difficultyOrRandom === 'function' ? 'normal' : difficultyOrRandom,
+  )
   const rules = COMPETITION_RULES[mode] ?? COMPETITION_RULES.tournament
   const trainers = shuffle(TRAINERS, random)
     .slice(0, rules.entrantCount - 1)
@@ -85,7 +95,8 @@ export function createCompetition(mode, playerTeam, teamName, random = Math.rand
     roundHistory: [],
     status: 'active',
     championId: null,
-    currentMatchRules: createBattleMatchRules(random),
+    aiDifficulty,
+    currentMatchRules: createBattleMatchRules(random, aiDifficulty),
   }
 
   if (mode === 'league') {
@@ -300,7 +311,10 @@ export function resolveCompetitionMatch(
     ? leagueResult(competition, playerWon, random, battleSummary)
     : tournamentResult(competition, playerWon, random, battleSummary)
   return resolvedCompetition.status === 'active'
-    ? { ...resolvedCompetition, currentMatchRules: createBattleMatchRules(random) }
+    ? {
+        ...resolvedCompetition,
+        currentMatchRules: createBattleMatchRules(random, resolvedCompetition.aiDifficulty),
+      }
     : resolvedCompetition
 }
 

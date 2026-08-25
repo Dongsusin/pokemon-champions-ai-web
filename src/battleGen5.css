@@ -4753,6 +4753,10 @@
   background: #e58cff;
 }
 
+.app-shell.battle-view .battle-rule-badge.rule-difficulty::after {
+  background: #ff826f;
+}
+
 .app-shell.battle-view .battle-rule-badge-category {
   overflow: hidden;
   padding-left: 3px;
@@ -5699,6 +5703,10 @@
 
   .app-shell.battle-view .battle-rule-badge.rule-gimmick {
     max-width: 86px;
+  }
+
+  .app-shell.battle-view .battle-rule-badge.rule-difficulty {
+    max-width: 82px;
   }
 
   .app-shell.battle-view .battle-rule-badge > strong {

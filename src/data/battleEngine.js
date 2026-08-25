@@ -22,7 +22,11 @@ import {
   WEATHER_FAMILY_BY_ID,
   WEATHER_FORM_RULES,
 } from './abilitySupportData.js'
-import { BATTLE_TERRAINS, BATTLE_WEATHER_DEFINITIONS } from './battleRules.js'
+import {
+  BATTLE_TERRAINS,
+  BATTLE_WEATHER_DEFINITIONS,
+  normalizeAiBattleDifficulty,
+} from './battleRules.js'
 import { resolveMaxMove } from './maxMoveData.js'
 import {
   HEAL_MOVE_IDS,
@@ -83,6 +87,8 @@ const STAT_LABELS = {
   accuracy: '명중률',
   evasion: '회피율',
 }
+
+const AI_DIFFICULTY_STAGE_STATS = Object.keys(STAT_LABELS)
 
 const SHOWDOWN_STAT_IDS = {
   atk: 'attack',
@@ -410,6 +416,39 @@ function createSide(id, name, entries, teamGimmicks = [], leadName = '', activeS
   }
 }
 
+function applyOpponentAiDifficulty(side, difficultyValue) {
+  const difficulty = normalizeAiBattleDifficulty(difficultyValue)
+
+  if (difficulty.id === 'easy') {
+    side.team.forEach((pokemon) => {
+      pokemon.heldItemId = ''
+      pokemon.heldItemName = ''
+      pokemon.hadHeldItem = false
+      pokemon.consumedItem = false
+      pokemon.battleMechanics = []
+      pokemon.gimmickFormId = null
+    })
+  }
+
+  if (difficulty.id === 'hard') {
+    side.team.forEach((pokemon) => {
+      AI_DIFFICULTY_STAGE_STATS.forEach((statKey) => {
+        pokemon.statStages[statKey] = difficulty.boostStage
+      })
+      pokemon.difficultyBoostStage = difficulty.boostStage
+      pokemon.difficultyBoostPending = true
+    })
+  }
+}
+
+function applyPendingDifficultyBoost(pokemon) {
+  if (!pokemon?.difficultyBoostPending || !pokemon.difficultyBoostStage) return
+  AI_DIFFICULTY_STAGE_STATS.forEach((statKey) => {
+    pokemon.statStages[statKey] = pokemon.difficultyBoostStage
+  })
+  pokemon.difficultyBoostPending = false
+}
+
 function appendLog(state, message, tone = 'normal') {
   state.log.push({
     id: `${state.turn}-${state.log.length}-${message}`,
@@ -427,6 +466,7 @@ function cloneBattleRules(rules) {
     format: { ...rules.format },
     teamRule: { ...rules.teamRule },
     gimmickRestriction: { ...rules.gimmickRestriction },
+    aiDifficulty: normalizeAiBattleDifficulty(rules.aiDifficulty),
   }
 }
 
@@ -2301,6 +2341,7 @@ function inferConfiguredMechanics(pokemon) {
 
 export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot = null) {
   if (!state || state.winner) return []
+  if (sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'easy') return []
   const side = getSide(state, sideId)
   const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted) return []
@@ -3360,6 +3401,7 @@ function performSwitch(
   side.activeIndex = side.activeIndexes[state.rules?.format?.rotation ? side.rotationSlot : 0] ?? targetIndex
   refreshStrongWeatherSource(state)
   clearSwitchVolatiles(target)
+  applyPendingDifficultyBoost(target)
   appendLog(
     state,
     sideId === 'player'
@@ -5177,6 +5219,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     teamRule: { id: 'full', label: '6대6', battleSize: playerPokemon.length },
     disabledGimmickId: null,
     gimmickRestriction: { id: null, label: '제한 없음' },
+    aiDifficulty: normalizeAiBattleDifficulty(),
   }
   const resolvedRules = cloneBattleRules(battleRules)
   const activeSlots = Math.max(1, Math.min(
@@ -5193,6 +5236,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     opponentTeam.strategy?.lead,
     activeSlots,
   )
+  applyOpponentAiDifficulty(opponentSide, resolvedRules.aiDifficulty)
   const state = {
     turn: 1,
     phase: 'command',
@@ -5221,9 +5265,21 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     state.opponent.activeIndex = opponentLeadIndexes[0]
     state.opponent.rotationSlot = 0
   }
+  getActivePokemonList(state, 'opponent').forEach((pokemon) => {
+    pokemon.difficultyBoostPending = false
+  })
 
   appendLog(state, `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
   appendLog(state, `${resolvedRules.weather.label} · ${resolvedRules.terrain.label} · ${resolvedRules.format.label}`, 'field')
+  if (resolvedRules.aiDifficulty.id === 'easy') {
+    appendLog(state, '이지 난이도: 상대 포켓몬은 지닌 도구와 배틀 기믹을 사용하지 않는다.', 'field')
+  } else if (resolvedRules.aiDifficulty.id === 'hard') {
+    appendLog(
+      state,
+      `하드 난이도: 상대 포켓몬의 모든 능력 랭크가 ${resolvedRules.aiDifficulty.boostStage}단계 오른 상태로 시작한다!`,
+      'status',
+    )
+  }
   appendLog(
     state,
     `${opponent.name}은(는) ${getActivePokemonList(state, 'opponent').map((pokemon) => pokemon.name).join(', ')}을(를) 내보냈다!`,

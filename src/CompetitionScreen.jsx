@@ -103,7 +103,17 @@ function BattleRuleBoard({ rules }) {
     <div className="competition-battle-rules" aria-label="이번 경기 규칙">
       {getBattleRuleSummary(rules).map((rule) => (
         <span className={`rule-${rule.id}`} key={rule.id}>
-          <small>{rule.id === 'environment' ? 'FIELD' : rule.id === 'format' ? 'FORMAT' : rule.id === 'gimmick' ? 'LIMIT' : 'ROSTER'}</small>
+          <small>
+            {rule.id === 'environment'
+              ? 'FIELD'
+              : rule.id === 'format'
+                ? 'FORMAT'
+                : rule.id === 'gimmick'
+                  ? 'LIMIT'
+                  : rule.id === 'difficulty'
+                    ? 'AI LEVEL'
+                    : 'ROSTER'}
+          </small>
           <strong>{rule.label}</strong>
         </span>
       ))}

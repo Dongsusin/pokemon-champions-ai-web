@@ -55,7 +55,7 @@ import {
   getMoveAnimationProfile,
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
-import { getBattleRuleDescription } from './data/battleRules'
+import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/battleRules'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
 function animationClassToken(value = '') {
@@ -1605,7 +1605,7 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
         <strong>VS</strong>
         <small>{rules.teamRule.shortLabel} · {rules.format.label}</small>
         <span>{rules.weather.label} · {rules.terrain.label}</span>
-        <em>{rules.gimmickRestriction.label}</em>
+        <em>{rules.gimmickRestriction.label} · AI {getAiBattleDifficultyLabel(rules.aiDifficulty)}</em>
       </div>
       <article className="battle-intro-trainer opponent">
         <TrainerSprite trainer={opponent} className="battle-intro-trainer-sprite" />
@@ -2112,6 +2112,12 @@ function BattleScreen({
               category="기믹"
               label={battle.rules.gimmickRestriction.label}
               description={getBattleRuleDescription('gimmick', battle.rules.gimmickRestriction)}
+            />
+            <BattleRuleBadge
+              id="difficulty"
+              category="AI"
+              label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty)}
+              description={getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
             />
           </div>
           <div className="battle-header-actions">
