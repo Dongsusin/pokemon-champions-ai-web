@@ -35,7 +35,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { createBattleAudio } from './battleAudio'
-import BattlePokemonStatusTooltip from './BattlePokemonStatusTooltip'
+import BattlePokemonStatusTooltip, { battleStatStageEntries } from './BattlePokemonStatusTooltip'
 import PokemonSprite from './PokemonSprite'
 import TrainerSprite from './TrainerSprite'
 import {

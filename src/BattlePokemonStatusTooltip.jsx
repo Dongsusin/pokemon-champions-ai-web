@@ -34,7 +34,7 @@ function hpTone(pokemon) {
   return 'healthy'
 }
 
-function battleStatStageEntries(pokemon) {
+export function battleStatStageEntries(pokemon) {
   return BATTLE_STAT_STAGE_LABELS
     .map(([id, label]) => ({ id, label, stage: pokemon.statStages?.[id] ?? 0 }))
     .filter(({ stage }) => stage !== 0)
