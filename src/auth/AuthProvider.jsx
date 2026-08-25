@@ -4,11 +4,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import {
   GoogleAuthProvider,
   browserLocalPersistence,
+  browserSessionPersistence,
   onAuthStateChanged,
   setPersistence,
   signInWithPopup,
@@ -23,6 +25,9 @@ import { ensurePlayerProfile } from './playerProfile'
 
 const AuthContext = createContext(null)
 
+export const AUTH_AUTO_LOGIN_STORAGE_KEY = 'champions-auto-login-v1'
+export const LOCAL_GUEST_STORAGE_KEY = 'champions-local-guest-v1'
+
 const AUTH_ERROR_MESSAGES = {
   'auth/account-exists-with-different-credential': '같은 이메일로 연결된 다른 로그인 방식이 있습니다.',
   'auth/cancelled-popup-request': 'Google 로그인 요청이 취소되었습니다.',
@@ -30,7 +35,83 @@ const AUTH_ERROR_MESSAGES = {
   'auth/operation-not-allowed': 'Firebase Console에서 Google 로그인을 활성화해주세요.',
   'auth/popup-blocked': '브라우저에서 로그인 팝업이 차단되었습니다.',
   'auth/popup-closed-by-user': 'Google 로그인 창이 닫혔습니다.',
+  'auth/too-many-requests': '로그인 요청이 너무 많습니다. 잠시 뒤 다시 시도해주세요.',
   'auth/unauthorized-domain': '현재 도메인이 Firebase 승인 도메인에 등록되지 않았습니다.',
+}
+
+function loadAutoLoginPreference() {
+  if (typeof window === 'undefined') return true
+  try {
+    return window.localStorage.getItem(AUTH_AUTO_LOGIN_STORAGE_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
+
+function saveAutoLoginPreference(enabled) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(AUTH_AUTO_LOGIN_STORAGE_KEY, String(enabled))
+  } catch {}
+}
+
+function authPersistence(enabled) {
+  return enabled ? browserLocalPersistence : browserSessionPersistence
+}
+
+function normalizeLocalGuest(value) {
+  if (!value || value.version !== 1 || typeof value.uid !== 'string') return null
+  return {
+    uid: value.uid,
+    displayName: value.displayName || '게스트 트레이너',
+    email: null,
+    photoURL: null,
+    isAnonymous: false,
+    isLocalGuest: true,
+    providerData: [{ providerId: 'local-guest' }],
+  }
+}
+
+function readLocalGuest(autoLogin) {
+  if (typeof window === 'undefined') return null
+  try {
+    const storage = autoLogin ? window.localStorage : window.sessionStorage
+    const value = storage.getItem(LOCAL_GUEST_STORAGE_KEY)
+    return value ? normalizeLocalGuest(JSON.parse(value)) : null
+  } catch {
+    return null
+  }
+}
+
+function clearLocalGuest() {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(LOCAL_GUEST_STORAGE_KEY)
+  } catch {}
+  try {
+    window.sessionStorage.removeItem(LOCAL_GUEST_STORAGE_KEY)
+  } catch {}
+}
+
+function storeLocalGuest(guest, autoLogin) {
+  if (typeof window === 'undefined') return
+  clearLocalGuest()
+  const storage = autoLogin ? window.localStorage : window.sessionStorage
+  storage.setItem(LOCAL_GUEST_STORAGE_KEY, JSON.stringify({
+    version: 1,
+    uid: guest.uid,
+    displayName: guest.displayName,
+  }))
+}
+
+function createLocalGuest() {
+  const randomId = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return normalizeLocalGuest({
+    version: 1,
+    uid: `local-guest-${randomId}`,
+    displayName: '게스트 트레이너',
+  })
 }
 
 function authErrorMessage(error) {
@@ -38,43 +119,89 @@ function authErrorMessage(error) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const initialAutoLoginRef = useRef(loadAutoLoginPreference())
+  const [user, setUser] = useState(() => readLocalGuest(initialAutoLoginRef.current))
   const [ready, setReady] = useState(!isFirebaseConfigured)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [profileSyncError, setProfileSyncError] = useState('')
+  const [autoLogin, setAutoLoginState] = useState(initialAutoLoginRef.current)
+  const autoLoginRef = useRef(initialAutoLoginRef.current)
+  const userRef = useRef(user)
+
+  const setCurrentUser = useCallback((nextUser) => {
+    userRef.current = nextUser
+    setUser(nextUser)
+  }, [])
 
   useEffect(() => {
-    if (!firebaseAuth) return undefined
+    if (!firebaseAuth) {
+      setReady(true)
+      return undefined
+    }
+
     let active = true
+    let unsubscribe = () => {}
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+    const observeAuthState = () => {
       if (!active) return
-      setUser(nextUser)
-      setReady(true)
-      setError('')
+      unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+        if (!active) return
+        setError('')
+        setReady(true)
 
-      if (!nextUser) {
-        setProfileSyncError('')
-        return
-      }
+        if (!nextUser) {
+          const localGuest = readLocalGuest(autoLoginRef.current)
+          setCurrentUser(localGuest)
+          setProfileSyncError('')
+          return
+        }
 
-      ensurePlayerProfile(nextUser)
-        .then(() => {
-          if (active) setProfileSyncError('')
-        })
-        .catch(() => {
-          if (active) setProfileSyncError('계정 프로필을 서버에 동기화하지 못했습니다.')
-        })
-    }, (authError) => {
-      if (!active) return
-      setError(authErrorMessage(authError))
-      setReady(true)
-    })
+        clearLocalGuest()
+        setCurrentUser(nextUser)
+        ensurePlayerProfile(nextUser)
+          .then(() => {
+            if (active) setProfileSyncError('')
+          })
+          .catch(() => {
+            if (active) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
+          })
+      }, (authError) => {
+        if (!active) return
+        setError(authErrorMessage(authError))
+        setReady(true)
+      })
+    }
+
+    setPersistence(firebaseAuth, authPersistence(autoLoginRef.current))
+      .catch((authError) => {
+        if (active) setError(authErrorMessage(authError))
+      })
+      .finally(observeAuthState)
 
     return () => {
       active = false
       unsubscribe()
+    }
+  }, [setCurrentUser])
+
+  const updateAutoLogin = useCallback(async (nextValue) => {
+    const enabled = Boolean(nextValue)
+    setBusy(true)
+    setError('')
+    try {
+      if (userRef.current?.isLocalGuest) {
+        storeLocalGuest(userRef.current, enabled)
+      } else if (firebaseAuth) {
+        await setPersistence(firebaseAuth, authPersistence(enabled))
+      }
+      autoLoginRef.current = enabled
+      setAutoLoginState(enabled)
+      saveAutoLoginPreference(enabled)
+    } catch {
+      setError('자동 로그인 설정을 저장하지 못했습니다.')
+    } finally {
+      setBusy(false)
     }
   }, [])
 
@@ -87,7 +214,7 @@ export function AuthProvider({ children }) {
     setBusy(true)
     setError('')
     try {
-      await setPersistence(firebaseAuth, browserLocalPersistence)
+      await setPersistence(firebaseAuth, authPersistence(autoLoginRef.current))
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
       await signInWithPopup(firebaseAuth, provider)
@@ -98,18 +225,40 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const signOut = useCallback(async () => {
-    if (!firebaseAuth) return
+  const signInAsGuest = useCallback(async () => {
     setBusy(true)
     setError('')
     try {
-      await firebaseSignOut(firebaseAuth)
+      clearLocalGuest()
+      if (firebaseAuth?.currentUser) await firebaseSignOut(firebaseAuth)
+      const localGuest = createLocalGuest()
+      storeLocalGuest(localGuest, autoLoginRef.current)
+      setProfileSyncError('')
+      setCurrentUser(localGuest)
+    } catch {
+      setError('이 PC에 게스트 정보를 저장하지 못했습니다.')
+    } finally {
+      setBusy(false)
+    }
+  }, [setCurrentUser])
+
+  const signOut = useCallback(async () => {
+    setBusy(true)
+    setError('')
+    try {
+      if (userRef.current?.isLocalGuest) {
+        clearLocalGuest()
+        setCurrentUser(null)
+        setProfileSyncError('')
+      } else if (firebaseAuth) {
+        await firebaseSignOut(firebaseAuth)
+      }
     } catch (authError) {
       setError(authErrorMessage(authError))
     } finally {
       setBusy(false)
     }
-  }, [])
+  }, [setCurrentUser])
 
   const value = useMemo(() => ({
     user,
@@ -117,11 +266,25 @@ export function AuthProvider({ children }) {
     busy,
     error,
     profileSyncError,
+    autoLogin,
     configured: isFirebaseConfigured,
     missingConfiguration: missingFirebaseEnvironmentVariables,
+    setAutoLogin: updateAutoLogin,
+    signInWithGoogle,
+    signInAsGuest,
+    signOut,
+  }), [
+    autoLogin,
+    busy,
+    error,
+    profileSyncError,
+    ready,
+    signInAsGuest,
     signInWithGoogle,
     signOut,
-  }), [busy, error, profileSyncError, ready, signInWithGoogle, signOut, user])
+    updateAutoLogin,
+    user,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

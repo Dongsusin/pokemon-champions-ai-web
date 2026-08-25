@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  Clock3,
   Gamepad2,
   Gauge,
   Hash,
   HeartPulse,
   Headphones,
+  LogOut,
   Megaphone,
   Mic2,
   MousePointer2,
   Music2,
   RotateCcw,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Swords,
@@ -96,7 +99,81 @@ function AudioSlider({ channel, value, disabled, onChange }) {
   )
 }
 
-function SettingsModal({ settings, onChange, onClose, onReset }) {
+function AccountPanel({ user, accountError, authBusy, autoLogin, onAutoLoginChange, onSignOut }) {
+  const isGuest = Boolean(user?.isLocalGuest)
+  const accountName = user?.displayName?.trim()
+    || user?.email?.split('@')[0]
+    || (isGuest ? '게스트 트레이너' : '트레이너')
+  const accountInitial = Array.from(accountName)[0]?.toUpperCase() ?? 'T'
+
+  return (
+    <div
+      className="settings-panel settings-account-panel"
+      id="settings-account-panel"
+      role="tabpanel"
+      aria-labelledby="settings-account-tab"
+    >
+      <div className="settings-account-card">
+        <span className="settings-account-avatar">
+          {user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : accountInitial}
+        </span>
+        <span className="settings-account-copy">
+          <small>{isGuest ? 'GUEST TRAINER' : 'GOOGLE TRAINER'}</small>
+          <strong>{accountName}</strong>
+          <span>{isGuest ? '이 PC 브라우저에만 저장' : user?.email}</span>
+        </span>
+        <span className="settings-account-badge"><ShieldCheck size={15} /> 연결됨</span>
+      </div>
+
+      <div className="settings-account-persistence">
+        <span className="settings-option-label">
+          <Clock3 size={19} />
+          <span>
+            <strong>자동 로그인</strong>
+            <small>다음 방문에도 현재 계정을 유지합니다.</small>
+          </span>
+        </span>
+        <button
+          className={`settings-account-toggle${autoLogin ? ' enabled' : ''}`}
+          type="button"
+          role="switch"
+          aria-checked={autoLogin}
+          disabled={authBusy}
+          onClick={() => onAutoLoginChange(!autoLogin)}
+        >
+          <i aria-hidden="true" />
+          <span>{autoLogin ? 'ON' : 'OFF'}</span>
+        </button>
+      </div>
+
+      {isGuest && (
+        <p className="settings-account-warning">
+          게스트 데이터는 서버에 전송되지 않으며 이 브라우저의 데이터가 삭제되면 복구할 수 없습니다.
+        </p>
+      )}
+
+      {accountError && <p className="settings-account-error" role="alert">{accountError}</p>}
+
+      <button className="settings-sign-out-button" type="button" disabled={authBusy} onClick={onSignOut}>
+        <LogOut size={19} />
+        {authBusy ? '계정 전환 중' : '로그아웃하고 계정 전환'}
+      </button>
+    </div>
+  )
+}
+
+function SettingsModal({
+  settings,
+  user,
+  accountError,
+  authBusy,
+  autoLogin,
+  onAutoLoginChange,
+  onChange,
+  onClose,
+  onReset,
+  onSignOut,
+}) {
   const [activeTab, setActiveTab] = useState('game')
   const closeButtonRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -165,6 +242,17 @@ function SettingsModal({ settings, onChange, onClose, onReset }) {
           >
             <Headphones size={20} /> 오디오
           </button>
+          <button
+            className={activeTab === 'account' ? 'selected' : ''}
+            type="button"
+            role="tab"
+            id="settings-account-tab"
+            aria-controls="settings-account-panel"
+            aria-selected={activeTab === 'account'}
+            onClick={() => setActiveTab('account')}
+          >
+            <UserRound size={20} /> 계정
+          </button>
         </nav>
 
         <div className="settings-modal-body">
@@ -205,7 +293,7 @@ function SettingsModal({ settings, onChange, onClose, onReset }) {
                 onChange={(value) => onChange('game', 'showDamageNumbers', value)}
               />
             </div>
-          ) : (
+          ) : activeTab === 'audio' ? (
             <div
               className={`settings-panel settings-audio-panel${settings.audio.enabled ? '' : ' is-muted'}`}
               id="settings-audio-panel"
@@ -237,13 +325,24 @@ function SettingsModal({ settings, onChange, onClose, onReset }) {
                 />
               ))}
             </div>
+          ) : (
+            <AccountPanel
+              user={user}
+              accountError={accountError}
+              authBusy={authBusy}
+              autoLogin={autoLogin}
+              onAutoLoginChange={onAutoLoginChange}
+              onSignOut={onSignOut}
+            />
           )}
         </div>
 
         <footer className="settings-modal-footer">
-          <button className="settings-reset-button" type="button" onClick={onReset}>
-            <RotateCcw size={17} /> 기본값 복원
-          </button>
+          {activeTab !== 'account' && (
+            <button className="settings-reset-button" type="button" onClick={onReset}>
+              <RotateCcw size={17} /> 기본값 복원
+            </button>
+          )}
           <button className="settings-confirm-button" type="button" onClick={onClose}>완료</button>
         </footer>
       </section>

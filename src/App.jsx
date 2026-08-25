@@ -3,7 +3,6 @@ import {
   Boxes,
   ChevronRight,
   Dumbbell,
-  LogOut,
   PawPrint,
   Settings,
   ShoppingBag,
@@ -223,7 +222,7 @@ const modes = [
   },
 ]
 
-function GameApp({ user, accountError, onSignOut }) {
+function GameApp({ user, accountError, authBusy, autoLogin, onAutoLoginChange, onSignOut }) {
   const initialCollection = useRef(null)
   if (initialCollection.current === null) initialCollection.current = loadStoredBox()
   const initialTeamState = useRef(null)
@@ -253,7 +252,10 @@ function GameApp({ user, accountError, onSignOut }) {
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
   const soundEnabled = settings.audio.enabled
-  const trainerName = user.displayName?.trim() || user.email?.split('@')[0] || '트레이너'
+  const isGuest = Boolean(user.isLocalGuest)
+  const trainerName = user.displayName?.trim()
+    || user.email?.split('@')[0]
+    || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
 
   useEffect(() => {
@@ -801,7 +803,7 @@ function GameApp({ user, accountError, onSignOut }) {
               {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : trainerInitial}
             </span>
             <span className="player-account-copy">
-              <small>{accountError ? 'SYNC ERROR' : 'GOOGLE TRAINER'}</small>
+              <small>{accountError ? 'SYNC ERROR' : isGuest ? 'GUEST TRAINER' : 'GOOGLE TRAINER'}</small>
               <strong>{trainerName}</strong>
             </span>
           </div>
@@ -824,14 +826,6 @@ function GameApp({ user, accountError, onSignOut }) {
             <Settings size={21} />
           </button>
 
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Google 계정 로그아웃"
-            onClick={onSignOut}
-          >
-            <LogOut size={20} />
-          </button>
         </div>
       </header>
 
@@ -964,9 +958,15 @@ function GameApp({ user, accountError, onSignOut }) {
       {settingsOpen && (
         <SettingsModal
           settings={settings}
+          user={user}
+          accountError={accountError}
+          authBusy={authBusy}
+          autoLogin={autoLogin}
+          onAutoLoginChange={onAutoLoginChange}
           onChange={updateSetting}
           onClose={() => setSettingsOpen(false)}
           onReset={resetSettings}
+          onSignOut={onSignOut}
         />
       )}
 
@@ -987,7 +987,10 @@ function App() {
     profileSyncError,
     configured,
     missingConfiguration,
+    autoLogin,
+    setAutoLogin,
     signInWithGoogle,
+    signInAsGuest,
     signOut,
   } = useAuth()
 
@@ -1000,7 +1003,10 @@ function App() {
         busy={busy}
         error={error}
         missingConfiguration={missingConfiguration}
+        autoLogin={autoLogin}
+        onAutoLoginChange={setAutoLogin}
         onGoogleSignIn={signInWithGoogle}
+        onGuestSignIn={signInAsGuest}
       />
     )
   }
@@ -1009,6 +1015,9 @@ function App() {
     <GameApp
       user={user}
       accountError={profileSyncError || error}
+      authBusy={busy}
+      autoLogin={autoLogin}
+      onAutoLoginChange={setAutoLogin}
       onSignOut={signOut}
     />
   )

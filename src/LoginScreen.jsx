@@ -1,4 +1,12 @@
-import { LoaderCircle, LockKeyhole, ShieldCheck, Sparkles } from 'lucide-react'
+import {
+  ChevronRight,
+  Clock3,
+  LoaderCircle,
+  LockKeyhole,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+} from 'lucide-react'
 
 function GoogleMark() {
   return (
@@ -24,7 +32,16 @@ export function AuthLoadingScreen() {
   )
 }
 
-function LoginScreen({ configured, busy, error, missingConfiguration, onGoogleSignIn }) {
+function LoginScreen({
+  configured,
+  busy,
+  error,
+  missingConfiguration,
+  autoLogin,
+  onAutoLoginChange,
+  onGoogleSignIn,
+  onGuestSignIn,
+}) {
   return (
     <main className="auth-shell">
       <div className="auth-ambient auth-ambient-one" aria-hidden="true" />
@@ -46,25 +63,64 @@ function LoginScreen({ configured, busy, error, missingConfiguration, onGoogleSi
         <div className="auth-login-heading">
           <span>TRAINER ACCESS</span>
           <h1 id="auth-login-title">챔피언스 아레나</h1>
-          <p>Google 계정으로 트레이너 데이터를 연결합니다.</p>
+          <p>Google 계정을 연결하거나 게스트 트레이너로 시작하세요.</p>
         </div>
 
-        <button
-          className="google-login-button"
-          type="button"
-          disabled={!configured || busy}
-          onClick={onGoogleSignIn}
-        >
-          <span className="google-login-mark"><GoogleMark /></span>
-          <strong>{busy ? 'Google 로그인 연결 중' : 'Google 계정으로 계속'}</strong>
-          {busy ? <LoaderCircle className="google-login-spinner" size={20} /> : <span aria-hidden="true">›</span>}
-        </button>
+        <div className="auth-login-actions">
+          <button
+            className="google-login-button"
+            type="button"
+            disabled={!configured || busy}
+            aria-busy={busy}
+            onClick={onGoogleSignIn}
+          >
+            <span className="google-login-mark"><GoogleMark /></span>
+            <strong>{busy ? '로그인 처리 중' : 'Google 계정으로 계속'}</strong>
+            {busy ? <LoaderCircle className="google-login-spinner" size={20} /> : <ChevronRight size={21} aria-hidden="true" />}
+          </button>
+
+          <button
+            className="guest-login-button"
+            type="button"
+            disabled={busy}
+            aria-busy={busy}
+            onClick={onGuestSignIn}
+          >
+            <span className="guest-login-mark"><UserRound size={22} aria-hidden="true" /></span>
+            <span>
+              <strong>{busy ? '로그인 처리 중' : '게스트로 시작'}</strong>
+              <small>이 PC 브라우저에만 임시 저장</small>
+            </span>
+            <ChevronRight size={21} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="auth-auto-login-row">
+          <span className="auth-auto-login-copy">
+            <Clock3 size={18} aria-hidden="true" />
+            <span>
+              <strong>자동 로그인</strong>
+              <small>다음 방문에도 현재 계정을 유지합니다.</small>
+            </span>
+          </span>
+          <button
+            className={autoLogin ? 'enabled' : ''}
+            type="button"
+            role="switch"
+            aria-checked={autoLogin}
+            disabled={busy}
+            onClick={() => onAutoLoginChange(!autoLogin)}
+          >
+            <i aria-hidden="true" />
+            <span>{autoLogin ? 'ON' : 'OFF'}</span>
+          </button>
+        </div>
 
         {!configured ? (
           <div className="auth-setup-message" role="alert">
             <LockKeyhole size={17} aria-hidden="true" />
             <span>
-              <strong>Firebase 연결 설정이 필요합니다.</strong>
+              <strong>Google 로그인에 Firebase 연결 설정이 필요합니다.</strong>
               <small>{missingConfiguration.join(', ')}</small>
             </span>
           </div>
@@ -74,7 +130,7 @@ function LoginScreen({ configured, busy, error, missingConfiguration, onGoogleSi
 
         <footer className="auth-login-footer">
           <ShieldCheck size={16} aria-hidden="true" />
-          <span>Firebase Authentication 보안 연결</span>
+          <span>Google은 Firebase 연결 · 게스트는 이 PC에만 저장</span>
         </footer>
       </section>
     </main>
