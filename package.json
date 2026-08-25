@@ -21,6 +21,7 @@
     "benchmark:battle-ai": "node scripts/benchmarkBattleAi.mjs",
     "validate:battle-gimmicks": "node scripts/validateBattleGimmickLimit.mjs",
     "validate:battle-abilities": "node scripts/validateBattleAbilityForms.mjs",
+    "validate:battle-ability-effects": "node scripts/validateBattleAbilityEffects.mjs",
     "validate:signature-z-moves": "node scripts/validateSignatureZMoves.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",
     "validate:pokemon-learnsets": "node scripts/validatePokemonLearnsets.mjs",

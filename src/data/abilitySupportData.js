@@ -156,3 +156,106 @@ export const FORM_ABILITY_NAMES = new Set([
   '탈',
   '플라워기프트',
 ])
+
+export const ABILITY_BYPASS_NAMES = new Set([
+  '틀깨기',
+  '터보블레이즈',
+  '테라볼티지',
+])
+
+export const MOVE_TYPE_CHANGE_ABILITY_RULES = Object.freeze({
+  노말스킨: { targetType: '노말', multiplier: 1.2, allTypes: true },
+  드래곤스킨: { sourceType: '노말', targetType: '드래곤', multiplier: 1.2 },
+  스카이스킨: { sourceType: '노말', targetType: '비행', multiplier: 1.2 },
+  일렉트릭스킨: { sourceType: '노말', targetType: '전기', multiplier: 1.2 },
+  페어리스킨: { sourceType: '노말', targetType: '페어리', multiplier: 1.2 },
+  프리즈스킨: { sourceType: '노말', targetType: '얼음', multiplier: 1.2 },
+  촉촉보이스: { flag: 'sound', targetType: '물', multiplier: 1 },
+})
+
+export const MOVE_POWER_ABILITY_RULES = Object.freeze({
+  'Fire Mane': { type: '불꽃', multiplier: 1.5 },
+  강철술사: { type: '강철', multiplier: 1.5 },
+  단단한발톱: { flag: 'contact', multiplier: 1.3 },
+  메가런처: { flag: 'pulse', multiplier: 1.5 },
+  바위나르기: { type: '바위', multiplier: 1.5 },
+  수포: { type: '물', multiplier: 2 },
+  예리함: { flag: 'slicing', multiplier: 1.5 },
+  옹골찬턱: { flag: 'bite', multiplier: 1.5 },
+  용의턱: { type: '드래곤', multiplier: 1.5 },
+  철주먹: { flag: 'punch', multiplier: 1.2 },
+  테크니션: { maxPower: 60, multiplier: 1.5 },
+  트랜지스터: { type: '전기', multiplier: 1.3 },
+  펑크록: { flag: 'sound', multiplier: 1.3 },
+  이판사판: { recoil: true, multiplier: 1.2 },
+})
+
+export const TYPE_IMMUNITY_ABILITY_RULES = Object.freeze({
+  Eelevate: { type: '땅' },
+  건조피부: { type: '물', heal: [1, 4] },
+  노릇노릇바디: { type: '불꽃', boosts: { defense: 2 } },
+  마중물: { type: '물', boosts: { specialAttack: 1 } },
+  바람타기: { flag: 'wind', boosts: { attack: 1 } },
+  방음: { flag: 'sound' },
+  방탄: { flag: 'bullet' },
+  부유: { type: '땅' },
+  저수: { type: '물', heal: [1, 4] },
+  전기엔진: { type: '전기', boosts: { speed: 1 } },
+  초식: { type: '풀', boosts: { attack: 1 } },
+  축전: { type: '전기', heal: [1, 4] },
+  타오르는불꽃: { type: '불꽃', volatile: 'flashFireActive' },
+  피뢰침: { type: '전기', boosts: { specialAttack: 1 } },
+  흙먹기: { type: '땅', heal: [1, 4] },
+})
+
+export const FULL_STAT_DROP_IMMUNITY_ABILITIES = new Set([
+  '클리어바디',
+  '하얀연기',
+  '메탈프로텍트',
+])
+
+export const INTIMIDATE_IMMUNITY_ABILITIES = new Set([
+  '마이페이스',
+  '배짱',
+  '둔감',
+  '파수견',
+  '정신력',
+])
+
+export const STAT_DROP_REACTION_ABILITY_RULES = Object.freeze({
+  오기: { boosts: { attack: 2 } },
+  승기: { boosts: { specialAttack: 2 } },
+})
+
+export const CRITICAL_HIT_IMMUNITY_ABILITIES = new Set([
+  '전투무장',
+  '조가비갑옷',
+])
+
+export const SUPER_EFFECTIVE_DAMAGE_REDUCTION_ABILITIES = new Set([
+  '필터',
+  '하드록',
+  '프리즘아머',
+])
+
+export const DAMAGING_HIT_ABILITY_RULES = Object.freeze({
+  꾸덕꾸덕굳기: { type: '물', boosts: { defense: 2 } },
+  깨어진갑옷: { category: 'physical', boosts: { defense: -1, speed: 2 } },
+  열교환: { type: '불꽃', boosts: { attack: 1 } },
+  주눅: { types: ['악', '벌레', '고스트'], boosts: { speed: 1 } },
+  정의의마음: { type: '악', boosts: { attack: 1 } },
+  증기기관: { types: ['물', '불꽃'], boosts: { speed: 6 } },
+  지구력: { boosts: { defense: 1 } },
+})
+
+export const CONTACT_HIT_ABILITY_RULES = Object.freeze({
+  까칠한피부: { damage: [1, 8] },
+  독가시: { chance: 30, status: 'poison' },
+  미끈미끈: { boosts: { speed: -1 } },
+  불꽃몸: { chance: 30, status: 'burn' },
+  정전기: { chance: 30, status: 'paralysis' },
+  철가시: { damage: [1, 8] },
+  컬리헤어: { boosts: { speed: -1 } },
+  헤롱헤롱바디: { chance: 30, volatile: 'infatuation', oppositeGender: true },
+  포자: { chance: 30, randomStatuses: ['paralysis', 'poison', 'sleep'] },
+})

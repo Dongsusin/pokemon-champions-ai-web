@@ -195,6 +195,7 @@ function pokemonProfile(pokemon, abilityNames) {
   )].sort((left, right) => left - right)
 
   return {
+    weight: Math.max(1, Number(pokemon.weight) || 1),
     types: pokemon.types
       .slice()
       .sort((left, right) => left.slot - right.slot)
