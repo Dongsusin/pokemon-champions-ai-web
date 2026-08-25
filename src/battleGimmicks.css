@@ -10,7 +10,8 @@
   --return-direction: 1;
 }
 
-.app-shell.battle-view .battle-field-camera.phase-gimmick {
+.app-shell.battle-view .battle-field-camera.phase-gimmick,
+.app-shell.battle-view .battle-field-camera.phase-form {
   animation: battle-gimmick-camera-smooth var(--gimmick-duration, 3000ms) cubic-bezier(0.2, 0.72, 0.2, 1) both;
 }
 
@@ -84,6 +85,58 @@
 .app-shell.battle-view .battle-gimmick-sparks i {
   animation: battle-gimmick-spark-cinematic var(--gimmick-duration, 3000ms) ease-out both;
   animation-delay: calc(var(--spark-index) * 20ms);
+}
+
+.app-shell.battle-view .gimmick-form-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+}
+
+.app-shell.battle-view .gimmick-form-core {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  width: clamp(110px, 14vw, 210px);
+  aspect-ratio: 1;
+  border: 4px double rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, #fff 0 8%, var(--gimmick-highlight) 12%, var(--gimmick-primary) 29%, transparent 68%);
+  box-shadow: 0 0 24px #fff, 0 0 52px var(--gimmick-primary), inset 0 0 30px var(--gimmick-secondary);
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%) scale(0.25);
+  animation: battle-form-core var(--gimmick-duration) cubic-bezier(0.2, 0.82, 0.2, 1) both;
+}
+
+.app-shell.battle-view .gimmick-form-wave {
+  --form-wave-angle: -28deg;
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  width: clamp(150px, 22vw, 330px);
+  aspect-ratio: 1;
+  border: 5px solid var(--gimmick-primary);
+  border-right-color: var(--gimmick-highlight);
+  border-left-color: var(--gimmick-secondary);
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 16px var(--gimmick-primary));
+  transform: translate(-50%, -50%) scale(0.18) rotate(var(--form-wave-angle));
+  animation: battle-form-wave var(--gimmick-duration) ease-out both;
+}
+
+.app-shell.battle-view .gimmick-form-wave.wave-two {
+  --form-wave-angle: 38deg;
+  animation-duration: calc(var(--gimmick-duration) * 0.92);
+  animation-delay: calc(var(--gimmick-duration) * 0.08);
+}
+
+.app-shell.battle-view .gimmick-form-wave.wave-three {
+  --form-wave-angle: 86deg;
+  animation-duration: calc(var(--gimmick-duration) * 0.84);
+  animation-delay: calc(var(--gimmick-duration) * 0.16);
 }
 
 .app-shell.battle-view .mechanic-mega .battle-gimmick-screen-tint {
@@ -1186,6 +1239,20 @@
   52% { filter: brightness(1.55) saturate(1.15) drop-shadow(0 0 12px #fff) drop-shadow(0 0 19px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
 }
 
+@keyframes battle-form-core {
+  0%, 10% { opacity: 0; transform: translate(-50%, -50%) scale(0.22); }
+  28%, 56% { opacity: 0.92; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1.22); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+}
+
+@keyframes battle-form-wave {
+  0%, 14% { opacity: 0; transform: translate(-50%, -50%) scale(0.18) rotate(var(--form-wave-angle)); }
+  28% { opacity: 0.9; }
+  76% { opacity: 0.58; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.15) rotate(calc(var(--form-wave-angle) + 70deg)); }
+}
+
 @media (max-width: 760px) {
   .app-shell.battle-view .battle-gimmick-focus {
     top: 58%;
@@ -1255,6 +1322,7 @@
   .app-shell.battle-view .battle-gimmick-sequence,
   .app-shell.battle-view .battle-gimmick-sequence *,
   .app-shell.battle-view .battle-field-camera.phase-gimmick,
+  .app-shell.battle-view .battle-field-camera.phase-form,
   .app-shell.battle-view .battle-pokemon-stage.is-gimmicking * {
     animation-duration: var(--gimmick-duration, 3000ms) !important;
     animation-iteration-count: 1 !important;

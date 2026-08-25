@@ -328,14 +328,57 @@ const IVY_CUDGEL_VARIANTS = {
 
 const HELD_ITEM_FORM_RULES = Object.freeze({
   'adamant-crystal': { species: 'dialga', form: 'dialga-origin' },
+  'burn-drive': { species: 'genesect', form: 'genesect-burn' },
+  'chill-drive': { species: 'genesect', form: 'genesect-chill' },
   'cornerstone-mask': { species: 'ogerpon', form: 'ogerpon-cornerstone-mask' },
+  'douse-drive': { species: 'genesect', form: 'genesect-douse' },
   'griseous-core': { species: 'giratina', form: 'giratina-origin' },
   'hearthflame-mask': { species: 'ogerpon', form: 'ogerpon-hearthflame-mask' },
   'lustrous-globe': { species: 'palkia', form: 'palkia-origin' },
   'rusted-shield': { species: 'zamazenta', form: 'zamazenta-crowned' },
   'rusted-sword': { species: 'zacian', form: 'zacian-crowned' },
+  'shock-drive': { species: 'genesect', form: 'genesect-shock' },
   'wellspring-mask': { species: 'ogerpon', form: 'ogerpon-wellspring-mask' },
 })
+
+function showdownVisualForm(speciesId, slug, name) {
+  return Object.freeze({
+    speciesId,
+    slug,
+    name,
+    spriteFront: `https://play.pokemonshowdown.com/sprites/gen5ani/${slug}.gif`,
+    spriteBack: `https://play.pokemonshowdown.com/sprites/gen5ani-back/${slug}.gif`,
+    spriteFrontFallback: `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`,
+    spriteBackFallback: `https://play.pokemonshowdown.com/sprites/gen5-back/${slug}.png`,
+  })
+}
+
+const VISUAL_BATTLE_FORM_OVERRIDES = Object.freeze({
+  'cherrim-sunshine': showdownVisualForm(421, 'cherrim-sunshine', '체리꼬 포지폼'),
+  'genesect-burn': showdownVisualForm(649, 'genesect-burn', '게노세크트'),
+  'genesect-chill': showdownVisualForm(649, 'genesect-chill', '게노세크트'),
+  'genesect-douse': showdownVisualForm(649, 'genesect-douse', '게노세크트'),
+  'genesect-shock': showdownVisualForm(649, 'genesect-shock', '게노세크트'),
+})
+
+const FORM_TIMELINE_CONTEXTS = new WeakMap()
+
+export function getConditionalBattleFormAssets(pokemon) {
+  const baseSpeciesId = Number(
+    pokemon?.battleBaseSpeciesId
+    ?? pokemon?.originalSpeciesId
+    ?? pokemon?.speciesId
+    ?? pokemon,
+  )
+  return Object.values(VISUAL_BATTLE_FORM_OVERRIDES)
+    .filter((form) => Number(form.speciesId) === baseSpeciesId)
+    .flatMap((form) => [
+      form.spriteFront,
+      form.spriteBack,
+      form.spriteFrontFallback,
+      form.spriteBackFallback,
+    ])
+}
 
 const CALL_MOVE_BLOCKLIST = new Set([
   'assist',
@@ -1259,8 +1302,10 @@ function activateIllusion(state, sideId, pokemon) {
 
 function breakIllusion(state, pokemon) {
   if (!pokemon?.illusionSnapshot) return false
+  const previousSnapshot = mechanicPokemonSnapshot(pokemon)
   restoreIllusion(pokemon)
   appendLog(state, `${pokemon.name}의 일루전이 깨졌다!`, 'ability')
+  emitFormChangeTimeline(state, pokemon, previousSnapshot, '일루전')
   return true
 }
 
@@ -1541,6 +1586,58 @@ function mechanicPokemonSnapshot(pokemon) {
     spriteFrontFallback: pokemon.spriteFrontFallback,
     spriteBackFallback: pokemon.spriteBackFallback,
   }
+}
+
+function activePokemonLocation(state, pokemon) {
+  for (const sideId of ['player', 'opponent']) {
+    const side = state[sideId]
+    const activeSlot = (side.activeIndexes ?? [side.activeIndex])
+      .findIndex((teamIndex) => side.team[teamIndex]?.battleId === pokemon?.battleId)
+    if (activeSlot >= 0) return { sideId, activeSlot }
+  }
+  return null
+}
+
+function emitFormChangeTimeline(state, pokemon, previousSnapshot, sourceName, options = {}) {
+  if (options.animate === false) return
+  const context = FORM_TIMELINE_CONTEXTS.get(state)
+  const location = context ? activePokemonLocation(state, pokemon) : null
+  if (!context || !location) return
+
+  const currentSnapshot = mechanicPokemonSnapshot(pokemon)
+  const fallbackMessage = `${previousSnapshot.name}이(가) ${sourceName || '폼체인지'}로 모습을 바꿨다!`
+  const step = {
+    phase: 'form',
+    sideId: location.sideId,
+    targetSideId: location.sideId,
+    actorSlot: location.activeSlot,
+    targetSlot: location.activeSlot,
+    actorName: currentSnapshot.name,
+    actorSpeciesId: currentSnapshot.speciesId,
+    actorOriginalSpeciesId: currentSnapshot.originalSpeciesId,
+    actorPreviousName: previousSnapshot.name,
+    mechanicId: 'form',
+    mechanicLabel: sourceName || '폼체인지',
+    formSourceName: sourceName || '폼체인지',
+    spriteBeforeFront: previousSnapshot.spriteFront,
+    spriteBeforeBack: previousSnapshot.spriteBack,
+    spriteBeforeFrontFallback: previousSnapshot.spriteFrontFallback,
+    spriteBeforeBackFallback: previousSnapshot.spriteBackFallback,
+    spriteAfterFront: currentSnapshot.spriteFront,
+    spriteAfterBack: currentSnapshot.spriteBack,
+    spriteAfterFrontFallback: currentSnapshot.spriteFrontFallback,
+    spriteAfterBackFallback: currentSnapshot.spriteBackFallback,
+    message: options.log === false ? fallbackMessage : latestLogMessage(state, fallbackMessage),
+  }
+
+  if (options.deferTimeline) context.deferred.push(step)
+  else pushTimelineStep(context.timeline, state, step)
+}
+
+function flushDeferredFormTimeline(state) {
+  const context = FORM_TIMELINE_CONTEXTS.get(state)
+  if (!context?.deferred.length) return
+  context.deferred.splice(0).forEach((step) => pushTimelineStep(context.timeline, state, step))
 }
 
 function getSide(state, sideId) {
@@ -3837,6 +3934,7 @@ function healingMoveFraction(state, pokemon, move) {
 
 function applyTransform(state, attacker, defender) {
   if (!defender || defender.fainted || defender.hp <= 0 || attacker === defender) return false
+  const previousSnapshot = mechanicPokemonSnapshot(attacker)
 
   if (!attacker.transformSnapshot) {
     attacker.transformSnapshot = {
@@ -3871,6 +3969,7 @@ function applyTransform(state, attacker, defender) {
   attacker.spriteFrontFallback = defender.spriteFrontFallback
   attacker.spriteBackFallback = defender.spriteBackFallback
   appendLog(state, `${attacker.transformSnapshot.name}은(는) ${defender.name}의 모습으로 변신했다!`, 'status')
+  emitFormChangeTimeline(state, attacker, previousSnapshot, '변신')
   return true
 }
 
@@ -4883,16 +4982,27 @@ function canPokemonAct(state, pokemon, random, move) {
 }
 
 function relatedFormBySlug(pokemon, slug) {
-  return getRelatedFormOptions(pokemon.originalSpeciesId)
-    .find((form) => form.slug === slug) ?? null
+  const relatedForm = getRelatedFormOptions(pokemon.originalSpeciesId)
+    .find((form) => form.slug === slug)
+  if (relatedForm) return relatedForm
+
+  const visualOverride = VISUAL_BATTLE_FORM_OVERRIDES[slug]
+  const baseSpeciesId = Number(pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId)
+  if (!visualOverride || Number(visualOverride.speciesId) !== baseSpeciesId) return null
+  const baseProfile = getSpeciesProfile(visualOverride.speciesId)
+  return baseProfile ? { ...baseProfile, ...visualOverride, id: baseProfile.id } : null
 }
 
 function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options = {}) {
   const form = typeof targetFormOrSlug === 'string'
     ? relatedFormBySlug(pokemon, targetFormOrSlug)
     : targetFormOrSlug
-  if (!form || Number(form.id) === Number(pokemon.speciesId)) return false
+  if (
+    !form
+    || Number(form.id) === Number(pokemon.speciesId) && form.slug === currentSpeciesSlug(pokemon)
+  ) return false
 
+  const previousSnapshot = mechanicPokemonSnapshot(pokemon)
   const previousName = pokemon.name
   const previousHp = pokemon.hp
   const previousMaxHp = pokemon.maxHp
@@ -4927,10 +5037,10 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.originalMaxHp = nextBaseMaxHp
   pokemon.maxHp = nextMaxHp
   pokemon.hp = previousHp <= 0 ? 0 : Math.max(1, Math.min(nextMaxHp, Math.ceil(preservedHp)))
-  pokemon.spriteFront = transformed.spriteFront
-  pokemon.spriteBack = transformed.spriteBack
-  pokemon.spriteFrontFallback = transformed.spriteFrontFallback
-  pokemon.spriteBackFallback = transformed.spriteBackFallback
+  pokemon.spriteFront = form.spriteFront ?? transformed.spriteFront
+  pokemon.spriteBack = form.spriteBack ?? transformed.spriteBack
+  pokemon.spriteFrontFallback = form.spriteFrontFallback ?? transformed.spriteFrontFallback
+  pokemon.spriteBackFallback = form.spriteBackFallback ?? transformed.spriteBackFallback
 
   if (options.log !== false) {
     appendLog(state, `${pokemon.name}의 ${sourceName}! ${previousName}에서 모습이 변했다!`, 'ability')
@@ -4942,6 +5052,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
     speciesId: form.id,
     nonce: state.eventNonce += 1,
   }
+  emitFormChangeTimeline(state, pokemon, previousSnapshot, sourceName, options)
   return true
 }
 
@@ -5011,6 +5122,13 @@ function refreshWeatherFormAbility(state, pokemon) {
 
   if (pokemon.ability === '플라워기프트') {
     const active = effectiveWeatherFamilyId(state) === 'sun'
+    changeBattleForm(
+      state,
+      pokemon,
+      active ? 'cherrim-sunshine' : 'cherrim',
+      pokemon.ability,
+      { log: false },
+    )
     if (active !== pokemon.flowerGiftActive) {
       pokemon.flowerGiftActive = active
       appendLog(state, `${pokemon.name}의 플라워기프트가 ${active ? '발동했다!' : '해제되었다.'}`, 'ability')
@@ -5157,23 +5275,25 @@ function prepareSwitchOutForm(state, pokemon) {
   }
   const slug = currentSpeciesSlug(pokemon)
   if (pokemon.ability === '마이티체인지' && slug === 'palafin') {
-    changeBattleForm(state, pokemon, 'palafin-hero', pokemon.ability)
+    changeBattleForm(state, pokemon, 'palafin-hero', pokemon.ability, { animate: false })
   } else if (pokemon.ability === '배틀스위치' && slug === 'aegislash-blade') {
-    changeBattleForm(state, pokemon, 'aegislash', pokemon.ability, { log: false })
+    changeBattleForm(state, pokemon, 'aegislash', pokemon.ability, { log: false, animate: false })
   } else if (slug === 'meloetta-pirouette') {
-    changeBattleForm(state, pokemon, 'meloetta', '폼 복원', { log: false })
+    changeBattleForm(state, pokemon, 'meloetta', '폼 복원', { log: false, animate: false })
   } else if (pokemon.ability === '기분파' && slug !== 'castform') {
-    changeBattleForm(state, pokemon, 'castform', pokemon.ability, { log: false })
+    changeBattleForm(state, pokemon, 'castform', pokemon.ability, { log: false, animate: false })
+  } else if (pokemon.ability === '플라워기프트' && slug === 'cherrim-sunshine') {
+    changeBattleForm(state, pokemon, 'cherrim', pokemon.ability, { log: false, animate: false })
   } else if (pokemon.ability === '달마모드' && slug.includes('zen')) {
     changeBattleForm(
       state,
       pokemon,
       slug.includes('galar') ? 'darmanitan-galar-standard' : 'darmanitan',
       pokemon.ability,
-      { log: false },
+      { log: false, animate: false },
     )
   } else if (pokemon.ability === '그대로꿀꺽미사일' && slug !== 'cramorant') {
-    changeBattleForm(state, pokemon, 'cramorant', pokemon.ability, { log: false })
+    changeBattleForm(state, pokemon, 'cramorant', pokemon.ability, { log: false, animate: false })
   }
 
   pokemon.flowerGiftActive = false
@@ -5232,13 +5352,13 @@ function applyFormDamageShield(state, defender, move, requestedDamage) {
   const slug = currentSpeciesSlug(defender)
   if (defender.ability === '탈' && ['mimikyu', 'mimikyu-totem-disguised'].includes(slug)) {
     const targetSlug = slug === 'mimikyu-totem-disguised' ? 'mimikyu-totem-busted' : 'mimikyu-busted'
-    changeBattleForm(state, defender, targetSlug, defender.ability)
+    changeBattleForm(state, defender, targetSlug, defender.ability, { deferTimeline: true })
     loseHp(state, defender, defender.maxHp / 8, `${defender.name}은(는) 탈이 벗겨져 HP가 줄었다.`, 'ability')
     return { damage: 0, effectiveness: 1 }
   }
   if (defender.ability === '아이스페이스' && slug === 'eiscue' && move.categoryId === 'physical') {
     defender.iceFaceBroken = true
-    changeBattleForm(state, defender, 'eiscue-noice', defender.ability)
+    changeBattleForm(state, defender, 'eiscue-noice', defender.ability, { deferTimeline: true })
     return { damage: 0, effectiveness: 1 }
   }
   return null
@@ -5293,7 +5413,7 @@ function transformPokemon(state, pokemon, formId, mechanicId) {
     ))
   if (!form) return false
 
-  if (!changeBattleForm(state, pokemon, form, MECHANIC_LABELS[mechanicId], { log: false })) return false
+  if (!changeBattleForm(state, pokemon, form, MECHANIC_LABELS[mechanicId], { log: false, animate: false })) return false
   pokemon.megaActive = mechanicId === 'mega'
   pokemon.primalActive = mechanicId === 'primal'
   pokemon.ultraActive = mechanicId === 'ultra'
@@ -5418,7 +5538,11 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
       ? relatedFormBySlug(pokemon, 'terapagos-stellar')
       : null
     if (terapagosStellar) {
-      changeBattleForm(state, pokemon, terapagosStellar, '테라스탈', { hpMode: 'damage', log: false })
+      changeBattleForm(state, pokemon, terapagosStellar, '테라스탈', {
+        hpMode: 'damage',
+        log: false,
+        animate: false,
+      })
       pokemon.teraType = '스텔라'
     }
     pokemon.teraActive = true
@@ -7685,6 +7809,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       ? `${defender.name}에게 ${damage}의 데미지!`
       : `${defender.name}에게는 효과가 없는 것 같다…`,
   })
+  flushDeferredFormTimeline(state)
 
   const postEffectLogLength = state.log.length
   if (landedHits > 0 && result.effectiveness > 0) {
@@ -8491,13 +8616,10 @@ function performSwitch(
   target.switchedInThisTurn = true
   applyPendingDifficultyBoost(target)
   activateIllusion(state, sideId, target)
-  appendLog(
-    state,
-    sideId === 'player'
-      ? `${target.name}! 부탁해!`
-      : `${side.name}은(는) ${target.name}을(를) 내보냈다!`,
-    isAutomatic ? 'switch' : sideId,
-  )
+  const switchMessage = sideId === 'player'
+    ? `${target.name}! 부탁해!`
+    : `${side.name}은(는) ${target.name}을(를) 내보냈다!`
+  appendLog(state, switchMessage, isAutomatic ? 'switch' : sideId)
 
   if (side.healingWishPending) {
     target.hp = target.maxHp
@@ -8518,7 +8640,6 @@ function performSwitch(
     side.zHealReplacement = false
   }
   applyEntryHazards(state, side, target)
-  activateEntryAbility(state, sideId, resolvedSlot)
   state.lastEvent = { kind: 'switch', sideId, nonce: state.eventNonce += 1 }
   pushTimelineStep(timeline, state, {
     phase: 'switch',
@@ -8530,8 +8651,9 @@ function performSwitch(
     actorName: target.name,
     actorSpeciesId: target.speciesId,
     actorOriginalSpeciesId: target.originalSpeciesId,
-    message: latestLogMessage(state, `${target.name}이(가) 배틀에 나왔다!`),
+    message: switchMessage,
   })
+  activateEntryAbility(state, sideId, resolvedSlot)
   return true
 }
 
@@ -10826,6 +10948,7 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
 
   const nextState = cloneBattle(state)
   const timeline = captureTimeline ? [] : null
+  if (timeline) FORM_TIMELINE_CONTEXTS.set(nextState, { timeline, deferred: [] })
   nextState.lastEvent = null
   ;['player', 'opponent'].forEach((sideId) => {
     const side = getSide(nextState, sideId)
@@ -10940,6 +11063,8 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
   advanceSideConditionTimers(nextState)
   advanceEnvironmentTimers(nextState, timeline)
   settleFaints(nextState, timeline)
+  flushDeferredFormTimeline(nextState)
+  FORM_TIMELINE_CONTEXTS.delete(nextState)
   nextState.turn += 1
   return { state: nextState, timeline: timeline ?? [] }
 }

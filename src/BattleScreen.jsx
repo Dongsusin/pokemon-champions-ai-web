@@ -48,6 +48,7 @@ import {
   getBattleMovePreview,
   getBattleTypeEffectiveness,
   getBattleSummary,
+  getConditionalBattleFormAssets,
   getForcedBattleAction,
 } from './data/battleEngine'
 import {
@@ -56,7 +57,7 @@ import {
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
 import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/battleRules'
-import { getBattleFormOptions, typeClassName } from './data/trainingData'
+import { getRelatedFormOptions, typeClassName } from './data/trainingData'
 
 function animationClassToken(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
@@ -115,7 +116,14 @@ function preloadMoveAssetsWithTimeout(assets, timeout = 1800) {
 }
 
 function getBattleSpriteAssets(pokemon) {
-  const formAssets = getBattleFormOptions(pokemon.originalSpeciesId ?? pokemon.speciesId)
+  const battleBaseSpeciesId = Number(
+    pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId ?? pokemon.speciesId,
+  )
+  const formAssets = getRelatedFormOptions(battleBaseSpeciesId)
+    .filter((form) => (
+      Number(form.id) === battleBaseSpeciesId
+      || Number(form.parentSpeciesId) === battleBaseSpeciesId
+    ))
     .flatMap((form) => [
       form.spriteFront,
       form.spriteBack,
@@ -129,6 +137,7 @@ function getBattleSpriteAssets(pokemon) {
     pokemon.spriteFrontFallback,
     pokemon.spriteBackFallback,
     ...formAssets,
+    ...getConditionalBattleFormAssets(pokemon),
   ].flat().filter(Boolean)
 }
 
@@ -184,6 +193,7 @@ function needsOpponentTargetSelection(move, availableTargetCount) {
 
 const TURN_STEP_DURATIONS = {
   gimmick: 2100,
+  form: 1200,
   announce: 380,
   attack: 760,
   impact: 440,
@@ -214,6 +224,7 @@ const HP_BAR_DURATIONS = {
 }
 
 const GIMMICK_STEP_DURATIONS = {
+  form: 1200,
   mega: 3000,
   zmove: 2700,
   dynamax: 3300,
@@ -226,7 +237,9 @@ function baseTurnStepDuration(step) {
     const profile = getMoveAnimationProfile(step)
     return step.phase === 'attack' ? profile.duration : getMovePixelAnimationPlan(profile).impactDuration
   }
-  if (step?.phase === 'gimmick') return GIMMICK_STEP_DURATIONS[step.mechanicId] ?? TURN_STEP_DURATIONS.gimmick
+  if (step?.phase === 'gimmick' || step?.phase === 'form') {
+    return GIMMICK_STEP_DURATIONS[step.mechanicId] ?? TURN_STEP_DURATIONS[step.phase]
+  }
   return TURN_STEP_DURATIONS[step?.phase] ?? 700
 }
 
@@ -718,6 +731,10 @@ function TeraTypeJewel({ type, mode = 'stage' }) {
 }
 
 const GIMMICK_PRESENTATION = {
+  form: {
+    eyebrow: 'BATTLE FORM SHIFT',
+    title: '폼체인지',
+  },
   mega: {
     eyebrow: 'KEY STONE RESONANCE',
     title: '메가진화',
@@ -744,6 +761,12 @@ function gimmickDetail(cue) {
   if (cue.mechanicId === 'tera') return `${cue.mechanicType ?? '노말'} TERA TYPE`
   if (cue.mechanicId === 'dynamax') return cue.mechanicMode === 'gigantamax' ? '거다이맥스' : '다이맥스'
   if (cue.mechanicId === 'zmove') return cue.chargedMoveName ?? 'Z-MOVE CHARGED'
+  if (cue.mechanicId === 'form') {
+    const transition = cue.actorPreviousName && cue.actorPreviousName !== cue.actorName
+      ? `${cue.actorPreviousName}  →  ${cue.actorName}`
+      : cue.actorName
+    return cue.formSourceName ? `${transition} · ${cue.formSourceName}` : transition
+  }
   if (cue.actorPreviousName && cue.actorPreviousName !== cue.actorName) {
     return `${cue.actorPreviousName}  →  ${cue.actorName}`
   }
@@ -831,6 +854,15 @@ function GimmickAnimation({ cue }) {
         <div className="gimmick-primal-layer" aria-hidden="true">
           <span className="gimmick-primal-sigil"><i /><i /><i /></span>
           <span className="gimmick-primal-wave"><i /><i /></span>
+        </div>
+      )}
+
+      {cue.mechanicId === 'form' && (
+        <div className="gimmick-form-layer" aria-hidden="true">
+          <span className="gimmick-form-core" />
+          <span className="gimmick-form-wave wave-one" />
+          <span className="gimmick-form-wave wave-two" />
+          <span className="gimmick-form-wave wave-three" />
         </div>
       )}
 
@@ -1028,7 +1060,7 @@ function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers =
 
   return (
     <>
-      {cue.phase === 'gimmick' && (
+      {(cue.phase === 'gimmick' || cue.phase === 'form') && (
         <GimmickAnimation cue={cue} key={`gimmick-${cue.id}`} />
       )}
 
@@ -1089,7 +1121,7 @@ function battleStageClassName(sideId, pokemon, cue, activeSlot = 0) {
       `move-archetype-${profile.archetype}`,
     )
   }
-  if (isActor && cue.phase === 'gimmick') {
+  if (isActor && (cue.phase === 'gimmick' || cue.phase === 'form')) {
     classes.push('is-gimmicking', `gimmick-${cue.mechanicId}`)
   }
   if (isActor && cue.phase === 'switch-out') classes.push('is-switching-out')
@@ -1109,14 +1141,16 @@ function battleCameraClassName(cue) {
   classes.push(`phase-${cue.phase}`)
   if (cue.sideId) classes.push(`actor-${cue.sideId}`)
   if (cue.targetSideId) classes.push(`target-${cue.targetSideId}`)
-  if (cue.phase === 'gimmick' && cue.mechanicId) classes.push(`gimmick-${cue.mechanicId}`)
+  if ((cue.phase === 'gimmick' || cue.phase === 'form') && cue.mechanicId) classes.push(`gimmick-${cue.mechanicId}`)
   return classes.join(' ')
 }
 
 function battleStageStyle(cue, animationMode = 'normal') {
   if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue, animationMode)}ms` }
   if (cue?.phase === 'impact') return { '--impact-duration': `${turnStepDuration(cue, animationMode)}ms` }
-  if (cue?.phase === 'gimmick') return { '--gimmick-duration': `${turnStepDuration(cue)}ms` }
+  if (cue?.phase === 'gimmick' || cue?.phase === 'form') {
+    return { '--gimmick-duration': `${turnStepDuration(cue)}ms` }
+  }
   return undefined
 }
 
@@ -1150,7 +1184,7 @@ function statusAnchorClassName(sideId, pokemon, cue, activeSlot = 0) {
 function cueTone(cue) {
   if (!cue) return 'neutral'
   if (cue.phase === 'faint' || cue.phase === 'impact') return cue.targetSideId === 'player' ? 'opponent' : 'player'
-  if (cue.phase === 'gimmick') return 'gimmick'
+  if (cue.phase === 'gimmick' || cue.phase === 'form') return 'gimmick'
   return cue.sideId ?? 'neutral'
 }
 

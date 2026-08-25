@@ -3,6 +3,7 @@ import pokemonData from '../src/data/generatedPokemonData.json' with { type: 'js
 import {
   chooseAiAction,
   createBattle,
+  createBattleTurnTimeline,
   getAvailableBattleMechanics,
   getBattleMovePreview,
   getBattleTypeEffectiveness,
@@ -149,7 +150,16 @@ function turn(state, playerAction, opponentAction) {
     [pokemon('snorlax', ['tackle'])],
   )
   state.opponent.team[0].hp = state.opponent.team[0].maxHp = 2000
-  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  const formTurn = createBattleTurnTimeline(
+    state,
+    { type: 'move', moveIndex: 0, actorSlot: 0, targetSlot: 0, gimmick: null },
+    () => 0.5,
+  )
+  const formStep = formTurn.timeline.find((step) => step.phase === 'form' && step.sideId === 'player')
+  assert(formStep, 'Stance Change must emit a form-change timeline step')
+  assert(formStep.spriteBeforeBack.includes('/aegislash.gif'))
+  assert(formStep.spriteAfterBack.includes('/aegislash-blade.gif'))
+  state = formTurn.state
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('aegislash-blade').id)
   state = turn(state, { type: 'move', moveIndex: 1 }, { type: 'move', moveIndex: 0 })
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('aegislash').id)
@@ -252,8 +262,28 @@ function turn(state, playerAction, opponentAction) {
   )
   const cherrim = state.player.team[0]
   assert.equal(state.rules.weather.id, 'desolateland')
+  assert.equal(cherrim.slug, 'cherrim-sunshine')
+  assert(cherrim.spriteFront.includes('/cherrim-sunshine.gif'))
+  assert(cherrim.spriteBack.includes('/cherrim-sunshine.gif'))
   assert.equal(getEffectiveBattleStat(state, cherrim, 'attack'), cherrim.stats.attack * 1.5)
   assert.equal(getEffectiveBattleStat(state, cherrim, 'specialDefense'), cherrim.stats.specialDefense * 1.5)
+}
+
+{
+  const state = battle(
+    [pokemon('cherrim', ['sunnyday'])],
+    [pokemon('snorlax', ['protect'])],
+  )
+  const weatherTurn = createBattleTurnTimeline(
+    state,
+    { type: 'move', moveIndex: 0, actorSlot: 0, targetSlot: 0, gimmick: null },
+    () => 0.5,
+  )
+  const formStep = weatherTurn.timeline.find((step) => step.phase === 'form' && step.sideId === 'player')
+  assert(formStep, 'Flower Gift weather activation must emit a form-change timeline step')
+  assert(formStep.spriteBeforeBack.includes('/cherrim.gif'))
+  assert(formStep.spriteAfterBack.includes('/cherrim-sunshine.gif'))
+  assert.equal(weatherTurn.state.player.team[0].slug, 'cherrim-sunshine')
 }
 
 {
@@ -375,6 +405,54 @@ function turn(state, playerAction, opponentAction) {
   )
   assert.equal(state.player.team[0].consumedItem, true)
   assert.equal(state.player.team[0].paradoxBoosterActive, true)
+}
+
+{
+  const zacianState = battle(
+    [pokemon('zacian', ['protect'], { heldItemId: 'rusted-sword', heldItemName: '녹슨검' })],
+    [pokemon('snorlax')],
+  )
+  assert.equal(zacianState.player.team[0].speciesId, profileBySlug.get('zacian-crowned').id)
+  assert(zacianState.player.team[0].spriteFront.includes('/zacian-crowned.gif'))
+
+  const zamazentaState = battle(
+    [pokemon('zamazenta', ['protect'], { heldItemId: 'rusted-shield', heldItemName: '녹슨방패' })],
+    [pokemon('snorlax')],
+  )
+  assert.equal(zamazentaState.player.team[0].speciesId, profileBySlug.get('zamazenta-crowned').id)
+  assert(zamazentaState.player.team[0].spriteFront.includes('/zamazenta-crowned.gif'))
+}
+
+{
+  const state = battle(
+    [
+      pokemon('snorlax'),
+      pokemon('zacian', ['protect'], { heldItemId: 'rusted-sword', heldItemName: '녹슨검' }),
+    ],
+    [pokemon('snorlax')],
+  )
+  const switchTurn = createBattleTurnTimeline(
+    state,
+    { type: 'switch', targetIndex: 1, actorSlot: 0 },
+    () => 0.5,
+  )
+  const switchStepIndex = switchTurn.timeline.findIndex((step) => step.phase === 'switch' && step.sideId === 'player')
+  const formStepIndex = switchTurn.timeline.findIndex((step) => step.phase === 'form' && step.sideId === 'player')
+  assert(switchStepIndex >= 0)
+  assert(formStepIndex > switchStepIndex, 'Held-item form animation must follow the send-out animation')
+  const formStep = switchTurn.timeline[formStepIndex]
+  assert(formStep.spriteBeforeBack.includes('/zacian.gif'))
+  assert(formStep.spriteAfterBack.includes('/zacian-crowned.gif'))
+}
+
+{
+  const state = battle(
+    [pokemon('genesect', ['protect'], { heldItemId: 'douse-drive', heldItemName: '아쿠아카세트' })],
+    [pokemon('snorlax')],
+  )
+  assert.equal(state.player.team[0].slug, 'genesect-douse')
+  assert(state.player.team[0].spriteFront.includes('/genesect-douse.gif'))
+  assert(state.player.team[0].spriteBack.includes('/genesect-douse.gif'))
 }
 
 {

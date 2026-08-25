@@ -852,7 +852,8 @@
 }
 
 /* Battle gimmicks: distinct transformation cinematics */
-.app-shell.battle-view .battle-field-camera.phase-gimmick {
+.app-shell.battle-view .battle-field-camera.phase-gimmick,
+.app-shell.battle-view .battle-field-camera.phase-form {
   animation: refined-gimmick-camera var(--gimmick-duration, 2200ms) cubic-bezier(0.2, 0.72, 0.2, 1) both;
 }
 
@@ -920,6 +921,12 @@
   --gimmick-primary: #ff6947;
   --gimmick-secondary: #1fbddd;
   --gimmick-highlight: #fff0a4;
+}
+
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-form {
+  --gimmick-primary: #6fffe2;
+  --gimmick-secondary: #537dff;
+  --gimmick-highlight: #fff7b0;
 }
 
 .app-shell.battle-view .battle-gimmick-sequence.tera-type-normal { --gimmick-primary: #d8d3cd; --gimmick-secondary: #8e8a84; }
