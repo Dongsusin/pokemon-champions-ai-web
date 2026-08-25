@@ -88,7 +88,13 @@ const STAT_LABELS = {
   evasion: '회피율',
 }
 
-const AI_DIFFICULTY_STAGE_STATS = Object.keys(STAT_LABELS)
+const AI_DIFFICULTY_STAGE_STATS = [
+  'attack',
+  'defense',
+  'specialAttack',
+  'specialDefense',
+  'speed',
+]
 
 const SHOWDOWN_STAT_IDS = {
   atk: 'attack',
@@ -432,6 +438,13 @@ function applyOpponentAiDifficulty(side, difficultyValue) {
 
   if (difficulty.id === 'hard') {
     side.team.forEach((pokemon) => {
+      const hpMultiplier = stageMultiplier(difficulty.boostStage)
+      const boostedMaxHp = Math.max(1, Math.floor(pokemon.maxHp * hpMultiplier))
+      pokemon.difficultyHpMultiplier = hpMultiplier
+      pokemon.stats.hp = boostedMaxHp
+      pokemon.maxHp = boostedMaxHp
+      pokemon.originalMaxHp = boostedMaxHp
+      pokemon.hp = boostedMaxHp
       AI_DIFFICULTY_STAGE_STATS.forEach((statKey) => {
         pokemon.statStages[statKey] = difficulty.boostStage
       })
@@ -1928,7 +1941,11 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
     moves: pokemon.moves.map((move) => move.name),
   })
   const nextStats = statObject(transformed)
-  const nextBaseMaxHp = nextStats.hp
+  const nextBaseMaxHp = Math.max(
+    1,
+    Math.floor(nextStats.hp * (pokemon.difficultyHpMultiplier ?? 1)),
+  )
+  nextStats.hp = nextBaseMaxHp
   const nextMaxHp = pokemon.dynamaxActive ? nextBaseMaxHp * 2 : nextBaseMaxHp
   const preservedHp = options.hpMode === 'damage'
     ? nextMaxHp - Math.max(0, previousMaxHp - previousHp)
@@ -5276,7 +5293,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   } else if (resolvedRules.aiDifficulty.id === 'hard') {
     appendLog(
       state,
-      `하드 난이도: 상대 포켓몬의 모든 능력 랭크가 ${resolvedRules.aiDifficulty.boostStage}단계 오른 상태로 시작한다!`,
+      `하드 난이도: 상대 포켓몬의 HP와 주요 능력이 ${resolvedRules.aiDifficulty.boostStage}단계 강화된 상태로 시작한다!`,
       'status',
     )
   }

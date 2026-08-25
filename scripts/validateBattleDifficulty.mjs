@@ -13,7 +13,12 @@ import { getMoveById } from '../src/data/trainingData.js'
 
 const profiles = [...pokemonData.species, ...pokemonData.forms]
 const profileBySlug = new Map(profiles.map((profile) => [profile.slug, profile]))
-const stageStats = ['attack', 'defense', 'specialAttack', 'specialDefense', 'speed', 'accuracy', 'evasion']
+const stageStats = ['attack', 'defense', 'specialAttack', 'specialDefense', 'speed']
+const accuracyStats = ['accuracy', 'evasion']
+
+function stageMultiplier(stage) {
+  return (2 + stage) / 2
+}
 
 function battlePokemon(slug, moveIds, overrides = {}) {
   const profile = profileBySlug.get(slug)
@@ -74,6 +79,21 @@ function createDifficultyBattle(difficulty) {
   })
 }
 
+function createAccuracyBattle() {
+  return createBattle({
+    playerPokemon: [battlePokemon('magikarp', ['splash'], { captureId: 'accuracy-player' })],
+    opponent: { name: '명중 회피 검증 AI', tier: 'S' },
+    opponentTeam: {
+      pokemon: [battlePokemon('charizard', ['honeclaws', 'doubleteam'], {
+        captureId: 'accuracy-charizard',
+      })],
+      battleGimmicks: [],
+      strategy: { lead: '리자몽' },
+    },
+    rules: battleRules({ id: 'hard', boostStage: 3 }),
+  })
+}
+
 assert.equal(normalizeAiBattleDifficulty().id, 'normal')
 assert.equal(normalizeAiBattleDifficulty({ id: 'hard', boostStage: -5 }).boostStage, 1)
 assert.equal(normalizeAiBattleDifficulty({ id: 'hard', boostStage: 99 }).boostStage, 3)
@@ -102,6 +122,26 @@ assert.equal(createBattleMatchRules(() => 0.5).aiDifficulty.id, 'normal')
   assert(mechanics.includes('dynamax'))
   battle.opponent.team.forEach((pokemon) => {
     stageStats.forEach((statKey) => assert.equal(pokemon.statStages[statKey], 0))
+    accuracyStats.forEach((statKey) => assert.equal(pokemon.statStages[statKey], 0))
+  })
+}
+
+{
+  const normalBattle = createDifficultyBattle('normal')
+  const normalOpponentHp = normalBattle.opponent.team.map((pokemon) => pokemon.maxHp)
+
+  ;[1, 2, 3].forEach((boostStage) => {
+    const battle = createDifficultyBattle({ id: 'hard', boostStage })
+    battle.opponent.team.forEach((pokemon, index) => {
+      assert.equal(
+        pokemon.maxHp,
+        Math.floor(normalOpponentHp[index] * stageMultiplier(boostStage)),
+      )
+      assert.equal(pokemon.hp, pokemon.maxHp)
+      assert.equal(pokemon.stats.hp, pokemon.maxHp)
+      stageStats.forEach((statKey) => assert.equal(pokemon.statStages[statKey], boostStage))
+      accuracyStats.forEach((statKey) => assert.equal(pokemon.statStages[statKey], 0))
+    })
   })
 }
 
@@ -109,8 +149,10 @@ assert.equal(createBattleMatchRules(() => 0.5).aiDifficulty.id, 'normal')
   let battle = createDifficultyBattle({ id: 'hard', boostStage: 3 })
   battle.opponent.team.forEach((pokemon) => {
     stageStats.forEach((statKey) => assert.equal(pokemon.statStages[statKey], 3))
+    accuracyStats.forEach((statKey) => assert.equal(pokemon.statStages[statKey], 0))
   })
   stageStats.forEach((statKey) => assert.equal(battle.player.team[0].statStages[statKey], 0))
+  accuracyStats.forEach((statKey) => assert.equal(battle.player.team[0].statStages[statKey], 0))
   assert.equal(battle.opponent.team[0].heldItemId, 'charizardite-x')
 
   for (let turn = 0; turn < 4; turn += 1) {
@@ -128,6 +170,27 @@ assert.equal(createBattleMatchRules(() => 0.5).aiDifficulty.id, 'normal')
 }
 
 {
+  let battle = createAccuracyBattle()
+  battle = playBattleTurnWithActions(
+    battle,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    () => 0.5,
+  )
+  assert.equal(battle.opponent.team[0].statStages.attack, 4)
+  assert.equal(battle.opponent.team[0].statStages.accuracy, 1)
+  assert.equal(battle.opponent.team[0].statStages.evasion, 0)
+
+  battle = playBattleTurnWithActions(
+    battle,
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+    [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 1, gimmick: null }],
+    () => 0.5,
+  )
+  assert.equal(battle.opponent.team[0].statStages.evasion, 1)
+}
+
+{
   let battle = createDifficultyBattle({ id: 'hard', boostStage: 2 })
   assert.equal(battle.opponent.team[1].difficultyBoostPending, true)
   battle = playBattleTurnWithActions(
@@ -137,6 +200,7 @@ assert.equal(createBattleMatchRules(() => 0.5).aiDifficulty.id, 'normal')
     () => 0.5,
   )
   stageStats.forEach((statKey) => assert.equal(battle.opponent.team[1].statStages[statKey], 2))
+  accuracyStats.forEach((statKey) => assert.equal(battle.opponent.team[1].statStages[statKey], 0))
   assert.equal(battle.opponent.team[1].difficultyBoostPending, false)
 
   battle = playBattleTurnWithActions(
@@ -146,6 +210,7 @@ assert.equal(createBattleMatchRules(() => 0.5).aiDifficulty.id, 'normal')
     () => 0.5,
   )
   stageStats.forEach((statKey) => assert.equal(battle.opponent.team[0].statStages[statKey], 0))
+  accuracyStats.forEach((statKey) => assert.equal(battle.opponent.team[0].statStages[statKey], 0))
 }
 
-console.log('Validated easy, normal, and adjustable hard AI battle difficulty rules.')
+console.log('Validated AI difficulty HP, core stat, accuracy, evasion, and mechanic rules.')

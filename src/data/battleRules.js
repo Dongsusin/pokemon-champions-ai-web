@@ -77,7 +77,7 @@ export const AI_BATTLE_DIFFICULTIES = [
     id: 'hard',
     label: '하드',
     shortLabel: 'HARD',
-    description: '상대의 모든 포켓몬은 HP를 제외한 능력 랭크가 선택한 단계만큼 오른 상태로 시작합니다.',
+    description: '상대의 모든 포켓몬은 HP와 공격·방어·특수공격·특수방어·스피드가 강화된 상태로 시작합니다. 명중률과 회피율은 변하지 않습니다.',
   },
 ]
 
@@ -96,7 +96,7 @@ export function normalizeAiBattleDifficulty(value = 'normal') {
     ...definition,
     boostStage,
     description: definition.id === 'hard'
-      ? `상대의 모든 포켓몬은 HP를 제외한 능력 랭크가 ${boostStage}단계 오른 상태로 시작합니다. 이후 능력 변화는 기존처럼 -6~+6단계까지 적용됩니다.`
+      ? `상대의 모든 포켓몬은 HP와 공격·방어·특수공격·특수방어·스피드가 ${boostStage}단계 강화된 상태로 시작합니다. 명중률과 회피율은 기술·특성으로만 변합니다.`
       : definition.description,
   }
 }
