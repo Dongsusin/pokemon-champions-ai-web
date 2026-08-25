@@ -8166,6 +8166,14 @@
   image-rendering: pixelated;
 }
 
+.shop-owned-artwork > .battle-item-sheet-sprite,
+.shop-item-icon > .battle-item-sheet-sprite,
+.held-item-artwork > .battle-item-sheet-sprite {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.78));
+}
+
 .shop-owned-artwork > svg,
 .shop-item-icon > svg {
   z-index: 1;

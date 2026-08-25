@@ -1,10 +1,13 @@
 import {
   calculateStats,
   getBattleFormOptions,
+  getEvolutionOptions,
   getMove,
   getMoveById,
   getRelatedFormOptions,
   getSpeciesProfile,
+  MOVE_CATALOG,
+  NATURE_OPTIONS,
   normalizePokemon,
   resolveMoveForPokemon,
 } from './trainingData.js'
@@ -38,12 +41,18 @@ import {
   BATTLE_WEATHER_DEFINITIONS,
   normalizeAiBattleDifficulty,
 } from './battleRules.js'
+import { getBattleItem } from './shopData.js'
 import { resolveMaxMove } from './maxMoveData.js'
 import {
+  CALL_MOVE_IDS,
+  FIELD_EFFECT_MOVE_RULES,
+  HAZARD_MOVE_RULES,
   HEAL_MOVE_IDS,
   MOVE_DAMAGE_STAT_RULES,
+  NO_EFFECT_MOVE_IDS,
   PROTECT_CONTACT_EFFECTS,
   PROTECT_MOVE_IDS,
+  SIDE_CONDITION_MOVE_RULES,
   STATUS_CURE_BERRIES,
   STATUS_MOVE_EFFECTS,
 } from './moveSupportData.js'
@@ -141,6 +150,7 @@ const WEIGHT_BASED_MOVE_IDS = new Set([
   ...TARGET_WEIGHT_POWER_MOVE_IDS,
   ...WEIGHT_RATIO_POWER_MOVE_IDS,
 ])
+const PLEDGE_MOVE_IDS = new Set(['firepledge', 'grasspledge', 'waterpledge'])
 
 const INTIMIDATE_REASON = 'intimidate'
 const BERRY_SUPPRESSING_ABILITIES = new Set(['긴장감', '혼연일체'])
@@ -187,6 +197,33 @@ const ABILITY_CHANGE_IMMUNE_NAMES = new Set([
   ...UNTRACEABLE_ABILITIES,
   '절대안깸',
   '화학변화가스',
+])
+const NEUTRALIZING_GAS_IMMUNE_ABILITIES = new Set([
+  'AR시스템',
+  '기분파',
+  '꼬르륵스위치',
+  '달마모드',
+  '리밋실드',
+  '마이티체인지',
+  '멀티타입',
+  '배틀스위치',
+  '스웜체인지',
+  '사령탑',
+  '아이스페이스',
+  '어군',
+  '유대변화',
+  '절대안깸',
+  '제로포밍',
+  '테라체인지',
+  '탈',
+  '화학변화가스',
+])
+const RAIN_PERFECT_ACCURACY_MOVE_IDS = new Set([
+  'bleakwindstorm',
+  'hurricane',
+  'sandsearstorm',
+  'thunder',
+  'wildboltstorm',
 ])
 const SANDSTORM_IMMUNE_ABILITIES = new Set(['매직가드', '방진', '모래숨기', '모래헤치기', '모래의힘'])
 const WEATHER_ENVIRONMENTS = new Map(BATTLE_WEATHER_DEFINITIONS.map((weather) => [weather.id, weather]))
@@ -270,6 +307,7 @@ const CHARGE_MESSAGES = {
   geomancy: '대지의 에너지를 모으고 있다!',
   phantomforce: '모습을 감췄다!',
   shadowforce: '그림자 속으로 모습을 감췄다!',
+  skydrop: '상대를 붙잡고 하늘 높이 날아올랐다!',
   solarbeam: '빛을 한가득 모았다!',
   solarblade: '빛의 힘을 모았다!',
 }
@@ -287,6 +325,117 @@ const IVY_CUDGEL_VARIANTS = {
   'wellspring-mask': { key: 'WELLSPRING_MASK', type: '물' },
   'cornerstone-mask': { key: 'CORNERSTONE_MASK', type: '바위' },
 }
+
+const HELD_ITEM_FORM_RULES = Object.freeze({
+  'adamant-crystal': { species: 'dialga', form: 'dialga-origin' },
+  'cornerstone-mask': { species: 'ogerpon', form: 'ogerpon-cornerstone-mask' },
+  'griseous-core': { species: 'giratina', form: 'giratina-origin' },
+  'hearthflame-mask': { species: 'ogerpon', form: 'ogerpon-hearthflame-mask' },
+  'lustrous-globe': { species: 'palkia', form: 'palkia-origin' },
+  'rusted-shield': { species: 'zamazenta', form: 'zamazenta-crowned' },
+  'rusted-sword': { species: 'zacian', form: 'zacian-crowned' },
+  'wellspring-mask': { species: 'ogerpon', form: 'ogerpon-wellspring-mask' },
+})
+
+const CALL_MOVE_BLOCKLIST = new Set([
+  'assist',
+  'copycat',
+  'instruct',
+  'mefirst',
+  'metronome',
+  'mimic',
+  'mirrormove',
+  'sketch',
+  'sleeptalk',
+  'struggle',
+  'transform',
+])
+
+const BERRY_HEALING_FRACTIONS = {
+  'aguav-berry': [1, 3],
+  'figy-berry': [1, 3],
+  'iapapa-berry': [1, 3],
+  'mago-berry': [1, 3],
+  'oran-berry': [10, 1],
+  'sitrus-berry': [1, 4],
+  'wiki-berry': [1, 3],
+}
+const FLAVOR_BERRY_DISLIKED_STATS = {
+  'aguav-berry': 'specialDefense',
+  'figy-berry': 'attack',
+  'iapapa-berry': 'defense',
+  'mago-berry': 'speed',
+  'wiki-berry': 'specialAttack',
+}
+
+const TYPE_BOOST_ITEM_IDS = {
+  'black-belt': '격투',
+  'black-glasses': '악',
+  charcoal: '불꽃',
+  'dragon-fang': '드래곤',
+  'fairy-feather': '페어리',
+  'hard-stone': '바위',
+  magnet: '전기',
+  'metal-coat': '강철',
+  'miracle-seed': '풀',
+  'mystic-water': '물',
+  'never-melt-ice': '얼음',
+  'poison-barb': '독',
+  'sharp-beak': '비행',
+  'silk-scarf': '노말',
+  'silver-powder': '벌레',
+  'soft-sand': '땅',
+  'spell-tag': '고스트',
+  'twisted-spoon': '에스퍼',
+}
+
+const GEM_ITEM_TYPES = Object.fromEntries(Object.entries(HELD_ITEM_TYPE_BY_ID)
+  .filter(([itemId]) => itemId.endsWith('-gem')))
+
+const TYPE_RESIST_BERRY_TYPES = {
+  'babiri-berry': '강철',
+  'charti-berry': '바위',
+  'chilan-berry': '노말',
+  'chople-berry': '격투',
+  'coba-berry': '비행',
+  'colbur-berry': '악',
+  'haban-berry': '드래곤',
+  'kasib-berry': '고스트',
+  'kebia-berry': '독',
+  'occa-berry': '불꽃',
+  'passho-berry': '물',
+  'payapa-berry': '에스퍼',
+  'rindo-berry': '풀',
+  'roseli-berry': '페어리',
+  'shuca-berry': '땅',
+  'tanga-berry': '벌레',
+  'wacan-berry': '전기',
+  'yache-berry': '얼음',
+}
+
+const CHOICE_ITEM_IDS = new Set(['choice-band', 'choice-scarf', 'choice-specs'])
+const PARADOX_SPECIES_SLUGS = new Set([
+  'brute-bonnet',
+  'flutter-mane',
+  'gouging-fire',
+  'great-tusk',
+  'iron-boulder',
+  'iron-bundle',
+  'iron-crown',
+  'iron-hands',
+  'iron-jugulis',
+  'iron-leaves',
+  'iron-moth',
+  'iron-thorns',
+  'iron-treads',
+  'iron-valiant',
+  'raging-bolt',
+  'roaring-moon',
+  'sandy-shocks',
+  'scream-tail',
+  'slither-wing',
+  'walking-wake',
+])
 
 function moveAnimationMetadata(attacker, move, action, moveCategory) {
   let animationType = move.type
@@ -391,6 +540,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     destinyBondActive: false,
     trappedTurns: 0,
     trapSourceName: null,
+    trapSourceBattleId: null,
     trapDamages: false,
     tormented: false,
     lastMoveIndex: null,
@@ -401,6 +551,8 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     chargingMove: null,
     lockedMove: null,
     semiInvulnerable: null,
+    skyDropSourceBattleId: null,
+    skyDropTargetBattleId: null,
     teraActive: false,
     dynamaxActive: false,
     dynamaxTurns: 0,
@@ -422,11 +574,24 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     activeMoveActions: 0,
     actedThisTurn: false,
     switchedInThisTurn: false,
+    switchingOut: false,
     truantLoafing: false,
     flashFireActive: false,
     chargeActive: false,
+    defenseCurlActive: false,
+    minimized: false,
+    rageActive: false,
+    uproarTurns: 0,
+    bideState: null,
+    roostedThisTurn: false,
+    smackDownActive: false,
+    tarShotActive: false,
+    glaiveRushVulnerable: false,
+    noRetreatActive: false,
     custapActive: false,
+    micleActive: false,
     gorillaLockedMoveIndex: null,
+    choiceLockedMoveIndex: null,
     weightReduction: 0,
     cudChewReadyTurn: null,
     cudChewItemId: '',
@@ -439,6 +604,61 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     saltCureActive: false,
     syrupBombTurns: 0,
     healBlockTurns: 0,
+    substituteHp: 0,
+    leechSeedSourceSideId: null,
+    leechSeedSourceSlot: null,
+    nightmareActive: false,
+    cursedActive: false,
+    stockpileCount: 0,
+    stockpileBoosts: { defense: 0, specialDefense: 0 },
+    encoredMoveIndex: null,
+    encoreTurns: 0,
+    tauntTurns: 0,
+    embargoTurns: 0,
+    ingrainActive: false,
+    aquaRingActive: false,
+    magnetRiseTurns: 0,
+    telekinesisTurns: 0,
+    abilitySuppressed: false,
+    originalAbility: normalized.ability,
+    magicCoatActive: false,
+    snatchActive: false,
+    imprisonActive: false,
+    grudgeActive: false,
+    ejectPackPending: false,
+    helpingHandActive: false,
+    powderActive: false,
+    electrifyActive: false,
+    laserFocusActive: false,
+    octolockActive: false,
+    dragonCheerTurns: 0,
+    sureHitTargetBattleId: null,
+    sureHitTurns: 0,
+    foresightActive: false,
+    miracleEyeActive: false,
+    lastMoveId: null,
+    lastDamageTaken: 0,
+    lastDamageCategory: null,
+    lastAttackerBattleId: null,
+    damagedThisTurn: false,
+    hitByPhysicalThisTurn: false,
+    hitCountTaken: 0,
+    moveFailedLastTurn: false,
+    moveFailedThisTurn: false,
+    consecutiveMoveId: null,
+    consecutiveMoveCount: 0,
+    usedMoveIds: [],
+    ateBerry: false,
+    statsLoweredThisTurn: false,
+    plannedActionType: null,
+    plannedMoveId: null,
+    plannedMoveCategory: null,
+    plannedMovePriority: null,
+    beakBlastCharging: false,
+    typeRemovedByMove: false,
+    neutralizedAbility: null,
+    pendingShedTailHp: 0,
+    nextTurnOrderBias: 0,
     entryAbilityActivations: {},
     hadHeldItem: Boolean(entry.heldItemId),
     consumedItem: false,
@@ -484,13 +704,35 @@ function createSide(id, name, entries, teamGimmicks = [], leadName = '', activeS
       primal: false,
     },
     healingWishPending: null,
+    wishSlots: {},
+    futureMoveSlots: {},
+    pendingPledge: null,
+    pledgeComboPlanned: false,
+    firePledgeTurns: 0,
+    grassPledgeTurns: 0,
+    waterPledgeTurns: 0,
+    roundUsedThisTurn: false,
+    allyFaintedThisTurn: false,
+    allyFaintedLastTurn: false,
     zHealReplacement: false,
     auroraVeilTurns: 0,
+    lightScreenTurns: 0,
+    reflectTurns: 0,
+    safeguardTurns: 0,
+    mistTurns: 0,
+    tailwindTurns: 0,
+    luckyChantTurns: 0,
+    wideGuardTurns: 0,
+    quickGuardTurns: 0,
+    craftyShieldTurns: 0,
+    matBlockTurns: 0,
     gmaxResidual: null,
     hazards: {
       stealthRock: false,
       steelsurge: false,
       toxicSpikes: 0,
+      spikes: 0,
+      stickyWeb: false,
     },
   }
 }
@@ -568,6 +810,13 @@ function createEnvironmentState(rules) {
     weatherStrong: false,
     terrainSource: null,
     gravityTurns: 0,
+    trickRoomTurns: 0,
+    wonderRoomTurns: 0,
+    magicRoomTurns: 0,
+    mudSportTurns: 0,
+    waterSportTurns: 0,
+    fairyLockTurns: 0,
+    ionDelugeTurns: 0,
   }
 }
 
@@ -609,12 +858,93 @@ function heldItemEffectsActive(pokemon) {
     pokemon
     && pokemon.heldItemId
     && !pokemon.consumedItem
-    && pokemon.ability !== '서투름',
+    && pokemon.ability !== '서투름'
+    && pokemon.embargoTurns <= 0
+    && !pokemon.magicRoomSuppressed,
+  )
+}
+
+function hasHeldItem(pokemon, itemId = null) {
+  return Boolean(
+    pokemon
+    && pokemon.heldItemId
+    && !pokemon.consumedItem
+    && (itemId == null || pokemon.heldItemId === itemId),
   )
 }
 
 function hasActiveHeldItem(pokemon, itemId) {
   return heldItemEffectsActive(pokemon) && pokemon.heldItemId === itemId
+}
+
+function baseSpeciesProfile(pokemon) {
+  const speciesId = Number(
+    pokemon?.battleBaseSpeciesId
+    ?? pokemon?.originalSpeciesId
+    ?? pokemon?.speciesId,
+  )
+  return getSpeciesProfile(speciesId)
+}
+
+function pokemonMatchesSpecies(pokemon, speciesSlug) {
+  const slug = baseSpeciesProfile(pokemon)?.slug ?? currentSpeciesSlug(pokemon)
+  return slug === speciesSlug || slug.startsWith(`${speciesSlug}-`)
+}
+
+function megaStoneMatchesPokemon(item, pokemon) {
+  if (!item || item.sourceCategory !== 'mega-stones' || !pokemon) return false
+  const profile = baseSpeciesProfile(pokemon)
+  if (!profile) return false
+  if (item.compatiblePokemon) return item.compatiblePokemon === profile.name
+  return String(item.description ?? '').includes(`${profile.name}에게`)
+}
+
+function itemCannotBeRemoved(holder, recipient = null) {
+  if (!hasHeldItem(holder)) return false
+  const itemId = holder.heldItemId
+  const item = getBattleItem(itemId)
+  const pokemon = [holder, recipient].filter(Boolean)
+  const matchesAny = (speciesSlug) => pokemon.some((entry) => pokemonMatchesSpecies(entry, speciesSlug))
+
+  if (item?.sourceCategory === 'z-crystals' || /ium-z(?:--held)?$/.test(itemId)) return true
+  if (item?.sourceCategory === 'mega-stones') {
+    return pokemon.some((entry) => megaStoneMatchesPokemon(item, entry))
+  }
+  if (itemId.endsWith('-plate') && matchesAny('arceus')) return true
+  if (itemId.endsWith('-memory') && matchesAny('silvally')) return true
+  if (itemId.endsWith('-drive') && matchesAny('genesect')) return true
+  if (itemId.endsWith('-mask') && matchesAny('ogerpon')) return true
+  if (itemId === 'blue-orb' && matchesAny('kyogre')) return true
+  if (itemId === 'red-orb' && matchesAny('groudon')) return true
+  if (['griseous-core'].includes(itemId) && matchesAny('giratina')) return true
+  if (['adamant-crystal'].includes(itemId) && matchesAny('dialga')) return true
+  if (['lustrous-globe'].includes(itemId) && matchesAny('palkia')) return true
+  if (itemId === 'rusted-sword' && matchesAny('zacian')) return true
+  if (itemId === 'rusted-shield' && matchesAny('zamazenta')) return true
+  if (itemId === 'booster-energy') {
+    return pokemon.some((entry) => PARADOX_SPECIES_SLUGS.has(baseSpeciesProfile(entry)?.slug))
+  }
+  return false
+}
+
+function canRemoveHeldItem(holder, recipient = null, { ignoreHolderAbility = false } = {}) {
+  return hasHeldItem(holder)
+    && (ignoreHolderAbility || holder.ability !== '점착')
+    && !itemCannotBeRemoved(holder, recipient)
+}
+
+function isPokemonAsleep(pokemon) {
+  return pokemon?.status?.id === 'sleep' || pokemon?.ability === '절대안깸'
+}
+
+function restSleepBlocked(state, pokemon) {
+  return SLEEP_IMMUNE_ABILITIES.has(pokemon?.ability)
+    || activeAllyHasAbility(state, pokemon, new Set(['스위트베일']))
+    || isGrounded(pokemon, state) && state.rules?.terrain?.id === 'electric'
+}
+
+function moveIgnoresAbility(move, pokemon) {
+  return Boolean(move?.ignoreAbility) && !hasActiveHeldItem(pokemon, 'ability-shield')
 }
 
 function clearHeldItem(pokemon) {
@@ -624,7 +954,7 @@ function clearHeldItem(pokemon) {
 }
 
 function activateSymbiosis(state, recipient) {
-  if (!recipient || recipient.heldItemId && !recipient.consumedItem) return false
+  if (!recipient || hasHeldItem(recipient)) return false
   const side = getPokemonSide(state, recipient)
   const donor = getActivePokemonList(state, side.id).find((ally) => (
     ally
@@ -632,7 +962,7 @@ function activateSymbiosis(state, recipient) {
     && !ally.fainted
     && ally.hp > 0
     && ally.ability === '공생'
-    && heldItemEffectsActive(ally)
+    && canRemoveHeldItem(ally, recipient)
   ))
   if (!donor) return false
 
@@ -654,6 +984,7 @@ function consumeHeldItem(state, pokemon, { berry = false } = {}) {
     consumerBattleId: pokemon.battleId,
   }
   pokemon.consumedItem = true
+  if (berry) pokemon.ateBerry = true
   state.lastConsumedItem = consumedItem
   if (berry && pokemon.ability === '되새김질') {
     pokemon.cudChewReadyTurn = state.turn + 1
@@ -664,14 +995,70 @@ function consumeHeldItem(state, pokemon, { berry = false } = {}) {
   return true
 }
 
+function activateWhiteHerb(state, pokemon) {
+  if (!hasActiveHeldItem(pokemon, 'white-herb')) return false
+  if (!clearNegativeStatStages(pokemon)) return false
+  consumeHeldItem(state, pokemon)
+  appendLog(state, `${pokemon.name}은(는) 하양허브로 떨어진 능력을 되돌렸다!`, 'item')
+  return true
+}
+
+function clearNegativeStatStages(pokemon) {
+  const loweredStats = Object.keys(pokemon.statStages)
+    .filter((statKey) => pokemon.statStages[statKey] < 0)
+  loweredStats.forEach((statKey) => { pokemon.statStages[statKey] = 0 })
+  return loweredStats.length > 0
+}
+
+function clearMentalHerbConditions(pokemon) {
+  const affected = pokemon.infatuated
+    || pokemon.tauntTurns > 0
+    || pokemon.encoreTurns > 0
+    || pokemon.tormented
+    || pokemon.disabledMoveTurns > 0
+    || pokemon.healBlockTurns > 0
+  if (!affected) return false
+  pokemon.infatuated = false
+  pokemon.tauntTurns = 0
+  pokemon.encoreTurns = 0
+  pokemon.encoredMoveIndex = null
+  pokemon.tormented = false
+  pokemon.disabledMoveTurns = 0
+  pokemon.disabledMoveIndex = null
+  pokemon.healBlockTurns = 0
+  return true
+}
+
+function activateMentalHerb(state, pokemon) {
+  if (!hasActiveHeldItem(pokemon, 'mental-herb')) return false
+  if (!clearMentalHerbConditions(pokemon)) return false
+  consumeHeldItem(state, pokemon)
+  appendLog(state, `${pokemon.name}은(는) 멘탈허브로 정신을 가다듬었다!`, 'item')
+  return true
+}
+
+function restoreLeppaBerryPp(state, pokemon, move) {
+  if (
+    !move
+    || move.currentPp > 0
+    || !hasActiveHeldItem(pokemon, 'leppa-berry')
+    || berriesSuppressed(state, pokemon)
+  ) return false
+  const restored = Math.min(move.maxPp - move.currentPp, 10 * berryEffectMultiplier(pokemon))
+  if (restored <= 0) return false
+  consumeHeldItem(state, pokemon, { berry: true })
+  move.currentPp += restored
+  appendLog(state, `${pokemon.name}은(는) 과사열매로 ${move.name}의 PP를 ${restored} 회복했다!`, 'item')
+  applyCheekPouch(state, pokemon)
+  return true
+}
+
 function stealHeldItem(state, thief, holder, sourceName, { ignoreHolderAbility = false } = {}) {
   if (
     !thief
     || !holder
-    || thief.heldItemId && !thief.consumedItem
-    || !holder.heldItemId
-    || holder.consumedItem
-    || !ignoreHolderAbility && holder.ability === '점착'
+    || hasHeldItem(thief)
+    || !canRemoveHeldItem(holder, thief, { ignoreHolderAbility })
   ) return false
 
   thief.heldItemId = holder.heldItemId
@@ -767,7 +1154,74 @@ function trappingAbilitySource(state, pokemon) {
 }
 
 function abilityCanBeChanged(pokemon) {
-  return pokemon && !ABILITY_CHANGE_IMMUNE_NAMES.has(pokemon.ability)
+  return pokemon
+    && !ABILITY_CHANGE_IMMUNE_NAMES.has(pokemon.ability)
+    && !hasActiveHeldItem(pokemon, 'ability-shield')
+}
+
+function suppressPokemonAbility(state, pokemon, sourceName) {
+  if (!abilityCanBeChanged(pokemon) || pokemon.abilitySuppressed || !pokemon.ability) return false
+  pokemon.originalAbility = pokemon.ability
+  pokemon.abilitySuppressed = true
+  pokemon.ability = ''
+  appendLog(state, `${pokemon.name}의 특성 효과가 사라졌다!`, sourceName === '화학변화가스' ? 'ability' : 'status')
+  return true
+}
+
+function refreshNeutralizingGas(state, { reactivate = true } = {}) {
+  if (!state || state.neutralizingGasRefreshActive) return false
+  state.neutralizingGasRefreshActive = true
+  const activeEntries = ['player', 'opponent'].flatMap((sideId) => (
+    getActivePokemonList(state, sideId).map((pokemon, activeSlot) => ({ sideId, activeSlot, pokemon }))
+  )).filter(({ pokemon }) => pokemon && !pokemon.fainted && pokemon.hp > 0)
+  const gasActive = activeEntries.some(({ pokemon }) => pokemon.ability === '화학변화가스')
+  const restoredEntries = []
+  let changed = false
+
+  activeEntries.forEach(({ sideId, activeSlot, pokemon }) => {
+    if (gasActive) {
+      if (pokemon.neutralizedAbility && hasActiveHeldItem(pokemon, 'ability-shield')) {
+        pokemon.ability = pokemon.neutralizedAbility
+        pokemon.neutralizedAbility = null
+        appendLog(state, `${pokemon.name}의 특성이 특성가드로 보호되었다!`, 'item')
+        restoredEntries.push({ sideId, activeSlot, pokemon })
+        changed = true
+        return
+      }
+      if (
+        pokemon.neutralizedAbility
+        || pokemon.abilitySuppressed
+        || !pokemon.ability
+        || NEUTRALIZING_GAS_IMMUNE_ABILITIES.has(pokemon.ability)
+        || hasActiveHeldItem(pokemon, 'ability-shield')
+      ) return
+      pokemon.neutralizedAbility = pokemon.ability
+      pokemon.ability = ''
+      breakIllusion(state, pokemon)
+      appendLog(state, `${pokemon.name}의 특성 효과가 화학변화가스에 의해 사라졌다!`, 'ability')
+      changed = true
+      return
+    }
+
+    if (!pokemon.neutralizedAbility) return
+    pokemon.ability = pokemon.neutralizedAbility
+    pokemon.neutralizedAbility = null
+    appendLog(state, `${pokemon.name}의 ${pokemon.ability} 효과가 되돌아왔다!`, 'ability')
+    restoredEntries.push({ sideId, activeSlot, pokemon })
+    changed = true
+  })
+
+  state.neutralizingGasRefreshActive = false
+  if (changed) {
+    refreshStrongWeatherSource(state)
+    refreshEnvironmentDependentAbilities(state)
+  }
+  if (reactivate) {
+    restoredEntries.forEach(({ sideId, activeSlot, pokemon }) => {
+      if (pokemon.hp > 0 && !pokemon.fainted) activateEntryAbility(state, sideId, activeSlot)
+    })
+  }
+  return changed
 }
 
 function restoreIllusion(pokemon) {
@@ -831,7 +1285,11 @@ function effectiveWeatherFamilyId(state) {
 }
 
 function effectiveMoveWeatherId(state, pokemon) {
-  return pokemon?.ability === '메가솔라' ? 'sun' : effectiveWeatherId(state)
+  const weatherId = pokemon?.ability === '메가솔라' ? 'sun' : effectiveWeatherId(state)
+  return hasActiveHeldItem(pokemon, 'utility-umbrella')
+    && ['sun', 'rain', 'desolateland', 'primordialsea'].includes(weatherId)
+    ? 'clear'
+    : weatherId
 }
 
 function effectiveMoveWeatherFamilyId(state, pokemon) {
@@ -1002,8 +1460,10 @@ function clonePokemon(pokemon) {
     moves: pokemon.moves.map((move) => ({ ...move })),
     statStages: { ...pokemon.statStages },
     status: pokemon.status ? { ...pokemon.status } : null,
+    stockpileBoosts: { ...(pokemon.stockpileBoosts ?? {}) },
     chargingMove: pokemon.chargingMove ? { ...pokemon.chargingMove } : null,
     lockedMove: pokemon.lockedMove ? { ...pokemon.lockedMove } : null,
+    bideState: pokemon.bideState ? { ...pokemon.bideState } : null,
     entryAbilityActivations: { ...(pokemon.entryAbilityActivations ?? {}) },
     transformSnapshot: pokemon.transformSnapshot ? {
       ...pokemon.transformSnapshot,
@@ -1024,6 +1484,15 @@ function cloneSide(side) {
     team: side.team.map(clonePokemon),
     usedMechanics: { ...side.usedMechanics },
     activeIndexes: [...(side.activeIndexes ?? [side.activeIndex])],
+    wishSlots: Object.fromEntries(Object.entries(side.wishSlots ?? {})
+      .map(([slot, wish]) => [slot, { ...wish }])),
+    futureMoveSlots: Object.fromEntries(Object.entries(side.futureMoveSlots ?? {})
+      .map(([slot, futureMove]) => [slot, {
+        ...futureMove,
+        move: { ...futureMove.move },
+        sourceSnapshot: futureMove.sourceSnapshot ? clonePokemon(futureMove.sourceSnapshot) : null,
+      }])),
+    pendingPledge: side.pendingPledge ? { ...side.pendingPledge } : null,
     gmaxResidual: side.gmaxResidual ? { ...side.gmaxResidual } : null,
     hazards: { ...(side.hazards ?? {}) },
   }
@@ -1044,6 +1513,7 @@ function cloneBattle(state) {
     awaitingPlayerSwitchSlots: [...(state.awaitingPlayerSwitchSlots ?? [])],
     lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
     lastConsumedItem: state.lastConsumedItem ? { ...state.lastConsumedItem } : null,
+    lastUsedMove: state.lastUsedMove ? { ...state.lastUsedMove } : null,
   }
 }
 
@@ -1139,8 +1609,12 @@ function hasSheerForceEffect(move) {
   return moveSecondaryEffects(move).length > 0 || Number(move?.self?.chance) > 0
 }
 
-function secondaryEffectChance(attacker, effect) {
-  const multiplier = attacker.ability === '하늘의은총' ? 2 : 1
+function secondaryEffectChance(state, attacker, effect) {
+  const sereneGraceMultiplier = attacker.ability === '하늘의은총' ? 2 : 1
+  const rainbowMultiplier = getPokemonSide(state, attacker).waterPledgeTurns > 0 ? 2 : 1
+  const multiplier = effect?.volatileStatus === 'flinch'
+    ? Math.max(sereneGraceMultiplier, rainbowMultiplier)
+    : sereneGraceMultiplier * rainbowMultiplier
   return Math.min(100, Number(effect?.chance ?? 100) * multiplier)
 }
 
@@ -1161,24 +1635,61 @@ function normalizedStageChanges(boosts = {}) {
   }))
 }
 
-function effectiveStat(state, pokemon, statKey, { ignoreStages = false } = {}) {
-  let value = pokemon.stats[statKey] * (ignoreStages ? 1 : stageMultiplier(pokemon.statStages[statKey] ?? 0))
-  const activeWeatherId = effectiveWeatherId(state)
-  const weatherId = effectiveWeatherFamilyId(state)
+function canStillEvolve(pokemon) {
+  const speciesId = Number(pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId ?? pokemon.speciesId)
+  return getEvolutionOptions(speciesId).some((profile) => Number(profile.evolvesFrom) === speciesId)
+}
+
+function effectiveStat(state, pokemon, statKey, { ignoreStages = false, stageOverride = null } = {}) {
+  const resolvedStatKey = state.environment?.wonderRoomTurns > 0
+    && statKey === 'defense'
+    ? 'specialDefense'
+    : state.environment?.wonderRoomTurns > 0 && statKey === 'specialDefense'
+      ? 'defense'
+      : statKey
+  const stage = stageOverride == null ? pokemon.statStages[statKey] ?? 0 : stageOverride
+  let value = pokemon.stats[resolvedStatKey]
+    * (ignoreStages ? 1 : stageMultiplier(stage))
+  const activeWeatherId = effectiveMoveWeatherId(state, pokemon)
+  const weatherId = weatherFamilyId(activeWeatherId)
   const terrainId = state.rules?.terrain?.id
 
   if (statKey === 'speed' && pokemon.status?.id === 'paralysis' && pokemon.ability !== '속보') value *= 0.5
   if (statKey === 'speed' && hasActiveHeldItem(pokemon, 'choice-scarf')) value *= 1.5
+  if (statKey === 'speed' && hasActiveHeldItem(pokemon, 'iron-ball')) value *= 0.5
+  if (statKey === 'speed' && getPokemonSide(state, pokemon).grassPledgeTurns > 0) value *= 0.25
+  if (
+    statKey === 'speed'
+    && hasActiveHeldItem(pokemon, 'quick-powder')
+    && currentSpeciesSlug(pokemon) === 'ditto'
+    && !pokemon.transformSnapshot
+  ) value *= 2
+  if (statKey === 'speed' && getPokemonSide(state, pokemon).tailwindTurns > 0) value *= 2
   if (statKey === 'speed' && weatherId === 'sun' && pokemon.ability === '엽록소') value *= 2
   if (statKey === 'speed' && weatherId === 'rain' && pokemon.ability === '쓱쓱') value *= 2
   if (statKey === 'speed' && weatherId === 'sandstorm' && pokemon.ability === '모래헤치기') value *= 2
   if (statKey === 'speed' && weatherId === 'snow' && pokemon.ability === '눈치우기') value *= 2
   if (statKey === 'speed' && terrainId === 'electric' && pokemon.ability === '서핑테일') value *= 2
   if (statKey === 'attack' && hasActiveHeldItem(pokemon, 'choice-band')) value *= 1.5
+  if (
+    statKey === 'attack'
+    && hasActiveHeldItem(pokemon, 'thick-club')
+    && ['cubone', 'marowak', 'marowak-alola'].includes(currentSpeciesSlug(pokemon))
+  ) value *= 2
+  if (
+    ['attack', 'specialAttack'].includes(statKey)
+    && hasActiveHeldItem(pokemon, 'light-ball')
+    && currentSpeciesSlug(pokemon).startsWith('pikachu')
+  ) value *= 2
   if (statKey === 'attack' && ['순수한힘', '천하장사'].includes(pokemon.ability)) value *= 2
   if (statKey === 'attack' && pokemon.ability === '무아지경' && !pokemon.dynamaxActive) value *= 1.5
   if (statKey === 'attack' && activeWeatherId === 'sun' && pokemon.ability === '진홍빛고동') value *= 4 / 3
   if (statKey === 'specialAttack' && hasActiveHeldItem(pokemon, 'choice-specs')) value *= 1.5
+  if (
+    statKey === 'specialAttack'
+    && hasActiveHeldItem(pokemon, 'deep-sea-tooth')
+    && currentSpeciesSlug(pokemon) === 'clamperl'
+  ) value *= 2
   if (
     statKey === 'specialAttack'
     && PLUS_MINUS_ABILITIES.has(pokemon.ability)
@@ -1193,6 +1704,22 @@ function effectiveStat(state, pokemon, statKey, { ignoreStages = false } = {}) {
   if (statKey === 'specialAttack' && weatherId === 'sun' && pokemon.ability === '선파워') value *= 1.5
   if (statKey === 'specialAttack' && terrainId === 'electric' && pokemon.ability === '하드론엔진') value *= 4 / 3
   if (statKey === 'specialDefense' && hasActiveHeldItem(pokemon, 'assault-vest')) value *= 1.5
+  if (
+    ['defense', 'specialDefense'].includes(statKey)
+    && hasActiveHeldItem(pokemon, 'eviolite')
+    && canStillEvolve(pokemon)
+  ) value *= 1.5
+  if (
+    statKey === 'specialDefense'
+    && hasActiveHeldItem(pokemon, 'deep-sea-scale')
+    && currentSpeciesSlug(pokemon) === 'clamperl'
+  ) value *= 2
+  if (
+    statKey === 'defense'
+    && hasActiveHeldItem(pokemon, 'metal-powder')
+    && currentSpeciesSlug(pokemon) === 'ditto'
+    && !pokemon.transformSnapshot
+  ) value *= 2
   if (statKey === 'defense' && terrainId === 'grassy' && pokemon.ability === '풀모피') value *= 1.5
   if (statKey === 'defense' && pokemon.ability === '퍼코트') value *= 2
   if (statKey === 'speed' && pokemon.status && pokemon.ability === '속보') value *= 1.5
@@ -1275,22 +1802,44 @@ export function getBattleTypeEffectiveness(state, moveType, defenderTypes) {
 }
 
 function getMoveTypeEffectiveness(state, attacker, defender, move) {
-  const bypassGhostImmunity = ['배짱', '심안'].includes(attacker.ability)
+  if (move.id === 'struggle') return 1
+  const bypassGhostImmunity = (['배짱', '심안'].includes(attacker.ability) || defender.foresightActive)
     && ['노말', '격투'].includes(move.type)
   const strongWinds = effectiveWeatherId(state) === 'deltastream'
-  const standardMultiplier = defender.types.reduce((multiplier, defenderType) => {
+  const defenderTypes = defender.roostedThisTurn
+    ? defender.types.filter((type) => type !== '비행')
+    : defender.types
+  const standardMultiplier = defenderTypes.reduce((multiplier, defenderType) => {
     let typeMultiplier = TYPE_CHART[move.type]?.[defenderType] ?? 1
+    if (move.id === 'freezedry' && defenderType === '물') typeMultiplier = 2
     if (bypassGhostImmunity && defenderType === '고스트' && typeMultiplier === 0) typeMultiplier = 1
+    if (defender.miracleEyeActive && move.type === '에스퍼' && defenderType === '악' && typeMultiplier === 0) {
+      typeMultiplier = 1
+    }
+    if (move.id === 'thousandarrows' && move.type === '땅' && defenderType === '비행' && typeMultiplier === 0) {
+      typeMultiplier = 1
+    }
+    if (hasActiveHeldItem(defender, 'ring-target') && typeMultiplier === 0) typeMultiplier = 1
     if (strongWinds && defenderType === '비행' && typeMultiplier > 1) typeMultiplier = 1
-    return multiplier * typeMultiplier
+    const flyingPressMultiplier = move.id === 'flyingpress'
+      ? TYPE_CHART['비행']?.[defenderType] ?? 1
+      : 1
+    return multiplier * typeMultiplier * flyingPressMultiplier
   }, 1)
-  if (!state?.rules?.format?.inverse) return standardMultiplier
-  if (standardMultiplier === 0) return 2
-  return 1 / standardMultiplier
+  const tarShotMultiplier = defender.tarShotActive && move.type === '불꽃' ? 2 : 1
+  const resolvedMultiplier = standardMultiplier * tarShotMultiplier
+  if (!state?.rules?.format?.inverse) return resolvedMultiplier
+  if (resolvedMultiplier === 0) return 2
+  return 1 / resolvedMultiplier
 }
 
 function isGrounded(pokemon, state = null) {
   if (state?.environment?.gravityTurns > 0) return true
+  if (hasActiveHeldItem(pokemon, 'iron-ball')) return true
+  if (pokemon.smackDownActive || pokemon.roostedThisTurn) return true
+  if (pokemon.magnetRiseTurns > 0 || pokemon.telekinesisTurns > 0 || hasActiveHeldItem(pokemon, 'air-balloon')) {
+    return false
+  }
   return !pokemon.semiInvulnerable && !pokemon.types.includes('비행') && pokemon.ability !== '부유'
 }
 
@@ -1324,11 +1873,126 @@ function weightRatioMovePower(attackerWeight, defenderWeight) {
 
 function weightBasedMovePower(attacker, defender, move) {
   const defenderWeight = effectivePokemonWeight(defender, {
-    ignoreAbility: Boolean(move.ignoreAbility),
+    ignoreAbility: moveIgnoresAbility(move, defender),
   })
   if (TARGET_WEIGHT_POWER_MOVE_IDS.has(move.id)) return targetWeightMovePower(defenderWeight)
   if (WEIGHT_RATIO_POWER_MOVE_IDS.has(move.id)) {
     return weightRatioMovePower(effectivePokemonWeight(attacker), defenderWeight)
+  }
+  return null
+}
+
+function positiveStageTotal(pokemon) {
+  return Object.values(pokemon.statStages ?? {})
+    .reduce((total, stage) => total + Math.max(0, Number(stage) || 0), 0)
+}
+
+function lowHpVariablePower(pokemon) {
+  const ratio = 48 * pokemon.hp / Math.max(1, pokemon.maxHp)
+  if (ratio <= 1) return 200
+  if (ratio <= 4) return 150
+  if (ratio <= 9) return 100
+  if (ratio <= 16) return 80
+  if (ratio <= 32) return 40
+  return 20
+}
+
+function consecutiveMovePower(attacker, moveId, basePower, maximumMultiplier) {
+  const count = attacker.consecutiveMoveId === moveId
+    ? Math.max(1, (attacker.consecutiveMoveCount ?? 0) + 1)
+    : 1
+  return Math.min(basePower * maximumMultiplier, basePower * 2 ** (count - 1))
+}
+
+function variableMovePower(state, attacker, defender, move) {
+  const attackerSpeed = effectiveStat(state, attacker, 'speed')
+  const defenderSpeed = effectiveStat(state, defender, 'speed')
+  const attackerSide = getPokemonSide(state, attacker)
+  const faintedAllies = attackerSide.team.filter((pokemon) => pokemon.fainted || pokemon.hp <= 0).length
+
+  if (['flail', 'reversal'].includes(move.id)) return lowHpVariablePower(attacker)
+  if (['return', 'frustration', 'pikapapow', 'veeveevolley'].includes(move.id)) return 102
+  if (['eruption', 'waterspout', 'dragonenergy'].includes(move.id)) {
+    return Math.max(1, Math.floor(150 * attacker.hp / Math.max(1, attacker.maxHp)))
+  }
+  if (['crushgrip', 'wringout'].includes(move.id)) {
+    return Math.max(1, Math.floor(120 * defender.hp / Math.max(1, defender.maxHp)) + 1)
+  }
+  if (move.id === 'hardpress') {
+    return Math.max(1, Math.floor(100 * defender.hp / Math.max(1, defender.maxHp)))
+  }
+  if (move.id === 'gyroball') return Math.min(150, Math.max(1, Math.floor(25 * defenderSpeed / attackerSpeed) + 1))
+  if (move.id === 'electroball') {
+    const ratio = attackerSpeed / Math.max(1, defenderSpeed)
+    if (ratio >= 4) return 150
+    if (ratio >= 3) return 120
+    if (ratio >= 2) return 80
+    if (ratio >= 1) return 60
+    return 40
+  }
+  if (move.id === 'punishment') return Math.min(200, 60 + 20 * positiveStageTotal(defender))
+  if (['powertrip', 'storedpower'].includes(move.id)) return 20 + 20 * positiveStageTotal(attacker)
+  if (move.id === 'lastrespects') return Math.min(5050, 50 + 50 * faintedAllies)
+  if (move.id === 'ragefist') return Math.min(350, 50 + 50 * (attacker.hitCountTaken ?? 0))
+  if (move.id === 'spitup') return Math.max(1, 100 * (attacker.stockpileCount ?? 0))
+  if (move.id === 'trumpcard') {
+    const remainingPp = Math.max(0, Number(move.currentPp) || 0)
+    return remainingPp <= 1 ? 200 : remainingPp === 2 ? 80 : remainingPp === 3 ? 60 : remainingPp === 4 ? 50 : 40
+  }
+  if (move.id === 'acrobatics' && !hasHeldItem(attacker)) return 110
+  if (move.id === 'assurance' && defender.damagedThisTurn) return 120
+  if (move.id === 'pursuit' && defender.switchingOut) return 80
+  if (['avalanche', 'revenge'].includes(move.id) && attacker.damagedThisTurn) return 120
+  if (['boltbeak', 'fishiousrend'].includes(move.id) && !defender.actedThisTurn) return 170
+  if (['hex', 'infernalparade'].includes(move.id) && (defender.status || defender.ability === '절대안깸')) {
+    return Math.max(1, Number(move.power) || 65) * 2
+  }
+  if (move.id === 'facade' && attacker.status) return 140
+  if (move.id === 'brine' && defender.hp <= defender.maxHp / 2) return 130
+  if (move.id === 'barbbarrage' && ['poison', 'toxic'].includes(defender.status?.id)) return 120
+  if (move.id === 'venoshock' && ['poison', 'toxic'].includes(defender.status?.id)) return 130
+  if (move.id === 'knockoff' && canRemoveHeldItem(defender, attacker, {
+    ignoreHolderAbility: moveIgnoresAbility(move, defender),
+  })) return Math.floor(65 * 1.5)
+  if (move.id === 'smellingsalts' && defender.status?.id === 'paralysis') return 140
+  if (move.id === 'wakeupslap' && isPokemonAsleep(defender)) return 140
+  if (['payback'].includes(move.id) && defender.actedThisTurn) return 100
+  if (move.id === 'lashout' && attacker.statsLoweredThisTurn) return 150
+  if (move.id === 'retaliate' && attackerSide.allyFaintedLastTurn) return 140
+  if (move.id === 'gravapple' && state.environment?.gravityTurns > 0) return 120
+  if (move.id === 'psyblade' && state.rules?.terrain?.id === 'electric') return 120
+  if (
+    move.id === 'fusionbolt' && state.lastUsedMove?.moveId === 'fusionflare'
+    || move.id === 'fusionflare' && state.lastUsedMove?.moveId === 'fusionbolt'
+  ) return 200
+  if (
+    ['collisioncourse', 'electrodrift'].includes(move.id)
+    && getMoveTypeEffectiveness(state, attacker, defender, move) > 1
+  ) return Math.max(1, Number(move.power) || 1) * 5461 / 4096
+  if (['stompingtantrum', 'temperflare'].includes(move.id) && attacker.moveFailedLastTurn) return 150
+  if (move.id === 'echoedvoice') return consecutiveMovePower(attacker, move.id, 40, 5)
+  if (move.id === 'round' && getPokemonSide(state, attacker).roundUsedThisTurn) return 120
+  if (move.id === 'furycutter') return consecutiveMovePower(attacker, move.id, 40, 4)
+  if (['iceball', 'rollout'].includes(move.id)) {
+    const defenseCurlMultiplier = attacker.defenseCurlActive ? 2 : 1
+    return consecutiveMovePower(attacker, move.id, 30, 16) * defenseCurlMultiplier
+  }
+  if (
+    defender.minimized
+    && ['bodyslam', 'dragonrush', 'flyingpress', 'heatcrash', 'heavyslam', 'steamroller', 'stomp'].includes(move.id)
+  ) return Math.max(1, Number(move.power) || 1) * 2
+  if (move.id === 'beatup') return 10
+  if (move.id === 'magnitude') return 70
+  if (move.id === 'present') return 80
+  if (move.id === 'naturalgift') {
+    return heldItemEffectsActive(attacker)
+      ? Number(getBattleItem(attacker.heldItemId)?.naturalGiftPower) || 1
+      : 1
+  }
+  if (move.id === 'fling') {
+    return heldItemEffectsActive(attacker)
+      ? Number(getBattleItem(attacker.heldItemId)?.flingPower) || 1
+      : 1
   }
   return null
 }
@@ -1343,8 +2007,19 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
 
   if (ABILITY_BYPASS_NAMES.has(attacker.ability)) resolvedMove.ignoreAbility = true
   if (attacker.ability === '균사의힘' && isStatusMove(move)) resolvedMove.ignoreAbility = true
+  if (attacker.electrifyActive) resolvedMove.type = '전기'
+  if (state.environment?.ionDelugeTurns > 0 && resolvedMove.type === '노말') resolvedMove.type = '전기'
+  if (move.id === 'naturalgift' && heldItemEffectsActive(attacker)) {
+    resolvedMove.type = getBattleItem(attacker.heldItemId)?.naturalGiftType ?? resolvedMove.type
+  }
   const weightPower = weightBasedMovePower(attacker, defender, resolvedMove)
   if (weightPower != null) resolvedMove.power = weightPower
+  const variablePower = variableMovePower(state, attacker, defender, resolvedMove)
+  if (variablePower != null) resolvedMove.power = variablePower
+  if (move.id === 'beatup') {
+    resolvedMove.multihit = Math.max(1, getPokemonSide(state, attacker).team
+      .filter((pokemon) => !pokemon.fainted && pokemon.hp > 0 && !pokemon.status).length)
+  }
   if (
     typeChangeRule
     && !TYPE_CHANGE_EXCLUDED_MOVE_IDS.has(move.id)
@@ -1364,6 +2039,20 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
     resolvedMove.power = Math.max(1, Number(move.power) || 50) * 2
   }
 
+  if (move.id === 'aurawheel' && currentSpeciesSlug(attacker).includes('morpeko-hangry')) {
+    resolvedMove.type = '악'
+  }
+
+  if (move.id === 'secretpower') {
+    const secretPowerEffects = {
+      electric: { chance: 30, status: 'par' },
+      grassy: { chance: 30, status: 'slp' },
+      misty: { chance: 30, boosts: { spa: -1 } },
+      psychic: { chance: 30, boosts: { spe: -1 } },
+    }
+    resolvedMove.secondary = secretPowerEffects[terrainId] ?? { chance: 30, status: 'par' }
+  }
+
   if (
     move.id === 'judgment'
     && heldItemType
@@ -1374,6 +2063,12 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
     move.id === 'multiattack'
     && heldItemType
     && attacker.heldItemId?.endsWith('-memory')
+  ) resolvedMove.type = heldItemType
+
+  if (
+    move.id === 'technoblast'
+    && heldItemType
+    && attacker.heldItemId?.endsWith('-drive')
   ) resolvedMove.type = heldItemType
 
   if (['solarbeam', 'solarblade'].includes(move.id) && !['clear', 'sun'].includes(weatherId)) {
@@ -1392,6 +2087,10 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
     resolvedMove.boosts = { atk: 2, spa: 2 }
   }
   if (move.id === 'terablast' && attacker.teraActive) resolvedMove.type = attacker.teraType
+  if (move.id === 'terastarstorm' && currentSpeciesSlug(attacker) === 'terapagos-stellar') {
+    resolvedMove.type = '스텔라'
+    resolvedMove.target = 'allAdjacentFoes'
+  }
   if (move.id === 'watershuriken' && currentSpeciesSlug(attacker) === 'greninja-ash') {
     resolvedMove.multihit = 3
     resolvedMove.power = 20
@@ -1466,6 +2165,9 @@ function environmentMoveMultiplier(state, attacker, defender, move) {
     if (move.type === '불꽃') multiplier *= 0.5
   }
 
+  if (state.environment?.waterSportTurns > 0 && move.type === '불꽃') multiplier *= 1 / 3
+  if (state.environment?.mudSportTurns > 0 && move.type === '전기') multiplier *= 1 / 3
+
   if (isGrounded(attacker, state)) {
     if (terrainId === 'electric' && move.type === '전기') multiplier *= 1.3
     if (terrainId === 'grassy' && move.type === '풀') multiplier *= 1.3
@@ -1481,7 +2183,8 @@ function environmentMoveMultiplier(state, attacker, defender, move) {
   return multiplier
 }
 
-function getMoveStab(pokemon, moveType) {
+function getMoveStab(pokemon, moveType, forceStab = false) {
+  if (forceStab) return 1.5
   if (!pokemon.teraActive) {
     return pokemon.types.includes(moveType)
       ? (pokemon.ability === '적응력' ? 2 : 1.5)
@@ -1497,6 +2200,7 @@ function getMoveStab(pokemon, moveType) {
 }
 
 function abilityImmunity(state, attacker, defender, move) {
+  if (moveIgnoresAbility(move, defender)) return null
   if (
     ALLY_DAMAGE_IMMUNITY_ABILITIES.has(defender.ability)
     && getPokemonSide(state, attacker).id === getPokemonSide(state, defender).id
@@ -1565,6 +2269,68 @@ function lowHpMoveAbilityMultiplier(attacker, move) {
   return boostedType === move.type && attacker.hp <= attacker.maxHp / 3 ? 1.5 : 1
 }
 
+function movePowerItemMultiplier(attacker, move) {
+  if (!heldItemEffectsActive(attacker)) return 1
+  let multiplier = 1
+  if (TYPE_BOOST_ITEM_IDS[attacker.heldItemId] === move.type) multiplier *= 1.2
+  if (GEM_ITEM_TYPES[attacker.heldItemId] === move.type) multiplier *= 1.3
+  if (
+    HELD_ITEM_TYPE_BY_ID[attacker.heldItemId] === move.type
+    && (attacker.heldItemId.endsWith('-plate') || attacker.heldItemId.endsWith('-incense'))
+  ) multiplier *= 1.2
+  if (move.categoryId === 'physical' && hasActiveHeldItem(attacker, 'muscle-band')) multiplier *= 1.1
+  if (move.categoryId === 'special' && hasActiveHeldItem(attacker, 'wise-glasses')) multiplier *= 1.1
+  if (move.flags?.includes('punch') && hasActiveHeldItem(attacker, 'punching-glove')) multiplier *= 1.1
+  if (hasActiveHeldItem(attacker, 'metronome')) {
+    const useCount = attacker.consecutiveMoveId === move.id
+      ? Math.min(5, (attacker.consecutiveMoveCount ?? 0) + 1)
+      : 1
+    multiplier *= 1 + 0.2 * useCount
+  }
+  if (
+    ['latias', 'latios'].includes(currentSpeciesSlug(attacker))
+    && hasActiveHeldItem(attacker, 'soul-dew')
+    && ['에스퍼', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  if (
+    currentSpeciesSlug(attacker).startsWith('dialga')
+    && hasActiveHeldItem(attacker, 'adamant-orb')
+    && ['강철', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  if (
+    currentSpeciesSlug(attacker).startsWith('palkia')
+    && hasActiveHeldItem(attacker, 'lustrous-orb')
+    && ['물', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  if (
+    currentSpeciesSlug(attacker).startsWith('giratina')
+    && hasActiveHeldItem(attacker, 'griseous-orb')
+    && ['고스트', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  if (
+    currentSpeciesSlug(attacker).startsWith('dialga')
+    && hasActiveHeldItem(attacker, 'adamant-crystal')
+    && ['강철', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  if (
+    currentSpeciesSlug(attacker).startsWith('palkia')
+    && hasActiveHeldItem(attacker, 'lustrous-globe')
+    && ['물', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  if (
+    currentSpeciesSlug(attacker).startsWith('giratina')
+    && hasActiveHeldItem(attacker, 'griseous-core')
+    && ['고스트', '드래곤'].includes(move.type)
+  ) multiplier *= 1.2
+  const heldItemFormRule = HELD_ITEM_FORM_RULES[attacker.heldItemId]
+  if (
+    heldItemFormRule?.species === 'ogerpon'
+    && heldItemFormRule.form === currentSpeciesSlug(attacker)
+    && heldItemEffectsActive(attacker)
+  ) multiplier *= 1.2
+  return multiplier
+}
+
 function supremeOverlordMultiplier(state, attacker) {
   if (attacker.ability !== '총대장') return 1
   const side = getPokemonSide(state, attacker)
@@ -1620,7 +2386,7 @@ function movePowerAbilityMultiplier(state, attacker, defender, move, effectivene
 }
 
 function defenderAbilityDamageMultiplier(state, attacker, defender, move, effectiveness) {
-  if (move.ignoreAbility && !['스펙터가드', '프리즘아머'].includes(defender.ability)) return 1
+  if (moveIgnoresAbility(move, defender) && !['스펙터가드', '프리즘아머'].includes(defender.ability)) return 1
   let multiplier = 1
   if (SUPER_EFFECTIVE_DAMAGE_REDUCTION_ABILITIES.has(defender.ability) && effectiveness > 1) multiplier *= 0.75
   if (defender.ability === '스펙터가드' && defender.hp === defender.maxHp) multiplier *= 0.5
@@ -1653,21 +2419,9 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
     move,
   )
   const power = Math.max(1, Number(move.power) || 1) * powerMultiplier
-  let attack = effectiveStat(state, attackPokemon, attackKey, {
-    ignoreStages: !move.ignoreAbility && defender.ability === '천진' && attackPokemon !== defender,
-  })
-  let defense = effectiveStat(state, defender, defenseKey, {
-    ignoreStages: !move.ignoreAbility && attacker.ability === '천진',
-  })
-
-  if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
-  if (attacker.ability === '의욕' && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
-  if (attacker.ability === '근성' && attacker.status && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
-  if (effectiveWeatherFamilyId(state) === 'snow' && defenseKey === 'defense' && defender.types.includes('얼음')) defense *= 1.5
-  if (effectiveWeatherFamilyId(state) === 'sandstorm' && defenseKey === 'specialDefense' && defender.types.includes('바위')) defense *= 1.5
-  const baseDamage = (((2 * 50) / 5 + 2) * power * attack / defense) / 50 + 2
   const standardEffectiveness = getMoveTypeEffectiveness(state, attacker, defender, move)
-  const effectiveness = !move.ignoreAbility
+  const ignoresDefenderAbility = moveIgnoresAbility(move, defender)
+  const effectiveness = !ignoresDefenderAbility
     && defender.ability === '테라셸'
     && defender.hp === defender.maxHp
     && standardEffectiveness > 0
@@ -1676,14 +2430,44 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
   const criticalStage = Math.max(0, Math.min(
     3,
-    Number(move.critRatio ?? 0) + (attacker.ability === '대운' ? 1 : 0) + (attacker.criticalStageBoost ?? 0),
+    Number(move.critRatio ?? 0)
+      + (attacker.ability === '대운' ? 1 : 0)
+      + (attacker.criticalStageBoost ?? 0)
+      + (attacker.dragonCheerTurns > 0 ? attacker.types.includes('드래곤') ? 2 : 1 : 0)
+      + (['scope-lens', 'razor-claw'].includes(attacker.heldItemId) && heldItemEffectsActive(attacker) ? 1 : 0)
+      + (['stick', 'leek'].includes(attacker.heldItemId)
+        && heldItemEffectsActive(attacker)
+        && ['farfetchd', 'sirfetchd'].includes(currentSpeciesSlug(attacker)) ? 2 : 0)
+      + (hasActiveHeldItem(attacker, 'lucky-punch') && currentSpeciesSlug(attacker) === 'chansey' ? 2 : 0),
   ))
   const mercilessCritical = attacker.ability === '무도한행동'
     && ['poison', 'toxic'].includes(defender.status?.id)
-  let critical = Boolean(move.willCrit) || mercilessCritical || random() < criticalRates[criticalStage]
-  if (!move.ignoreAbility && CRITICAL_HIT_IMMUNITY_ABILITIES.has(defender.ability)) critical = false
+  let critical = Boolean(move.willCrit)
+    || attacker.laserFocusActive
+    || mercilessCritical
+    || random() < criticalRates[criticalStage]
+  if (!ignoresDefenderAbility && CRITICAL_HIT_IMMUNITY_ABILITIES.has(defender.ability)) critical = false
+  if (getPokemonSide(state, defender).luckyChantTurns > 0) critical = false
+
+  const attackStage = attackPokemon.statStages?.[attackKey] ?? 0
+  const defenseStage = defender.statStages?.[defenseKey] ?? 0
+  let attack = effectiveStat(state, attackPokemon, attackKey, {
+    ignoreStages: !ignoresDefenderAbility && defender.ability === '천진' && attackPokemon !== defender,
+    stageOverride: critical && attackStage < 0 ? 0 : null,
+  })
+  let defense = effectiveStat(state, defender, defenseKey, {
+    ignoreStages: attacker.ability === '천진',
+    stageOverride: move.ignoreDefensive || critical && defenseStage > 0 ? 0 : null,
+  })
+
+  if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
+  if (attacker.ability === '의욕' && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
+  if (attacker.ability === '근성' && attacker.status && attackPokemon === attacker && attackKey === 'attack') attack *= 1.5
+  if (effectiveMoveWeatherFamilyId(state, defender) === 'snow' && defenseKey === 'defense' && defender.types.includes('얼음')) defense *= 1.5
+  if (effectiveMoveWeatherFamilyId(state, defender) === 'sandstorm' && defenseKey === 'specialDefense' && defender.types.includes('바위')) defense *= 1.5
+  const baseDamage = (((2 * Number(attacker.level ?? 50)) / 5 + 2) * power * attack / defense) / 50 + 2
   const randomFactor = 0.85 + random() * 0.15
-  let modifier = getMoveStab(attacker, move.type)
+  let modifier = getMoveStab(attacker, move.type, move.pledgeStabOverride)
     * effectiveness
     * environmentMoveMultiplier(state, attacker, defender, move)
     * randomFactor
@@ -1691,11 +2475,12 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
 
   if (hasActiveHeldItem(attacker, 'life-orb')) modifier *= 1.3
   if (hasActiveHeldItem(attacker, 'expert-belt') && effectiveness > 1) modifier *= 1.2
+  modifier *= movePowerItemMultiplier(attacker, move)
   if (attacker.ability === '우격다짐' && hasSheerForceEffect(move)) modifier *= 1.3
   modifier *= movePowerAbilityMultiplier(state, attacker, defender, move, effectiveness, critical)
   modifier *= lowHpMoveAbilityMultiplier(attacker, move)
   modifier *= supremeOverlordMultiplier(state, attacker)
-  if (!move.ignoreAbility) {
+  if (!ignoresDefenderAbility) {
     if (defender.ability === '멀티스케일' && defender.hp === defender.maxHp) modifier *= 0.5
     if (defender.ability === '두꺼운지방' && ['불꽃', '얼음'].includes(move.type)) modifier *= 0.5
     if (defender.ability === '건조피부' && move.type === '불꽃') modifier *= 1.25
@@ -1706,6 +2491,18 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   if (defenderSide.auroraVeilTurns > 0 && !critical && attacker.ability !== '틈새포착') {
     modifier *= state.rules?.format?.activeSlots > 1 ? 2 / 3 : 0.5
   }
+  if (
+    category === 'physical'
+    && defenderSide.reflectTurns > 0
+    && !critical
+    && attacker.ability !== '틈새포착'
+  ) modifier *= state.rules?.format?.activeSlots > 1 ? 2 / 3 : 0.5
+  if (
+    category === 'special'
+    && defenderSide.lightScreenTurns > 0
+    && !critical
+    && attacker.ability !== '틈새포착'
+  ) modifier *= state.rules?.format?.activeSlots > 1 ? 2 / 3 : 0.5
 
   return {
     damage: effectiveness === 0 ? 0 : Math.max(1, Math.floor(baseDamage * modifier)),
@@ -1724,8 +2521,10 @@ function consumeStatusCureBerry(state, target) {
   const berry = matchingStatusCureBerry(state, target, target.status?.id)
   if (!berry) return false
   const statusLabel = target.status.label
+  const curedConfusion = target.heldItemId === 'lum-berry' && target.confusionTurns > 0
   consumeHeldItem(state, target, { berry: true })
   target.status = null
+  if (curedConfusion) target.confusionTurns = 0
   appendLog(state, `${target.name}은(는) ${berry.name}로 ${statusLabel} 상태를 회복했다!`, 'item')
   applyCheekPouch(state, target)
   return true
@@ -1741,40 +2540,26 @@ function berryEffectMultiplier(pokemon) {
   return pokemon.ability === '숙성' ? 2 : 1
 }
 
+function applyFlavorBerryConfusion(state, pokemon, itemId, random) {
+  const dislikedStat = FLAVOR_BERRY_DISLIKED_STATS[itemId]
+  const nature = NATURE_OPTIONS.find((option) => option.label === pokemon.nature)
+  if (!dislikedStat || nature?.down !== dislikedStat) return false
+  return applyVolatileEffect(state, pokemon, 'confusion', pokemon.heldItemName || itemId, random, itemId, {
+    source: pokemon,
+  })
+}
+
 function repeatCudChewBerry(state, pokemon, random) {
   const itemId = pokemon.cudChewItemId
   if (!itemId || pokemon.hp <= 0) return false
-  const multiplier = berryEffectMultiplier(pokemon)
-  let applied = false
-
   appendLog(state, `${pokemon.name}의 되새김질! 먹었던 나무열매를 다시 되새겼다!`, 'ability')
-  if (itemId === 'sitrus-berry' && pokemon.healBlockTurns <= 0) {
-    applied = healPokemon(state, pokemon, pokemon.maxHp * multiplier / 4, '되새김질') > 0
-  } else if (PINCH_STAT_BERRIES[itemId]) {
-    changeStages(state, pokemon, Object.fromEntries(
-      Object.entries(PINCH_STAT_BERRIES[itemId]).map(([stat, amount]) => [stat, amount * multiplier]),
-    ))
-    applied = true
-  } else if (itemId === 'lansat-berry') {
-    pokemon.criticalStageBoost = Math.min(3, (pokemon.criticalStageBoost ?? 0) + 2 * multiplier)
-    applied = true
-  } else if (itemId === 'starf-berry') {
-    const stats = ['attack', 'defense', 'specialAttack', 'specialDefense', 'speed']
-    const stat = stats[Math.floor(random() * stats.length)]
-    changeStages(state, pokemon, { [stat]: 2 * multiplier })
-    applied = true
-  } else if (itemId === 'custap-berry') {
-    pokemon.custapActive = true
-    applied = true
-  } else {
-    const berry = STATUS_CURE_BERRIES[itemId]
-    if (berry?.statuses.includes(pokemon.status?.id)) {
-      const statusLabel = pokemon.status.label
-      pokemon.status = null
-      appendLog(state, `${pokemon.name}은(는) 되새긴 ${berry.name}로 ${statusLabel} 상태를 회복했다!`, 'item')
-      applied = true
-    }
-  }
+  const applied = applyEatenBerryEffect(
+    state,
+    pokemon,
+    itemId,
+    pokemon.cudChewItemName || '되새김질',
+    random,
+  )
 
   pokemon.cudChewReadyTurn = null
   pokemon.cudChewItemId = ''
@@ -1796,7 +2581,11 @@ function consumeLowHpBerry(state, pokemon, random = Math.random) {
   const itemName = pokemon.heldItemName || itemId
   const multiplier = berryEffectMultiplier(pokemon)
   let consumed = false
-  if (itemId === 'sitrus-berry' && hpRatio <= 0.5 && pokemon.healBlockTurns <= 0) {
+  if (itemId === 'oran-berry' && hpRatio <= 0.5 && pokemon.healBlockTurns <= 0) {
+    consumeHeldItem(state, pokemon, { berry: true })
+    healPokemon(state, pokemon, 10 * multiplier, '오랭열매')
+    consumed = true
+  } else if (itemId === 'sitrus-berry' && hpRatio <= 0.5 && pokemon.healBlockTurns <= 0) {
     consumeHeldItem(state, pokemon, { berry: true })
     healPokemon(state, pokemon, pokemon.maxHp * multiplier / 4, '자뭉열매')
     consumed = true
@@ -1804,7 +2593,13 @@ function consumeLowHpBerry(state, pokemon, random = Math.random) {
     const pinchThreshold = pokemon.ability === '먹보' ? 0.5 : 0.25
     if (hpRatio > pinchThreshold) return false
     const statBoost = PINCH_STAT_BERRIES[itemId]
-    if (statBoost) {
+    if (BERRY_HEALING_FRACTIONS[itemId] && itemId !== 'oran-berry' && itemId !== 'sitrus-berry') {
+      const [numerator, denominator] = BERRY_HEALING_FRACTIONS[itemId]
+      consumeHeldItem(state, pokemon, { berry: true })
+      healPokemon(state, pokemon, pokemon.maxHp * numerator * multiplier / denominator, pokemon.heldItemName || itemId)
+      applyFlavorBerryConfusion(state, pokemon, itemId, random)
+      consumed = true
+    } else if (statBoost) {
       consumeHeldItem(state, pokemon, { berry: true })
       appendLog(state, `${pokemon.name}은(는) ${itemName}을(를) 먹었다!`, 'item')
       changeStages(state, pokemon, Object.fromEntries(
@@ -1828,6 +2623,11 @@ function consumeLowHpBerry(state, pokemon, random = Math.random) {
       pokemon.custapActive = true
       appendLog(state, `${pokemon.name}은(는) 애슈열매로 재빠르게 움직일 준비를 했다!`, 'item')
       consumed = true
+    } else if (itemId === 'micle-berry') {
+      consumeHeldItem(state, pokemon, { berry: true })
+      pokemon.micleActive = true
+      appendLog(state, `${pokemon.name}은(는) 미클열매로 다음 기술의 명중률을 높였다!`, 'item')
+      consumed = true
     }
   }
 
@@ -1835,14 +2635,166 @@ function consumeLowHpBerry(state, pokemon, random = Math.random) {
   return consumed
 }
 
+function applyEatenBerryEffect(state, pokemon, itemId, itemName, random) {
+  const multiplier = berryEffectMultiplier(pokemon)
+  let applied = false
+  if (itemId === 'lum-berry' && (pokemon.status || pokemon.confusionTurns > 0)) {
+    pokemon.status = null
+    pokemon.confusionTurns = 0
+    applied = true
+  } else if (STATUS_CURE_BERRIES[itemId]?.statuses.includes(pokemon.status?.id)) {
+    pokemon.status = null
+    applied = true
+  } else if (['lum-berry', 'persim-berry'].includes(itemId) && pokemon.confusionTurns > 0) {
+    pokemon.confusionTurns = 0
+    applied = true
+  } else if (itemId === 'leppa-berry') {
+    const move = pokemon.moves.slice().sort((left, right) => left.currentPp - right.currentPp)[0]
+    if (move) {
+      move.currentPp = Math.min(move.maxPp, move.currentPp + 10 * multiplier)
+      applied = true
+    }
+  } else if (itemId === 'oran-berry') {
+    applied = healPokemon(state, pokemon, 10 * multiplier, itemName) > 0
+  } else if (BERRY_HEALING_FRACTIONS[itemId]) {
+    const [numerator, denominator] = BERRY_HEALING_FRACTIONS[itemId]
+    applied = healPokemon(state, pokemon, pokemon.maxHp * numerator * multiplier / denominator, itemName) > 0
+    applyFlavorBerryConfusion(state, pokemon, itemId, random)
+  } else if (PINCH_STAT_BERRIES[itemId]) {
+    changeStages(state, pokemon, Object.fromEntries(Object.entries(PINCH_STAT_BERRIES[itemId])
+      .map(([stat, amount]) => [stat, amount * multiplier])))
+    applied = true
+  } else if (itemId === 'lansat-berry') {
+    pokemon.criticalStageBoost = Math.min(3, (pokemon.criticalStageBoost ?? 0) + 2 * multiplier)
+    applied = true
+  } else if (itemId === 'starf-berry') {
+    const stats = ['attack', 'defense', 'specialAttack', 'specialDefense', 'speed']
+    changeStages(state, pokemon, { [stats[Math.floor(random() * stats.length)]]: 2 * multiplier })
+    applied = true
+  } else if (itemId === 'custap-berry') {
+    pokemon.custapActive = true
+    applied = true
+  } else if (itemId === 'micle-berry') {
+    pokemon.micleActive = true
+    applied = true
+  }
+  return applied
+}
+
+function applyFlingItemEffect(state, attacker, defender, move, random) {
+  const itemId = attacker.heldItemId
+  const itemName = attacker.heldItemName || itemId
+  const item = getBattleItem(itemId)
+  if (!item?.flingPower || attacker.consumedItem) return false
+
+  consumeHeldItem(state, attacker)
+  appendLog(state, `${attacker.name}은(는) ${itemName}을(를) 내던졌다!`, 'item')
+  if (item.category === 'berry' && attacker.ability === '되새김질') {
+    attacker.cudChewReadyTurn = state.turn + 1
+    attacker.cudChewItemId = itemId
+    attacker.cudChewItemName = itemName
+  }
+  if (!defender || defender.fainted || defender.hp <= 0) return true
+
+  if (item.category === 'berry') {
+    defender.ateBerry = true
+    state.lastConsumedItem = {
+      id: itemId,
+      name: itemName,
+      turn: state.turn,
+      consumerBattleId: defender.battleId,
+    }
+    if (defender.ability === '되새김질') {
+      defender.cudChewReadyTurn = state.turn + 1
+      defender.cudChewItemId = itemId
+      defender.cudChewItemName = itemName
+    }
+    applyEatenBerryEffect(state, defender, itemId, itemName, random)
+    appendLog(state, `${defender.name}은(는) 날아온 ${itemName}을(를) 먹었다!`, 'item')
+    applyCheekPouch(state, defender)
+    return true
+  }
+
+  if (item.flingEffect === 'herb-effect') {
+    const applied = itemId === 'white-herb'
+      ? clearNegativeStatStages(defender)
+      : itemId === 'mental-herb' && clearMentalHerbConditions(defender)
+    if (applied) appendLog(state, `${defender.name}에게 ${itemName}의 효과가 발동했다!`, 'item')
+    return true
+  }
+
+  const targetEffectBlocked = (!moveIgnoresAbility(move, defender) && defender.ability === '인분')
+    || hasActiveHeldItem(defender, 'covert-cloak')
+  if (targetEffectBlocked) return true
+  const statusId = {
+    'badly-poison': 'toxic',
+    burn: 'burn',
+    paralyze: 'paralysis',
+    poison: 'poison',
+  }[item.flingEffect]
+  if (statusId) {
+    setStatus(state, defender, statusId, move.name, {
+      source: attacker,
+      ignoreAbility: Boolean(move.ignoreAbility),
+      random,
+    })
+  } else if (item.flingEffect === 'flinch' && !defender.actedThisTurn) {
+    applyVolatileEffect(state, defender, 'flinch', move.name, random, move.id, {
+      source: attacker,
+      ignoreAbility: Boolean(move.ignoreAbility),
+    })
+  }
+  return true
+}
+
+function consumeBerryImmediately(state, pokemon, random = Math.random, { force = false } = {}) {
+  if (!hasHeldItem(pokemon) || !pokemon.heldItemId.endsWith('-berry')) return false
+  if (!force && !heldItemEffectsActive(pokemon)) return false
+  const itemId = pokemon.heldItemId
+  const itemName = pokemon.heldItemName || itemId
+  consumeHeldItem(state, pokemon, { berry: true })
+  const applied = applyEatenBerryEffect(state, pokemon, itemId, itemName, random)
+  appendLog(state, `${pokemon.name}은(는) ${itemName}을(를) 먹었다!`, 'item')
+  applyCheekPouch(state, pokemon)
+  return applied
+}
+
+function consumeStolenBerry(state, pokemon, itemId, itemName, random = Math.random) {
+  pokemon.ateBerry = true
+  state.lastConsumedItem = {
+    id: itemId,
+    name: itemName,
+    turn: state.turn,
+    consumerBattleId: pokemon.battleId,
+  }
+  if (pokemon.ability === '되새김질') {
+    pokemon.cudChewReadyTurn = state.turn + 1
+    pokemon.cudChewItemId = itemId
+    pokemon.cudChewItemName = itemName
+  }
+  const applied = applyEatenBerryEffect(state, pokemon, itemId, itemName, random)
+  appendLog(state, `${pokemon.name}은(는) 빼앗은 ${itemName}을(를) 먹었다!`, 'item')
+  applyCheekPouch(state, pokemon)
+  return applied
+}
+
 function setStatus(
   state,
   target,
   statusId,
   sourceName,
-  { source = null, ignoreAbility = false, synchronize = true } = {},
+  { source = null, ignoreAbility = false, synchronize = true, random = Math.random } = {},
 ) {
   if (!STATUS_LABELS[statusId] || target.status || target.fainted || target.hp <= 0) return false
+  ignoreAbility = ignoreAbility && !hasActiveHeldItem(target, 'ability-shield')
+  const targetSide = getPokemonSide(state, target)
+  const sourceSide = source ? getPokemonSide(state, source) : null
+  if (
+    targetSide.safeguardTurns > 0
+    && sourceSide
+    && sourceSide.id !== targetSide.id
+    && source?.ability !== '틈새포착'
+  ) return false
   if (!ignoreAbility && target.ability === '정화의소금') return false
   if (!ignoreAbility && target.ability === '리프가드' && effectiveWeatherFamilyId(state) === 'sun') return false
   if (
@@ -1878,6 +2830,13 @@ function setStatus(
   if (!ignoreAbility && statusId === 'sleep' && SLEEP_IMMUNE_ABILITIES.has(target.ability)) return false
   if (!ignoreAbility && target.ability === '절대안깸') return false
   if (
+    statusId === 'sleep'
+    && target.ability !== '방음'
+    && ['player', 'opponent'].some((sideId) => getActivePokemonList(state, sideId).some((pokemon) => (
+      isAvailableFieldPokemon(pokemon) && pokemon.uproarTurns > 0
+    )))
+  ) return false
+  if (
     !ignoreAbility
     && statusId === 'sleep'
     && getActivePokemonList(state, getPokemonSide(state, target).id).some((pokemon) => (
@@ -1887,10 +2846,14 @@ function setStatus(
   if (isGrounded(target, state) && state.rules?.terrain?.id === 'misty') return false
   if (isGrounded(target, state) && state.rules?.terrain?.id === 'electric' && statusId === 'sleep') return false
 
+  const sleepTurns = statusId === 'sleep' ? 1 + Math.floor(random() * 3) : 0
+  const effectiveSleepTurns = target.ability === '일찍기상'
+    ? Math.ceil(sleepTurns / 2)
+    : sleepTurns
   target.status = {
     id: statusId,
     label: STATUS_LABELS[statusId],
-    counter: statusId === 'sleep' ? (target.ability === '일찍기상' ? 1 : 2) : 0,
+    counter: statusId === 'sleep' ? effectiveSleepTurns + 1 : 0,
     toxicCounter: statusId === 'toxic' ? 1 : 0,
   }
   appendLog(state, `${target.name}은(는) ${STATUS_LABELS[statusId]} 상태가 되었다!`, 'status')
@@ -1917,6 +2880,7 @@ function setStatus(
     setStatus(state, source, statusId, target.ability, {
       source: target,
       synchronize: false,
+      random,
     })
   }
   return true
@@ -1928,6 +2892,7 @@ function changeStages(
   changes,
   { source = pokemon, ignoreAbility = false, reason = '', triggerOpportunist = true } = {},
 ) {
+  ignoreAbility = ignoreAbility && !hasActiveHeldItem(pokemon, 'ability-shield')
   const messages = []
   const abilityMultiplier = !ignoreAbility && pokemon.ability === '단순' ? 2 : 1
   const abilityDirection = !ignoreAbility && pokemon.ability === '심술꾸러기' ? -1 : 1
@@ -1936,7 +2901,9 @@ function changeStages(
   const hostile = Boolean(source && source !== pokemon && sourceSide.id !== targetSide.id)
   const reflectedChanges = {}
   const appliedBoosts = {}
+  const appliedDrops = {}
   let blockedByAbility = false
+  let blockedByItem = false
   let loweredByOpponent = false
 
   Object.entries(normalizedStageChanges(changes)).forEach(([statKey, baseAmount]) => {
@@ -1947,13 +2914,16 @@ function changeStages(
         && getActivePokemonList(state, targetSide.id).some((ally) => (
           ally && !ally.fainted && ally.hp > 0 && ally.ability === '플라워베일'
         ))
+      const protectedByItem = hasActiveHeldItem(pokemon, 'clear-amulet')
       const protectedByAbility = FULL_STAT_DROP_IMMUNITY_ABILITIES.has(pokemon.ability)
         || pokemon.ability === '부풀린가슴' && statKey === 'defense'
         || pokemon.ability === '괴력집게' && statKey === 'attack'
         || ['날카로운눈', '발광'].includes(pokemon.ability) && statKey === 'accuracy'
         || reason === INTIMIDATE_REASON && INTIMIDATE_IMMUNITY_ABILITIES.has(pokemon.ability)
         || flowerVeilActive
-      if (protectedByAbility) {
+        || targetSide.mistTurns > 0 && source?.ability !== '틈새포착'
+      if (protectedByItem || protectedByAbility) {
+        blockedByItem = protectedByItem
         blockedByAbility = true
         return
       }
@@ -1969,17 +2939,35 @@ function changeStages(
       messages.push(`${STAT_LABELS[statKey]}${amount > 0 ? ' 상승' : ' 하락'}`)
       if (hostile && amount < 0) loweredByOpponent = true
       if (next > previous) appliedBoosts[statKey] = next - previous
+      if (next < previous) appliedDrops[statKey] = previous - next
     }
   })
 
+  if (Object.keys(appliedDrops).length > 0) pokemon.statsLoweredThisTurn = true
   if (messages.length > 0) appendLog(state, `${pokemon.name}의 ${messages.join(' · ')}!`, 'status')
-  if (blockedByAbility) appendLog(state, `${pokemon.name}의 ${pokemon.ability}! 능력이 떨어지지 않는다!`, 'ability')
+  if (blockedByItem) appendLog(state, `${pokemon.name}의 클리어참! 능력이 떨어지지 않는다!`, 'item')
+  else if (blockedByAbility) appendLog(state, `${pokemon.name}의 ${pokemon.ability}! 능력이 떨어지지 않는다!`, 'ability')
   if (Object.keys(reflectedChanges).length > 0) {
     appendLog(state, `${pokemon.name}의 미러아머가 능력 하락을 되받아쳤다!`, 'ability')
     changeStages(state, source, reflectedChanges, { source: pokemon, ignoreAbility: true })
   }
   if (triggerOpportunist && Object.keys(appliedBoosts).length > 0) {
     const opposingSide = getOtherSide(state, targetSide.id)
+    getActivePokemonList(state, opposingSide.id)
+      .filter((holder) => (
+        holder
+        && !holder.fainted
+        && holder.hp > 0
+        && hasActiveHeldItem(holder, 'mirror-herb')
+      ))
+      .forEach((holder) => {
+        consumeHeldItem(state, holder)
+        appendLog(state, `${holder.name}의 흉내허브가 상대의 능력 상승을 복사했다!`, 'item')
+        changeStages(state, holder, appliedBoosts, {
+          source: holder,
+          triggerOpportunist: false,
+        })
+      })
     getActivePokemonList(state, opposingSide.id)
       .filter((opportunist) => (
         opportunist
@@ -1995,6 +2983,9 @@ function changeStages(
         })
       })
   }
+  if (Object.keys(appliedDrops).length > 0 && hasActiveHeldItem(pokemon, 'eject-pack')) {
+    pokemon.ejectPackPending = true
+  }
   const reactionRule = loweredByOpponent ? STAT_DROP_REACTION_ABILITY_RULES[pokemon.ability] : null
   if (reactionRule) {
     appendLog(state, `${pokemon.name}의 ${pokemon.ability}!`, 'ability')
@@ -2008,6 +2999,12 @@ function changeStages(
     appendLog(state, `${pokemon.name}의 파수견!`, 'ability')
     changeStages(state, pokemon, { attack: 1 })
   }
+  if (reason === INTIMIDATE_REASON && hasActiveHeldItem(pokemon, 'adrenaline-orb')) {
+    consumeHeldItem(state, pokemon)
+    appendLog(state, `${pokemon.name}의 주눅구슬이 발동했다!`, 'item')
+    changeStages(state, pokemon, { speed: 1 })
+  }
+  activateWhiteHerb(state, pokemon)
   return messages.length > 0
 }
 
@@ -2023,6 +3020,35 @@ function healPokemon(state, pokemon, amount, source, { bypassHealBlock = false }
   return healed
 }
 
+function drainingRecoveryMultiplier(pokemon) {
+  return hasActiveHeldItem(pokemon, 'big-root') ? 5324 / 4096 : 1
+}
+
+function applyDrainingRecovery(
+  state,
+  recipient,
+  drainedPokemon,
+  amount,
+  sourceName,
+  { ignoreDrainedAbility = false } = {},
+) {
+  const recoveryAmount = amount * drainingRecoveryMultiplier(recipient)
+  if (!ignoreDrainedAbility && drainedPokemon?.ability === '해감액') {
+    if (recipient.ability === '매직가드') {
+      appendLog(state, `${recipient.name}은(는) 매직가드로 해감액의 데미지를 받지 않았다!`, 'ability')
+      return 0
+    }
+    return -loseHp(
+      state,
+      recipient,
+      recoveryAmount,
+      `${recipient.name}은(는) ${drainedPokemon.name}의 해감액 때문에 HP를 빼앗겼다!`,
+      'ability',
+    )
+  }
+  return healPokemon(state, recipient, recoveryAmount, sourceName)
+}
+
 function applyVolatileEffect(
   state,
   target,
@@ -2033,6 +3059,7 @@ function applyVolatileEffect(
   { source = null, ignoreAbility = false } = {},
 ) {
   if (!target || target.fainted || target.hp <= 0) return false
+  ignoreAbility = ignoreAbility && !hasActiveHeldItem(target, 'ability-shield')
 
   if (
     !ignoreAbility
@@ -2057,6 +3084,15 @@ function applyVolatileEffect(
     if (isGrounded(target, state) && state.rules?.terrain?.id === 'misty') return false
     target.confusionTurns = 2 + Math.floor(random() * 4)
     appendLog(state, `${target.name}은(는) 혼란에 빠졌다!`, 'status')
+    if (
+      ['lum-berry', 'persim-berry'].includes(target.heldItemId)
+      && heldItemEffectsActive(target)
+      && !berriesSuppressed(state, target)
+    ) {
+      consumeBerryImmediately(state, target, random)
+      target.confusionTurns = 0
+      appendLog(state, `${target.name}의 혼란이 풀렸다!`, 'heal')
+    }
     return true
   }
 
@@ -2068,6 +3104,255 @@ function applyVolatileEffect(
       appendLog(state, `${target.name}의 불굴의마음!`, 'ability')
       changeStages(state, target, { speed: 1 })
     }
+    return true
+  }
+
+  if (volatileStatus === 'disable') {
+    if (target.lastMoveIndex == null || target.disabledMoveTurns > 0) return false
+    target.disabledMoveIndex = target.lastMoveIndex
+    target.disabledMoveTurns = 4
+    appendLog(state, `${target.name}의 ${target.moves[target.lastMoveIndex]?.name ?? '기술'}을(를) 봉인했다!`, 'status')
+    activateMentalHerb(state, target)
+    return true
+  }
+
+  if (volatileStatus === 'encore') {
+    const lastMove = target.moves[target.lastMoveIndex]
+    if (
+      target.lastMoveIndex == null
+      || target.encoreTurns > 0
+      || lastMove?.flags?.includes('failencore')
+    ) return false
+    target.encoredMoveIndex = target.lastMoveIndex
+    target.encoreTurns = 3
+    appendLog(state, `${target.name}은(는) 앵콜을 받아 같은 기술만 쓰게 되었다!`, 'status')
+    activateMentalHerb(state, target)
+    return true
+  }
+
+  if (volatileStatus === 'taunt') {
+    if (target.tauntTurns > 0) return false
+    target.tauntTurns = 3
+    appendLog(state, `${target.name}은(는) 도발당해 변화 기술을 쓸 수 없다!`, 'status')
+    activateMentalHerb(state, target)
+    return true
+  }
+
+  if (volatileStatus === 'embargo') {
+    if (target.embargoTurns > 0) return false
+    target.embargoTurns = 5
+    appendLog(state, `${target.name}은(는) 지닌물건을 사용할 수 없게 되었다!`, 'status')
+    return true
+  }
+
+  if (['spiderweb', 'meanlook', 'block'].includes(volatileStatus)) {
+    if (target.trappedTurns > 0) return false
+    target.trappedTurns = 999
+    target.trapSourceName = sourceName
+    target.trapSourceBattleId = source?.battleId ?? null
+    target.trapDamages = false
+    appendLog(state, `${target.name}은(는) 도망치거나 교체할 수 없게 되었다!`, 'status')
+    return true
+  }
+
+  if (['foresight', 'miracleeye'].includes(volatileStatus)) {
+    const property = volatileStatus === 'foresight' ? 'foresightActive' : 'miracleEyeActive'
+    if (target[property]) return false
+    target[property] = true
+    appendLog(state, `${target.name}의 정체를 꿰뚫어 보았다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'focusenergy') {
+    target.criticalStageBoost = Math.min(3, (target.criticalStageBoost ?? 0) + 2)
+    appendLog(state, `${target.name}은(는) 기를 모아 급소를 노리고 있다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'leechseed') {
+    if (target.types.includes('풀') || target.leechSeedSourceSideId) return false
+    const sourceSide = source ? getPokemonSide(state, source) : null
+    target.leechSeedSourceSideId = sourceSide?.id ?? null
+    target.leechSeedSourceSlot = sourceSide
+      ? getActivePokemonList(state, sourceSide.id).findIndex((pokemon) => pokemon?.battleId === source.battleId)
+      : null
+    appendLog(state, `${target.name}에게 씨를 심었다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'nightmare') {
+    if (!isPokemonAsleep(target) || target.nightmareActive) return false
+    target.nightmareActive = true
+    appendLog(state, `${target.name}은(는) 악몽에 시달리기 시작했다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'endure') {
+    target.protected = true
+    target.protectMode = 'endure'
+    appendLog(state, `${target.name}은(는) 공격을 버틸 태세다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'aquaring') {
+    if (target.aquaRingActive) return false
+    target.aquaRingActive = true
+    appendLog(state, `${target.name}을(를) 아쿠아링이 감쌌다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'ingrain') {
+    if (target.ingrainActive) return false
+    target.ingrainActive = true
+    appendLog(state, `${target.name}은(는) 뿌리를 내렸다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'magnetrise') {
+    target.magnetRiseTurns = 5
+    appendLog(state, `${target.name}은(는) 전자력으로 떠올랐다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'telekinesis') {
+    target.telekinesisTurns = 3
+    appendLog(state, `${target.name}은(는) 염동력으로 공중에 떠올랐다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'gastroacid') {
+    return suppressPokemonAbility(state, target, sourceName)
+  }
+
+  if (volatileStatus === 'magiccoat') {
+    target.magicCoatActive = true
+    appendLog(state, `${target.name}은(는) 변화 기술을 되받아칠 준비를 했다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'snatch') {
+    target.snatchActive = true
+    appendLog(state, `${target.name}은(는) 상대의 기술을 가로챌 준비를 했다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'grudge') {
+    target.grudgeActive = true
+    appendLog(state, `${target.name}은(는) 원념을 품었다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'helpinghand') {
+    target.helpingHandActive = true
+    appendLog(state, `${target.name}은(는) 도움을 받아 공격력이 강해졌다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'powder') {
+    target.powderActive = true
+    appendLog(state, `${target.name}에게 분진이 달라붙었다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'electrify') {
+    target.electrifyActive = true
+    appendLog(state, `${target.name}이(가) 사용할 기술이 전기타입으로 바뀐다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'laserfocus') {
+    target.laserFocusActive = true
+    appendLog(state, `${target.name}은(는) 다음 공격을 급소에 맞힐 준비를 했다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'octolock') {
+    target.octolockActive = true
+    target.trappedTurns = 999
+    target.trapSourceName = sourceName
+    target.trapSourceBattleId = source?.battleId ?? null
+    target.trapDamages = false
+    appendLog(state, `${target.name}은(는) 문어굳히기에 붙잡혔다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'partiallytrapped') {
+    target.trappedTurns = hasActiveHeldItem(source, 'grip-claw') ? 7 : 4 + Math.floor(random() * 2)
+    target.trapSourceName = sourceName
+    target.trapSourceBattleId = source?.battleId ?? null
+    target.trapDamages = true
+    appendLog(state, `${target.name}은(는) ${sourceName}에 갇혔다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'dragoncheer') {
+    target.dragonCheerTurns = 2
+    appendLog(state, `${target.name}은(는) 용의 응원을 받아 급소율이 올랐다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'charge') {
+    target.chargeActive = true
+    changeStages(state, target, { specialDefense: 1 })
+    appendLog(state, `${target.name}은(는) 전기를 충전했다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'defensecurl') {
+    target.defenseCurlActive = true
+    return true
+  }
+
+  if (volatileStatus === 'minimize') {
+    target.minimized = true
+    return true
+  }
+
+  if (volatileStatus === 'noretreat') {
+    if (target.noRetreatActive) return false
+    target.noRetreatActive = true
+    target.trappedTurns = 999
+    target.trapSourceName = sourceName
+    changeStages(state, target, { attack: 1, defense: 1, specialAttack: 1, specialDefense: 1, speed: 1 })
+    return true
+  }
+
+  if (volatileStatus === 'rage') {
+    target.rageActive = true
+    return true
+  }
+
+  if (volatileStatus === 'smackdown') {
+    target.smackDownActive = true
+    target.magnetRiseTurns = 0
+    target.telekinesisTurns = 0
+    appendLog(state, `${target.name}은(는) 땅에 떨어졌다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'tarshot') {
+    target.tarShotActive = true
+    appendLog(state, `${target.name}은(는) 타르에 뒤덮였다!`, 'status')
+    return true
+  }
+
+  if (volatileStatus === 'glaiverush') {
+    target.glaiveRushVulnerable = true
+    return true
+  }
+
+  if (volatileStatus === 'uproar') {
+    if (target.uproarTurns > 0) return true
+    target.uproarTurns = 3
+    target.lockedMove = {
+      moveIndex: target.lastMoveIndex ?? 0,
+      moveId: sourceMoveId,
+      remainingUses: 2,
+    }
+    ;['player', 'opponent'].flatMap((sideId) => getActivePokemonList(state, sideId))
+      .filter((pokemon) => pokemon?.status?.id === 'sleep' && pokemon.ability !== '방음')
+      .forEach((pokemon) => { pokemon.status = null })
+    appendLog(state, '소란피기가 울려 퍼져 모두 잠들 수 없게 되었다!', 'status')
     return true
   }
 
@@ -2083,6 +3368,12 @@ function applyVolatileEffect(
     if (!source?.gender || !target.gender || source.gender === target.gender) return false
     target.infatuated = true
     appendLog(state, `${target.name}은(는) 헤롱헤롱 상태가 되었다!`, 'status')
+    if (hasActiveHeldItem(target, 'destiny-knot') && source && !source.infatuated) {
+      source.infatuated = true
+      appendLog(state, `${target.name}의 빨간실로 ${source.name}도 헤롱헤롱해졌다!`, 'item')
+      activateMentalHerb(state, source)
+    }
+    activateMentalHerb(state, target)
     return true
   }
 
@@ -2090,6 +3381,7 @@ function applyVolatileEffect(
     if (target.tormented) return false
     target.tormented = true
     appendLog(state, `${target.name}은(는) 같은 기술을 연속해서 쓸 수 없게 되었다!`, 'status')
+    activateMentalHerb(state, target)
     return true
   }
 
@@ -2136,6 +3428,7 @@ function applyVolatileEffect(
     if (target.healBlockTurns > 0) return false
     target.healBlockTurns = sourceMoveId === 'psychicnoise' ? 2 : 5
     appendLog(state, `${target.name}은(는) HP를 회복할 수 없게 되었다!`, 'status')
+    activateMentalHerb(state, target)
     return true
   }
 
@@ -2154,7 +3447,7 @@ function applyEffectPayload(state, attacker, defender, effect, random, sourceMov
       defender,
       SHOWDOWN_STATUS_IDS[effect.status] ?? effect.status,
       sourceName,
-      { source: attacker, ignoreAbility: Boolean(sourceMove?.ignoreAbility) },
+      { source: attacker, ignoreAbility: Boolean(sourceMove?.ignoreAbility), random },
     ) || applied
   }
   if (effect.volatileStatus && !['lockedmove', 'mustrecharge'].includes(effect.volatileStatus)) {
@@ -2183,7 +3476,11 @@ function applyEffectPayload(state, attacker, defender, effect, random, sourceMov
 }
 
 function applyPrimaryMoveEffects(state, attacker, defender, move, random) {
-  const target = move.target === 'self' ? attacker : defender
+  const target = move.target === 'self'
+    ? attacker
+    : ['adjacentAlly', 'adjacentAllyOrSelf'].includes(move.target)
+      ? activeAllies(state, attacker)[0] ?? attacker
+      : defender
   const primaryEffect = {
     status: move.status,
     volatileStatus: move.volatileStatus,
@@ -2193,11 +3490,15 @@ function applyPrimaryMoveEffects(state, attacker, defender, move, random) {
   let selfEffect = move.self
   if (Number(selfEffect?.chance) > 0) {
     selfEffect = attacker.ability !== '우격다짐'
-      && random() * 100 < secondaryEffectChance(attacker, selfEffect)
+      && random() * 100 < secondaryEffectChance(state, attacker, selfEffect)
       ? selfEffect
       : null
   }
   const selfApplied = applyEffectPayload(state, attacker, attacker, selfEffect, random, move)
+  if (move.selfBoost?.boosts) {
+    changeStages(state, attacker, move.selfBoost.boosts)
+    return true
+  }
   return applied || selfApplied
 }
 
@@ -2318,13 +3619,14 @@ function applyMaxMoveEffect(state, sideId, attacker, defender, move, random) {
       setStatus(state, pokemon, effect.status, move.name, {
         source: attacker,
         ignoreAbility: Boolean(move.ignoreAbility),
+        random,
       }) || applied
     ), false)
   }
   if (effect.kind === 'randomStatus') {
     return targets.reduce((applied, pokemon) => {
       const status = effect.statuses[Math.floor(random() * effect.statuses.length)]
-      return setStatus(state, pokemon, status, move.name) || applied
+      return setStatus(state, pokemon, status, move.name, { source: attacker, random }) || applied
     }, false)
   }
   if (effect.kind === 'volatile') {
@@ -2400,7 +3702,13 @@ function applyMaxMoveEffect(state, sideId, attacker, defender, move, random) {
     ;[sourceSide, targetSide].forEach((side) => {
       side.auroraVeilTurns = 0
       side.gmaxResidual = null
-      side.hazards = { stealthRock: false, steelsurge: false, toxicSpikes: 0 }
+      side.hazards = {
+        stealthRock: false,
+        steelsurge: false,
+        toxicSpikes: 0,
+        spikes: 0,
+        stickyWeb: false,
+      }
     })
     appendLog(state, `${move.name}이(가) 필드와 진영의 효과를 날려버렸다!`, 'field')
     return true
@@ -2482,6 +3790,27 @@ function applyEnvironmentAfterDamagingMove(state, sideId, attacker, defender, mo
   applied = applyZMoveEffect(state, attacker, move) || applied
   applied = applyMaxMoveEffect(state, sideId, attacker, defender, move, random) || applied
 
+  if (move.pseudoWeather === 'iondeluge') {
+    const environment = ensureEnvironmentState(state)
+    environment.ionDelugeTurns = 1
+    appendLog(state, '플라스마샤워가 전장에 펼쳐졌다!', 'field')
+    applied = true
+  }
+
+  if (move.pledgeSideCondition) {
+    const effectSide = move.pledgeAffectsOwnSide
+      ? getPokemonSide(state, attacker)
+      : getPokemonSide(state, defender)
+    effectSide[move.pledgeSideCondition] = 4
+    const pledgeLabels = {
+      firePledgeTurns: '불바다',
+      grassPledgeTurns: '습지초원',
+      waterPledgeTurns: '무지개',
+    }
+    appendLog(state, `${effectSide.name} 진영에 ${pledgeLabels[move.pledgeSideCondition]}가 펼쳐졌다!`, 'field')
+    applied = true
+  }
+
   if (!defender.fainted && defender.ability === '모래뿜기') {
     appendLog(state, `${defender.name}의 모래뿜기!`, 'ability')
     applied = setTemporaryEnvironment(state, 'weather', 'sandstorm', '모래뿜기', defender) || applied
@@ -2545,7 +3874,735 @@ function applyTransform(state, attacker, defender) {
   return true
 }
 
-function applyStatusMove(state, attacker, defender, move, random) {
+function allBattlePokemon(state) {
+  return [...state.player.team, ...state.opponent.team]
+}
+
+function setSideConditionFromMove(state, attacker, move) {
+  const rule = SIDE_CONDITION_MOVE_RULES[move.id]
+  if (!rule) return false
+  if (move.id === 'auroraveil' && effectiveWeatherFamilyId(state) !== 'snow') {
+    appendLog(state, '싸라기눈이나 눈이 내리지 않아 오로라베일은 실패했다!', 'muted')
+    return true
+  }
+  const side = getPokemonSide(state, attacker)
+  const turns = hasActiveHeldItem(attacker, 'light-clay') && rule.turns > 1 ? 8 : rule.turns
+  side[rule.key] = turns
+  appendLog(state, `${side.name} 진영에 ${move.name}의 효과가 펼쳐졌다!`, 'field')
+  return true
+}
+
+function setHazardFromMove(state, attacker, move) {
+  const rule = HAZARD_MOVE_RULES[move.id]
+  if (!rule) return false
+  const targetSide = getOtherSide(state, getPokemonSide(state, attacker).id)
+  const current = Number(targetSide.hazards[rule.key] ?? 0)
+  if (current >= rule.maximum) {
+    appendLog(state, `${move.name}은(는) 더 이상 설치할 수 없다!`, 'muted')
+    return true
+  }
+  targetSide.hazards[rule.key] = rule.maximum === 1 ? true : current + 1
+  appendLog(state, `${targetSide.name} 진영에 ${move.name}이(가) 설치되었다!`, 'field')
+  return true
+}
+
+function updateMagicRoomSuppression(state, active) {
+  allBattlePokemon(state).forEach((pokemon) => {
+    pokemon.magicRoomSuppressed = active
+  })
+}
+
+function setFieldEffectFromMove(state, move) {
+  const rule = FIELD_EFFECT_MOVE_RULES[move.id]
+  if (!rule) return false
+  const environment = ensureEnvironmentState(state)
+  if (rule.toggle && environment[rule.key] > 0) {
+    environment[rule.key] = 0
+    if (move.id === 'magicroom') updateMagicRoomSuppression(state, false)
+    appendLog(state, `${move.name}의 효과가 해제되었다!`, 'field')
+    return true
+  }
+  environment[rule.key] = rule.turns
+  if (move.id === 'magicroom') updateMagicRoomSuppression(state, true)
+  if (move.id === 'trickroom') {
+    ;['player', 'opponent'].forEach((sideId) => {
+      getActivePokemonList(state, sideId)
+        .filter((pokemon) => pokemon?.hp > 0 && !pokemon.fainted && hasActiveHeldItem(pokemon, 'room-service'))
+        .forEach((pokemon) => {
+          consumeHeldItem(state, pokemon)
+          appendLog(state, `${pokemon.name}의 룸서비스가 발동했다!`, 'item')
+          changeStages(state, pokemon, { speed: -1 }, { source: pokemon })
+        })
+    })
+  }
+  if (move.id === 'gravity') {
+    cancelGravityAffectedChargeMoves(state)
+    allBattlePokemon(state).forEach((pokemon) => {
+      pokemon.magnetRiseTurns = 0
+      pokemon.telekinesisTurns = 0
+      pokemon.semiInvulnerable = null
+    })
+  }
+  appendLog(state, `${move.name}의 효과가 전장에 펼쳐졌다!`, 'field')
+  return true
+}
+
+function swapStageGroups(first, second, statKeys) {
+  statKeys.forEach((statKey) => {
+    const previous = first.statStages[statKey]
+    first.statStages[statKey] = second.statStages[statKey]
+    second.statStages[statKey] = previous
+  })
+}
+
+function swapHeldItems(state, first, second, sourceName, { ignoreSecondAbility = false } = {}) {
+  const firstHasItem = hasHeldItem(first)
+  const secondHasItem = hasHeldItem(second)
+  if (!firstHasItem && !secondHasItem) {
+    appendLog(state, '서로 바꿀 지닌물건이 없어 실패했다!', 'muted')
+    return false
+  }
+  if (
+    firstHasItem && !canRemoveHeldItem(first, second)
+    || secondHasItem && !canRemoveHeldItem(second, first, {
+      ignoreHolderAbility: ignoreSecondAbility,
+    })
+  ) {
+    appendLog(state, '지닌물건을 바꿀 수 없어 실패했다!', 'ability')
+    return false
+  }
+  const firstItem = {
+    id: firstHasItem ? first.heldItemId : '',
+    name: firstHasItem ? first.heldItemName : '',
+  }
+  first.heldItemId = secondHasItem ? second.heldItemId : ''
+  first.heldItemName = secondHasItem ? second.heldItemName : ''
+  first.consumedItem = false
+  second.heldItemId = firstItem.id
+  second.heldItemName = firstItem.name
+  second.consumedItem = false
+  first.hadHeldItem ||= Boolean(first.heldItemId)
+  second.hadHeldItem ||= Boolean(second.heldItemId)
+  appendLog(state, `${sourceName}으로 서로의 지닌물건을 바꿨다!`, 'item')
+  return true
+}
+
+function copyTargetMoveIntoSlot(state, attacker, defender, move, permanent = false) {
+  const targetMove = defender.moves[defender.lastMoveIndex]
+  const sourceIndex = attacker.moves.findIndex((candidate) => candidate.id === move.id)
+  const blockedByMoveFlag = permanent
+    ? targetMove?.flags?.includes('nosketch')
+    : targetMove?.flags?.includes('failmimic')
+  if (!targetMove || sourceIndex < 0 || blockedByMoveFlag || CALL_MOVE_BLOCKLIST.has(targetMove.id)) {
+    appendLog(state, `${move.name}은(는) 복사할 기술이 없어 실패했다!`, 'muted')
+    return true
+  }
+  attacker.moves[sourceIndex] = {
+    ...moveRuntime(targetMove, sourceIndex),
+    maxPp: permanent ? targetMove.maxPp : Math.min(5, targetMove.maxPp),
+    currentPp: permanent ? targetMove.maxPp : Math.min(5, targetMove.maxPp),
+    copiedBy: move.id,
+  }
+  appendLog(state, `${attacker.name}은(는) ${targetMove.name}을(를) 기억했다!`, 'status')
+  return true
+}
+
+function cureTeamStatuses(state, attacker, move) {
+  const side = getPokemonSide(state, attacker)
+  let cured = false
+  side.team.forEach((pokemon) => {
+    if (!pokemon.status) return
+    pokemon.status = null
+    cured = true
+  })
+  appendLog(state, cured ? `${side.name} 팀의 상태 이상이 회복되었다!` : '회복할 상태 이상이 없었다.', cured ? 'heal' : 'muted')
+  return true
+}
+
+function addPokemonType(state, pokemon, type, sourceName) {
+  if (pokemon.types.includes(type)) {
+    appendLog(state, `${pokemon.name}은(는) 이미 ${type}타입이다!`, 'muted')
+    return false
+  }
+  pokemon.types = [...pokemon.types, type].slice(-3)
+  appendLog(state, `${pokemon.name}에게 ${type}타입이 추가되었다!`, 'status')
+  state.lastEvent = { kind: 'type', targetId: pokemon.battleId, sourceName }
+  return true
+}
+
+function applyAdvancedStatusMove(state, attacker, defender, move, random, context = {}) {
+  if (setSideConditionFromMove(state, attacker, move)) return true
+  if (setHazardFromMove(state, attacker, move)) return true
+  if (setFieldEffectFromMove(state, move)) return true
+  if (NO_EFFECT_MOVE_IDS.has(move.id)) {
+    appendLog(state, `${move.name}! 하지만 배틀에는 아무 일도 일어나지 않았다.`, 'muted')
+    return true
+  }
+
+  if (move.id === 'clangoroussoul') {
+    const cost = Math.floor(attacker.maxHp / 3)
+    if (attacker.hp <= cost) {
+      appendLog(state, 'HP가 부족해 소울비트는 실패했다!', 'muted')
+      attacker.moveFailedThisTurn = true
+      return true
+    }
+    loseHp(state, attacker, cost, `${attacker.name}은(는) HP를 깎아 소울비트를 울렸다!`, 'status')
+    changeStages(state, attacker, { attack: 1, defense: 1, specialAttack: 1, specialDefense: 1, speed: 1 })
+    return true
+  }
+
+  if (move.id === 'filletaway') {
+    const cost = Math.floor(attacker.maxHp / 2)
+    if (attacker.hp <= cost) {
+      appendLog(state, 'HP가 부족해 제살깎기는 실패했다!', 'muted')
+      attacker.moveFailedThisTurn = true
+      return true
+    }
+    loseHp(state, attacker, cost, `${attacker.name}은(는) 자신의 살을 깎아 힘을 끌어냈다!`, 'status')
+    changeStages(state, attacker, { attack: 2, specialAttack: 2, speed: 2 })
+    return true
+  }
+
+  if (move.id === 'shedtail') {
+    const side = getPokemonSide(state, attacker)
+    const cost = Math.floor(attacker.maxHp / 2)
+    if (attacker.hp <= cost || availableBenchIndexes(side).length === 0) {
+      appendLog(state, 'HP가 부족하거나 교대할 포켓몬이 없어 꼬리자르기는 실패했다!', 'muted')
+      attacker.moveFailedThisTurn = true
+      return true
+    }
+    loseHp(state, attacker, cost, `${attacker.name}은(는) 자신의 꼬리를 잘라 대타를 만들었다!`, 'status')
+    attacker.pendingShedTailHp = Math.max(1, Math.floor(attacker.maxHp / 4))
+    return true
+  }
+
+  if (move.id === 'batonpass') {
+    if (availableBenchIndexes(getPokemonSide(state, attacker)).length === 0) {
+      appendLog(state, '교대할 포켓몬이 없어 배턴터치는 실패했다!', 'muted')
+      attacker.moveFailedThisTurn = true
+    } else {
+      appendLog(state, `${attacker.name}은(는) 능력 변화를 이어 넘긴다!`, 'status')
+    }
+    return true
+  }
+
+  if (['healbell', 'aromatherapy'].includes(move.id)) return cureTeamStatuses(state, attacker, move)
+  if (move.id === 'haze') {
+    ;['player', 'opponent'].forEach((sideId) => getActivePokemonList(state, sideId).forEach(resetPokemonStatStages))
+    appendLog(state, '모든 능력 변화가 원래대로 돌아왔다!', 'field')
+    return true
+  }
+  if (move.id === 'bellydrum') {
+    if (attacker.hp <= attacker.maxHp / 2 || attacker.statStages.attack >= 6) {
+      appendLog(state, '그러나 배북은 실패했다!', 'muted')
+      return true
+    }
+    loseHp(state, attacker, attacker.maxHp / 2, `${attacker.name}은(는) HP를 크게 깎아 힘을 끌어냈다!`, 'status')
+    attacker.statStages.attack = 6
+    appendLog(state, `${attacker.name}의 공격이 최고로 올라갔다!`, 'status')
+    return true
+  }
+  if (move.id === 'substitute') {
+    const cost = Math.floor(attacker.maxHp / 4)
+    if (attacker.substituteHp > 0 || attacker.hp <= cost) {
+      appendLog(state, '그러나 대타출동은 실패했다!', 'muted')
+      return true
+    }
+    attacker.hp -= cost
+    attacker.substituteHp = cost
+    appendLog(state, `${attacker.name}의 대타가 나타났다!`, 'status')
+    return true
+  }
+  if (move.id === 'curse') {
+    if (attacker.types.includes('고스트')) {
+      if (defender.cursedActive || attacker.hp <= Math.floor(attacker.maxHp / 2)) {
+        appendLog(state, '그러나 저주는 실패했다!', 'muted')
+        return true
+      }
+      loseHp(state, attacker, attacker.maxHp / 2, `${attacker.name}은(는) 자신의 HP를 깎아 저주를 걸었다!`, 'status')
+      defender.cursedActive = true
+    } else {
+      changeStages(state, attacker, { attack: 1, defense: 1, speed: -1 })
+    }
+    return true
+  }
+  if (move.id === 'stockpile') {
+    if (attacker.stockpileCount >= 3) {
+      appendLog(state, '더 이상 비축할 수 없다!', 'muted')
+      return true
+    }
+    attacker.stockpileCount += 1
+    const beforeDefense = attacker.statStages.defense
+    const beforeSpecialDefense = attacker.statStages.specialDefense
+    changeStages(state, attacker, { defense: 1, specialDefense: 1 })
+    attacker.stockpileBoosts.defense += attacker.statStages.defense - beforeDefense
+    attacker.stockpileBoosts.specialDefense += attacker.statStages.specialDefense - beforeSpecialDefense
+    appendLog(state, `${attacker.name}은(는) ${attacker.stockpileCount}번 비축했다!`, 'status')
+    return true
+  }
+  if (move.id === 'swallow') {
+    const count = attacker.stockpileCount
+    if (!count) {
+      appendLog(state, '비축한 힘이 없어 꿀꺽은 실패했다!', 'muted')
+      return true
+    }
+    const fractions = { 1: [1, 4], 2: [1, 2], 3: [1, 1] }
+    const [numerator, denominator] = fractions[count]
+    healPokemon(state, attacker, attacker.maxHp * numerator / denominator, move.name)
+    changeStages(state, attacker, {
+      defense: -attacker.stockpileBoosts.defense,
+      specialDefense: -attacker.stockpileBoosts.specialDefense,
+    })
+    attacker.stockpileCount = 0
+    attacker.stockpileBoosts = { defense: 0, specialDefense: 0 }
+    return true
+  }
+  if (move.id === 'painsplit') {
+    const sharedHp = Math.floor((attacker.hp + defender.hp) / 2)
+    attacker.hp = Math.min(attacker.maxHp, sharedHp)
+    defender.hp = Math.min(defender.maxHp, sharedHp)
+    appendLog(state, '서로의 HP를 합쳐 똑같이 나눴다!', 'status')
+    return true
+  }
+  if (move.id === 'wish') {
+    const side = getPokemonSide(state, attacker)
+    const slot = context.actorSlot ?? activeSlotIndex(state, side)
+    side.wishSlots[slot] = { turns: 2, amount: Math.floor(attacker.maxHp / 2), sourceName: attacker.name }
+    appendLog(state, `${attacker.name}은(는) 소원을 빌었다!`, 'heal')
+    return true
+  }
+  if (['mindreader', 'lockon'].includes(move.id)) {
+    attacker.sureHitTargetBattleId = defender.battleId
+    attacker.sureHitTurns = 2
+    appendLog(state, `${attacker.name}은(는) ${defender.name}에게 조준을 맞췄다!`, 'status')
+    return true
+  }
+  if (move.id === 'spite') {
+    const targetMove = defender.moves[defender.lastMoveIndex]
+    if (!targetMove) appendLog(state, '원한을 품을 기술이 없어 실패했다!', 'muted')
+    else {
+      const loss = Math.min(4, targetMove.currentPp)
+      targetMove.currentPp -= loss
+      appendLog(state, `${targetMove.name}의 PP가 ${loss} 줄었다!`, 'status')
+    }
+    return true
+  }
+  if (move.id === 'psychoshift') {
+    if (!attacker.status || defender.status) appendLog(state, '옮길 상태 이상이 없어 실패했다!', 'muted')
+    else {
+      const statusId = attacker.status.id
+      if (setStatus(state, defender, statusId, move.name, { source: attacker })) attacker.status = null
+    }
+    return true
+  }
+  if (move.id === 'imprison') {
+    attacker.imprisonActive = true
+    appendLog(state, `${attacker.name}은(는) 자신이 아는 기술을 봉인했다!`, 'status')
+    return true
+  }
+  if (move.id === 'afteryou') {
+    if (Number(state.rules?.format?.activeSlots ?? 1) <= 1 || defender.actedThisTurn || !defender.plannedActionType) {
+      appendLog(state, '행동 순서를 앞당길 수 없어 당신먼저는 실패했다!', 'muted')
+      return true
+    }
+    defender.nextTurnOrderBias = 2
+    appendLog(state, `${defender.name}은(는) 바로 다음에 행동하게 되었다!`, 'status')
+    return true
+  }
+  if (move.id === 'quash') {
+    if (Number(state.rules?.format?.activeSlots ?? 1) <= 1 || defender.actedThisTurn || !defender.plannedActionType) {
+      appendLog(state, '행동 순서를 미룰 수 없어 순서는 실패했다!', 'muted')
+      return true
+    }
+    defender.nextTurnOrderBias = -2
+    appendLog(state, `${defender.name}의 행동 순서가 뒤로 밀렸다!`, 'status')
+    return true
+  }
+  if (['refresh', 'takeheart'].includes(move.id)) {
+    const recoverable = ['burn', 'paralysis', 'poison', 'toxic'].includes(attacker.status?.id)
+    if (recoverable) attacker.status = null
+    if (move.id === 'takeheart') changeStages(state, attacker, { specialAttack: 1, specialDefense: 1 })
+    appendLog(state, recoverable ? `${attacker.name}의 상태 이상이 회복되었다!` : `${move.name}의 힘이 발동했다!`, recoverable ? 'heal' : 'status')
+    return true
+  }
+  if (['trick', 'switcheroo'].includes(move.id)) {
+    return swapHeldItems(state, attacker, defender, move.name, {
+      ignoreSecondAbility: moveIgnoresAbility(move, defender),
+    })
+  }
+  if (move.id === 'bestow') {
+    if (!canRemoveHeldItem(attacker, defender) || hasHeldItem(defender)) {
+      appendLog(state, '건넬 수 있는 지닌물건이 없어 실패했다!', 'muted')
+      return true
+    }
+    defender.heldItemId = attacker.heldItemId
+    defender.heldItemName = attacker.heldItemName
+    defender.consumedItem = false
+    clearHeldItem(attacker)
+    appendLog(state, `${attacker.name}은(는) ${defender.name}에게 지닌물건을 건넸다!`, 'item')
+    return true
+  }
+  if (move.id === 'recycle') {
+    if (!attacker.consumedItem || !attacker.heldItemId) appendLog(state, '재생할 도구가 없어 실패했다!', 'muted')
+    else {
+      attacker.consumedItem = false
+      appendLog(state, `${attacker.name}은(는) 사용한 도구를 재생했다!`, 'item')
+    }
+    return true
+  }
+  if (move.id === 'corrosivegas') {
+    const targets = [...new Map([
+      defender,
+      ...activeAllies(state, attacker),
+      ...activeAllies(state, defender),
+    ].filter((pokemon) => pokemon?.battleId !== attacker.battleId)
+      .map((pokemon) => [pokemon.battleId, pokemon])).values()]
+    let removed = false
+    targets.forEach((pokemon) => {
+      if (!canRemoveHeldItem(pokemon, attacker, {
+        ignoreHolderAbility: moveIgnoresAbility(move, pokemon),
+      })) return
+      clearHeldItem(pokemon)
+      removed = true
+    })
+    appendLog(
+      state,
+      removed ? '부식가스가 주변 포켓몬의 지닌물건을 녹였다!' : '그러나 녹일 수 있는 지닌물건이 없었다!',
+      removed ? 'item' : 'muted',
+    )
+    return true
+  }
+  if (['mimic', 'sketch'].includes(move.id)) return copyTargetMoveIntoSlot(state, attacker, defender, move, move.id === 'sketch')
+  if (move.id === 'conversion') {
+    const sourceMove = attacker.moves.find((candidate) => candidate.id !== 'conversion')
+    if (sourceMove) attacker.types = [sourceMove.type]
+    appendLog(state, `${attacker.name}은(는) ${sourceMove?.type ?? attacker.types[0]}타입으로 변했다!`, 'status')
+    return true
+  }
+  if (move.id === 'conversion2') {
+    const targetMove = defender.moves[defender.lastMoveIndex]
+    const resistantType = Object.keys(TYPE_CHART).find((type) => (TYPE_CHART[targetMove?.type]?.[type] ?? 1) < 1)
+    if (targetMove && resistantType) attacker.types = [resistantType]
+    appendLog(state, targetMove && resistantType ? `${attacker.name}은(는) ${resistantType}타입으로 변했다!` : '그러나 실패했다!', targetMove && resistantType ? 'status' : 'muted')
+    return true
+  }
+  if (move.id === 'camouflage') {
+    const terrainTypes = { electric: '전기', grassy: '풀', misty: '페어리', psychic: '에스퍼', neutral: '노말' }
+    attacker.types = [terrainTypes[state.rules?.terrain?.id] ?? '노말']
+    appendLog(state, `${attacker.name}의 타입이 ${attacker.types[0]}타입으로 변했다!`, 'status')
+    return true
+  }
+  if (move.id === 'reflecttype') {
+    attacker.types = [...defender.types]
+    appendLog(state, `${attacker.name}은(는) ${defender.name}의 타입을 따라 했다!`, 'status')
+    return true
+  }
+  if (move.id === 'soak') {
+    defender.types = ['물']
+    appendLog(state, `${defender.name}은(는) 물타입이 되었다!`, 'status')
+    return true
+  }
+  if (move.id === 'magicpowder') {
+    defender.types = ['에스퍼']
+    appendLog(state, `${defender.name}은(는) 에스퍼타입이 되었다!`, 'status')
+    return true
+  }
+  if (move.id === 'trickortreat') return addPokemonType(state, defender, '고스트', move.name) || true
+  if (move.id === 'forestscurse') return addPokemonType(state, defender, '풀', move.name) || true
+  if (move.id === 'psychup') {
+    attacker.statStages = { ...defender.statStages }
+    appendLog(state, `${attacker.name}은(는) ${defender.name}의 능력 변화를 복사했다!`, 'status')
+    return true
+  }
+  if (move.id === 'topsyturvy') {
+    defender.statStages = Object.fromEntries(Object.entries(defender.statStages).map(([key, value]) => [key, -value]))
+    appendLog(state, `${defender.name}의 능력 변화가 뒤집혔다!`, 'status')
+    return true
+  }
+  if (move.id === 'powerswap') {
+    swapStageGroups(attacker, defender, ['attack', 'specialAttack'])
+    appendLog(state, '서로의 공격 능력 변화를 맞바꿨다!', 'status')
+    return true
+  }
+  if (move.id === 'guardswap') {
+    swapStageGroups(attacker, defender, ['defense', 'specialDefense'])
+    appendLog(state, '서로의 방어 능력 변화를 맞바꿨다!', 'status')
+    return true
+  }
+  if (move.id === 'heartswap') {
+    swapStageGroups(attacker, defender, Object.keys(attacker.statStages))
+    appendLog(state, '서로의 모든 능력 변화를 맞바꿨다!', 'status')
+    return true
+  }
+  if (['guardsplit', 'powersplit'].includes(move.id)) {
+    const keys = move.id === 'guardsplit' ? ['defense', 'specialDefense'] : ['attack', 'specialAttack']
+    keys.forEach((key) => {
+      const average = Math.floor((attacker.stats[key] + defender.stats[key]) / 2)
+      attacker.stats[key] = average
+      defender.stats[key] = average
+    })
+    appendLog(state, `${move.name}으로 서로의 능력을 평균화했다!`, 'status')
+    return true
+  }
+  if (move.id === 'speedswap') {
+    const speed = attacker.stats.speed
+    attacker.stats.speed = defender.stats.speed
+    defender.stats.speed = speed
+    appendLog(state, '서로의 스피드를 맞바꿨다!', 'status')
+    return true
+  }
+  if (['powertrick', 'powershift'].includes(move.id)) {
+    const attack = attacker.stats.attack
+    attacker.stats.attack = attacker.stats.defense
+    attacker.stats.defense = attack
+    appendLog(state, `${attacker.name}의 공격과 방어가 뒤바뀌었다!`, 'status')
+    return true
+  }
+  if (move.id === 'skillswap') {
+    if (!abilityCanBeChanged(attacker) || !abilityCanBeChanged(defender)) appendLog(state, '특성을 바꿀 수 없어 실패했다!', 'muted')
+    else {
+      const ability = attacker.ability
+      attacker.ability = defender.ability
+      defender.ability = ability
+      appendLog(state, '서로의 특성을 맞바꿨다!', 'ability')
+    }
+    return true
+  }
+  if (move.id === 'roleplay') {
+    if (abilityCanBeChanged(attacker) && !UNTRACEABLE_ABILITIES.has(defender.ability)) attacker.ability = defender.ability
+    appendLog(state, `${attacker.name}은(는) ${defender.ability} 특성을 따라 했다!`, 'ability')
+    return true
+  }
+  if (move.id === 'simplebeam') {
+    if (abilityCanBeChanged(defender)) defender.ability = '단순'
+    appendLog(state, `${defender.name}의 특성이 단순로 바뀌었다!`, 'ability')
+    return true
+  }
+  if (move.id === 'worryseed') {
+    if (abilityCanBeChanged(defender)) defender.ability = '불면'
+    appendLog(state, `${defender.name}의 특성이 불면으로 바뀌었다!`, 'ability')
+    return true
+  }
+  if (move.id === 'entrainment') {
+    if (abilityCanBeChanged(defender)) defender.ability = attacker.ability
+    appendLog(state, `${defender.name}의 특성이 ${attacker.ability}(으)로 바뀌었다!`, 'ability')
+    return true
+  }
+  if (move.id === 'doodle') {
+    const side = getPokemonSide(state, attacker)
+    getActivePokemonList(state, side.id).forEach((pokemon) => {
+      if (abilityCanBeChanged(pokemon)) pokemon.ability = defender.ability
+    })
+    appendLog(state, `${attacker.name} 진영이 ${defender.ability} 특성을 베껴 그렸다!`, 'ability')
+    return true
+  }
+  if (move.id === 'floralhealing') {
+    const fraction = state.rules?.terrain?.id === 'grassy' ? 2 / 3 : 1 / 2
+    healPokemon(state, defender, defender.maxHp * fraction, move.name)
+    return true
+  }
+  if (move.id === 'healpulse') {
+    healPokemon(state, defender, defender.maxHp * (attacker.ability === '메가런처' ? 3 / 4 : 1 / 2), move.name)
+    return true
+  }
+  if (move.id === 'strengthsap') {
+    if (defender.statStages.attack <= -6) {
+      appendLog(state, `${defender.name}의 공격은 더 이상 떨어지지 않는다!`, 'muted')
+      return true
+    }
+    const drainAmount = effectiveStat(state, defender, 'attack')
+    changeStages(state, defender, { attack: -1 }, {
+      source: attacker,
+      ignoreAbility: Boolean(move.ignoreAbility),
+    })
+    applyDrainingRecovery(state, attacker, defender, drainAmount, move.name, {
+      ignoreDrainedAbility: moveIgnoresAbility(move, defender),
+    })
+    return true
+  }
+  if (move.id === 'purify') {
+    if (defender.status) {
+      defender.status = null
+      healPokemon(state, attacker, attacker.maxHp / 2, move.name)
+    } else appendLog(state, '회복할 상태 이상이 없어 실패했다!', 'muted')
+    return true
+  }
+  if (['junglehealing', 'lunarblessing'].includes(move.id)) {
+    const side = getPokemonSide(state, attacker)
+    getActivePokemonList(state, side.id).forEach((pokemon) => {
+      pokemon.status = null
+      healPokemon(state, pokemon, pokemon.maxHp / 4, move.name)
+    })
+    return true
+  }
+  if (move.id === 'acupressure') {
+    const target = move.target === 'adjacentAllyOrSelf' && defender ? defender : attacker
+    const stats = Object.keys(target.statStages).filter((key) => target.statStages[key] < 6)
+    const stat = stats[Math.floor(random() * stats.length)]
+    if (stat) changeStages(state, target, { [stat]: 2 })
+    else appendLog(state, '더 올릴 수 있는 능력이 없었다!', 'muted')
+    return true
+  }
+  if (move.id === 'venomdrench') {
+    getActivePokemonList(state, getPokemonSide(state, defender).id)
+      .filter((pokemon) => ['poison', 'toxic'].includes(pokemon.status?.id))
+      .forEach((pokemon) => changeStages(state, pokemon, { attack: -1, specialAttack: -1, speed: -1 }, { source: attacker }))
+    return true
+  }
+  if (move.id === 'flowershield') {
+    ;['player', 'opponent'].forEach((sideId) => getActivePokemonList(state, sideId)
+      .filter((pokemon) => pokemon.types.includes('풀'))
+      .forEach((pokemon) => changeStages(state, pokemon, { defense: 1 }, { source: attacker })))
+    return true
+  }
+  if (['gearup', 'magneticflux'].includes(move.id)) {
+    const boosts = move.id === 'gearup'
+      ? { attack: 1, specialAttack: 1 }
+      : { defense: 1, specialDefense: 1 }
+    getActivePokemonList(state, getPokemonSide(state, attacker).id)
+      .filter((pokemon) => PLUS_MINUS_ABILITIES.has(pokemon.ability))
+      .forEach((pokemon) => changeStages(state, pokemon, boosts))
+    return true
+  }
+  if (move.id === 'rototiller') {
+    ;['player', 'opponent'].forEach((sideId) => getActivePokemonList(state, sideId)
+      .filter((pokemon) => pokemon.types.includes('풀') && isGrounded(pokemon, state))
+      .forEach((pokemon) => changeStages(state, pokemon, { attack: 1, specialAttack: 1 })))
+    return true
+  }
+  if (move.id === 'teatime') {
+    allBattlePokemon(state).filter((pokemon) => pokemon.heldItemId?.endsWith('-berry'))
+      .forEach((pokemon) => consumeBerryImmediately(state, pokemon, random))
+    appendLog(state, '모두가 티타임을 즐기며 나무열매를 먹었다!', 'item')
+    return true
+  }
+  if (move.id === 'stuffcheeks') {
+    if (!attacker.heldItemId?.endsWith('-berry') || attacker.consumedItem) appendLog(state, '먹을 나무열매가 없어 실패했다!', 'muted')
+    else {
+      consumeBerryImmediately(state, attacker, random)
+      changeStages(state, attacker, { defense: 2 })
+    }
+    return true
+  }
+  if (move.id === 'tidyup') {
+    ;[state.player, state.opponent].forEach((side) => {
+      side.hazards.spikes = 0
+      side.hazards.stealthRock = false
+      side.hazards.stickyWeb = false
+      side.hazards.toxicSpikes = 0
+      side.team.forEach((pokemon) => { pokemon.substituteHp = 0 })
+    })
+    changeStages(state, attacker, { attack: 1, speed: 1 })
+    appendLog(state, '전장의 함정과 대타가 모두 정리되었다!', 'field')
+    return true
+  }
+  if (move.id === 'courtchange') {
+    const first = state.player
+    const second = state.opponent
+    const keys = ['auroraVeilTurns', 'lightScreenTurns', 'reflectTurns', 'safeguardTurns', 'mistTurns', 'tailwindTurns']
+    keys.forEach((key) => {
+      const value = first[key]
+      first[key] = second[key]
+      second[key] = value
+    })
+    const hazards = first.hazards
+    first.hazards = second.hazards
+    second.hazards = hazards
+    appendLog(state, '서로의 진영 효과가 뒤바뀌었다!', 'field')
+    return true
+  }
+  if (move.id === 'allyswitch') {
+    const side = getPokemonSide(state, attacker)
+    if (side.activeIndexes.length < 2) appendLog(state, '자리를 바꿀 동료가 없어 실패했다!', 'muted')
+    else {
+      side.activeIndexes.reverse()
+      appendLog(state, `${attacker.name} 진영의 위치가 뒤바뀌었다!`, 'status')
+    }
+    return true
+  }
+  return false
+}
+
+function lastMoveForPokemon(pokemon) {
+  return pokemon?.moves?.[pokemon.lastMoveIndex] ?? null
+}
+
+function resolveCalledMove(state, attacker, defender, move, random, previousBattleMove) {
+  let calledMove = null
+  let user = attacker
+  if (move.id === 'metronome') {
+    const candidates = MOVE_CATALOG.filter((candidate) => (
+      candidate.flags?.includes('metronome')
+      && !CALL_MOVE_BLOCKLIST.has(candidate.id)
+    ))
+    calledMove = candidates[Math.floor(random() * candidates.length)]
+  } else if (move.id === 'assist') {
+    const side = getPokemonSide(state, attacker)
+    const candidates = side.team.flatMap((pokemon) => pokemon.moves)
+      .filter((candidate) => !CALL_MOVE_BLOCKLIST.has(candidate.id) && !candidate.flags?.includes('noassist'))
+    calledMove = candidates[Math.floor(random() * candidates.length)]
+  } else if (move.id === 'sleeptalk') {
+    if (!isPokemonAsleep(attacker)) return null
+    const candidates = attacker.moves.filter((candidate) => (
+      candidate.id !== 'sleeptalk'
+      && !candidate.flags?.includes('nosleeptalk')
+      && !candidate.flags?.includes('charge')
+      && !CALL_MOVE_BLOCKLIST.has(candidate.id)
+    ))
+    calledMove = candidates[Math.floor(random() * candidates.length)]
+  } else if (move.id === 'naturepower') {
+    const moveByTerrain = {
+      electric: 'thunderbolt',
+      grassy: 'energyball',
+      misty: 'moonblast',
+      psychic: 'psychic',
+      neutral: 'triattack',
+    }
+    calledMove = getMoveById(moveByTerrain[state.rules?.terrain?.id] ?? 'triattack')
+  } else if (move.id === 'copycat') {
+    const previousMove = getMoveById(previousBattleMove?.moveId)
+    calledMove = previousMove?.flags?.includes('failcopycat') ? null : previousMove
+  } else if (move.id === 'mirrormove') {
+    const mirroredMove = lastMoveForPokemon(defender)
+    calledMove = mirroredMove?.flags?.includes('mirror') ? mirroredMove : null
+  } else if (move.id === 'mefirst') {
+    const targetMove = defender.moves.find((candidate) => candidate.id === defender.plannedMoveId)
+      ?? getMoveById(defender.plannedMoveId)
+    calledMove = !defender.actedThisTurn
+      && defender.plannedActionType === 'move'
+      && targetMove
+      && !isStatusMove(targetMove)
+      && !targetMove.flags?.includes('failmefirst')
+      ? { ...targetMove, power: targetMove.power * 1.5 }
+      : null
+  } else if (move.id === 'instruct') {
+    user = defender
+    const instructedMove = lastMoveForPokemon(defender)
+    calledMove = instructedMove?.flags?.includes('failinstruct') ? null : instructedMove
+  }
+  if (!calledMove || CALL_MOVE_BLOCKLIST.has(calledMove.id)) return null
+
+  const userSide = getPokemonSide(state, user)
+  const targetSide = getOtherSide(state, userSide.id)
+  const actorSlot = getActivePokemonList(state, userSide.id).findIndex((pokemon) => pokemon?.battleId === user.battleId)
+  const requestedTarget = user === attacker ? defender : attacker
+  const targetSlot = getActivePokemonList(state, targetSide.id)
+    .findIndex((pokemon) => pokemon?.battleId === requestedTarget.battleId)
+  return {
+    sideId: userSide.id,
+    action: {
+      type: 'move',
+      actorSlot: Math.max(0, actorSlot),
+      targetSlot: Math.max(0, targetSlot),
+      moveIndex: user.lastMoveIndex ?? 0,
+      gimmick: null,
+      dancerCopy: true,
+      copiedMove: { ...calledMove },
+    },
+  }
+}
+
+function applyStatusMove(state, attacker, defender, move, random, context = {}) {
   if (PROTECT_MOVE_IDS.has(move.id)) {
     const successRate = 1 / Math.max(1, 3 ** attacker.protectChain)
     if (random() <= successRate) {
@@ -2563,6 +4620,19 @@ function applyStatusMove(state, attacker, defender, move, random) {
 
   attacker.protectChain = 0
   const environmentApplied = applyEnvironmentFromMove(state, attacker, move)
+
+  if (
+    defender !== attacker
+    && move.flags?.includes('powder')
+    && (
+      defender.types.includes('풀')
+      || defender.ability === '방진'
+      || hasActiveHeldItem(defender, 'safety-goggles')
+    )
+  ) {
+    appendLog(state, `${defender.name}에게는 가루 기술이 통하지 않는다!`, 'muted')
+    return true
+  }
 
   if (move.id === 'transform') {
     if (!applyTransform(state, attacker, defender)) appendLog(state, '그러나 변신에 실패했다!', 'muted')
@@ -2593,10 +4663,13 @@ function applyStatusMove(state, attacker, defender, move, random) {
   if (move.id === 'rest') {
     const previousStatus = attacker.status
     attacker.status = null
-    if (!setStatus(state, attacker, 'sleep', move.name)) {
+    if (!setStatus(state, attacker, 'sleep', move.name, { source: attacker, random })) {
       attacker.status = previousStatus
       appendLog(state, `${attacker.name}은(는) 잠들 수 없어 잠자기에 실패했다!`, 'muted')
       return true
+    }
+    if (attacker.status?.id === 'sleep') {
+      attacker.status.counter = attacker.ability === '일찍기상' ? 2 : 3
     }
     attacker.hp = attacker.maxHp
     appendLog(state, `${attacker.name}은(는) 푹 잠들어 HP를 모두 회복했다.`, 'heal')
@@ -2619,6 +4692,7 @@ function applyStatusMove(state, attacker, defender, move, random) {
   }
 
   if (move.heal || HEAL_MOVE_IDS.has(move.id)) {
+    if (move.id === 'roost') attacker.roostedThisTurn = true
     const [numerator, denominator] = healingMoveFraction(state, attacker, move)
     healPokemon(state, attacker, attacker.maxHp * numerator / denominator, move.name)
     return true
@@ -2628,6 +4702,8 @@ function applyStatusMove(state, attacker, defender, move, random) {
     attacker.weightReduction = Math.min(10000, (attacker.weightReduction ?? 0) + 1000)
     appendLog(state, `${attacker.name}은(는) 몸을 깎아 무게가 100kg 줄었다!`, 'status')
   }
+
+  if (applyAdvancedStatusMove(state, attacker, defender, move, random, context)) return true
 
   if (applyPrimaryMoveEffects(state, attacker, defender, move, random)) return true
 
@@ -2651,7 +4727,7 @@ function secondaryStatusFromDescription(state, attacker, defender, move, random)
   const percent = Number(description.match(/(\d+)%/)?.[1] ?? 0)
   if (!percent || random() * 100 >= percent) return false
 
-  const options = { source: attacker, ignoreAbility: Boolean(move.ignoreAbility) }
+  const options = { source: attacker, ignoreAbility: Boolean(move.ignoreAbility), random }
   if (description.includes('화상')) return setStatus(state, defender, 'burn', move.name, options)
   if (description.includes('마비')) return setStatus(state, defender, 'paralysis', move.name, options)
   if (description.includes('얼음 상태')) return setStatus(state, defender, 'freeze', move.name, options)
@@ -2668,11 +4744,11 @@ function applyMoveSecondaries(state, attacker, defender, move, random, attempts 
   if (attacker.ability === '우격다짐') return false
 
   let applied = false
-  const targetEffectBlocked = (!move.ignoreAbility && defender.ability === '인분')
+  const targetEffectBlocked = (!moveIgnoresAbility(move, defender) && defender.ability === '인분')
     || hasActiveHeldItem(defender, 'covert-cloak')
   for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
     effects.forEach((effect) => {
-      if (random() * 100 >= secondaryEffectChance(attacker, effect)) return
+      if (random() * 100 >= secondaryEffectChance(state, attacker, effect)) return
 
       if (targetEffectBlocked) {
         if (effect.self) {
@@ -2725,6 +4801,11 @@ function confusionSelfDamage(state, pokemon, random) {
 function canPokemonAct(state, pokemon, random, move) {
   if (pokemon.commanding) return false
 
+  if (pokemon.skyDropSourceBattleId) {
+    appendLog(state, `${pokemon.name}은(는) 프리폴에 붙잡혀 움직일 수 없다!`, 'status')
+    return false
+  }
+
   if (pokemon.rechargeTurns > 0) {
     pokemon.rechargeTurns -= 1
     pokemon.truantLoafing = false
@@ -2736,6 +4817,10 @@ function canPokemonAct(state, pokemon, random, move) {
     pokemon.truantLoafing = false
     pokemon.status.counter -= 1
     if (pokemon.status.counter > 0) {
+      if (move?.sleepUsable) {
+        appendLog(state, `${pokemon.name}은(는) 잠든 채 ${move.name}을(를) 사용한다!`, 'status')
+        return true
+      }
       appendLog(state, `${pokemon.name}은(는) 쿨쿨 잠들어 있다.`, 'status')
       return false
     }
@@ -2785,7 +4870,7 @@ function canPokemonAct(state, pokemon, random, move) {
     appendLog(state, `${pokemon.name}은(는) 혼란에 빠져 있다!`, 'status')
     const finalConfusionTurn = pokemon.confusionTurns === 1
     pokemon.confusionTurns -= 1
-    if (random() < 0.5) {
+    if (random() < 1 / 3) {
       const damage = Math.min(pokemon.hp, confusionSelfDamage(state, pokemon, random))
       pokemon.hp = Math.max(0, pokemon.hp - damage)
       appendLog(state, `${pokemon.name}은(는) 영문도 모른 채 자신을 공격했다!`, 'damage')
@@ -2835,6 +4920,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.dexSpeciesId = transformed.dexSpeciesId
   pokemon.slug = form.slug
   pokemon.name = form.name
+  pokemon.originalTypes = [...form.types]
   pokemon.types = pokemon.teraActive ? [pokemon.teraType] : [...form.types]
   pokemon.ability = preservedAbility
   pokemon.stats = nextStats
@@ -2878,6 +4964,15 @@ function refreshHeldItemTypeAbility(state, pokemon) {
   pokemon.types = [itemType]
   appendLog(state, `${pokemon.name}의 ${pokemon.ability}! ${itemType}타입이 되었다!`, 'ability')
   return true
+}
+
+function refreshHeldItemForm(state, pokemon) {
+  const rule = HELD_ITEM_FORM_RULES[pokemon.heldItemId]
+  if (!rule || !hasHeldItem(pokemon) || !pokemonMatchesSpecies(pokemon, rule.species)) return false
+  return changeBattleForm(state, pokemon, rule.form, pokemon.heldItemName || pokemon.heldItemId, {
+    hpMode: 'damage',
+    log: false,
+  })
 }
 
 function refreshParadoxAbility(state, pokemon) {
@@ -3002,6 +5097,7 @@ function refreshHpFormAbility(state, pokemon, trigger = 'residual') {
 }
 
 function activateFormEntryAbility(state, sideId, activeSlot, pokemon) {
+  refreshHeldItemForm(state, pokemon)
   if (pokemon.ability === '테라체인지' && currentSpeciesSlug(pokemon) === 'terapagos') {
     changeBattleForm(state, pokemon, 'terapagos-terastal', pokemon.ability, { hpMode: 'damage' })
   }
@@ -3037,8 +5133,20 @@ function activateTraceAbility(state, sideId, activeSlot, pokemon) {
   return true
 }
 
+function releaseTrapsSourcedBy(state, sourcePokemon) {
+  allBattlePokemon(state).forEach((pokemon) => {
+    if (pokemon.trapSourceBattleId !== sourcePokemon?.battleId) return
+    pokemon.trappedTurns = 0
+    pokemon.trapSourceName = null
+    pokemon.trapSourceBattleId = null
+    pokemon.trapDamages = false
+  })
+}
+
 function prepareSwitchOutForm(state, pokemon) {
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
+  releaseSkyDropConnections(state, pokemon)
+  releaseTrapsSourcedBy(state, pokemon)
   if (pokemon.ability === '재생력') {
     healPokemon(state, pokemon, pokemon.maxHp / 3, pokemon.ability, { bypassHealBlock: true })
   }
@@ -3079,6 +5187,10 @@ function prepareSwitchOutForm(state, pokemon) {
     pokemon.proteanUsed = false
     restorePokemonOwnTypes(pokemon)
   }
+  if (pokemon.typeRemovedByMove) {
+    pokemon.typeRemovedByMove = false
+    restorePokemonOwnTypes(pokemon)
+  }
 }
 
 function applyMoveTriggeredFormBefore(state, pokemon, move) {
@@ -3116,7 +5228,7 @@ function applyMoveTriggeredFormBefore(state, pokemon, move) {
 }
 
 function applyFormDamageShield(state, defender, move, requestedDamage) {
-  if (requestedDamage <= 0 || move.ignoreAbility) return null
+  if (requestedDamage <= 0 || moveIgnoresAbility(move, defender)) return null
   const slug = currentSpeciesSlug(defender)
   if (defender.ability === '탈' && ['mimikyu', 'mimikyu-totem-disguised'].includes(slug)) {
     const targetSlug = slug === 'mimikyu-totem-disguised' ? 'mimikyu-totem-busted' : 'mimikyu-busted'
@@ -3365,8 +5477,17 @@ function forcedActionForPokemon(pokemon) {
     return {
       type: 'move',
       moveIndex: pokemon.chargingMove.moveIndex,
+      targetSlot: pokemon.chargingMove.targetSlot ?? 0,
       gimmick: null,
       forcedReason: 'charge',
+    }
+  }
+  if (pokemon.bideState && pokemon.moves[pokemon.bideState.moveIndex]) {
+    return {
+      type: 'move',
+      moveIndex: pokemon.bideState.moveIndex,
+      gimmick: null,
+      forcedReason: 'bide',
     }
   }
   if (pokemon.lockedMove && pokemon.moves[pokemon.lockedMove.moveIndex]) {
@@ -3375,6 +5496,14 @@ function forcedActionForPokemon(pokemon) {
       moveIndex: pokemon.lockedMove.moveIndex,
       gimmick: null,
       forcedReason: 'locked',
+    }
+  }
+  if (pokemon.encoreTurns > 0 && pokemon.moves[pokemon.encoredMoveIndex]?.currentPp > 0) {
+    return {
+      type: 'move',
+      moveIndex: pokemon.encoredMoveIndex,
+      gimmick: null,
+      forcedReason: 'encore',
     }
   }
   return null
@@ -3410,20 +5539,81 @@ export function getBattleMovePreview(
   }
 }
 
+function battlePokemonById(state, battleId) {
+  if (!battleId) return null
+  return allBattlePokemon(state).find((pokemon) => pokemon.battleId === battleId) ?? null
+}
+
+function releaseSkyDropTarget(state, attacker) {
+  const target = battlePokemonById(
+    state,
+    attacker?.skyDropTargetBattleId ?? attacker?.chargingMove?.targetBattleId,
+  )
+  if (target?.skyDropSourceBattleId === attacker?.battleId) {
+    target.skyDropSourceBattleId = null
+    if (target.semiInvulnerable === 'airborne') target.semiInvulnerable = null
+  }
+  if (attacker) attacker.skyDropTargetBattleId = null
+  return target
+}
+
+function releaseSkyDropConnections(state, pokemon) {
+  if (!pokemon) return
+  if (pokemon.skyDropTargetBattleId || pokemon.chargingMove?.moveId === 'skydrop') {
+    releaseSkyDropTarget(state, pokemon)
+  }
+  if (pokemon.skyDropSourceBattleId) {
+    const source = battlePokemonById(state, pokemon.skyDropSourceBattleId)
+    if (source) {
+      source.skyDropTargetBattleId = null
+      if (source.chargingMove?.moveId === 'skydrop') {
+        source.chargingMove = null
+        if (source.semiInvulnerable === 'airborne') source.semiInvulnerable = null
+      }
+    }
+    pokemon.skyDropSourceBattleId = null
+    if (pokemon.semiInvulnerable === 'airborne') pokemon.semiInvulnerable = null
+  }
+}
+
+function cancelGravityAffectedChargeMoves(state) {
+  allBattlePokemon(state).forEach((pokemon) => {
+    const chargingMove = pokemon.moves?.[pokemon.chargingMove?.moveIndex]
+    if (!chargingMove?.flags?.includes('gravity')) return
+    releaseSkyDropConnections(state, pokemon)
+    pokemon.chargingMove = null
+    pokemon.semiInvulnerable = null
+  })
+}
+
 function clearChargeState(pokemon) {
   pokemon.chargingMove = null
   pokemon.semiInvulnerable = null
 }
 
-function beginChargeMove(state, attacker, move, moveIndex) {
-  attacker.chargingMove = { moveIndex, moveId: move.id }
+function beginChargeMove(state, attacker, defender, move, moveIndex, targetSideId, targetSlot) {
+  attacker.chargingMove = {
+    moveIndex,
+    moveId: move.id,
+    targetSideId,
+    targetSlot,
+    targetBattleId: defender?.battleId ?? null,
+  }
   attacker.semiInvulnerable = SEMI_INVULNERABLE_MOVES[move.id] ?? null
+  if (move.id === 'skydrop' && defender) {
+    attacker.skyDropTargetBattleId = defender.battleId
+    defender.skyDropSourceBattleId = attacker.battleId
+    defender.semiInvulnerable = 'airborne'
+  }
   if (CHARGE_TURN_BOOSTS[move.id]) changeStages(state, attacker, CHARGE_TURN_BOOSTS[move.id])
   appendLog(state, `${attacker.name}은(는) ${CHARGE_MESSAGES[move.id] ?? '힘을 모으고 있다!'}`, 'status')
 }
 
-function semiInvulnerableInteraction(defender, move) {
+function semiInvulnerableInteraction(defender, move, attacker = null) {
   if (!defender.semiInvulnerable || move.target === 'self') return { avoided: false, powerMultiplier: 1 }
+  if (move.id === 'skydrop' && defender.skyDropSourceBattleId === attacker?.battleId) {
+    return { avoided: false, powerMultiplier: 1 }
+  }
   const rules = SEMI_INVULNERABLE_HITS[defender.semiInvulnerable]
   if (rules?.doubled.has(move.id)) return { avoided: false, powerMultiplier: 2 }
   if (rules?.normal.has(move.id)) return { avoided: false, powerMultiplier: 1 }
@@ -3437,19 +5627,33 @@ function moveAccuracyAbilityMultiplier(state, attacker, defender, move) {
     pokemon && !pokemon.fainted && pokemon.hp > 0 && pokemon.ability === '승리의별'
   )).length
   multiplier *= 1.1 ** victoryStarCount
-  if (!move.ignoreAbility && defender.ability === '갈지자걸음' && defender.confusionTurns > 0) multiplier *= 0.5
+  if (!moveIgnoresAbility(move, defender) && defender.ability === '갈지자걸음' && defender.confusionTurns > 0) multiplier *= 0.5
   return multiplier
 }
 
 function moveHits(state, attacker, defender, move, random) {
+  if (move.ohko) {
+    if (defender.dynamaxActive || Number(attacker.level ?? 50) < Number(defender.level ?? 50)) return false
+    if (move.id === 'sheercold' && defender.types.includes('얼음')) return false
+    if (attacker.ability === '노가드' || defender.ability === '노가드') return true
+    const baseAccuracy = move.id === 'sheercold' && !attacker.types.includes('얼음') ? 20 : 30
+    const levelBonus = Number(attacker.level ?? 50) - Number(defender.level ?? 50)
+    return random() * 100 < baseAccuracy + levelBonus
+  }
   if (move.accuracyLabel === '필중' || move.accuracy == null) return true
   if (attacker.ability === '노가드' || defender.ability === '노가드') return true
+  if (
+    defender.minimized
+    && ['bodyslam', 'dragonrush', 'flyingpress', 'heatcrash', 'heavyslam', 'steamroller', 'stomp'].includes(move.id)
+  ) return true
+  if (attacker.sureHitTurns > 0 && attacker.sureHitTargetBattleId === defender.battleId) return true
+  if (defender.telekinesisTurns > 0 && !move.ohko) return true
   const weatherId = effectiveMoveWeatherFamilyId(state, attacker)
-  if (weatherId === 'rain' && ['thunder', 'hurricane'].includes(move.id)) return true
+  if (weatherId === 'rain' && RAIN_PERFECT_ACCURACY_MOVE_IDS.has(move.id)) return true
   if (weatherId === 'snow' && move.id === 'blizzard') return true
 
   const baseAccuracy = Number(move.accuracy) || 100
-  const defenderEvasionStage = attacker.ability === '날카로운눈'
+  const defenderEvasionStage = attacker.ability === '날카로운눈' || move.ignoreEvasion || defender.foresightActive
     ? 0
     : defender.statStages.evasion ?? 0
   const stageModifier = accuracyStageMultiplier(attacker.statStages.accuracy ?? 0)
@@ -3460,11 +5664,25 @@ function moveHits(state, attacker, defender, move, random) {
   if (weatherId === 'sandstorm' && defender.ability === '모래숨기') weatherModifier *= 0.8
   if (weatherId === 'snow' && defender.ability === '눈숨기') weatherModifier *= 0.8
   const abilityModifier = moveAccuracyAbilityMultiplier(state, attacker, defender, move)
+  const itemAccuracyModifier = hasActiveHeldItem(attacker, 'wide-lens')
+    ? 1.1
+    : hasActiveHeldItem(attacker, 'zoom-lens') && defender.actedThisTurn ? 1.2 : attacker.micleActive ? 1.2 : 1
+  const defenderItemModifier = ['bright-powder', 'lax-incense'].some((itemId) => hasActiveHeldItem(defender, itemId))
+    ? 0.9
+    : 1
+  const gravityModifier = state.environment?.gravityTurns > 0 ? 5 / 3 : 1
   const finalAccuracy = Math.min(
     100,
-    baseAccuracy * stageModifier * hustleModifier * weatherModifier * abilityModifier,
+    baseAccuracy
+      * stageModifier
+      * hustleModifier
+      * weatherModifier
+      * abilityModifier
+      * itemAccuracyModifier
+      * defenderItemModifier
+      * gravityModifier,
   )
-  const wonderSkinAccuracy = !move.ignoreAbility && defender.ability === '미라클스킨' && isStatusMove(move)
+  const wonderSkinAccuracy = !moveIgnoresAbility(move, defender) && defender.ability === '미라클스킨' && isStatusMove(move)
     ? Math.min(50, finalAccuracy)
     : finalAccuracy
   return random() * 100 < wonderSkinAccuracy
@@ -3473,9 +5691,15 @@ function moveHits(state, attacker, defender, move, random) {
 function chooseMultiHitCount(attacker, move, random) {
   if (parentalBondApplies(attacker, move)) return 2
   if (!move.multihit) return 1
+  if (move.id === 'populationbomb' && hasActiveHeldItem(attacker, 'loaded-dice')) {
+    return 10
+  }
   if (typeof move.multihit === 'number') return move.multihit
   const [minimum, maximum] = move.multihit
   if (attacker.ability === '스킬링크') return maximum
+  if (minimum === 2 && maximum === 5 && hasActiveHeldItem(attacker, 'loaded-dice')) {
+    return random() < 0.5 ? 4 : 5
+  }
   if (minimum === 2 && maximum === 5) {
     const roll = random()
     if (roll < 3 / 8) return 2
@@ -3501,9 +5725,35 @@ function parentalBondApplies(attacker, move) {
     && !['all', 'allAdjacent', 'allAdjacentFoes'].includes(move.target)
 }
 
-function fixedDamageResult(state, attacker, defender, move) {
+function fixedDamageResult(state, attacker, defender, move, random) {
   const effectiveness = getMoveTypeEffectiveness(state, attacker, defender, move)
   if (effectiveness === 0) return { damage: 0, effectiveness, critical: false }
+  if (move.id === 'endeavor') {
+    return { damage: Math.max(0, defender.hp - attacker.hp), effectiveness, critical: false }
+  }
+  if (move.id === 'psywave') {
+    return {
+      damage: Math.max(1, Math.floor(50 * (0.5 + random()))),
+      effectiveness,
+      critical: false,
+    }
+  }
+  if (move.id === 'counter') {
+    const valid = attacker.lastDamageCategory === 'physical' && attacker.lastAttackerBattleId === defender.battleId
+    return { damage: valid ? attacker.lastDamageTaken * 2 : 0, effectiveness, critical: false, failed: !valid }
+  }
+  if (move.id === 'mirrorcoat') {
+    const valid = attacker.lastDamageCategory === 'special' && attacker.lastAttackerBattleId === defender.battleId
+    return { damage: valid ? attacker.lastDamageTaken * 2 : 0, effectiveness, critical: false, failed: !valid }
+  }
+  if (['metalburst', 'comeuppance'].includes(move.id)) {
+    const valid = attacker.lastDamageTaken > 0 && attacker.lastAttackerBattleId === defender.battleId
+    return { damage: valid ? Math.floor(attacker.lastDamageTaken * 1.5) : 0, effectiveness, critical: false, failed: !valid }
+  }
+  if (move.id === 'bide') {
+    const storedDamage = Number(move.bideReleaseDamage ?? 0)
+    return { damage: storedDamage * 2, effectiveness, critical: false, failed: storedDamage <= 0 }
+  }
   if (move.currentHpFraction) {
     const [numerator, denominator] = move.currentHpFraction
     return {
@@ -3524,11 +5774,23 @@ function fixedDamageResult(state, attacker, defender, move) {
   return null
 }
 
-function applySurvivalEffects(state, defender, requestedDamage, move) {
+function applySurvivalEffects(state, defender, requestedDamage, move, random) {
   let damage = Math.min(defender.hp, Math.max(0, Math.floor(requestedDamage)))
-  if (damage < defender.hp || defender.hp !== defender.maxHp) return damage
+  if (damage < defender.hp) return damage
 
-  if (defender.ability === '옹골참') {
+  if (['falseswipe', 'holdback'].includes(move.id)) return Math.max(0, defender.hp - 1)
+
+  if (defender.protectMode === 'endure') {
+    appendLog(state, `${defender.name}은(는) 공격을 견뎠다!`, 'status')
+    return Math.max(0, defender.hp - 1)
+  }
+  if (hasActiveHeldItem(defender, 'focus-band') && random() < 0.1) {
+    appendLog(state, `${defender.name}은(는) 기합의머리띠로 버텼다!`, 'item')
+    return Math.max(0, defender.hp - 1)
+  }
+  if (defender.hp !== defender.maxHp) return damage
+
+  if (!moveIgnoresAbility(move, defender) && defender.ability === '옹골참') {
     if (move.ohko) {
       appendLog(state, `${defender.name}은(는) 옹골참으로 일격필살기를 막았다!`, 'ability')
       return 0
@@ -3545,8 +5807,7 @@ function applySurvivalEffects(state, defender, requestedDamage, move) {
 }
 
 function applyProtectContactEffect(state, attacker, defender, move) {
-  if (!move.flags?.includes('contact')) return false
-  if (attacker.ability === '원격' || hasActiveHeldItem(attacker, 'protective-pads')) return false
+  if (!moveMakesContact(attacker, move)) return false
 
   const effect = PROTECT_CONTACT_EFFECTS[defender.protectMode]
   if (!effect) return false
@@ -3569,6 +5830,7 @@ function moveMakesContact(attacker, move) {
   return move.flags?.includes('contact')
     && attacker.ability !== '원격'
     && !hasActiveHeldItem(attacker, 'protective-pads')
+    && !hasActiveHeldItem(attacker, 'punching-glove')
 }
 
 function moveBypassesProtection(attacker, defender, move) {
@@ -3590,8 +5852,12 @@ function applyDamagingHitAbilityEffects(
 ) {
   if (damage <= 0 || landedHits <= 0) return false
   let applied = false
-  const defenderAbilityActive = !move.ignoreAbility
+  const defenderAbilityActive = !moveIgnoresAbility(move, defender)
   const contact = moveMakesContact(attacker, move)
+
+  if (contact && defender.beakBlastCharging && attacker.hp > 0) {
+    applied = setStatus(state, attacker, 'burn', '부리캐논', { source: defender }) || applied
+  }
 
   if (defenderAbilityActive) {
     const damagingRule = DAMAGING_HIT_ABILITY_RULES[defender.ability]
@@ -3689,9 +5955,7 @@ function applyDamagingHitAbilityEffects(
       contact
       && defender.ability === '나쁜손버릇'
       && defender.hp > 0
-      && stealHeldItem(state, defender, attacker, defender.ability, {
-        ignoreHolderAbility: Boolean(move.ignoreAbility),
-      })
+      && stealHeldItem(state, defender, attacker, defender.ability)
     ) applied = true
 
     if (defender.ability === '독치장' && move.categoryId === 'physical') {
@@ -3791,9 +6055,9 @@ function applyDamagingHitAbilityEffects(
   if (
     attacker.ability === '악취'
     && defender.hp > 0
-    && !defender.actedThisTurn
-    && !moveAlreadyFlinches(move)
-    && (move.ignoreAbility || defender.ability !== '인분')
+      && !defender.actedThisTurn
+      && !moveAlreadyFlinches(move)
+      && (moveIgnoresAbility(move, defender) || defender.ability !== '인분')
     && !hasActiveHeldItem(defender, 'covert-cloak')
     && random() < 0.1
   ) {
@@ -3811,12 +6075,213 @@ function applyDamagingHitAbilityEffects(
     attacker.ability === '매지션'
     && damage > 0
     && stealHeldItem(state, attacker, defender, attacker.ability, {
-      ignoreHolderAbility: Boolean(move.ignoreAbility),
+      ignoreHolderAbility: moveIgnoresAbility(move, defender),
     })
   ) {
     applied = true
   }
   return applied
+}
+
+function applyDamagingHitItemEffects(
+  state,
+  sideId,
+  actorSlot,
+  targetSlot,
+  attacker,
+  defender,
+  move,
+  damage,
+  effectiveness,
+  random,
+  timeline,
+  actionOrder,
+) {
+  if (damage <= 0) return false
+  let applied = false
+  const contact = moveMakesContact(attacker, move)
+
+  if (hasActiveHeldItem(defender, 'air-balloon')) {
+    consumeHeldItem(state, defender)
+    appendLog(state, `${defender.name}의 풍선이 터졌다!`, 'item')
+    applied = true
+  }
+  if (defender.hp > 0 && effectiveness > 1 && hasActiveHeldItem(defender, 'weakness-policy')) {
+    consumeHeldItem(state, defender)
+    changeStages(state, defender, { attack: 2, specialAttack: 2 })
+    appendLog(state, `${defender.name}의 약점보험이 발동했다!`, 'item')
+    applied = true
+  }
+
+  const reactiveBoostItems = {
+    'absorb-bulb': { type: '물', boosts: { specialAttack: 1 } },
+    'cell-battery': { type: '전기', boosts: { attack: 1 } },
+    'luminous-moss': { type: '물', boosts: { specialDefense: 1 } },
+    snowball: { type: '얼음', boosts: { attack: 1 } },
+  }
+  const reactiveRule = reactiveBoostItems[defender.heldItemId]
+  if (defender.hp > 0 && reactiveRule?.type === move.type && heldItemEffectsActive(defender)) {
+    consumeHeldItem(state, defender)
+    changeStages(state, defender, reactiveRule.boosts)
+    appendLog(state, `${defender.name}의 ${defender.heldItemName || defender.heldItemId}이(가) 발동했다!`, 'item')
+    applied = true
+  }
+  if (defender.hp > 0 && move.categoryId === 'physical' && hasActiveHeldItem(defender, 'kee-berry')) {
+    consumeHeldItem(state, defender, { berry: true })
+    changeStages(state, defender, { defense: berryEffectMultiplier(defender) })
+    applyCheekPouch(state, defender)
+    applied = true
+  }
+  if (defender.hp > 0 && move.categoryId === 'special' && hasActiveHeldItem(defender, 'maranga-berry')) {
+    consumeHeldItem(state, defender, { berry: true })
+    changeStages(state, defender, { specialDefense: berryEffectMultiplier(defender) })
+    applyCheekPouch(state, defender)
+    applied = true
+  }
+  if (defender.hp > 0 && effectiveness > 1 && hasActiveHeldItem(defender, 'enigma-berry')) {
+    consumeHeldItem(state, defender, { berry: true })
+    healPokemon(state, defender, defender.maxHp * berryEffectMultiplier(defender) / 4, '의문열매')
+    applyCheekPouch(state, defender)
+    applied = true
+  }
+  if (
+    defender.hp > 0
+    && (
+      move.categoryId === 'physical' && hasActiveHeldItem(defender, 'jaboca-berry')
+      || move.categoryId === 'special' && hasActiveHeldItem(defender, 'rowap-berry')
+    )
+  ) {
+    consumeHeldItem(state, defender, { berry: true })
+    if (attacker.ability !== '매직가드') {
+      loseHp(state, attacker, attacker.maxHp / 8, `${attacker.name}은(는) 반응 열매에 데미지를 입었다!`, 'item')
+    }
+    applyCheekPouch(state, defender)
+    applied = true
+  }
+  if (contact && hasActiveHeldItem(defender, 'rocky-helmet') && attacker.ability !== '매직가드') {
+    loseHp(state, attacker, attacker.maxHp / 6, `${attacker.name}은(는) 울퉁불퉁멧에 데미지를 입었다!`, 'item')
+    applied = true
+  }
+  if (
+    contact
+    && hasActiveHeldItem(defender, 'sticky-barb')
+    && !hasHeldItem(attacker)
+    && canRemoveHeldItem(defender, attacker)
+  ) {
+    attacker.heldItemId = defender.heldItemId
+    attacker.heldItemName = defender.heldItemName
+    attacker.consumedItem = false
+    clearHeldItem(defender)
+    appendLog(state, `${attacker.name}에게 끈적끈적바늘이 옮겨 붙었다!`, 'item')
+    applied = true
+  }
+  if (
+    ['kings-rock', 'razor-fang'].some((itemId) => hasActiveHeldItem(attacker, itemId))
+    && !moveAlreadyFlinches(move)
+    && !defender.actedThisTurn
+    && defender.ability !== '인분'
+    && !hasActiveHeldItem(defender, 'covert-cloak')
+    && random() < 0.1
+  ) {
+    applied = applyVolatileEffect(state, defender, 'flinch', attacker.heldItemName || attacker.heldItemId, random, move.id, { source: attacker }) || applied
+  }
+  if (hasActiveHeldItem(attacker, 'shell-bell')) {
+    applied = healPokemon(state, attacker, damage / 8, '조개껍질방울') > 0 || applied
+  }
+
+  if (defender.hp > 0 && hasActiveHeldItem(defender, 'red-card') && attacker.hp > 0) {
+    const attackerSide = getSide(state, sideId)
+    const replacements = availableBenchIndexes(attackerSide)
+    if (replacements.length > 0) {
+      consumeHeldItem(state, defender)
+      performSwitch(
+        state,
+        sideId,
+        replacements[Math.floor(random() * replacements.length)],
+        true,
+        timeline,
+        actionOrder,
+        actorSlot,
+      )
+      appendLog(state, `${defender.name}의 레드카드가 공격자를 돌려보냈다!`, 'item')
+      applied = true
+    }
+  } else if (hasActiveHeldItem(defender, 'eject-button') && defender.hp > 0) {
+    const defenderSide = getOtherSide(state, sideId)
+    const replacements = availableBenchIndexes(defenderSide)
+    if (replacements.length > 0) {
+      consumeHeldItem(state, defender)
+      performSwitch(
+        state,
+        defenderSide.id,
+        replacements[Math.floor(random() * replacements.length)],
+        true,
+        timeline,
+        actionOrder,
+        targetSlot,
+      )
+      appendLog(state, `${defender.name}의 탈출버튼이 작동했다!`, 'item')
+      applied = true
+    }
+  }
+  return applied
+}
+
+function applyUniqueDamagingMoveEffects(state, attacker, defender, move, random) {
+  if (['burnup', 'doubleshock'].includes(move.id)) {
+    const removedType = move.id === 'burnup' ? '불꽃' : '전기'
+    attacker.types = attacker.types.filter((type) => type !== removedType)
+    attacker.typeRemovedByMove = true
+    appendLog(state, `${attacker.name}에게서 ${removedType}타입이 사라졌다!`, 'status')
+  }
+
+  if (['ceaselessedge', 'stoneaxe'].includes(move.id)) setHazardFromMove(state, attacker, move)
+
+  if (move.id === 'freezyfrost') {
+    let changed = false
+    allBattlePokemon(state).forEach((pokemon) => {
+      changed = resetPokemonStatStages(pokemon) || changed
+    })
+    if (changed) appendLog(state, '꽁꽁프로스트가 모든 능력 변화를 원래대로 되돌렸다!', 'field')
+  }
+
+  if (move.id === 'sappyseed') {
+    applyVolatileEffect(state, defender, 'leechseed', move.name, random, move.id, { source: attacker })
+  }
+
+  if (move.id === 'thousandwaves') {
+    applyVolatileEffect(state, defender, 'block', move.name, random, move.id, { source: attacker })
+  }
+
+  if (move.id === 'jawlock') {
+    applyVolatileEffect(state, defender, 'block', move.name, random, move.id, { source: attacker })
+    applyVolatileEffect(state, attacker, 'block', move.name, random, move.id, { source: defender })
+  }
+
+  if (move.id === 'coreenforcer' && defender.hp > 0 && defender.actedThisTurn) {
+    suppressPokemonAbility(state, defender, move.name)
+  }
+
+  if (move.id === 'fellstinger' && defender.hp <= 0) {
+    changeStages(state, attacker, { attack: 3 }, { source: attacker })
+  }
+
+  if (move.id === 'orderup' && attacker.commandedByBattleId) {
+    const side = getPokemonSide(state, attacker)
+    const commander = side.team.find((pokemon) => pokemon.battleId === attacker.commandedByBattleId)
+    const commanderSlug = currentSpeciesSlug(commander)
+    const stat = commanderSlug.includes('droopy')
+      ? 'defense'
+      : commanderSlug.includes('stretchy') ? 'speed' : 'attack'
+    changeStages(state, attacker, { [stat]: 1 }, { source: attacker })
+  }
+
+  if (move.id === 'flameburst') {
+    activeAllies(state, defender).forEach((ally) => {
+      if (ally.ability === '매직가드') return
+      loseHp(state, ally, ally.maxHp / 16, `${ally.name}은(는) 불꽃튀기기의 불꽃에 휘말렸다!`)
+    })
+  }
 }
 
 function loseHp(state, pokemon, amount, message, tone = 'damage') {
@@ -3848,11 +6313,27 @@ function applyMindBlownRecoil(state, attacker, move) {
 }
 
 function applyMoveRecoil(state, attacker, move, damageDealt) {
-  if (!move.recoil || damageDealt <= 0 || RECOIL_IMMUNE_ABILITIES.has(attacker.ability)) return 0
+  if (damageDealt <= 0) return 0
+  if (move.struggleRecoil) {
+    return loseHp(
+      state,
+      attacker,
+      Math.floor(attacker.originalMaxHp / 4 + 0.5),
+      `${attacker.name}은(는) 발버둥의 반동으로 {damage}의 데미지를 입었다.`,
+    )
+  }
+  if (move.chloroblastRecoil) {
+    if (RECOIL_IMMUNE_ABILITIES.has(attacker.ability)) return 0
+    return loseHp(
+      state,
+      attacker,
+      Math.floor(attacker.maxHp / 2 + 0.5),
+      `${attacker.name}은(는) 클로로블라스트의 반동으로 {damage}의 데미지를 입었다.`,
+    )
+  }
+  if (!move.recoil || RECOIL_IMMUNE_ABILITIES.has(attacker.ability)) return 0
   const [numerator, denominator] = move.recoil
-  const amount = move.id === 'struggle'
-    ? Math.floor(attacker.maxHp * numerator / denominator)
-    : Math.floor(damageDealt * numerator / denominator)
+  const amount = Math.floor(damageDealt * numerator / denominator + 0.5)
   return loseHp(
     state,
     attacker,
@@ -3869,12 +6350,48 @@ function applySelfDestruct(state, attacker, move, didHit) {
 }
 
 function applyFailedMoveConsequences(state, attacker, move) {
+  attacker.moveFailedThisTurn = true
+  attacker.consecutiveMoveId = null
+  attacker.consecutiveMoveCount = 0
   applyCrashDamage(state, attacker, move)
   applyMindBlownRecoil(state, attacker, move)
   applySelfDestruct(state, attacker, move, false)
+  if (attacker.lockedMove?.moveId === 'uproar') {
+    attacker.lockedMove = null
+    attacker.uproarTurns = 0
+    appendLog(state, `${attacker.name}의 소란피기가 끝났다.`, 'status')
+  }
+}
+
+function activateBlunderPolicy(state, pokemon) {
+  if (!hasActiveHeldItem(pokemon, 'blunder-policy')) return false
+  consumeHeldItem(state, pokemon)
+  appendLog(state, `${pokemon.name}의 허탕보험이 발동했다!`, 'item')
+  changeStages(state, pokemon, { speed: 2 }, { source: pokemon })
+  return true
+}
+
+function activateThroatSpray(state, pokemon, move) {
+  if (!move.flags?.includes('sound') || !hasActiveHeldItem(pokemon, 'throat-spray')) return false
+  consumeHeldItem(state, pokemon)
+  appendLog(state, `${pokemon.name}의 목스프레이가 발동했다!`, 'item')
+  changeStages(state, pokemon, { specialAttack: 1 }, { source: pokemon })
+  return true
 }
 
 function handleLockedMove(state, attacker, move, moveIndex, action, random) {
+  if (move.self?.volatileStatus === 'uproar') {
+    if (action.forcedReason === 'locked' && attacker.lockedMove) {
+      attacker.lockedMove.remainingUses -= 1
+      attacker.uproarTurns = Math.max(0, attacker.uproarTurns - 1)
+      if (attacker.lockedMove.remainingUses <= 0) {
+        attacker.lockedMove = null
+        attacker.uproarTurns = 0
+        appendLog(state, `${attacker.name}의 소란피기가 끝났다.`, 'status')
+      }
+    }
+    return
+  }
   if (move.self?.volatileStatus !== 'lockedmove' || attacker.hp <= 0) return
 
   if (action.forcedReason === 'locked' && attacker.lockedMove) {
@@ -3894,6 +6411,31 @@ function handleLockedMove(state, attacker, move, moveIndex, action, random) {
   appendLog(state, `${attacker.name}은(는) ${move.name}을(를) 계속 사용한다!`, 'status')
 }
 
+function batonPassSnapshot(pokemon) {
+  return {
+    statStages: { ...pokemon.statStages },
+    substituteHp: pokemon.substituteHp,
+    confusionTurns: pokemon.confusionTurns,
+    criticalStageBoost: pokemon.criticalStageBoost,
+    leechSeedSourceSideId: pokemon.leechSeedSourceSideId,
+    leechSeedSourceSlot: pokemon.leechSeedSourceSlot,
+    cursedActive: pokemon.cursedActive,
+    ingrainActive: pokemon.ingrainActive,
+    aquaRingActive: pokemon.aquaRingActive,
+    magnetRiseTurns: pokemon.magnetRiseTurns,
+    telekinesisTurns: pokemon.telekinesisTurns,
+    chargeActive: pokemon.chargeActive,
+    defenseCurlActive: pokemon.defenseCurlActive,
+    minimized: pokemon.minimized,
+    laserFocusActive: pokemon.laserFocusActive,
+    octolockActive: pokemon.octolockActive,
+  }
+}
+
+function applyBatonPassSnapshot(pokemon, snapshot) {
+  Object.assign(pokemon, snapshot, { statStages: { ...snapshot.statStages } })
+}
+
 function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot = 0, targetSlot = 0) {
   const side = getSide(state, sideId)
   const targetSide = getOtherSide(state, sideId)
@@ -3902,7 +6444,7 @@ function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, 
 
   if (move.forceSwitch && defender?.hp > 0) {
     const forcedSwitchBlocked = defender.commandedByBattleId
-      || !move.ignoreAbility && FORCED_SWITCH_IMMUNE_ABILITIES.has(defender.ability)
+      || !moveIgnoresAbility(move, defender) && FORCED_SWITCH_IMMUNE_ABILITIES.has(defender.ability)
     if (forcedSwitchBlocked) {
       appendLog(state, `${defender.name}의 ${defender.commandedByBattleId ? '사령탑' : defender.ability}! 강제 교체를 막아냈다!`, 'ability')
     } else {
@@ -3914,11 +6456,28 @@ function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, 
     }
   }
 
-  if (move.selfSwitch && move.id !== 'revivalblessing' && attacker?.hp > 0) {
+  if (
+    move.selfSwitch
+    && move.id !== 'revivalblessing'
+    && attacker?.hp > 0
+    && !attacker.moveFailedThisTurn
+  ) {
     const switchOptions = availableBenchIndexes(side)
     if (switchOptions.length > 0) {
+      const passSnapshot = move.id === 'batonpass' ? batonPassSnapshot(attacker) : null
+      const shedTailHp = move.id === 'shedtail' ? attacker.pendingShedTailHp : 0
       const targetIndex = switchOptions[Math.floor(random() * switchOptions.length)]
-      performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, actorSlot)
+      if (performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, actorSlot)) {
+        const replacement = getActivePokemon(state, sideId, actorSlot)
+        if (passSnapshot) {
+          applyBatonPassSnapshot(replacement, passSnapshot)
+          appendLog(state, `${replacement.name}은(는) 배턴터치로 능력 변화를 이어받았다!`, 'status')
+        }
+        if (shedTailHp > 0) {
+          replacement.substituteHp = shedTailHp
+          appendLog(state, `${replacement.name}의 앞에 대타가 이어졌다!`, 'status')
+        }
+      }
     }
   }
 }
@@ -3986,19 +6545,191 @@ function activateDancerCopies(
   return dancers.length > 0
 }
 
+function resolvePledgeCombination(side, move) {
+  if (!PLEDGE_MOVE_IDS.has(move.id) || !side.pledgeComboPlanned) return { move, waiting: false }
+  if (!side.pendingPledge) {
+    side.pendingPledge = { moveId: move.id, moveName: move.name }
+    return { move, waiting: true }
+  }
+
+  const pair = new Set([side.pendingPledge.moveId, move.id])
+  side.pendingPledge = null
+  side.pledgeComboPlanned = false
+  if (pair.size < 2) return { move, waiting: false }
+  if (pair.has('firepledge') && pair.has('grasspledge')) {
+    return {
+      waiting: false,
+      move: {
+        ...move,
+        power: 150,
+        type: '불꽃',
+        pledgeStabOverride: true,
+        pledgeSideCondition: 'firePledgeTurns',
+      },
+    }
+  }
+  if (pair.has('grasspledge') && pair.has('waterpledge')) {
+    return {
+      waiting: false,
+      move: {
+        ...move,
+        power: 150,
+        type: '풀',
+        pledgeStabOverride: true,
+        pledgeSideCondition: 'grassPledgeTurns',
+      },
+    }
+  }
+  return {
+    waiting: false,
+    move: {
+      ...move,
+      power: 150,
+      type: '물',
+      pledgeStabOverride: true,
+      pledgeSideCondition: 'waterPledgeTurns',
+      pledgeAffectsOwnSide: true,
+    },
+  }
+}
+
+function specialMoveFailureReason(state, attacker, defender, move, { isChargeContinuation = false } = {}) {
+  if (state.environment?.gravityTurns > 0 && move.flags?.includes('gravity')) {
+    return '중력이 강해 기술을 사용할 수 없다!'
+  }
+  if (move.id === 'skydrop' && !isChargeContinuation) {
+    if (defender.substituteHp > 0) return '대타가 있어 프리폴은 실패했다!'
+    if (defender.skyDropSourceBattleId) return '상대가 이미 프리폴에 붙잡혀 있어 실패했다!'
+    if (defender.dynamaxActive || effectivePokemonWeight(defender, {
+      ignoreAbility: moveIgnoresAbility(move, defender),
+    }) >= 2000) return '상대가 너무 무거워 프리폴은 실패했다!'
+  }
+  if (move.id === 'belch' && !attacker.ateBerry) return '나무열매를 먹은 적이 없어 트림은 실패했다!'
+  if (move.id === 'darkvoid' && !currentSpeciesSlug(attacker).startsWith('darkrai')) {
+    return '다크라이가 아니어서 다크홀은 실패했다!'
+  }
+  if (move.id === 'aurawheel' && !currentSpeciesSlug(attacker).startsWith('morpeko')) {
+    return '모르페코가 아니어서 오라휠은 실패했다!'
+  }
+  if (move.id === 'hyperspacefury' && currentSpeciesSlug(attacker) !== 'hoopa-unbound') {
+    return '굴레를 벗어난 후파가 아니어서 다른차원러시는 실패했다!'
+  }
+  if (move.id === 'dreameater' && !isPokemonAsleep(defender)) return '상대가 잠들어 있지 않아 꿈먹기는 실패했다!'
+  if (['snore', 'sleeptalk'].includes(move.id) && !isPokemonAsleep(attacker)) {
+    return '잠들어 있지 않아 기술은 실패했다!'
+  }
+  if (move.id === 'rest' && attacker.hp >= attacker.maxHp) return 'HP가 가득 차 있어 잠자기는 실패했다!'
+  if (move.id === 'rest' && restSleepBlocked(state, attacker)) return '잠들 수 없어 잠자기는 실패했다!'
+  if (move.id === 'captivate' && (!attacker.gender || !defender.gender || attacker.gender === defender.gender)) {
+    return '상대를 유혹할 수 없어 기술은 실패했다!'
+  }
+  if (move.id === 'burnup' && !attacker.types.includes('불꽃')) return '불꽃타입이 아니어서 불사르기는 실패했다!'
+  if (move.id === 'doubleshock' && !attacker.types.includes('전기')) return '전기타입이 아니어서 전광쌍격은 실패했다!'
+  if (move.id === 'focuspunch' && attacker.damagedThisTurn) return '집중력이 흐트러져 힘껏펀치는 실패했다!'
+  if (move.id === 'shelltrap' && !attacker.hitByPhysicalThisTurn) {
+    return '물리공격을 받지 않아 트랩셸은 발동하지 않았다!'
+  }
+  if (move.id === 'poltergeist' && (!defender.heldItemId || defender.consumedItem)) {
+    return '상대가 조종할 도구를 지니고 있지 않아 실패했다!'
+  }
+  if (move.id === 'fling' && (
+    !heldItemEffectsActive(attacker)
+    || !getBattleItem(attacker.heldItemId)?.flingPower
+    || !canRemoveHeldItem(attacker)
+  )) return '내던질 수 있는 지닌물건이 없어 실패했다!'
+  if (
+    move.id === 'naturalgift'
+    && (
+      !heldItemEffectsActive(attacker)
+      || !getBattleItem(attacker.heldItemId)?.naturalGiftPower
+    )
+  ) return '자연의은혜를 끌어낼 나무열매가 없어 실패했다!'
+  if (move.id === 'synchronoise' && !attacker.types.some((type) => defender.types.includes(type))) {
+    return '서로 같은 타입이 없어 싱크로노이즈는 실패했다!'
+  }
+  if (['suckerpunch', 'thunderclap'].includes(move.id)) {
+    if (
+      defender.actedThisTurn
+      || defender.plannedActionType !== 'move'
+      || defender.plannedMoveCategory === 'status'
+    ) return '상대가 공격하려 하지 않아 선제공격은 실패했다!'
+  }
+  if (move.id === 'upperhand') {
+    if (
+      defender.actedThisTurn
+      || defender.plannedActionType !== 'move'
+      || defender.plannedMoveCategory === 'status'
+      || Number(defender.plannedMovePriority ?? 0) <= 0
+    ) return '상대가 선제 기술을 준비하지 않아 기선제압은 실패했다!'
+  }
+  if (move.id === 'lastresort') {
+    const otherMoveIds = [...new Set(attacker.moves.map((candidate) => candidate.id))]
+      .filter((moveId) => moveId !== 'lastresort')
+    if (otherMoveIds.length === 0 || otherMoveIds.some((moveId) => !attacker.usedMoveIds.includes(moveId))) {
+      return '다른 기술을 모두 사용하지 않아 비장의무기는 실패했다!'
+    }
+  }
+  return null
+}
+
 function executeMove(state, sideId, action, random, timeline = null, actionOrder = 0) {
   const side = getSide(state, sideId)
-  const targetSide = getOtherSide(state, sideId)
+  let targetSide = getOtherSide(state, sideId)
   const actorSlot = Math.max(0, Math.min(side.activeIndexes.length - 1, Number(action.actorSlot) || 0))
   let targetSlot = Math.max(0, Math.min(targetSide.activeIndexes.length - 1, Number(action.targetSlot) || 0))
   const attacker = getActivePokemon(state, sideId, actorSlot)
   let defender = getActivePokemon(state, targetSide.id, targetSlot)
-  const moveSlot = action.dancerCopy
+  let moveSlot = action.dancerCopy
     ? { ...action.copiedMove, maxPp: 1, currentPp: 1 }
     : attacker?.moves?.[action.moveIndex]
   if (!moveSlot || !isAvailableFieldPokemon(attacker)) return
+  const isChargeContinuation = action.forcedReason === 'charge'
+  const isSkyDropContinuation = isChargeContinuation && moveSlot.id === 'skydrop'
+  if (isSkyDropContinuation && attacker.chargingMove?.targetBattleId) {
+    const storedTargetSlot = getActivePokemonList(state, targetSide.id)
+      .findIndex((pokemon) => pokemon?.battleId === attacker.chargingMove.targetBattleId)
+    if (storedTargetSlot < 0) {
+      releaseSkyDropConnections(state, attacker)
+      clearChargeState(attacker)
+      appendLog(state, '붙잡았던 상대가 없어 프리폴은 실패했다!', 'muted')
+      return
+    }
+    targetSlot = storedTargetSlot
+    defender = getActivePokemon(state, targetSide.id, targetSlot)
+  }
+  const allyTarget = moveSlot.id === 'pollenpuff'
+    && (action.targetSideId === sideId || action.targetAllySlot != null)
+  if (allyTarget) {
+    targetSide = side
+    targetSlot = Math.max(
+      0,
+      Math.min(side.activeIndexes.length - 1, Number(action.targetAllySlot ?? action.targetSlot) || 0),
+    )
+    defender = getActivePokemon(state, sideId, targetSlot)
+    if (!isAvailableFieldPokemon(defender) || defender.battleId === attacker.battleId) return
+  }
+  const isBideContinuation = action.forcedReason === 'bide' && Boolean(attacker.bideState)
+  const isBideRelease = isBideContinuation && attacker.bideState.remainingTurns <= 1
+  if (isBideRelease) {
+    const storedTargetSlot = getActivePokemonList(state, targetSide.id)
+      .findIndex((pokemon) => pokemon?.battleId === attacker.bideState.lastAttackerBattleId)
+    if (storedTargetSlot >= 0) {
+      targetSlot = storedTargetSlot
+      defender = getActivePokemon(state, targetSide.id, targetSlot)
+    }
+    moveSlot = {
+      ...moveSlot,
+      target: 'normal',
+      ignoreImmunity: false,
+      bideReleaseDamage: attacker.bideState.storedDamage,
+    }
+  }
   let targetRedirection = null
-  const redirectedTarget = redirectTargetForMove(state, attacker, targetSide, moveSlot, targetSlot)
+  const redirectedTarget = allyTarget
+    ? { slot: targetSlot, pokemon: defender, reason: null }
+    : isSkyDropContinuation
+      ? { slot: targetSlot, pokemon: defender, reason: null }
+      : redirectTargetForMove(state, attacker, targetSide, moveSlot, targetSlot)
   if (redirectedTarget.pokemon) {
     targetSlot = redirectedTarget.slot
     defender = redirectedTarget.pokemon
@@ -4009,13 +6740,13 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     defender = getActivePokemon(state, targetSide.id, Math.max(0, targetSlot))
   }
   let move = moveSlot
+  const previousBattleMove = state.lastUsedMove ? { ...state.lastUsedMove } : null
   let moveCategory = moveSlot?.categoryId
     ?? (moveSlot?.category === '물리' ? 'physical' : moveSlot?.category === '변화' ? 'status' : 'special')
 
   if (!isAvailableFieldPokemon(defender)) return
   attacker.actedThisTurn = true
   attacker.custapActive = false
-  const isChargeContinuation = action.forcedReason === 'charge'
   const isLockedContinuation = action.forcedReason === 'locked'
   if (
     attacker.ability === '무아지경'
@@ -4029,13 +6760,38 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
   if (
+    CHOICE_ITEM_IDS.has(attacker.heldItemId)
+    && heldItemEffectsActive(attacker)
+    && !action.dancerCopy
+    && !attacker.dynamaxActive
+    && attacker.choiceLockedMoveIndex != null
+    && attacker.choiceLockedMoveIndex !== action.moveIndex
+    && !['dynamax', 'zmove'].includes(action.gimmick)
+  ) {
+    appendLog(state, `${attacker.name}은(는) 구애 도구 때문에 다른 기술을 선택할 수 없다!`, 'item')
+    attacker.moveFailedThisTurn = true
+    return
+  }
+  if (
     attacker.disabledMoveTurns > 0
     && !action.dancerCopy
     && attacker.disabledMoveIndex === action.moveIndex
     && !isChargeContinuation
     && !isLockedContinuation
+    && !isBideContinuation
   ) {
     appendLog(state, `${moveSlot.name}은(는) 저주받은바디로 봉인되어 있다!`, 'status')
+    return
+  }
+  if (
+    !isChargeContinuation
+    && !isLockedContinuation
+    && !isBideContinuation
+    && moveSlot.flags?.includes('cantusetwice')
+    && attacker.lastMoveId === moveSlot.id
+  ) {
+    appendLog(state, `${attacker.name}은(는) ${moveSlot.name}을(를) 연속해서 사용할 수 없다!`, 'status')
+    attacker.moveFailedThisTurn = true
     return
   }
   if (
@@ -4044,6 +6800,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     && attacker.lastMoveIndex === action.moveIndex
     && !isChargeContinuation
     && !isLockedContinuation
+    && !isBideContinuation
   ) {
     appendLog(state, `${attacker.name}은(는) 같은 기술을 연속해서 사용할 수 없다!`, 'status')
     return
@@ -4051,8 +6808,19 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   const isFirstMoveAction = (attacker.activeMoveActions ?? 0) === 0
   attacker.activeMoveActions = (attacker.activeMoveActions ?? 0) + 1
   if (attacker.destinyBondActive && move.id !== 'destinybond') attacker.destinyBondActive = false
+  if (attacker.grudgeActive && move.id !== 'grudge') attacker.grudgeActive = false
+  if (attacker.rageActive && move.id !== 'rage') attacker.rageActive = false
+  if (move.id === 'beakblast') attacker.beakBlastCharging = false
   if (!canPokemonAct(state, attacker, random, move)) {
-    if (isChargeContinuation) clearChargeState(attacker)
+    if (isChargeContinuation) {
+      if (isSkyDropContinuation) releaseSkyDropTarget(state, attacker)
+      clearChargeState(attacker)
+    }
+    if (isBideContinuation) attacker.bideState = null
+    if (isLockedContinuation && attacker.lockedMove?.moveId === 'uproar') {
+      attacker.lockedMove = null
+      attacker.uproarTurns = 0
+    }
     pushTimelineStep(timeline, state, {
       phase: 'status',
       actionOrder,
@@ -4069,6 +6837,12 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   if (!action.dancerCopy && !isChargeContinuation && !isLockedContinuation && moveSlot.currentPp <= 0) {
     appendLog(state, `${moveSlot.name}의 PP가 남아 있지 않다!`, 'muted')
+    return
+  }
+
+  if (hasActiveHeldItem(attacker, 'assault-vest') && isStatusMove(moveSlot)) {
+    appendLog(state, `${attacker.name}은(는) 돌격조끼 때문에 변화 기술을 사용할 수 없다!`, 'item')
+    attacker.moveFailedThisTurn = true
     return
   }
 
@@ -4093,13 +6867,17 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     appendLog(state, `${moveSlot.name}에는 현재 Z크리스탈의 힘을 담을 수 없다!`, 'muted')
     return
   }
-  const powerMultiplier = activateMechanic(state, sideId, resolvedGimmick, actorSlot)
+  let powerMultiplier = activateMechanic(state, sideId, resolvedGimmick, actorSlot)
   const environmentMove = resolveEnvironmentMove(state, attacker, defender, moveSlot)
   move = resolvedGimmick === 'zmove'
     ? resolveBattleZMove(attacker, environmentMove, moveSlot) ?? requestedZMove
     : resolveBattleMaxMove(attacker, environmentMove, false, moveSlot)
   moveCategory = move.categoryId
     ?? (move.category === '물리' ? 'physical' : move.category === '변화' ? 'status' : 'special')
+  if (attacker.consecutiveMoveId && attacker.consecutiveMoveId !== move.id) {
+    attacker.consecutiveMoveId = null
+    attacker.consecutiveMoveCount = 0
+  }
   if (
     attacker.ability === '무아지경'
     && !action.dancerCopy
@@ -4108,6 +6886,55 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     && attacker.gorillaLockedMoveIndex == null
     && move.id !== 'struggle'
   ) attacker.gorillaLockedMoveIndex = action.moveIndex
+  if (attacker.tauntTurns > 0 && isStatusMove(move)) {
+    appendLog(state, `${attacker.name}은(는) 도발당해 ${move.name}을(를) 쓸 수 없다!`, 'status')
+    attacker.moveFailedThisTurn = true
+    return
+  }
+  const imprisonSource = getActivePokemonList(state, targetSide.id).find((pokemon) => (
+    pokemon?.imprisonActive
+    && pokemon.moves.some((knownMove) => knownMove.id === move.id)
+  ))
+  if (imprisonSource) {
+    appendLog(state, `${imprisonSource.name}의 봉인 때문에 ${move.name}을(를) 쓸 수 없다!`, 'status')
+    attacker.moveFailedThisTurn = true
+    return
+  }
+  if (attacker.powderActive && move.type === '불꽃') {
+    attacker.powderActive = false
+    loseHp(state, attacker, attacker.maxHp / 4, `${attacker.name}은(는) 분진에 불이 붙어 데미지를 입었다!`, 'status')
+    attacker.moveFailedThisTurn = true
+    markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+    return
+  }
+  if (move.id === 'spitup' && attacker.stockpileCount <= 0) {
+    appendLog(state, '비축한 힘이 없어 토해내기는 실패했다!', 'muted')
+    attacker.moveFailedThisTurn = true
+    return
+  }
+  if (
+    move.id === 'fling'
+    && (
+      !heldItemEffectsActive(attacker)
+      || !getBattleItem(attacker.heldItemId)?.flingPower
+      || !canRemoveHeldItem(attacker)
+    )
+  ) {
+    appendLog(state, '내던질 수 있는 지닌물건이 없어 실패했다!', 'muted')
+    attacker.moveFailedThisTurn = true
+    return
+  }
+  if (
+    move.id === 'naturalgift'
+    && (
+      !heldItemEffectsActive(attacker)
+      || !getBattleItem(attacker.heldItemId)?.naturalGiftPower
+    )
+  ) {
+    appendLog(state, '자연의은혜를 끌어낼 나무열매가 없어 실패했다!', 'muted')
+    attacker.moveFailedThisTurn = true
+    return
+  }
   if (resolvedGimmick && !mechanicWasUsed && side.usedMechanics[resolvedGimmick]) {
     const mechanicAfter = mechanicPokemonSnapshot(attacker)
     pushTimelineStep(timeline, state, {
@@ -4140,17 +6967,72 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   applyMoveTriggeredFormBefore(state, attacker, move)
 
-  if (isChargeContinuation) clearChargeState(attacker)
-  if (!action.dancerCopy && !isChargeContinuation && !isLockedContinuation) {
-    moveSlot.currentPp = Math.max(0, moveSlot.currentPp - movePpCost(state, attacker, defender, move))
+  if (isChargeContinuation) {
+    if (isSkyDropContinuation) releaseSkyDropTarget(state, attacker)
+    clearChargeState(attacker)
   }
+  if (!action.dancerCopy && !isChargeContinuation && !isLockedContinuation && !isBideContinuation) {
+    moveSlot.currentPp = Math.max(0, moveSlot.currentPp - movePpCost(state, attacker, defender, move))
+    restoreLeppaBerryPp(state, attacker, moveSlot)
+  }
+  if (
+    !action.dancerCopy
+    && !attacker.dynamaxActive
+    && resolvedGimmick !== 'zmove'
+    && CHOICE_ITEM_IDS.has(attacker.heldItemId)
+    && heldItemEffectsActive(attacker)
+    && attacker.choiceLockedMoveIndex == null
+    && move.id !== 'struggle'
+  ) attacker.choiceLockedMoveIndex = action.moveIndex
   if (!action.dancerCopy) attacker.lastMoveIndex = action.moveIndex
+  const pledgeResolution = resolvePledgeCombination(side, move)
+  if (pledgeResolution.waiting) {
+    attacker.lastMoveId = move.id
+    state.lastUsedMove = {
+      moveId: move.id,
+      userBattleId: attacker.battleId,
+      sideId,
+      targetBattleId: defender.battleId,
+    }
+    appendLog(state, `${attacker.name}은(는) 동료의 맹세를 기다리고 있다!`, 'status')
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      actionOrder,
+      sideId,
+      targetSideId: sideId,
+      actorSlot,
+      actorName: attacker.name,
+      moveId: move.id,
+      moveName: move.name,
+      result: 'waiting',
+      message: `${attacker.name}은(는) 동료의 맹세를 기다리고 있다!`,
+    })
+    return
+  }
+  if (pledgeResolution.move !== move) {
+    move = pledgeResolution.move
+    moveCategory = move.categoryId
+      ?? (move.category === '물리' ? 'physical' : move.category === '변화' ? 'status' : 'special')
+    appendLog(state, '두 맹세가 하나로 합쳐졌다!', 'field')
+  }
+  if (move.id === 'round') side.roundUsedThisTurn = true
   if (action.quickDrawActivated) appendLog(state, `${attacker.name}의 퀵드로!`, 'ability')
+  if (action.quickClawActivated) appendLog(state, `${attacker.name}의 선제공격손톱이 발동했다!`, 'item')
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
+  attacker.lastMoveId = move.id
+  state.lastUsedMove = {
+    moveId: move.id,
+    userBattleId: attacker.battleId,
+    sideId,
+    targetBattleId: defender.battleId,
+  }
   if (targetRedirection) {
     appendLog(state, `${defender.name}의 ${targetRedirection}! 공격을 자신에게 끌어모았다!`, 'ability')
   }
   const animationMetadata = moveAnimationMetadata(attacker, move, resolvedAction, moveCategory)
+  const helpingHandMultiplier = attacker.helpingHandActive ? 1.5 : 1
+  attacker.helpingHandActive = false
+  attacker.electrifyActive = false
 
   const moveStep = {
     actionOrder,
@@ -4183,6 +7065,87 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     message: `${attacker.name}의 ${move.name}!`,
   }
   pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
+
+  if (!action.dancerCopy && !attacker.usedMoveIds.includes(move.id)) attacker.usedMoveIds.push(move.id)
+  const failureReason = specialMoveFailureReason(state, attacker, defender, move, { isChargeContinuation })
+  if (failureReason) {
+    appendLog(state, failureReason, 'muted')
+    applyFailedMoveConsequences(state, attacker, move)
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'failed',
+      message: failureReason,
+    })
+    return
+  }
+
+  if (move.id === 'ficklebeam' && random() < 0.3) {
+    powerMultiplier *= 2
+    appendLog(state, `${attacker.name}의 머리가 두 개 모두 협력했다!`, 'status')
+  }
+
+  if (allyTarget && move.id === 'pollenpuff') {
+    healPokemon(state, defender, defender.maxHp / 2, move.name)
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      ...moveStep,
+      result: 'heal',
+      message: latestLogMessage(state, `${defender.name}의 HP가 회복되었다!`),
+    })
+    return
+  }
+
+  if (move.flags?.includes('futuremove')) {
+    const futureMoveAlreadyScheduled = Boolean(targetSide.futureMoveSlots[targetSlot])
+    if (futureMoveAlreadyScheduled) {
+      appendLog(state, `${targetSide.name}의 그 위치에는 이미 미래의 공격이 예정되어 있다!`, 'muted')
+      attacker.moveFailedThisTurn = true
+    } else {
+      targetSide.futureMoveSlots[targetSlot] = {
+        turns: 3,
+        move: { ...move, ignoreImmunity: false },
+        sourceBattleId: attacker.battleId,
+        sourceSideId: sideId,
+        sourceSnapshot: clonePokemon(attacker),
+      }
+      appendLog(state, `${attacker.name}은(는) 미래의 공격을 예지했다!`, 'status')
+      attacker.moveFailedThisTurn = false
+    }
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      ...moveStep,
+      result: futureMoveAlreadyScheduled ? 'failed' : 'scheduled',
+      message: latestLogMessage(state, `${move.name}이(가) 미래에 발동한다!`),
+    })
+    return
+  }
+
+  if (move.id === 'bide' && !isBideRelease) {
+    if (!isBideContinuation) {
+      attacker.bideState = {
+        moveIndex: action.moveIndex,
+        remainingTurns: 2,
+        storedDamage: 0,
+        lastAttackerBattleId: null,
+      }
+      appendLog(state, `${attacker.name}은(는) 공격을 참고 있다!`, 'status')
+    } else {
+      attacker.bideState.remainingTurns -= 1
+      appendLog(state, `${attacker.name}은(는) 계속해서 공격을 참고 있다!`, 'status')
+    }
+    pushTimelineStep(timeline, state, {
+      phase: 'status',
+      ...moveStep,
+      result: 'charging',
+      message: latestLogMessage(state, `${attacker.name}은(는) 공격을 참고 있다!`),
+    })
+    return
+  }
+  if (isBideRelease) {
+    attacker.bideState = null
+    appendLog(state, `${attacker.name}은(는) 참았던 힘을 해방했다!`, 'status')
+  }
 
   if (moveSlot.firstTurnOnly && !isFirstMoveAction && move.id === moveSlot.id) {
     appendLog(state, `${move.name}은(는) 실패했다!`, 'muted')
@@ -4224,7 +7187,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         message: latestLogMessage(state, `${attacker.name}은(는) 단숨에 힘을 모았다!`),
       })
     } else {
-      beginChargeMove(state, attacker, move, action.moveIndex)
+      beginChargeMove(state, attacker, defender, move, action.moveIndex, targetSide.id, targetSlot)
       pushTimelineStep(timeline, state, {
         phase: 'status',
         ...moveStep,
@@ -4238,6 +7201,17 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   pushTimelineStep(timeline, state, { phase: 'attack', ...moveStep })
   applyZPower(state, sideId, attacker, move)
+
+  if (isSkyDropContinuation && defender.types.includes('비행')) {
+    appendLog(state, `${defender.name}은(는) 비행타입이라 프리폴의 데미지를 받지 않는다!`, 'muted')
+    pushTimelineStep(timeline, state, {
+      phase: 'resolve',
+      ...moveStep,
+      result: 'immune',
+      message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
+    })
+    return
+  }
 
   const strongWeatherId = effectiveWeatherId(state)
   const strongWeatherBlocked = !isStatusMove(move) && (
@@ -4311,14 +7285,27 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
+  const priorityBlocked = targetSide.quickGuardTurns > 0
+    && environmentMovePriority(state, attacker, move) > 0
+    && move.target !== 'self'
+  const spreadBlocked = targetSide.wideGuardTurns > 0
+    && ['all', 'allAdjacent', 'allAdjacentFoes'].includes(move.target)
+  const matBlocked = targetSide.matBlockTurns > 0 && !isStatusMove(move) && move.flags?.includes('protect')
+  const craftyBlocked = targetSide.craftyShieldTurns > 0 && isStatusMove(move) && move.target !== 'self'
+  if (priorityBlocked || spreadBlocked || matBlocked || craftyBlocked) {
+    appendLog(state, `${targetSide.name} 진영이 ${move.name}을(를) 막아냈다!`, 'status')
+    attacker.moveFailedThisTurn = true
+    return
+  }
+
   if (
     move.target !== 'self'
     && environmentMovePriority(state, attacker, move) > 0
-    && !move.ignoreAbility
     && getActivePokemonList(state, targetSide.id).some((pokemon) => (
       pokemon
       && !pokemon.fainted
       && pokemon.hp > 0
+      && !moveIgnoresAbility(move, pokemon)
       && ['비비드바디', '여왕의위엄', '테일아머'].includes(pokemon.ability)
     ))
   ) {
@@ -4332,7 +7319,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
-  const semiInvulnerable = semiInvulnerableInteraction(defender, move)
+  const semiInvulnerable = semiInvulnerableInteraction(defender, move, attacker)
   if (semiInvulnerable.avoided) {
     appendLog(state, `${defender.name}은(는) 공격이 닿지 않는 곳에 있다!`, 'muted')
     applyFailedMoveConsequences(state, attacker, move)
@@ -4345,9 +7332,12 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
-  if (!moveHits(state, attacker, defender, move, random)) {
+  const moveConnected = moveHits(state, attacker, defender, move, random)
+  if (attacker.micleActive) attacker.micleActive = false
+  if (!moveConnected) {
     appendLog(state, `${attacker.name}의 공격은 빗나갔다!`, 'muted')
     applyFailedMoveConsequences(state, attacker, move)
+    activateBlunderPolicy(state, attacker)
     pushTimelineStep(timeline, state, {
       phase: 'resolve',
       ...moveStep,
@@ -4358,7 +7348,23 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   if (isStatusMove(move)) {
-    const statusMoveImmunity = move.ignoreAbility ? null : abilityImmunity(state, attacker, defender, move)
+    if (
+      move.target !== 'self'
+      && defender.substituteHp > 0
+      && attacker.ability !== '틈새포착'
+      && !move.flags?.includes('bypasssub')
+      && !move.flags?.includes('sound')
+    ) {
+      appendLog(state, `${defender.name}의 대타가 변화 기술을 막아냈다!`, 'status')
+      pushTimelineStep(timeline, state, {
+        phase: 'resolve',
+        ...moveStep,
+        result: 'blocked',
+        message: latestLogMessage(state, `${defender.name}의 대타가 기술을 막았다!`),
+      })
+      return
+    }
+    const statusMoveImmunity = abilityImmunity(state, attacker, defender, move)
     if (move.target !== 'self' && statusMoveImmunity) {
       appendLog(state, `${defender.name}의 ${statusMoveImmunity}! 기술을 무효화했다.`, 'ability')
       applyAbilityImmunityEffect(state, defender, statusMoveImmunity)
@@ -4384,7 +7390,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       })
       return
     }
-    if (move.target !== 'self' && !move.ignoreAbility && defender.ability === '황금몸') {
+    if (move.target !== 'self' && !moveIgnoresAbility(move, defender) && defender.ability === '황금몸') {
       appendLog(state, `${defender.name}의 황금몸! 변화 기술을 막아냈다!`, 'ability')
       pushTimelineStep(timeline, state, {
         phase: 'resolve',
@@ -4396,12 +7402,14 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     }
     if (
       move.target !== 'self'
-      && !move.ignoreAbility
+      && !moveIgnoresAbility(move, defender)
       && !move.reflectedByMagicBounce
-      && defender.ability === '매직미러'
+      && (defender.ability === '매직미러' || defender.magicCoatActive)
       && move.flags?.includes('reflectable')
     ) {
-      appendLog(state, `${defender.name}의 매직미러가 ${move.name}을(를) 되받아쳤다!`, 'ability')
+      const reflector = defender.ability === '매직미러' ? '매직미러' : '매직코트'
+      defender.magicCoatActive = false
+      appendLog(state, `${defender.name}의 ${reflector}가 ${move.name}을(를) 되받아쳤다!`, defender.ability === '매직미러' ? 'ability' : 'status')
       applyStatusMove(state, defender, attacker, { ...move, reflectedByMagicBounce: true }, random)
       pushTimelineStep(timeline, state, {
         phase: 'status',
@@ -4412,6 +7420,27 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         targetName: attacker.name,
         result: 'reflected',
         message: latestLogMessage(state, `${move.name}이(가) 되받아쳐졌다!`),
+      })
+      return
+    }
+    if (CALL_MOVE_IDS.has(move.id)) {
+      const called = resolveCalledMove(state, attacker, defender, move, random, previousBattleMove)
+      if (!called) appendLog(state, `${move.name}으로 불러낼 기술이 없어 실패했다!`, 'muted')
+      else executeMove(state, called.sideId, called.action, random, timeline, actionOrder)
+      return
+    }
+    const snatcher = getActivePokemonList(state, targetSide.id).find((pokemon) => (
+      pokemon?.snatchActive && move.flags?.includes('snatch')
+    ))
+    if (snatcher) {
+      snatcher.snatchActive = false
+      appendLog(state, `${snatcher.name}은(는) ${move.name}을(를) 가로챘다!`, 'status')
+      applyStatusMove(state, snatcher, attacker, move, random, {
+        sideId: targetSide.id,
+        actorSlot: getActivePokemonList(state, targetSide.id).indexOf(snatcher),
+        targetSlot: actorSlot,
+        timeline,
+        actionOrder,
       })
       return
     }
@@ -4433,14 +7462,21 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     }
     if (
       move.target !== 'self'
-      && !move.ignoreAbility
+      && !moveIgnoresAbility(move, defender)
       && defender.ability === '풍력발전'
       && move.flags?.includes('wind')
     ) {
       defender.chargeActive = true
       appendLog(state, `${defender.name}의 풍력발전! 전기를 충전했다!`, 'ability')
     }
-    applyStatusMove(state, attacker, defender, move, random)
+    applyStatusMove(state, attacker, defender, move, random, {
+      sideId,
+      actorSlot,
+      targetSlot,
+      timeline,
+      actionOrder,
+    })
+    activateThroatSpray(state, attacker, move)
     applyMindBlownRecoil(state, attacker, move)
     applySelfDestruct(state, attacker, move, true)
     pushTimelineStep(timeline, state, {
@@ -4457,6 +7493,12 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   attacker.protectChain = 0
+
+  if (move.breaksProtect && defender.protected) {
+    defender.protected = false
+    defender.protectMode = null
+    appendLog(state, `${move.name}이(가) 방어를 깨뜨렸다!`, 'status')
+  }
 
   let protectionMultiplier = 1
   if (
@@ -4496,7 +7538,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     )
   }
 
-  const immunity = move.ignoreAbility ? null : abilityImmunity(state, attacker, defender, move)
+  const immunity = abilityImmunity(state, attacker, defender, move)
   if (immunity) {
     appendLog(state, `${defender.name}의 ${immunity}! 공격을 무효화했다.`, 'ability')
     applyAbilityImmunityEffect(state, defender, immunity)
@@ -4515,39 +7557,107 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   const hitCount = chooseMultiHitCount(attacker, move, random)
   const defenderHpBeforeMove = defender.hp
   let damage = 0
+  let directDamage = 0
   let landedHits = 0
+  let hitSubstitute = false
+  let multiHitMissed = false
   let result = null
 
+  if (move.stealsBoosts && getMoveTypeEffectiveness(state, attacker, defender, move) > 0) {
+    const stolenBoosts = Object.fromEntries(Object.entries(defender.statStages)
+      .filter(([, stage]) => stage > 0))
+    if (Object.keys(stolenBoosts).length > 0) {
+      Object.keys(stolenBoosts).forEach((statKey) => { defender.statStages[statKey] = 0 })
+      appendLog(state, `${attacker.name}은(는) ${defender.name}의 올라간 능력을 훔쳤다!`, 'status')
+      changeStages(state, attacker, stolenBoosts, { source: attacker })
+    }
+  }
+
   for (let hitIndex = 0; hitIndex < hitCount && defender.hp > 0; hitIndex += 1) {
-    const hitResult = fixedDamageResult(state, attacker, defender, move)
+    if (
+      hitIndex > 0
+      && move.multiaccuracy
+      && !hasActiveHeldItem(attacker, 'loaded-dice')
+      && !moveHits(state, attacker, defender, move, random)
+    ) {
+      multiHitMissed = true
+      break
+    }
+    const hitMove = ['tripleaxel', 'triplekick'].includes(move.id)
+      ? { ...move, power: Math.max(1, Number(move.power) || 1) * (hitIndex + 1) }
+      : move
+    const hitResult = fixedDamageResult(state, attacker, defender, hitMove, random)
       ?? calculateDamage(
         state,
         attacker,
         defender,
-        move,
+        hitMove,
         random,
         powerMultiplier
           * semiInvulnerable.powerMultiplier
           * protectionMultiplier
+          * helpingHandMultiplier
           * (parentalBondActive && hitIndex === 1 ? 0.25 : 1),
       )
-    const formShield = applyFormDamageShield(state, defender, move, hitResult.damage)
+    const formShield = applyFormDamageShield(state, defender, hitMove, hitResult.damage)
     if (formShield) {
       hitResult.effectiveness = formShield.effectiveness
       hitResult.critical = false
     }
     if (!result) result = hitResult
-    const hitDamage = formShield
+    const requestedHitDamage = formShield
       ? formShield.damage
-      : applySurvivalEffects(state, defender, hitResult.damage, move)
-    defender.hp = Math.max(0, defender.hp - hitDamage)
+      : applySurvivalEffects(state, defender, hitResult.damage, hitMove, random)
+    const substituteBlocks = defender.substituteHp > 0
+      && attacker.ability !== '틈새포착'
+      && !move.flags?.includes('bypasssub')
+      && !move.flags?.includes('sound')
+    let adjustedHitDamage = requestedHitDamage
+    const resistBerryType = TYPE_RESIST_BERRY_TYPES[defender.heldItemId]
+    if (
+      hitIndex === 0
+      && heldItemEffectsActive(defender)
+      && resistBerryType === move.type
+      && (move.type === '노말' || hitResult.effectiveness > 1)
+    ) {
+      adjustedHitDamage = Math.max(1, Math.floor(adjustedHitDamage / 2))
+      consumeHeldItem(state, defender, { berry: true })
+      appendLog(state, `${defender.name}의 ${defender.heldItemName || defender.heldItemId}이(가) 데미지를 줄였다!`, 'item')
+      applyCheekPouch(state, defender)
+    }
+    const hitDamage = substituteBlocks
+      ? Math.min(defender.substituteHp, adjustedHitDamage)
+      : adjustedHitDamage
+    if (substituteBlocks) {
+      defender.substituteHp = Math.max(0, defender.substituteHp - hitDamage)
+      hitSubstitute = true
+      if (defender.substituteHp === 0) appendLog(state, `${defender.name}의 대타는 사라졌다!`, 'status')
+    } else {
+      defender.hp = Math.max(0, defender.hp - hitDamage)
+      directDamage += hitDamage
+    }
     damage += hitDamage
     landedHits += 1
     result.critical = result.critical || hitResult.critical
     if (hitResult.effectiveness === 0 || hitDamage === 0 && move.ohko) break
   }
 
+  if (multiHitMissed) activateBlunderPolicy(state, attacker)
+
   result ??= { damage: 0, effectiveness: getMoveTypeEffectiveness(state, attacker, defender, move), critical: false }
+  if (landedHits > 0 && result.effectiveness > 0) {
+    attacker.consecutiveMoveCount = attacker.consecutiveMoveId === move.id
+      ? (attacker.consecutiveMoveCount ?? 0) + 1
+      : 1
+    attacker.consecutiveMoveId = move.id
+    attacker.moveFailedThisTurn = false
+    activateThroatSpray(state, attacker, move)
+  } else {
+    attacker.consecutiveMoveId = null
+    attacker.consecutiveMoveCount = 0
+    attacker.moveFailedThisTurn = true
+  }
+  if (result.failed) appendLog(state, `${move.name}은(는) 되받아칠 공격이 없어 실패했다!`, 'muted')
   state.lastEvent = {
     kind: 'hit',
     sideId,
@@ -4586,26 +7696,33 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       restoreBaseEnvironment(state, 'terrain', move.name)
     }
   }
-  if (damage > 0 && move.drain) {
+  if (directDamage > 0 && move.drain) {
     const [numerator, denominator] = move.drain
-    const drainAmount = damage * numerator / denominator
-    if (defender.ability === '해감액') {
-      loseHp(
-        state,
-        attacker,
-        drainAmount,
-        `${attacker.name}은(는) ${defender.name}의 해감액 때문에 HP를 빼앗겼다!`,
-        'ability',
-      )
-    } else {
-      healPokemon(state, attacker, drainAmount, move.name)
-    }
+    const drainAmount = directDamage * numerator / denominator
+    applyDrainingRecovery(state, attacker, defender, drainAmount, move.name, {
+      ignoreDrainedAbility: moveIgnoresAbility(move, defender),
+    })
   }
 
-  if (damage > 0) {
+  if (directDamage > 0) {
+    defender.lastDamageTaken = directDamage
+    defender.lastDamageCategory = moveCategory
+    defender.lastAttackerBattleId = attacker.battleId
+    defender.damagedThisTurn = true
+    if (moveCategory === 'physical') defender.hitByPhysicalThisTurn = true
+    defender.hitCountTaken = (defender.hitCountTaken ?? 0) + landedHits
+    if (defender.bideState) {
+      defender.bideState.storedDamage += directDamage
+      defender.bideState.lastAttackerBattleId = attacker.battleId
+    }
+    if (defender.rageActive && defender.hp > 0) {
+      changeStages(state, defender, { attack: landedHits }, { source: defender })
+    }
+    if (attacker.laserFocusActive) attacker.laserFocusActive = false
     breakIllusion(state, defender)
     if (attacker.chargeActive && move.type === '전기') attacker.chargeActive = false
     applyPrimaryMoveEffects(state, attacker, defender, move, random)
+    if (move.id === 'fling') applyFlingItemEffect(state, attacker, defender, move, random)
     applyMoveSecondaries(state, attacker, defender, move, random, landedHits)
     applyDamagingHitAbilityEffects(
       state,
@@ -4618,6 +7735,21 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       result.critical,
       random,
     )
+    applyDamagingHitItemEffects(
+      state,
+      sideId,
+      actorSlot,
+      targetSlot,
+      attacker,
+      defender,
+      move,
+      directDamage,
+      result.effectiveness,
+      random,
+      timeline,
+      actionOrder,
+    )
+    applyUniqueDamagingMoveEffects(state, attacker, defender, move, random)
     applyHpCrossingAbility(state, defender, defenderHpBeforeMove)
     applyReactiveFormAbility(state, attacker, defender, move, damage)
     applyEmergencySwitch(
@@ -4631,6 +7763,96 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     )
     applyMoveRecoil(state, attacker, move, damage)
 
+    if (move.thawsTarget && defender.status?.id === 'freeze') {
+      defender.status = null
+      appendLog(state, `${defender.name}의 얼음이 녹았다!`, 'heal')
+    }
+    if (move.id === 'smellingsalts' && defender.status?.id === 'paralysis') defender.status = null
+    if (move.id === 'wakeupslap' && defender.status?.id === 'sleep') defender.status = null
+    if (move.id === 'clearsmog') resetPokemonStatStages(defender)
+    if (['brickbreak', 'psychicfangs', 'ragingbull'].includes(move.id)) {
+      const sideToBreak = getPokemonSide(state, defender)
+      sideToBreak.auroraVeilTurns = 0
+      sideToBreak.lightScreenTurns = 0
+      sideToBreak.reflectTurns = 0
+      appendLog(state, `${defender.name} 진영의 장벽이 깨졌다!`, 'field')
+    }
+    if (['rapidspin', 'mortalspin'].includes(move.id)) {
+      const ownSide = getPokemonSide(state, attacker)
+      ownSide.hazards = {
+        ...ownSide.hazards,
+        spikes: 0,
+        stealthRock: false,
+        stickyWeb: false,
+        toxicSpikes: 0,
+      }
+      attacker.leechSeedSourceSideId = null
+      attacker.trappedTurns = 0
+      attacker.trapSourceName = null
+      attacker.trapSourceBattleId = null
+      attacker.trapDamages = false
+      appendLog(state, `${attacker.name} 진영의 함정이 제거되었다!`, 'field')
+    }
+    if (move.id === 'knockoff' && canRemoveHeldItem(defender, attacker, {
+      ignoreHolderAbility: moveIgnoresAbility(move, defender),
+    })) {
+      const removedItem = defender.heldItemName || defender.heldItemId
+      clearHeldItem(defender)
+      appendLog(state, `${defender.name}의 ${removedItem}을(를) 떨어뜨렸다!`, 'item')
+    }
+    if (['thief', 'covet'].includes(move.id)) stealHeldItem(state, attacker, defender, move.name)
+    if (
+      move.id === 'incinerate'
+      && (
+        defender.heldItemId?.endsWith('-berry')
+        || GEM_ITEM_TYPES[defender.heldItemId]
+      )
+      && canRemoveHeldItem(defender, attacker, {
+        ignoreHolderAbility: moveIgnoresAbility(move, defender),
+      })
+    ) {
+      const itemName = defender.heldItemName || defender.heldItemId
+      clearHeldItem(defender)
+      appendLog(state, `${defender.name}의 ${itemName}이(가) 타버렸다!`, 'item')
+    }
+    if (
+      attacker.hp > 0
+      && ['bugbite', 'pluck'].includes(move.id)
+      && defender.heldItemId?.endsWith('-berry')
+      && canRemoveHeldItem(defender, attacker, {
+        ignoreHolderAbility: moveIgnoresAbility(move, defender),
+      })
+    ) {
+      const stolenBerryId = defender.heldItemId
+      const stolenBerryName = defender.heldItemName || stolenBerryId
+      clearHeldItem(defender)
+      consumeStolenBerry(state, attacker, stolenBerryId, stolenBerryName, random)
+    }
+
+    if (move.id === 'spitup') {
+      changeStages(state, attacker, {
+        defense: -attacker.stockpileBoosts.defense,
+        specialDefense: -attacker.stockpileBoosts.specialDefense,
+      })
+      attacker.stockpileCount = 0
+      attacker.stockpileBoosts = { defense: 0, specialDefense: 0 }
+    }
+
+    if (defender.hp <= 0 && defender.grudgeActive) {
+      const grudgeMove = attacker.moves[action.moveIndex]
+        ?? attacker.moves.find((candidate) => candidate.id === moveSlot.id)
+      if (grudgeMove) {
+        grudgeMove.currentPp = 0
+        appendLog(state, `${defender.name}의 원념으로 ${grudgeMove.name}의 PP가 0이 되었다!`, 'status')
+        restoreLeppaBerryPp(state, attacker, grudgeMove)
+      }
+      defender.grudgeActive = false
+    }
+    if (move.id === 'naturalgift' && heldItemEffectsActive(attacker)) {
+      consumeHeldItem(state, attacker, { berry: true })
+      appendLog(state, `${attacker.name}은(는) ${move.name}에 지닌물건을 사용했다!`, 'item')
+    }
+
     if (
       hasActiveHeldItem(attacker, 'life-orb')
       && attacker.ability !== '매직가드'
@@ -4640,6 +7862,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       loseHp(state, attacker, attacker.maxHp / 10, `${attacker.name}은(는) 생명의구슬로 HP가 줄었다.`, 'item')
     }
 
+    if (GEM_ITEM_TYPES[attacker.heldItemId] === move.type && heldItemEffectsActive(attacker)) {
+      consumeHeldItem(state, attacker)
+      appendLog(state, `${attacker.name}의 ${attacker.heldItemName || attacker.heldItemId}이(가) 힘을 다했다!`, 'item')
+    }
+
     if (move.flags?.includes('recharge') && attacker.hp > 0) {
       attacker.rechargeTurns = 1
       appendLog(state, `${attacker.name}은(는) 다음 턴에 반동으로 움직일 수 없다!`, 'status')
@@ -4647,13 +7874,13 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     if (!action.dancerCopy) handleLockedMove(state, attacker, move, action.moveIndex, action, random)
     applyMoveTriggeredFormAfterHit(state, attacker, defender, move, damage)
     if (defender.hp <= 0) applyKnockoutAbility(state, attacker)
-  } else if (result.effectiveness === 0) {
+  } else if (result.effectiveness === 0 && !hitSubstitute) {
     applyCrashDamage(state, attacker, move)
   }
 
   applyMindBlownRecoil(state, attacker, move)
 
-  if (defender.hp <= 0 && defender.destinyBondActive && attacker.hp > 0 && damage > 0) {
+  if (defender.hp <= 0 && defender.destinyBondActive && attacker.hp > 0 && directDamage > 0) {
     attacker.hp = 0
     appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
   }
@@ -4678,6 +7905,73 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   if (damage > 0) applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
   activateDancerCopies(state, sideId, attacker, move, random, timeline, actionOrder, targetSlot)
+}
+
+function resolveFutureMoves(state, timeline, random) {
+  ;['player', 'opponent'].forEach((targetSideId) => {
+    const targetSide = getSide(state, targetSideId)
+    Object.entries(targetSide.futureMoveSlots ?? {}).forEach(([slotKey, futureMove]) => {
+      futureMove.turns -= 1
+      if (futureMove.turns > 0) return
+      delete targetSide.futureMoveSlots[slotKey]
+
+      const targetSlot = Number(slotKey)
+      const defender = getActivePokemon(state, targetSideId, targetSlot)
+      if (!isAvailableFieldPokemon(defender)) return
+      const sourceSide = getSide(state, futureMove.sourceSideId)
+      const attacker = sourceSide.team.find((pokemon) => pokemon.battleId === futureMove.sourceBattleId)
+        ?? futureMove.sourceSnapshot
+      const move = { ...futureMove.move, ignoreImmunity: false }
+      if (!attacker || !moveHits(state, attacker, defender, move, random)) {
+        appendLog(state, `${move.name}의 미래 공격은 빗나갔다!`, 'muted')
+        return
+      }
+
+      const immunity = abilityImmunity(state, attacker, defender, move)
+      const effectiveness = getMoveTypeEffectiveness(state, attacker, defender, move)
+      if (immunity || effectiveness === 0) {
+        appendLog(state, immunity
+          ? `${defender.name}의 ${immunity}! 미래의 공격을 무효화했다.`
+          : `${defender.name}에게는 ${move.name}의 효과가 없다!`, immunity ? 'ability' : 'muted')
+        return
+      }
+
+      const previousHp = defender.hp
+      const result = calculateDamage(state, attacker, defender, move, random)
+      const damage = applySurvivalEffects(state, defender, result.damage, move, random)
+      defender.hp = Math.max(0, defender.hp - damage)
+      defender.lastDamageTaken = damage
+      defender.lastDamageCategory = move.categoryId
+      defender.lastAttackerBattleId = attacker.battleId
+      defender.damagedThisTurn = damage > 0
+      defender.hitCountTaken = (defender.hitCountTaken ?? 0) + (damage > 0 ? 1 : 0)
+      appendLog(state, `${move.name}의 미래 공격이 ${defender.name}을(를) 덮쳤다!`, 'damage')
+      if (result.critical) appendLog(state, '급소에 맞았다!', 'critical')
+      if (result.effectiveness > 1) appendLog(state, '효과가 굉장했다!', 'super')
+      else if (result.effectiveness < 1) appendLog(state, '효과가 별로인 듯하다…', 'muted')
+      applyHpCrossingAbility(state, defender, previousHp)
+      breakIllusion(state, defender)
+      pushTimelineStep(timeline, state, {
+        phase: 'impact',
+        sideId: futureMove.sourceSideId,
+        targetSideId,
+        targetSlot,
+        actorName: attacker.name,
+        actorSpeciesId: attacker.speciesId,
+        targetName: defender.name,
+        targetSpeciesId: defender.speciesId,
+        moveId: move.id,
+        moveName: move.name,
+        moveType: move.type,
+        moveCategory: move.categoryId,
+        damage,
+        effectiveness: result.effectiveness,
+        critical: result.critical,
+        message: `${move.name}이(가) ${defender.name}에게 명중했다!`,
+      })
+      markPokemonFaint(state, targetSideId, targetSlot, timeline)
+    })
+  })
 }
 
 function endDynamax(state, pokemon) {
@@ -4830,6 +8124,8 @@ function activateEntrySupportAbilities(state, sideId, pokemon, opponents) {
 function activateEntryAbility(state, sideId, activeSlot = null) {
   const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
+  refreshNeutralizingGas(state, { reactivate: false })
+  if (pokemon.neutralizedAbility) return
 
   activateIllusion(state, sideId, pokemon)
   activateTraceAbility(state, sideId, activeSlot, pokemon)
@@ -4960,6 +8256,10 @@ function clearSwitchVolatiles(pokemon) {
     pokemon.ability = pokemon.tracedAbilityBase
     pokemon.tracedAbilityBase = null
   }
+  if (pokemon.neutralizedAbility) {
+    pokemon.ability = pokemon.neutralizedAbility
+    pokemon.neutralizedAbility = null
+  }
   pokemon.statStages = Object.fromEntries(Object.keys(pokemon.statStages).map((key) => [key, 0]))
   pokemon.protected = false
   pokemon.protectMode = null
@@ -4972,6 +8272,7 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.destinyBondActive = false
   pokemon.trappedTurns = 0
   pokemon.trapSourceName = null
+  pokemon.trapSourceBattleId = null
   pokemon.trapDamages = false
   pokemon.tormented = false
   pokemon.lastMoveIndex = null
@@ -4982,7 +8283,13 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.chargingMove = null
   pokemon.lockedMove = null
   pokemon.semiInvulnerable = null
+  pokemon.skyDropSourceBattleId = null
+  pokemon.skyDropTargetBattleId = null
   pokemon.proteanUsed = false
+  if (pokemon.typeRemovedByMove) {
+    pokemon.typeRemovedByMove = false
+    restorePokemonOwnTypes(pokemon)
+  }
   pokemon.activeTurnCount = 0
   pokemon.activeMoveActions = 0
   pokemon.actedThisTurn = false
@@ -4990,8 +8297,19 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.truantLoafing = false
   pokemon.flashFireActive = false
   pokemon.chargeActive = false
+  pokemon.defenseCurlActive = false
+  pokemon.minimized = false
+  pokemon.rageActive = false
+  pokemon.uproarTurns = 0
+  pokemon.bideState = null
+  pokemon.roostedThisTurn = false
+  pokemon.smackDownActive = false
+  pokemon.tarShotActive = false
+  pokemon.glaiveRushVulnerable = false
+  pokemon.noRetreatActive = false
   pokemon.custapActive = false
   pokemon.gorillaLockedMoveIndex = null
+  pokemon.choiceLockedMoveIndex = null
   pokemon.weightReduction = 0
   pokemon.cudChewReadyTurn = null
   pokemon.cudChewItemId = ''
@@ -5004,6 +8322,58 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.saltCureActive = false
   pokemon.syrupBombTurns = 0
   pokemon.healBlockTurns = 0
+  pokemon.substituteHp = 0
+  pokemon.leechSeedSourceSideId = null
+  pokemon.leechSeedSourceSlot = null
+  pokemon.nightmareActive = false
+  pokemon.cursedActive = false
+  pokemon.stockpileCount = 0
+  pokemon.stockpileBoosts = { defense: 0, specialDefense: 0 }
+  pokemon.encoredMoveIndex = null
+  pokemon.encoreTurns = 0
+  pokemon.tauntTurns = 0
+  pokemon.embargoTurns = 0
+  pokemon.ingrainActive = false
+  pokemon.aquaRingActive = false
+  pokemon.magnetRiseTurns = 0
+  pokemon.telekinesisTurns = 0
+  if (pokemon.abilitySuppressed) pokemon.ability = pokemon.originalAbility
+  pokemon.abilitySuppressed = false
+  pokemon.magicCoatActive = false
+  pokemon.snatchActive = false
+  pokemon.imprisonActive = false
+  pokemon.grudgeActive = false
+  pokemon.ejectPackPending = false
+  pokemon.helpingHandActive = false
+  pokemon.powderActive = false
+  pokemon.electrifyActive = false
+  pokemon.laserFocusActive = false
+  pokemon.octolockActive = false
+  pokemon.dragonCheerTurns = 0
+  pokemon.sureHitTargetBattleId = null
+  pokemon.sureHitTurns = 0
+  pokemon.foresightActive = false
+  pokemon.miracleEyeActive = false
+  pokemon.lastDamageTaken = 0
+  pokemon.lastDamageCategory = null
+  pokemon.lastAttackerBattleId = null
+  pokemon.damagedThisTurn = false
+  pokemon.hitByPhysicalThisTurn = false
+  pokemon.hitCountTaken = 0
+  pokemon.moveFailedLastTurn = false
+  pokemon.moveFailedThisTurn = false
+  pokemon.consecutiveMoveId = null
+  pokemon.consecutiveMoveCount = 0
+  pokemon.usedMoveIds = []
+  pokemon.statsLoweredThisTurn = false
+  pokemon.plannedActionType = null
+  pokemon.plannedMoveId = null
+  pokemon.plannedMoveCategory = null
+  pokemon.plannedMovePriority = null
+  pokemon.beakBlastCharging = false
+  pokemon.pendingShedTailHp = 0
+  pokemon.nextTurnOrderBias = 0
+  pokemon.switchingOut = false
   if (pokemon.status?.id === 'toxic') pokemon.status.toxicCounter = 1
 }
 
@@ -5011,6 +8381,15 @@ function applyEntryHazards(state, side, pokemon) {
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return
   const hazards = side.hazards ?? {}
   if (hasActiveHeldItem(pokemon, 'heavy-duty-boots')) return
+
+  if (Number(hazards.spikes ?? 0) > 0 && isGrounded(pokemon, state) && pokemon.ability !== '매직가드') {
+    const denominator = Number(hazards.spikes) >= 3 ? 4 : Number(hazards.spikes) === 2 ? 6 : 8
+    loseHp(state, pokemon, pokemon.maxHp / denominator, `${pokemon.name}은(는) 압정에 데미지를 입었다!`, 'field')
+  }
+  if (hazards.stickyWeb && isGrounded(pokemon, state)) {
+    changeStages(state, pokemon, { speed: -1 }, { source: pokemon })
+    appendLog(state, `${pokemon.name}은(는) 끈적끈적네트에 걸렸다!`, 'field')
+  }
 
   if (Number(hazards.toxicSpikes ?? 0) > 0 && isGrounded(pokemon, state)) {
     if (pokemon.types.includes('독')) {
@@ -5038,6 +8417,19 @@ function applyEntryHazards(state, side, pokemon) {
     pokemon.hp = Math.max(0, pokemon.hp - damage)
     appendLog(state, `${pokemon.name}은(는) ${name}에 데미지를 입었다!`, 'damage')
   })
+
+  const terrainSeedRules = {
+    'electric-seed': { terrain: 'electric', boosts: { defense: 1 } },
+    'grassy-seed': { terrain: 'grassy', boosts: { defense: 1 } },
+    'misty-seed': { terrain: 'misty', boosts: { specialDefense: 1 } },
+    'psychic-seed': { terrain: 'psychic', boosts: { specialDefense: 1 } },
+  }
+  const seedRule = terrainSeedRules[pokemon.heldItemId]
+  if (seedRule?.terrain === state.rules?.terrain?.id && heldItemEffectsActive(pokemon)) {
+    consumeHeldItem(state, pokemon)
+    changeStages(state, pokemon, seedRule.boosts)
+    appendLog(state, `${pokemon.name}의 ${pokemon.heldItemName || pokemon.heldItemId}이(가) 발동했다!`, 'item')
+  }
 }
 
 function performSwitch(
@@ -5061,10 +8453,10 @@ function performSwitch(
   }
   if (!isAutomatic && current.hp > 0 && !current.fainted) {
     const abilitySource = trappingAbilitySource(state, current)
-    if (current.trappedTurns > 0 || abilitySource) {
+    if (current.trappedTurns > 0 || current.skyDropSourceBattleId || abilitySource) {
       appendLog(
         state,
-        `${current.name}은(는) ${current.trapSourceName ?? abilitySource?.ability ?? '기술의 효과'} 때문에 교체할 수 없다!`,
+        `${current.name}은(는) ${current.skyDropSourceBattleId ? '프리폴' : current.trapSourceName ?? abilitySource?.ability ?? '기술의 효과'} 때문에 교체할 수 없다!`,
         abilitySource ? 'ability' : 'status',
       )
       return false
@@ -5095,6 +8487,7 @@ function performSwitch(
   side.activeIndex = side.activeIndexes[state.rules?.format?.rotation ? side.rotationSlot : 0] ?? targetIndex
   refreshStrongWeatherSource(state)
   clearSwitchVolatiles(target)
+  refreshNeutralizingGas(state)
   target.switchedInThisTurn = true
   applyPendingDifficultyBoost(target)
   activateIllusion(state, sideId, target)
@@ -5169,6 +8562,29 @@ function applyEmergencySwitch(
   return performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, activeSlot)
 }
 
+function resolvePendingEjectPacks(state, timeline = null, actionOrder = null) {
+  let switched = false
+  ;['player', 'opponent'].forEach((sideId) => {
+    const side = getSide(state, sideId)
+    getActivePokemonList(state, sideId).forEach((pokemon, activeSlot) => {
+      if (!pokemon?.ejectPackPending) return
+      pokemon.ejectPackPending = false
+      if (pokemon.fainted || pokemon.hp <= 0 || !hasActiveHeldItem(pokemon, 'eject-pack')) return
+      const replacements = availableBenchIndexes(side)
+      if (replacements.length === 0) return
+      consumeHeldItem(state, pokemon)
+      appendLog(state, `${pokemon.name}의 탈출팩이 작동했다!`, 'item')
+      const targetIndex = sideId === 'opponent'
+        ? chooseAiReplacementIndex(state, sideId, activeSlot)
+        : replacements[0]
+      if (targetIndex != null) {
+        switched = performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, activeSlot) || switched
+      }
+    })
+  })
+  return switched
+}
+
 function residualEffects(state, sideId, timeline = null, activeSlot = null, random = Math.random) {
   const side = getSide(state, sideId)
   const pokemon = getActivePokemon(state, sideId, activeSlot)
@@ -5176,7 +8592,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
   const previousHp = pokemon.hp
   const previousMaxHp = pokemon.maxHp
   const previousLogLength = state.log.length
-  const weatherId = effectiveWeatherFamilyId(state)
+  const weatherId = effectiveMoveWeatherFamilyId(state, pokemon)
 
   if (pokemon.hp > 0 && weatherId === 'rain' && pokemon.ability === '촉촉바디' && pokemon.status) {
     pokemon.status = null
@@ -5211,9 +8627,31 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     appendLog(state, `${pokemon.name}은(는) 소금절이의 데미지를 입었다!`, 'damage')
   }
 
+  if (pokemon.hp > 0 && pokemon.nightmareActive) {
+    if (!isPokemonAsleep(pokemon)) pokemon.nightmareActive = false
+    else if (pokemon.ability !== '매직가드') {
+      loseHp(state, pokemon, pokemon.maxHp / 4, `${pokemon.name}은(는) 악몽에 시달렸다!`, 'status')
+    }
+  }
+
+  if (pokemon.hp > 0 && pokemon.cursedActive && pokemon.ability !== '매직가드') {
+    loseHp(state, pokemon, pokemon.maxHp / 4, `${pokemon.name}은(는) 저주로 HP가 줄었다!`, 'status')
+  }
+
+  if (pokemon.hp > 0 && pokemon.leechSeedSourceSideId && pokemon.ability !== '매직가드') {
+    const drained = loseHp(state, pokemon, pokemon.maxHp / 8, `${pokemon.name}은(는) 씨뿌리기에 HP를 빼앗겼다!`, 'status')
+    const sourceActives = getActivePokemonList(state, pokemon.leechSeedSourceSideId)
+    const recipient = Number.isInteger(pokemon.leechSeedSourceSlot) && pokemon.leechSeedSourceSlot >= 0
+      ? sourceActives[pokemon.leechSeedSourceSlot]
+      : sourceActives.find((candidate) => candidate && !candidate.fainted && candidate.hp > 0)
+    if (recipient) {
+      applyDrainingRecovery(state, recipient, pokemon, drained, '씨뿌리기')
+    }
+  }
+
   if (
     pokemon.hp > 0
-    && pokemon.status?.id === 'sleep'
+    && isPokemonAsleep(pokemon)
     && getActivePokemonList(state, sideId === 'player' ? 'opponent' : 'player')
       .some((opponent) => opponent && !opponent.fainted && opponent.hp > 0 && opponent.ability === '나이트메어')
     && pokemon.ability !== '매직가드'
@@ -5269,9 +8707,20 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     appendLog(state, `${pokemon.name}은(는) ${side.gmaxResidual.moveName}의 여파로 데미지를 입었다!`, 'damage')
   }
 
+  if (
+    pokemon.hp > 0
+    && side.firePledgeTurns > 0
+    && !pokemon.types.includes('불꽃')
+    && pokemon.ability !== '매직가드'
+  ) {
+    loseHp(state, pokemon, pokemon.maxHp / 8, `${pokemon.name}은(는) 불바다의 데미지를 입었다!`, 'field')
+  }
+
   if (pokemon.hp > 0 && pokemon.trappedTurns > 0) {
     if (pokemon.trapDamages && pokemon.ability !== '매직가드') {
-      const trapDamage = Math.max(1, Math.floor(pokemon.maxHp / 8))
+      const trapSource = allBattlePokemon(state)
+        .find((candidate) => candidate.battleId === pokemon.trapSourceBattleId)
+      const trapDamage = Math.max(1, Math.floor(pokemon.maxHp / (hasActiveHeldItem(trapSource, 'binding-band') ? 6 : 8)))
       pokemon.hp = Math.max(0, pokemon.hp - trapDamage)
       appendLog(state, `${pokemon.name}은(는) ${pokemon.trapSourceName}에 시달렸다!`, 'damage')
     }
@@ -5279,8 +8728,13 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     if (pokemon.trappedTurns <= 0) {
       appendLog(state, `${pokemon.name}은(는) 구속에서 벗어났다!`, 'heal')
       pokemon.trapSourceName = null
+      pokemon.trapSourceBattleId = null
       pokemon.trapDamages = false
     }
+  }
+
+  if (pokemon.hp > 0 && pokemon.octolockActive) {
+    changeStages(state, pokemon, { defense: -1, specialDefense: -1 })
   }
 
   if (pokemon.hp > 0 && pokemon.yawnTurns > 0) {
@@ -5288,7 +8742,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
       pokemon.yawnTurns = 0
     } else {
       pokemon.yawnTurns -= 1
-      if (pokemon.yawnTurns === 0) setStatus(state, pokemon, 'sleep', '하품')
+      if (pokemon.yawnTurns === 0) setStatus(state, pokemon, 'sleep', '하품', { random })
     }
   }
 
@@ -5305,6 +8759,32 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     if (pokemon.healBlockTurns <= 0) {
       appendLog(state, `${pokemon.name}은(는) 다시 HP를 회복할 수 있게 되었다.`, 'heal')
     }
+  }
+
+  if (pokemon.encoreTurns > 0) {
+    pokemon.encoreTurns -= 1
+    if (pokemon.encoreTurns <= 0) {
+      pokemon.encoredMoveIndex = null
+      appendLog(state, `${pokemon.name}의 앵콜 효과가 끝났다.`, 'heal')
+    }
+  }
+
+  if (pokemon.tauntTurns > 0) {
+    pokemon.tauntTurns -= 1
+    if (pokemon.tauntTurns <= 0) appendLog(state, `${pokemon.name}의 도발 효과가 끝났다.`, 'heal')
+  }
+
+  if (pokemon.embargoTurns > 0) {
+    pokemon.embargoTurns -= 1
+    if (pokemon.embargoTurns <= 0) appendLog(state, `${pokemon.name}은(는) 다시 지닌물건을 쓸 수 있다.`, 'heal')
+  }
+
+  if (pokemon.magnetRiseTurns > 0) pokemon.magnetRiseTurns -= 1
+  if (pokemon.telekinesisTurns > 0) pokemon.telekinesisTurns -= 1
+  if (pokemon.dragonCheerTurns > 0) pokemon.dragonCheerTurns -= 1
+  if (pokemon.sureHitTurns > 0) {
+    pokemon.sureHitTurns -= 1
+    if (pokemon.sureHitTurns <= 0) pokemon.sureHitTargetBattleId = null
   }
 
   if (pokemon.disabledMoveTurns > 0) {
@@ -5330,11 +8810,32 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
   if (pokemon.hp > 0 && hasActiveHeldItem(pokemon, 'leftovers')) {
     healPokemon(state, pokemon, pokemon.maxHp / 16, '먹다남은음식')
   }
+  if (pokemon.hp > 0 && pokemon.ingrainActive) {
+    healPokemon(state, pokemon, pokemon.maxHp * (hasActiveHeldItem(pokemon, 'big-root') ? 1.3 : 1) / 16, '뿌리박기')
+  }
+  if (pokemon.hp > 0 && pokemon.aquaRingActive) {
+    healPokemon(state, pokemon, pokemon.maxHp * (hasActiveHeldItem(pokemon, 'big-root') ? 1.3 : 1) / 16, '아쿠아링')
+  }
   if (pokemon.hp > 0 && state.rules?.terrain?.id === 'grassy' && isGrounded(pokemon, state)) {
     healPokemon(state, pokemon, pokemon.maxHp / 16, '그래스필드')
   }
   if (pokemon.hp > 0 && hasActiveHeldItem(pokemon, 'black-sludge') && pokemon.types.includes('독')) {
     healPokemon(state, pokemon, pokemon.maxHp / 16, '검은오물')
+  }
+  if (
+    pokemon.hp > 0
+    && hasActiveHeldItem(pokemon, 'black-sludge')
+    && !pokemon.types.includes('독')
+    && pokemon.ability !== '매직가드'
+  ) loseHp(state, pokemon, pokemon.maxHp / 8, `${pokemon.name}은(는) 검은오물로 HP가 줄었다.`, 'item')
+  if (pokemon.hp > 0 && hasActiveHeldItem(pokemon, 'sticky-barb') && pokemon.ability !== '매직가드') {
+    loseHp(state, pokemon, pokemon.maxHp / 8, `${pokemon.name}은(는) 끈적끈적바늘에 찔렸다!`, 'item')
+  }
+  if (pokemon.hp > 0 && hasActiveHeldItem(pokemon, 'toxic-orb') && !pokemon.status) {
+    setStatus(state, pokemon, 'toxic', '맹독구슬', { source: pokemon })
+  }
+  if (pokemon.hp > 0 && hasActiveHeldItem(pokemon, 'flame-orb') && !pokemon.status) {
+    setStatus(state, pokemon, 'burn', '화염구슬', { source: pokemon })
   }
   consumeLowHpBerry(state, pokemon, random)
   if (pokemon.hp > 0 && pokemon.cudChewReadyTurn != null && state.turn >= pokemon.cudChewReadyTurn) {
@@ -5429,16 +8930,56 @@ function advanceSideConditionTimers(state) {
         side.gmaxResidual = null
       }
     }
-    if (side.auroraVeilTurns > 0) {
-      side.auroraVeilTurns -= 1
-      if (side.auroraVeilTurns <= 0) appendLog(state, '오로라베일의 효과가 사라졌다.', 'field')
+    const sideTimers = {
+      auroraVeilTurns: '오로라베일',
+      lightScreenTurns: '빛의장막',
+      reflectTurns: '리플렉터',
+      safeguardTurns: '신비의부적',
+      mistTurns: '흰안개',
+      tailwindTurns: '순풍',
+      luckyChantTurns: '주술',
+      wideGuardTurns: '와이드가드',
+      quickGuardTurns: '퍼스트가드',
+      craftyShieldTurns: '트릭가드',
+      matBlockTurns: '매트블록',
+      firePledgeTurns: '불바다',
+      grassPledgeTurns: '습지초원',
+      waterPledgeTurns: '무지개',
     }
+    Object.entries(sideTimers).forEach(([key, label]) => {
+      if (side[key] <= 0) return
+      side[key] -= 1
+      if (side[key] <= 0 && !['wideGuardTurns', 'quickGuardTurns', 'craftyShieldTurns', 'matBlockTurns'].includes(key)) {
+        appendLog(state, `${side.name} 진영의 ${label} 효과가 사라졌다.`, 'field')
+      }
+    })
+    Object.entries(side.wishSlots ?? {}).forEach(([slot, wish]) => {
+      wish.turns -= 1
+      if (wish.turns > 0) return
+      const target = getActivePokemon(state, side.id, Number(slot))
+      if (target && target.hp > 0 && !target.fainted) healPokemon(state, target, wish.amount, `${wish.sourceName}의 소원`)
+      delete side.wishSlots[slot]
+    })
   })
 
-  if (state.environment.gravityTurns > 0) {
-    state.environment.gravityTurns -= 1
-    if (state.environment.gravityTurns <= 0) appendLog(state, '중력이 원래대로 돌아왔다.', 'field')
+  const fieldTimers = {
+    gravityTurns: '중력',
+    trickRoomTurns: '트릭룸',
+    wonderRoomTurns: '원더룸',
+    magicRoomTurns: '매직룸',
+    mudSportTurns: '흙놀이',
+    waterSportTurns: '물놀이',
+    fairyLockTurns: '페어리록',
+    ionDelugeTurns: '플라스마샤워',
   }
+  Object.entries(fieldTimers).forEach(([key, label]) => {
+    if (state.environment[key] <= 0) return
+    state.environment[key] -= 1
+    if (state.environment[key] <= 0) {
+      if (key === 'magicRoomTurns') updateMagicRoomSuppression(state, false)
+      if (!['ionDelugeTurns'].includes(key)) appendLog(state, `${label}의 효과가 사라졌다.`, 'field')
+    }
+  })
 }
 
 function markPokemonFaint(state, sideId, activeSlot, timeline = null, actionOrder = null) {
@@ -5446,9 +8987,13 @@ function markPokemonFaint(state, sideId, activeSlot, timeline = null, actionOrde
   if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return false
 
   pokemon.fainted = true
+  getSide(state, sideId).allyFaintedThisTurn = true
+  releaseSkyDropConnections(state, pokemon)
+  releaseTrapsSourcedBy(state, pokemon)
   appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
   releaseCommanderForPokemon(state, pokemon)
   inheritFaintedAllyAbility(state, sideId, pokemon)
+  refreshNeutralizingGas(state)
   ;['player', 'opponent'].forEach((activeSideId) => {
     getActivePokemonList(state, activeSideId)
       .filter((activePokemon) => (
@@ -5547,11 +9092,38 @@ function actionPriority(state, sideId, action) {
     action.targetSlot,
   )
   const move = pokemon.moves[action.moveIndex]
+  if (move?.id === 'pursuit' && defender?.switchingOut) return 11
   const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
   const environmentMove = defender ? resolveEnvironmentMove(state, pokemon, defender, move) : move
   const zMove = resolvedGimmick === 'zmove' ? resolveBattleZMove(pokemon, environmentMove, move) : null
   const resolvedMove = zMove ?? resolveBattleMaxMove(pokemon, environmentMove, resolvedGimmick === 'dynamax', move)
   return environmentMovePriority(state, pokemon, resolvedMove)
+}
+
+function recordPlannedActions(state, sideId, actions) {
+  actions.forEach((action) => {
+    const pokemon = getActivePokemon(state, sideId, action.actorSlot)
+    if (!pokemon) return
+    pokemon.plannedActionType = action.forcedReason === 'recharge' ? 'recharge' : action.type
+    if (action.type !== 'move' || action.forcedReason === 'recharge') return
+    const defender = getActivePokemon(
+      state,
+      sideId === 'player' ? 'opponent' : 'player',
+      action.targetSlot,
+    )
+    const move = pokemon.moves[action.moveIndex]
+    if (!move || !defender) return
+    const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
+    const environmentMove = resolveEnvironmentMove(state, pokemon, defender, move)
+    const zMove = resolvedGimmick === 'zmove' ? resolveBattleZMove(pokemon, environmentMove, move) : null
+    const resolvedMove = zMove
+      ?? resolveBattleMaxMove(pokemon, environmentMove, resolvedGimmick === 'dynamax', move)
+    pokemon.plannedMoveId = resolvedMove.id
+    pokemon.plannedMoveCategory = resolvedMove.categoryId
+      ?? (resolvedMove.category === '변화' ? 'status' : resolvedMove.category === '물리' ? 'physical' : 'special')
+    pokemon.plannedMovePriority = environmentMovePriority(state, pokemon, resolvedMove)
+    pokemon.beakBlastCharging = resolvedMove.id === 'beakblast'
+  })
 }
 
 function orderedActions(state, playerActions, opponentActions, random) {
@@ -5560,20 +9132,26 @@ function orderedActions(state, playerActions, opponentActions, random) {
     const quickDrawActivated = action.type === 'move'
       && pokemon?.ability === '퀵드로'
       && random() < 0.3
+    const quickClawActivated = action.type === 'move'
+      && hasActiveHeldItem(pokemon, 'quick-claw')
+      && random() < 0.2
     return {
       sideId,
-      action: quickDrawActivated ? { ...action, quickDrawActivated: true } : action,
+      action: quickDrawActivated || quickClawActivated
+        ? { ...action, quickDrawActivated, quickClawActivated }
+        : action,
       actorBattleId: pokemon?.battleId,
       quickDrawActivated,
+      quickClawActivated,
       tieBreaker: random(),
     }
   }
-  const actionOrderModifier = ({ sideId, action, quickDrawActivated }) => {
+  const actionOrderModifier = ({ sideId, action, quickDrawActivated, quickClawActivated }) => {
     if (action.type !== 'move') return 0
     const pokemon = getActivePokemon(state, sideId, action.actorSlot)
-    if (quickDrawActivated || pokemon?.custapActive) return 1
-    if (pokemon?.ability === '시간벌기') return -1
-    return 0
+    if (quickDrawActivated || quickClawActivated || pokemon?.custapActive) return 10
+    const laggingItem = hasActiveHeldItem(pokemon, 'lagging-tail') || hasActiveHeldItem(pokemon, 'full-incense')
+    return pokemon?.ability === '시간벌기' || laggingItem ? -10 : 0
   }
   return [
     ...playerActions.map((action) => createOrderedAction('player', action)),
@@ -5586,8 +9164,39 @@ function orderedActions(state, playerActions, opponentActions, random) {
     if (orderModifierDifference) return orderModifierDifference
     const firstSpeed = effectiveStat(state, getActivePokemon(state, first.sideId, first.action.actorSlot), 'speed')
     const secondSpeed = effectiveStat(state, getActivePokemon(state, second.sideId, second.action.actorSlot), 'speed')
-    return secondSpeed - firstSpeed || first.tieBreaker - second.tieBreaker
+    const speedDifference = state.environment?.trickRoomTurns > 0
+      ? firstSpeed - secondSpeed
+      : secondSpeed - firstSpeed
+    return speedDifference || first.tieBreaker - second.tieBreaker
   })
+}
+
+function applyPendingTurnOrderChanges(state, actions, completedIndex) {
+  allBattlePokemon(state).forEach((pokemon) => {
+    const orderBias = Number(pokemon.nextTurnOrderBias ?? 0)
+    if (!orderBias) return
+    pokemon.nextTurnOrderBias = 0
+    const pendingIndex = actions.findIndex((entry, index) => (
+      index > completedIndex && entry.actorBattleId === pokemon.battleId
+    ))
+    if (pendingIndex < 0) return
+    const [pendingAction] = actions.splice(pendingIndex, 1)
+    if (orderBias > 0) actions.splice(completedIndex + 1, 0, pendingAction)
+    else actions.push(pendingAction)
+  })
+}
+
+function prepareSideMoveCombinations(state, sideId, actions) {
+  const side = getSide(state, sideId)
+  side.pendingPledge = null
+  side.roundUsedThisTurn = false
+  const pledgeIds = actions.flatMap((action) => {
+    if (action.type !== 'move' || action.gimmick) return []
+    const pokemon = getActivePokemon(state, sideId, action.actorSlot)
+    const move = pokemon?.moves?.[action.moveIndex]
+    return PLEDGE_MOVE_IDS.has(move?.id) ? [move.id] : []
+  })
+  side.pledgeComboPlanned = new Set(pledgeIds).size >= 2
 }
 
 const AI_TIER_NOISE = {
@@ -5662,10 +9271,17 @@ function resolveAiMove(state, attacker, defender, move, gimmick) {
 }
 
 function aiMoveAccuracy(state, attacker, defender, move) {
+  if (move.ohko) {
+    if (defender.dynamaxActive || Number(attacker.level ?? 50) < Number(defender.level ?? 50)) return 0
+    if (move.id === 'sheercold' && defender.types.includes('얼음')) return 0
+    if (attacker.ability === '노가드' || defender.ability === '노가드') return 1
+    const baseAccuracy = move.id === 'sheercold' && !attacker.types.includes('얼음') ? 20 : 30
+    return Math.max(0, Math.min(1, (baseAccuracy + Number(attacker.level ?? 50) - Number(defender.level ?? 50)) / 100))
+  }
   if (move.accuracyLabel === '필중' || move.accuracy == null) return 1
   if (attacker.ability === '노가드' || defender.ability === '노가드') return 1
   const weatherId = effectiveMoveWeatherFamilyId(state, attacker)
-  if (weatherId === 'rain' && ['thunder', 'hurricane'].includes(move.id)) return 1
+  if (weatherId === 'rain' && RAIN_PERFECT_ACCURACY_MOVE_IDS.has(move.id)) return 1
   if (weatherId === 'snow' && move.id === 'blizzard') return 1
 
   const defenderEvasionStage = attacker.ability === '날카로운눈'
@@ -5683,7 +9299,7 @@ function aiMoveAccuracy(state, attacker, defender, move) {
     1,
     (Number(move.accuracy) || 100) * stageModifier * hustleModifier * weatherModifier * abilityModifier / 100,
   ))
-  return !move.ignoreAbility && defender.ability === '미라클스킨' && isStatusMove(move)
+  return !moveIgnoresAbility(move, defender) && defender.ability === '미라클스킨' && isStatusMove(move)
     ? Math.min(0.5, accuracy)
     : accuracy
 }
@@ -5691,7 +9307,14 @@ function aiMoveAccuracy(state, attacker, defender, move) {
 function aiExpectedHitCount(attacker, move) {
   if (parentalBondApplies(attacker, move)) return 1.25
   if (!move.multihit) return 1
-  if (typeof move.multihit === 'number') return move.multihit
+  if (typeof move.multihit === 'number') {
+    if (move.multiaccuracy) {
+      const accuracy = Math.max(0, Math.min(1, (Number(move.accuracy) || 100) / 100))
+      return Array.from({ length: move.multihit })
+        .reduce((total, _, hitIndex) => total + accuracy ** hitIndex, 0)
+    }
+    return move.multihit
+  }
   const [minimum, maximum] = move.multihit
   if (attacker.ability === '스킬링크') return maximum
   if (minimum === 2 && maximum === 5) return 3
@@ -5720,15 +9343,15 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
     return { rawDamage: 0, expectedDamage: 0, effectiveness: 0, accuracy: 1 }
   }
   const standardEffectiveness = getMoveTypeEffectiveness(state, attacker, defender, move)
-  const effectiveness = !move.ignoreAbility
+  const effectiveness = !moveIgnoresAbility(move, defender)
     && defender.ability === '테라셸'
     && defender.hp === defender.maxHp
     && standardEffectiveness > 0
     ? 0.5
     : standardEffectiveness
-  const immunity = move.ignoreAbility ? null : abilityImmunity(state, attacker, defender, move)
+  const immunity = moveIgnoresAbility(move, defender) ? null : abilityImmunity(state, attacker, defender, move)
   const accuracy = aiMoveAccuracy(state, attacker, defender, move)
-  const semiInvulnerable = semiInvulnerableInteraction(defender, move)
+  const semiInvulnerable = semiInvulnerableInteraction(defender, move, attacker)
   if (effectiveness === 0 || immunity || semiInvulnerable.avoided || accuracy <= 0) {
     return { rawDamage: 0, expectedDamage: 0, effectiveness: 0, accuracy }
   }
@@ -5751,10 +9374,10 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
       move,
     )
     let attack = effectiveStat(state, attackPokemon, attackKey, {
-      ignoreStages: !move.ignoreAbility && defender.ability === '천진' && attackPokemon !== defender,
+      ignoreStages: !moveIgnoresAbility(move, defender) && defender.ability === '천진' && attackPokemon !== defender,
     })
     let defense = effectiveStat(state, defender, defenseKey, {
-      ignoreStages: !move.ignoreAbility && attacker.ability === '천진',
+      ignoreStages: attacker.ability === '천진',
     })
 
     if (category === 'physical' && attacker.status?.id === 'burn' && attacker.ability !== '근성') attack *= 0.5
@@ -5769,7 +9392,7 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
       3,
       Number(move.critRatio ?? 0) + (attacker.ability === '대운' ? 1 : 0) + (attacker.criticalStageBoost ?? 0),
     ))
-    const criticalAllowed = move.ignoreAbility || !CRITICAL_HIT_IMMUNITY_ABILITIES.has(defender.ability)
+    const criticalAllowed = moveIgnoresAbility(move, defender) || !CRITICAL_HIT_IMMUNITY_ABILITIES.has(defender.ability)
     const mercilessCritical = attacker.ability === '무도한행동'
       && ['poison', 'toxic'].includes(defender.status?.id)
     const criticalChance = criticalAllowed
@@ -5789,7 +9412,7 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
     modifier *= movePowerAbilityMultiplier(state, attacker, defender, move, effectiveness)
     modifier *= lowHpMoveAbilityMultiplier(attacker, move)
     modifier *= supremeOverlordMultiplier(state, attacker)
-    if (!move.ignoreAbility) {
+    if (!moveIgnoresAbility(move, defender)) {
       if (defender.ability === '멀티스케일' && defender.hp === defender.maxHp) modifier *= 0.5
       if (defender.ability === '두꺼운지방' && ['불꽃', '얼음'].includes(move.type)) modifier *= 0.5
       if (defender.ability === '건조피부' && move.type === '불꽃') modifier *= 1.25
@@ -5924,7 +9547,7 @@ function aiStatusMoveScore(state, attacker, defender, move) {
   }
 
   if (move.id === 'rest') {
-    if (attacker.status?.id === 'sleep') return -Infinity
+    if (isPokemonAsleep(attacker) || restSleepBlocked(state, attacker)) return -Infinity
     if (missingHpRatio < 0.18 && !attacker.status) return -Infinity
     const instantWake = matchingStatusCureBerry(state, attacker, 'sleep') ? 38 : 0
     const canActWhileAsleep = attacker.moves.some((candidate) => ['sleeptalk', 'snore'].includes(candidate.id))
@@ -6003,7 +9626,7 @@ function aiSecondaryUtility(state, attacker, defender, move) {
     || hasActiveHeldItem(defender, 'covert-cloak')
   const expectedHitCount = move.multihit ? aiExpectedHitCount(attacker, move) : 1
   return effects.reduce((total, effect) => {
-    const chancePerHit = secondaryEffectChance(attacker, effect) / 100
+    const chancePerHit = secondaryEffectChance(state, attacker, effect) / 100
     const chance = 1 - (1 - chancePerHit) ** expectedHitCount
     let utility = 0
     const statusId = SHOWDOWN_STATUS_IDS[effect.status] ?? effect.status
@@ -6081,6 +9704,16 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   ) {
     return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
   }
+  if (
+    CHOICE_ITEM_IDS.has(attacker.heldItemId)
+    && heldItemEffectsActive(attacker)
+    && !attacker.dynamaxActive
+    && attacker.choiceLockedMoveIndex != null
+    && attacker.moves[attacker.choiceLockedMoveIndex] !== move
+    && !['dynamax', 'zmove'].includes(gimmick)
+  ) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
+  }
   if (attacker.ability === '게으름' && attacker.truantLoafing) {
     return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
   }
@@ -6090,6 +9723,29 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   const projectedAttacker = resolved.attacker
   const targetHp = Math.max(1, Number(context.targetHp ?? defender.hp) || defender.hp)
   const priority = environmentMovePriority(state, projectedAttacker, resolvedMove)
+
+  if (resolvedMove.id === 'aurawheel' && !currentSpeciesSlug(projectedAttacker).startsWith('morpeko')) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
+  if (resolvedMove.id === 'hyperspacefury' && currentSpeciesSlug(projectedAttacker) !== 'hoopa-unbound') {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
+  if (resolvedMove.id === 'dreameater' && !isPokemonAsleep(defender)) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
+  if (['snore', 'sleeptalk'].includes(resolvedMove.id) && !isPokemonAsleep(projectedAttacker)) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
+  if (
+    resolvedMove.id === 'rest'
+    && (projectedAttacker.hp >= projectedAttacker.maxHp || restSleepBlocked(state, projectedAttacker))
+  ) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
+
+  if (hasActiveHeldItem(attacker, 'assault-vest') && isStatusMove(resolvedMove)) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
 
   if (
     move.firstTurnOnly
@@ -6172,8 +9828,13 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
 
   if (resolvedMove.drain && estimate.expectedDamage > 0) {
     const [numerator, denominator] = resolvedMove.drain
-    const missingHp = Math.max(0, projectedAttacker.maxHp - projectedAttacker.hp)
-    score += Math.min(missingHp, estimate.expectedDamage * numerator / denominator) / projectedAttacker.maxHp * 65
+    const drainAmount = estimate.expectedDamage * numerator / denominator * drainingRecoveryMultiplier(attacker)
+    if (!moveIgnoresAbility(resolvedMove, defender) && defender.ability === '해감액') {
+      if (attacker.ability !== '매직가드') score -= drainAmount / projectedAttacker.maxHp * 90
+    } else {
+      const missingHp = Math.max(0, projectedAttacker.maxHp - projectedAttacker.hp)
+      score += Math.min(missingHp, drainAmount) / projectedAttacker.maxHp * 65
+    }
   }
   if (resolvedMove.recoil && estimate.expectedDamage > 0) {
     const [numerator, denominator] = resolvedMove.recoil
@@ -6278,7 +9939,7 @@ function aiTypePressure(state, attacker, defender) {
   const damagingMoves = attacker.moves.filter((move) => move.currentPp > 0 && !isStatusMove(move))
   if (damagingMoves.length === 0) return -18
   const bestEffectiveness = damagingMoves.reduce((best, move) => {
-    const immunity = move.ignoreAbility ? null : abilityImmunity(state, attacker, defender, move)
+    const immunity = moveIgnoresAbility(move, defender) ? null : abilityImmunity(state, attacker, defender, move)
     if (immunity) return best
     return Math.max(best, getMoveTypeEffectiveness(state, attacker, defender, move))
   }, 0)
@@ -6729,6 +10390,7 @@ function rankSideDecisions(
   moveEntries.forEach(({ move, moveIndex }) => {
     if (!move) return
     if (attacker.tormented && attacker.lastMoveIndex === moveIndex && !forcedAction) return
+    if (move.flags?.includes('cantusetwice') && attacker.lastMoveId === move.id && !forcedAction) return
     const moveTargetSlots = AI_NON_TARGETED_MOVE_TARGETS.has(move.target) ? targetSlots.slice(0, 1) : targetSlots
     moveTargetSlots.forEach((targetSlot) => {
       const defender = getActivePokemon(state, targetSideId, targetSlot)
@@ -7112,6 +10774,8 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     log: [],
     lastEvent: null,
     lastConsumedItem: null,
+    lastUsedMove: null,
+    neutralizingGasRefreshActive: false,
     eventNonce: 0,
   }
 
@@ -7151,6 +10815,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   appendLog(state, `${getActivePokemonList(state, 'player').map((pokemon) => pokemon.name).join(', ')}! 너희로 정했다!`, 'player')
   getActivePokemonList(state, 'opponent').forEach((_, slot) => activateEntryAbility(state, 'opponent', slot))
   getActivePokemonList(state, 'player').forEach((_, slot) => activateEntryAbility(state, 'player', slot))
+  resolvePendingEjectPacks(state)
   return state
 }
 
@@ -7163,14 +10828,38 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
   const timeline = captureTimeline ? [] : null
   nextState.lastEvent = null
   ;['player', 'opponent'].forEach((sideId) => {
-    getActivePokemonList(nextState, sideId).forEach((pokemon) => {
+    const side = getSide(nextState, sideId)
+    side.allyFaintedLastTurn = Boolean(side.allyFaintedThisTurn)
+    side.allyFaintedThisTurn = false
+    side.team.forEach((pokemon) => {
+      pokemon.moveFailedLastTurn = Boolean(pokemon.moveFailedThisTurn)
+      pokemon.moveFailedThisTurn = false
+      pokemon.damagedThisTurn = false
+      pokemon.hitByPhysicalThisTurn = false
+      pokemon.lastDamageTaken = 0
+      pokemon.lastDamageCategory = null
+      pokemon.lastAttackerBattleId = null
       pokemon.protected = false
       pokemon.protectMode = null
       pokemon.flinched = false
       pokemon.actedThisTurn = false
       pokemon.switchedInThisTurn = false
+      pokemon.switchingOut = false
       pokemon.redirectTurns = 0
       pokemon.redirectMode = null
+      pokemon.magicCoatActive = false
+      pokemon.snatchActive = false
+      pokemon.helpingHandActive = false
+      pokemon.powderActive = false
+      pokemon.electrifyActive = false
+      pokemon.roostedThisTurn = false
+      pokemon.glaiveRushVulnerable = false
+      pokemon.statsLoweredThisTurn = false
+      pokemon.plannedActionType = null
+      pokemon.plannedMoveId = null
+      pokemon.plannedMoveCategory = null
+      pokemon.plannedMovePriority = null
+      pokemon.beakBlastCharging = false
     })
   })
   const requestedPlayerActions = (Array.isArray(playerAction) ? playerAction : [playerAction]).filter(Boolean)
@@ -7192,7 +10881,23 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
     const forcedAction = forcedActionForPokemon(getActivePokemon(nextState, 'opponent', action.actorSlot))
     return forcedAction ? { ...forcedAction, actorSlot: action.actorSlot, targetSlot: action.targetSlot } : action
   })
+  prepareSideMoveCombinations(nextState, 'player', resolvedPlayerActions)
+  prepareSideMoveCombinations(nextState, 'opponent', opponentActions)
+  recordPlannedActions(nextState, 'player', resolvedPlayerActions)
+  recordPlannedActions(nextState, 'opponent', opponentActions)
+  resolvedPlayerActions.filter((action) => action.type === 'switch').forEach((action) => {
+    const pokemon = getActivePokemon(nextState, 'player', action.actorSlot)
+    if (pokemon) pokemon.switchingOut = true
+  })
+  opponentActions.filter((action) => action.type === 'switch').forEach((action) => {
+    const pokemon = getActivePokemon(nextState, 'opponent', action.actorSlot)
+    if (pokemon) pokemon.switchingOut = true
+  })
   const actions = orderedActions(nextState, resolvedPlayerActions, opponentActions, random)
+  ;[...nextState.player.team, ...nextState.opponent.team].forEach((pokemon) => {
+    pokemon.nextTurnOrderBias = 0
+    pokemon.custapActive = false
+  })
 
   for (const [actionOrder, { sideId, action, actorBattleId }] of actions.entries()) {
     if (nextState.winner) break
@@ -7208,9 +10913,15 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
       performSwitch(nextState, sideId, action.targetIndex, false, timeline, actionOrder, action.actorSlot)
     } else {
       executeMove(nextState, sideId, action, random, timeline, actionOrder)
+      applyPendingTurnOrderChanges(nextState, actions, actionOrder)
     }
+    resolvePendingEjectPacks(nextState, timeline, actionOrder)
     markActiveFaints(nextState, timeline, actionOrder)
+    refreshNeutralizingGas(nextState)
   }
+
+  resolveFutureMoves(nextState, timeline, random)
+  markActiveFaints(nextState, timeline)
 
   const playerResidualSlots = nextState.rules?.format?.rotation
     ? [nextState.player.rotationSlot]

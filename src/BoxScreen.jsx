@@ -20,6 +20,7 @@ import {
   WandSparkles,
   X,
 } from 'lucide-react'
+import BattleItemSprite from './BattleItemSprite'
 import PokemonSprite from './PokemonSprite'
 import {
   getPokemonEvolutionFamilyKey,
@@ -50,19 +51,13 @@ function normalizeItemSearch(value) {
 }
 
 function BattleItemArtwork({ item, compact = false }) {
-  const [imageFailed, setImageFailed] = useState(false)
-
-  useEffect(() => {
-    setImageFailed(false)
-  }, [item?.id])
-
   return (
     <span className={`held-item-artwork${compact ? ' compact' : ''}`} aria-hidden="true">
-      {item?.sprite && !imageFailed ? (
-        <img src={item.sprite} alt="" onError={() => setImageFailed(true)} />
-      ) : (
-        <Package size={compact ? 13 : 21} />
-      )}
+      <BattleItemSprite
+        item={item}
+        size={compact ? 18 : 34}
+        fallback={<Package size={compact ? 13 : 21} />}
+      />
     </span>
   )
 }

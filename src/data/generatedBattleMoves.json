@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-23T11:43:27.286Z",
+  "generatedAt": "2026-08-25T06:20:42.293Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
@@ -1495,6 +1495,7 @@
         "snatch",
         "metronome"
       ],
+      "sideCondition": "mist",
       "zMove": {
         "effect": "heal"
       }
@@ -1837,6 +1838,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -2365,6 +2367,7 @@
         "metronome"
       ],
       "status": "par",
+      "ignoreImmunity": false,
       "zMove": {
         "boost": {
           "spd": 1
@@ -3134,6 +3137,7 @@
         "snatch",
         "metronome"
       ],
+      "sideCondition": "lightscreen",
       "zMove": {
         "boost": {
           "spd": 1
@@ -3186,6 +3190,7 @@
         "snatch",
         "metronome"
       ],
+      "sideCondition": "reflect",
       "zMove": {
         "boost": {
           "def": 1
@@ -3244,7 +3249,8 @@
         "nosleeptalk",
         "failinstruct"
       ],
-      "volatileStatus": "bide"
+      "volatileStatus": "bide",
+      "ignoreImmunity": true
     },
     {
       "id": "metronome",
@@ -3270,7 +3276,8 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "callsMove": true
     },
     {
       "id": "mirrormove",
@@ -3297,6 +3304,7 @@
         "failmimic",
         "failinstruct"
       ],
+      "callsMove": true,
       "zMove": {
         "boost": {
           "atk": 2
@@ -4577,7 +4585,8 @@
         "failmimic",
         "failinstruct",
         "nosketch"
-      ]
+      ],
+      "struggleRecoil": true
     },
     {
       "id": "sketch",
@@ -4640,7 +4649,9 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "multihit": 3,
+      "multiaccuracy": true,
       "zMove": {
         "basePower": 120
       }
@@ -4812,7 +4823,8 @@
       "secondary": {
         "chance": 30,
         "volatileStatus": "flinch"
-      }
+      },
+      "sleepUsable": true
     },
     {
       "id": "curse",
@@ -4863,6 +4875,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -4972,6 +4985,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -5053,6 +5067,7 @@
         "failcopycat"
       ],
       "volatileStatus": "protect",
+      "stallingMove": true,
       "zMove": {
         "effect": "clearnegativeboost"
       }
@@ -5304,6 +5319,7 @@
         "metronome",
         "mustpressure"
       ],
+      "sideCondition": "spikes",
       "zMove": {
         "boost": {
           "def": 1
@@ -5473,6 +5489,7 @@
         "failcopycat"
       ],
       "volatileStatus": "protect",
+      "stallingMove": true,
       "zMove": {
         "boost": {
           "evasion": 1
@@ -5643,6 +5660,7 @@
         "failcopycat"
       ],
       "volatileStatus": "endure",
+      "stallingMove": true,
       "zMove": {
         "effect": "clearnegativeboost"
       }
@@ -5704,7 +5722,8 @@
         "metronome",
         "failinstruct",
         "noparentalbond"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "falseswipe",
@@ -5843,7 +5862,8 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "steelwing",
@@ -5959,6 +5979,8 @@
         "failmimic",
         "failinstruct"
       ],
+      "callsMove": true,
+      "sleepUsable": true,
       "zMove": {
         "effect": "crit2"
       }
@@ -6014,6 +6036,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -6064,6 +6087,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -6089,6 +6113,7 @@
         "snatch",
         "metronome"
       ],
+      "sideCondition": "safeguard",
       "zMove": {
         "boost": {
           "spe": 1
@@ -6339,7 +6364,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "rapidspin",
@@ -6889,7 +6915,8 @@
         "allyanim",
         "metronome",
         "futuremove"
-      ]
+      ],
+      "ignoreImmunity": true
     },
     {
       "id": "rocksmash",
@@ -6967,7 +6994,8 @@
         "mirror",
         "allyanim",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "fakeout",
@@ -7074,7 +7102,8 @@
       "flags": [
         "protect",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "swallow",
@@ -7357,7 +7386,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "followme",
@@ -7409,7 +7439,8 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "callsMove": true
     },
     {
       "id": "charge",
@@ -7580,6 +7611,7 @@
         "heal",
         "metronome"
       ],
+      "slotCondition": "Wish",
       "zMove": {
         "boost": {
           "spd": 1
@@ -7610,7 +7642,8 @@
         "failcopycat",
         "failmimic",
         "failinstruct"
-      ]
+      ],
+      "callsMove": true
     },
     {
       "id": "ingrain",
@@ -7747,7 +7780,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "brickbreak",
@@ -7876,7 +7910,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "skillswap",
@@ -8332,6 +8367,7 @@
         "nonsky",
         "metronome"
       ],
+      "pseudoWeather": "mudsport",
       "zMove": {
         "boost": {
           "spd": 1
@@ -8363,7 +8399,8 @@
         "failinstruct",
         "bullet",
         "noparentalbond"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "needlearm",
@@ -9011,7 +9048,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "signalbeam",
@@ -9649,6 +9687,7 @@
         "nonsky",
         "metronome"
       ],
+      "pseudoWeather": "watersport",
       "zMove": {
         "boost": {
           "spd": 1
@@ -9927,6 +9966,7 @@
         "nonsky",
         "metronome"
       ],
+      "pseudoWeather": "gravity",
       "zMove": {
         "boost": {
           "spa": 1
@@ -9986,7 +10026,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "hammerarm",
@@ -10042,6 +10083,7 @@
         "metronome",
         "bullet"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -10068,7 +10110,8 @@
         "heal",
         "metronome"
       ],
-      "selfdestruct": "ifHit"
+      "selfdestruct": "ifHit",
+      "slotCondition": "healingwish"
     },
     {
       "id": "brine",
@@ -10140,7 +10183,8 @@
         "mirror",
         "noassist",
         "failcopycat"
-      ]
+      ],
+      "breaksProtect": true
     },
     {
       "id": "pluck",
@@ -10189,6 +10233,7 @@
         "metronome",
         "wind"
       ],
+      "sideCondition": "tailwind",
       "zMove": {
         "effect": "crit2"
       }
@@ -10318,7 +10363,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "assurance",
@@ -10342,7 +10388,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "embargo",
@@ -10451,6 +10498,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -10508,6 +10556,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 190
       }
@@ -10592,6 +10641,7 @@
         "snatch",
         "metronome"
       ],
+      "sideCondition": "luckychant",
       "zMove": {
         "boost": {
           "evasion": 1
@@ -10626,6 +10676,7 @@
         "failmimic",
         "failinstruct"
       ],
+      "callsMove": true,
       "zMove": {
         "boost": {
           "spe": 2
@@ -10657,6 +10708,7 @@
         "failmimic",
         "failinstruct"
       ],
+      "callsMove": true,
       "zMove": {
         "boost": {
           "accuracy": 1
@@ -10746,6 +10798,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -10851,6 +10904,7 @@
         "metronome",
         "mustpressure"
       ],
+      "sideCondition": "toxicspikes",
       "zMove": {
         "boost": {
           "def": 1
@@ -11655,7 +11709,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "iceshard",
@@ -12054,6 +12109,7 @@
         "mirror",
         "metronome"
       ],
+      "pseudoWeather": "trickroom",
       "zMove": {
         "boost": {
           "accuracy": 1
@@ -12409,6 +12465,7 @@
         "metronome",
         "mustpressure"
       ],
+      "sideCondition": "stealthrock",
       "zMove": {
         "boost": {
           "def": 1
@@ -12439,6 +12496,7 @@
         "nonsky",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -12822,7 +12880,8 @@
         "heal",
         "metronome"
       ],
-      "selfdestruct": "ifHit"
+      "selfdestruct": "ifHit",
+      "slotCondition": "lunardance"
     },
     {
       "id": "crushgrip",
@@ -12847,6 +12906,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 190
       }
@@ -12993,7 +13053,8 @@
         "nosleeptalk",
         "noassist",
         "failinstruct"
-      ]
+      ],
+      "breaksProtect": true
     },
     {
       "id": "honeclaws",
@@ -13046,6 +13107,7 @@
       "flags": [
         "snatch"
       ],
+      "sideCondition": "wideguard",
       "zMove": {
         "boost": {
           "def": 1
@@ -13129,6 +13191,7 @@
         "mirror",
         "metronome"
       ],
+      "pseudoWeather": "wonderroom",
       "zMove": {
         "boost": {
           "spd": 1
@@ -13156,7 +13219,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "overrideDefensiveStat": "def"
     },
     {
       "id": "venoshock",
@@ -13289,6 +13353,7 @@
         "mirror",
         "metronome"
       ],
+      "pseudoWeather": "magicroom",
       "zMove": {
         "boost": {
           "spd": 1
@@ -13451,6 +13516,7 @@
         "metronome",
         "minimize"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -13501,6 +13567,7 @@
         "metronome",
         "bullet"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -13791,7 +13858,8 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "echoedvoice",
@@ -13816,7 +13884,8 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "chipaway",
@@ -13840,7 +13909,9 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "ignoreDefensive": true,
+      "ignoreEvasion": true
     },
     {
       "id": "clearsmog",
@@ -13887,6 +13958,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -13911,6 +13983,7 @@
       "flags": [
         "snatch"
       ],
+      "sideCondition": "quickguard",
       "zMove": {
         "boost": {
           "def": 1
@@ -13969,7 +14042,8 @@
       "secondary": {
         "chance": 30,
         "status": "brn"
-      }
+      },
+      "thawsTarget": true
     },
     {
       "id": "shellsmash",
@@ -14055,6 +14129,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -14218,7 +14293,8 @@
         "mirror",
         "distance",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "reflecttype",
@@ -14380,7 +14456,8 @@
         "nonsky",
         "metronome",
         "pledgecombo"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "firepledge",
@@ -14405,7 +14482,8 @@
         "nonsky",
         "metronome",
         "pledgecombo"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "grasspledge",
@@ -14430,7 +14508,8 @@
         "nonsky",
         "metronome",
         "pledgecombo"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "voltswitch",
@@ -14784,7 +14863,9 @@
         "mirror",
         "metronome",
         "slicing"
-      ]
+      ],
+      "ignoreDefensive": true,
+      "ignoreEvasion": true
     },
     {
       "id": "razorshell",
@@ -14842,6 +14923,7 @@
         "metronome",
         "minimize"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -14982,7 +15064,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "overrideDefensiveStat": "def"
     },
     {
       "id": "tailslap",
@@ -15199,7 +15282,8 @@
         "protect",
         "mirror",
         "slicing"
-      ]
+      ],
+      "overrideDefensiveStat": "def"
     },
     {
       "id": "glaciate",
@@ -15566,6 +15650,8 @@
         "noassist",
         "failcopycat"
       ],
+      "sideCondition": "matblock",
+      "stallingMove": true,
       "zMove": {
         "boost": {
           "def": 1
@@ -15649,6 +15735,7 @@
         "reflectable",
         "metronome"
       ],
+      "sideCondition": "stickyweb",
       "zMove": {
         "boost": {
           "spe": 1
@@ -15704,7 +15791,8 @@
         "nosleeptalk",
         "noassist",
         "failinstruct"
-      ]
+      ],
+      "breaksProtect": true
     },
     {
       "id": "trickortreat",
@@ -15795,6 +15883,7 @@
       "flags": [
         "metronome"
       ],
+      "pseudoWeather": "iondeluge",
       "zMove": {
         "boost": {
           "spa": 1
@@ -16046,6 +16135,7 @@
       "generation": 6,
       "description": "이상한 힘을 사용하여 같은 편을 공격하는 변화 기술을 막는다. 데미지 기술은 받는다.",
       "flags": [],
+      "sideCondition": "craftyshield",
       "zMove": {
         "boost": {
           "spd": 1
@@ -16295,6 +16385,7 @@
         "bypasssub",
         "metronome"
       ],
+      "pseudoWeather": "fairylock",
       "zMove": {
         "boost": {
           "def": 1
@@ -16324,6 +16415,7 @@
         "failinstruct"
       ],
       "volatileStatus": "kingsshield",
+      "stallingMove": true,
       "zMove": {
         "effect": "clearnegativeboost"
       }
@@ -16447,7 +16539,8 @@
       "secondary": {
         "chance": 30,
         "status": "brn"
-      }
+      },
+      "thawsTarget": true
     },
     {
       "id": "hyperspacehole",
@@ -16469,7 +16562,8 @@
       "flags": [
         "mirror",
         "bypasssub"
-      ]
+      ],
+      "breaksProtect": true
     },
     {
       "id": "watershuriken",
@@ -16493,6 +16587,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "multihit": [
         2,
         5
@@ -16549,6 +16644,7 @@
         "failcopycat"
       ],
       "volatileStatus": "spikyshield",
+      "stallingMove": true,
       "zMove": {
         "boost": {
           "def": 1
@@ -17091,6 +17187,9 @@
         "nonsky"
       ],
       "volatileStatus": "smackdown",
+      "ignoreImmunity": {
+        "Ground": true
+      },
       "zMove": {
         "basePower": 180
       }
@@ -17273,7 +17372,8 @@
         "boosts": {
           "def": -1
         }
-      }
+      },
+      "breaksProtect": true
     },
     {
       "id": "shoreup",
@@ -17348,6 +17448,7 @@
         "failcopycat"
       ],
       "volatileStatus": "banefulbunker",
+      "stallingMove": true,
       "zMove": {
         "boost": {
           "def": 1
@@ -17402,7 +17503,9 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "ignoreDefensive": true,
+      "ignoreEvasion": true
     },
     {
       "id": "sparklingaria",
@@ -17906,6 +18009,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "zMove": {
         "basePower": 160
       }
@@ -18181,7 +18285,12 @@
         "sound",
         "bypasssub",
         "metronome"
-      ]
+      ],
+      "selfBoost": {
+        "boosts": {
+          "def": -1
+        }
+      }
     },
     {
       "id": "dragonhammer",
@@ -18252,6 +18361,7 @@
         "snatch",
         "metronome"
       ],
+      "sideCondition": "auroraveil",
       "zMove": {
         "boost": {
           "spe": 1
@@ -18358,7 +18468,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "shadowbone",
@@ -18492,7 +18603,8 @@
         "protect",
         "mirror",
         "bypasssub"
-      ]
+      ],
+      "stealsBoosts": true
     },
     {
       "id": "sunsteelstrike",
@@ -18515,7 +18627,8 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "ignoreAbility": true
     },
     {
       "id": "moongeistbeam",
@@ -18537,7 +18650,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "ignoreAbility": true
     },
     {
       "id": "tearfullook",
@@ -18697,7 +18811,8 @@
         "protect",
         "mirror",
         "punch"
-      ]
+      ],
+      "pseudoWeather": "iondeluge"
     },
     {
       "id": "photongeyser",
@@ -18719,7 +18834,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "ignoreAbility": true
     },
     {
       "id": "zippyzap",
@@ -18826,7 +18942,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "bouncybubble",
@@ -19048,7 +19165,8 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "doubleironbash",
@@ -19357,7 +19475,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "fishiousrend",
@@ -19382,7 +19501,8 @@
         "mirror",
         "metronome",
         "bite"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "courtchange",
@@ -19457,7 +19577,8 @@
         "contact",
         "protect",
         "mirror"
-      ]
+      ],
+      "overrideOffensiveStat": "def"
     },
     {
       "id": "decorate",
@@ -19879,7 +20000,8 @@
       "flags": [
         "failinstruct"
       ],
-      "volatileStatus": "obstruct"
+      "volatileStatus": "obstruct",
+      "stallingMove": true
     },
     {
       "id": "falsesurrender",
@@ -20053,6 +20175,12 @@
         2,
         5
       ],
+      "selfBoost": {
+        "boosts": {
+          "def": -1,
+          "spe": 1
+        }
+      },
       "zMove": {
         "basePower": 140
       }
@@ -20177,7 +20305,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "terrainpulse",
@@ -20409,7 +20538,9 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "multihit": 3,
+      "multiaccuracy": true,
       "zMove": {
         "basePower": 120
       }
@@ -20465,7 +20596,8 @@
       "secondary": {
         "chance": 30,
         "status": "brn"
-      }
+      },
+      "thawsTarget": true
     },
     {
       "id": "junglehealing",
@@ -20587,7 +20719,8 @@
       "flags": [
         "protect",
         "mirror"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "freezingglare",
@@ -20983,7 +21116,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "chloroblastRecoil": true
     },
     {
       "id": "mountaingale",
@@ -21242,6 +21376,7 @@
         "mirror",
         "metronome"
       ],
+      "basePowerCallback": true,
       "secondary": {
         "chance": 30,
         "status": "brn"
@@ -21426,7 +21561,8 @@
         "mirror",
         "metronome",
         "mustpressure"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "silktrap",
@@ -21446,7 +21582,8 @@
       "generation": 9,
       "description": "배틀의 흐름을 바꾸는 벌레타입 변화 기술이다.",
       "flags": [],
-      "volatileStatus": "silktrap"
+      "volatileStatus": "silktrap",
+      "stallingMove": true
     },
     {
       "id": "axekick",
@@ -21498,7 +21635,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "luminacrash",
@@ -21653,7 +21791,8 @@
         "mirror",
         "slicing"
       ],
-      "multihit": 10
+      "multihit": 10,
+      "multiaccuracy": true
     },
     {
       "id": "icespinner",
@@ -21727,7 +21866,8 @@
         "heal",
         "nosketch"
       ],
-      "selfSwitch": true
+      "selfSwitch": true,
+      "slotCondition": "revivalblessing"
     },
     {
       "id": "saltcure",
@@ -22065,7 +22205,8 @@
         "mirror",
         "defrost",
         "metronome"
-      ]
+      ],
+      "thawsTarget": true
     },
     {
       "id": "ruination",
@@ -22379,7 +22520,8 @@
         "protect",
         "mirror",
         "punch"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "armorcannon",
@@ -22756,7 +22898,8 @@
       "drain": [
         1,
         2
-      ]
+      ],
+      "thawsTarget": true
     },
     {
       "id": "syrupbomb",
@@ -22905,7 +23048,8 @@
         "noassist",
         "failcopycat"
       ],
-      "volatileStatus": "burningbulwark"
+      "volatileStatus": "burningbulwark",
+      "stallingMove": true
     },
     {
       "id": "thunderclap",
@@ -23004,7 +23148,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "dragoncheer",
@@ -23080,7 +23225,8 @@
         "protect",
         "mirror",
         "metronome"
-      ]
+      ],
+      "basePowerCallback": true
     },
     {
       "id": "supercellslam",

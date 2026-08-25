@@ -459,6 +459,67 @@ function damageAfterOpponentActs(attacker, mutate = null) {
 }
 
 {
+  const drainLoss = (heldItemId = '') => {
+    let state = battle(
+      [pokemon('smeargle', ['gigadrain'], {
+        heldItemId,
+        heldItemName: heldItemId === 'big-root' ? '큰뿌리' : '',
+      })],
+      [pokemonWithAbility('해감액', ['protect'])],
+    )
+    state.player.team[0].maxHp = 1000
+    state.player.team[0].hp = 900
+    state.opponent.team[0].hp = state.opponent.team[0].maxHp = 5000
+    preventOpponentAction(state)
+    state = turn(state)
+    return 900 - state.player.team[0].hp
+  }
+  assert(drainLoss('big-root') > drainLoss())
+}
+
+{
+  let state = battle(
+    [pokemon('smeargle', ['gigadrain'])],
+    [pokemonWithAbility('해감액', ['protect'])],
+  )
+  replaceRuntimeAbility(state, 'player', 0, '매직가드')
+  state.player.team[0].maxHp = 1000
+  state.player.team[0].hp = 900
+  state.opponent.team[0].hp = state.opponent.team[0].maxHp = 5000
+  preventOpponentAction(state)
+  state = turn(state)
+  assert.equal(state.player.team[0].hp, 900)
+}
+
+{
+  let state = battle(
+    [pokemon('smeargle', ['strengthsap'])],
+    [pokemonWithAbility('해감액', ['protect'])],
+  )
+  state.player.team[0].maxHp = 1000
+  state.player.team[0].hp = 900
+  const hpBefore = state.player.team[0].hp
+  preventOpponentAction(state)
+  state = turn(state)
+  assert(state.player.team[0].hp < hpBefore)
+  assert.equal(state.opponent.team[0].statStages.attack, -1)
+}
+
+{
+  let state = battle(
+    [pokemon('smeargle', ['leechseed'])],
+    [pokemonWithAbility('해감액', ['protect'])],
+  )
+  state.player.team[0].maxHp = 1000
+  state.player.team[0].hp = 900
+  const hpBefore = state.player.team[0].hp
+  preventOpponentAction(state)
+  state = turn(state)
+  assert(state.player.team[0].hp < hpBefore)
+  assert.equal(state.opponent.team[0].leechSeedSourceSlot, 0)
+}
+
+{
   let state = battle(
     [pokemon('smeargle', ['tackle'])],
     [pokemonWithAbility('전기로바꾸기', ['protect', 'thunderbolt'])],
@@ -995,6 +1056,7 @@ function damageAfterOpponentActs(attacker, mutate = null) {
     rules({ activeSlots: 2 }),
   )
   state.player.team[0].hp = 1
+  state.player.team[1].embargoTurns = 3
   state = turnActions(
     state,
     [

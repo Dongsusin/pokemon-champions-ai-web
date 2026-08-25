@@ -13,6 +13,46 @@ const profileBySlug = new Map(profiles.map((profile) => [profile.slug, profile])
 const supportedEffectKeys = new Set(['chance', 'status', 'volatileStatus', 'boosts', 'self'])
 const supportedSelfEffectKeys = new Set(['boosts'])
 const supportedStatusIds = new Set(['brn', 'par', 'psn', 'tox', 'slp', 'frz'])
+const supportedMoveFlags = new Set([
+  'allyanim',
+  'bite',
+  'bullet',
+  'bypasssub',
+  'cantusetwice',
+  'charge',
+  'contact',
+  'dance',
+  'defrost',
+  'distance',
+  'failcopycat',
+  'failencore',
+  'failinstruct',
+  'failmefirst',
+  'failmimic',
+  'futuremove',
+  'gravity',
+  'heal',
+  'metronome',
+  'minimize',
+  'mirror',
+  'mustpressure',
+  'noassist',
+  'nonsky',
+  'noparentalbond',
+  'nosketch',
+  'nosleeptalk',
+  'pledgecombo',
+  'powder',
+  'protect',
+  'pulse',
+  'punch',
+  'recharge',
+  'reflectable',
+  'slicing',
+  'snatch',
+  'sound',
+  'wind',
+])
 
 function battlePokemon(slug, moveIds, overrides = {}) {
   const profile = profileBySlug.get(slug)
@@ -55,6 +95,11 @@ const splashAction = moveAction(0)
 
 let effectCount = 0
 for (const move of generatedBattleMoves.moves) {
+  assert.deepEqual(
+    move.flags.filter((flag) => !supportedMoveFlags.has(flag)),
+    [],
+    `${move.id} has an unclassified battle flag`,
+  )
   const effects = move.secondaries ?? (move.secondary ? [move.secondary] : [])
   for (const effect of effects) {
     effectCount += 1

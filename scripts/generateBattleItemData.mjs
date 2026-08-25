@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { runInNewContext } from 'node:vm'
 import { ZA_MEGA_STONES } from '../src/data/zaMegaData.js'
 
 const API_BASE = 'https://pokeapi.co/api/v2'
@@ -9,10 +10,34 @@ const OUTPUT_PATH = path.resolve(
   '../src/data/generatedBattleItems.js',
 )
 
+const SHOWDOWN_ITEM_SPRITE_SHEET = 'https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1'
+const SHOWDOWN_ITEM_DATA = 'https://play.pokemonshowdown.com/data/items.js'
+
+const TYPE_LABELS = {
+  normal: '노말',
+  fire: '불꽃',
+  water: '물',
+  electric: '전기',
+  grass: '풀',
+  ice: '얼음',
+  fighting: '격투',
+  poison: '독',
+  ground: '땅',
+  flying: '비행',
+  psychic: '에스퍼',
+  bug: '벌레',
+  rock: '바위',
+  ghost: '고스트',
+  dragon: '드래곤',
+  dark: '악',
+  steel: '강철',
+  fairy: '페어리',
+}
+
 const CATEGORY_GROUPS = [
   {
     id: 'berry',
-    categories: ['effort-drop', 'medicine', 'other', 'in-a-pinch', 'picky-healing', 'type-protection', 'baking-only'],
+    categories: ['medicine', 'other', 'in-a-pinch', 'picky-healing', 'type-protection'],
   },
   {
     id: 'held',
@@ -94,6 +119,8 @@ const OUT_OF_BATTLE_FORM_ITEM_IDS = [
 const EXCLUDED_ITEM_IDS = new Set([
   ...TRAINER_EQUIPMENT_ITEM_IDS,
   ...OUT_OF_BATTLE_FORM_ITEM_IDS,
+  'pass-orb',
+  'smoke-ball',
 ])
 
 const LEGACY_ITEMS = [
@@ -205,6 +232,230 @@ const LEGACY_ITEMS = [
   sprite: '',
 }))
 
+const MANUAL_BATTLE_ITEMS = [
+  {
+    id: 'adamant-crystal',
+    name: '큰금강옥',
+    englishName: 'Adamant Crystal',
+    description: '디아루가가 지니면 오리진폼이 되고 강철타입과 드래곤타입 기술의 위력이 올라간다.',
+    effect: '디아루가 오리진폼·강철/드래곤 위력 상승',
+    generation: 8,
+    spriteSheetIndex: 741,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'ability-shield',
+    name: '특성가드',
+    englishName: 'Ability Shield',
+    description: '지닌 포켓몬의 특성이 다른 포켓몬이나 기술에 의해 바뀌거나 무효화되는 것을 막는다.',
+    effect: '특성 변경·무효화 방지',
+    generation: 9,
+    spriteSheetIndex: 746,
+  },
+  {
+    id: 'blunder-policy',
+    name: '허탕보험',
+    englishName: 'Blunder Policy',
+    description: '명중률 때문에 기술이 빗나가면 소모되어 스피드가 2단계 올라간다.',
+    effect: '빗나가면 스피드 2단계 상승',
+    generation: 8,
+    spriteSheetIndex: 716,
+  },
+  {
+    id: 'booster-energy',
+    name: '부스트에너지',
+    englishName: 'Booster Energy',
+    description: '고대활성 또는 쿼크차지를 가진 포켓몬이 지니면 조건이 맞지 않을 때 소모되어 가장 높은 능력을 강화한다.',
+    effect: '패러독스 특성 발동',
+    generation: 9,
+    spriteSheetIndex: 745,
+  },
+  {
+    id: 'cornerstone-mask',
+    name: '주춧돌의가면',
+    englishName: 'Cornerstone Mask',
+    description: '오거폰이 지니면 주춧돌의가면 모습이 되고 사용하는 기술의 위력이 올라간다.',
+    effect: '오거폰 주춧돌폼·기술 위력 상승',
+    generation: 9,
+    spriteSheetIndex: 758,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'clear-amulet',
+    name: '클리어참',
+    englishName: 'Clear Amulet',
+    description: '상대의 기술이나 특성으로 지닌 포켓몬의 능력이 떨어지는 것을 막는다.',
+    effect: '상대가 일으키는 능력 하락 방지',
+    generation: 9,
+    spriteSheetIndex: 747,
+  },
+  {
+    id: 'covert-cloak',
+    name: '은밀망토',
+    englishName: 'Covert Cloak',
+    description: '상대 기술의 데미지 이외 추가 효과를 받지 않게 한다.',
+    effect: '상대 기술의 추가 효과 방지',
+    generation: 9,
+    spriteSheetIndex: 750,
+  },
+  {
+    id: 'eject-pack',
+    name: '탈출팩',
+    englishName: 'Eject Pack',
+    description: '지닌 포켓몬의 능력이 떨어지면 소모되어 교대한다.',
+    effect: '능력 하락 시 교대',
+    generation: 8,
+    spriteSheetIndex: 714,
+  },
+  {
+    id: 'fairy-feather',
+    name: '요정의깃털',
+    englishName: 'Fairy Feather',
+    description: '지니게 하면 페어리타입 기술의 위력이 올라간다.',
+    effect: '페어리타입 기술 위력 1.2배',
+    generation: 9,
+    spriteSheetIndex: 754,
+  },
+  {
+    id: 'griseous-core',
+    name: '큰백금옥',
+    englishName: 'Griseous Core',
+    description: '기라티나가 지니면 오리진폼이 되고 고스트타입과 드래곤타입 기술의 위력이 올라간다.',
+    effect: '기라티나 오리진폼·고스트/드래곤 위력 상승',
+    generation: 8,
+    spriteSheetIndex: 743,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'heavy-duty-boots',
+    name: '통굽부츠',
+    englishName: 'Heavy-Duty Boots',
+    description: '교대하여 나올 때 진영에 설치된 함정의 효과를 받지 않는다.',
+    effect: '설치기 효과 무시',
+    generation: 8,
+    spriteSheetIndex: 715,
+  },
+  {
+    id: 'hearthflame-mask',
+    name: '화덕의가면',
+    englishName: 'Hearthflame Mask',
+    description: '오거폰이 지니면 화덕의가면 모습이 되고 사용하는 기술의 위력이 올라간다.',
+    effect: '오거폰 화덕폼·기술 위력 상승',
+    generation: 9,
+    spriteSheetIndex: 760,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'loaded-dice',
+    name: '속임수주사위',
+    englishName: 'Loaded Dice',
+    description: '연속 기술의 공격 횟수가 많아지고 연속 명중 기술이 안정적으로 명중한다.',
+    effect: '연속 기술 강화',
+    generation: 9,
+    spriteSheetIndex: 751,
+  },
+  {
+    id: 'lustrous-globe',
+    name: '큰백옥',
+    englishName: 'Lustrous Globe',
+    description: '펄기아가 지니면 오리진폼이 되고 물타입과 드래곤타입 기술의 위력이 올라간다.',
+    effect: '펄기아 오리진폼·물/드래곤 위력 상승',
+    generation: 8,
+    spriteSheetIndex: 742,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'mirror-herb',
+    name: '흉내허브',
+    englishName: 'Mirror Herb',
+    description: '상대의 능력이 올라가면 한 번만 소모되어 같은 능력 상승을 복사한다.',
+    effect: '상대의 능력 상승 복사',
+    generation: 9,
+    spriteSheetIndex: 748,
+  },
+  {
+    id: 'punching-glove',
+    name: '펀치글러브',
+    englishName: 'Punching Glove',
+    description: '펀치 기술의 위력을 높이고 접촉 효과를 받지 않게 한다.',
+    effect: '펀치 기술 위력 상승·비접촉화',
+    generation: 9,
+    spriteSheetIndex: 749,
+  },
+  {
+    id: 'room-service',
+    name: '룸서비스',
+    englishName: 'Room Service',
+    description: '트릭룸이 시작되면 소모되어 스피드가 1단계 떨어진다.',
+    effect: '트릭룸에서 스피드 하락',
+    generation: 8,
+    spriteSheetIndex: 717,
+  },
+  {
+    id: 'rusted-shield',
+    name: '녹슨방패',
+    englishName: 'Rusted Shield',
+    description: '자마젠타가 지니면 배틀에서 방패왕의 모습이 된다.',
+    effect: '자마젠타 방패왕폼',
+    generation: 8,
+    spriteSheetIndex: 699,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'rusted-sword',
+    name: '녹슨검',
+    englishName: 'Rusted Sword',
+    description: '자시안이 지니면 배틀에서 검왕의 모습이 된다.',
+    effect: '자시안 검왕폼',
+    generation: 8,
+    spriteSheetIndex: 698,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+  {
+    id: 'throat-spray',
+    name: '목스프레이',
+    englishName: 'Throat Spray',
+    description: '소리 기술을 사용하면 소모되어 특수공격이 1단계 올라간다.',
+    effect: '소리 기술 사용 시 특수공격 상승',
+    generation: 8,
+    spriteSheetIndex: 713,
+  },
+  {
+    id: 'utility-umbrella',
+    name: '만능우산',
+    englishName: 'Utility Umbrella',
+    description: '지닌 포켓몬이 비와 강한 햇살의 영향을 받지 않게 한다.',
+    effect: '비·강한 햇살 영향 무시',
+    generation: 8,
+    spriteSheetIndex: 718,
+  },
+  {
+    id: 'wellspring-mask',
+    name: '우물의가면',
+    englishName: 'Wellspring Mask',
+    description: '오거폰이 지니면 우물의가면 모습이 되고 사용하는 기술의 위력이 올라간다.',
+    effect: '오거폰 우물폼·기술 위력 상승',
+    generation: 9,
+    spriteSheetIndex: 759,
+    category: 'gimmick',
+    sourceCategory: 'form-battle-gear',
+  },
+].map((item) => ({
+  ...item,
+  category: item.category ?? 'held',
+  sourceCategory: item.sourceCategory ?? 'held-items',
+  price: item.category === 'gimmick' ? 520 : 320,
+  grade: item.category === 'gimmick' ? '기믹' : '고급',
+  sprite: SHOWDOWN_ITEM_SPRITE_SHEET,
+}))
+
 const CATEGORY_DESCRIPTION = {
   berry: '포켓몬에게 지니게 하면 조건에 따라 효과가 발동하는 나무열매입니다.',
   held: '포켓몬에게 지니게 하여 배틀 효과를 얻는 도구입니다.',
@@ -276,6 +527,29 @@ async function fetchJson(url, attempts = 3) {
   throw lastError
 }
 
+async function fetchText(url, attempts = 3) {
+  let lastError
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
+      return await response.text()
+    } catch (error) {
+      lastError = error
+      if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 350))
+    }
+  }
+
+  throw lastError
+}
+
+async function loadShowdownItems() {
+  const context = { exports: {} }
+  runInNewContext(await fetchText(SHOWDOWN_ITEM_DATA), context, { timeout: 2000 })
+  return context.exports.BattleItems ?? {}
+}
+
 async function mapWithConcurrency(values, limit, callback) {
   const results = new Array(values.length)
   let nextIndex = 0
@@ -308,6 +582,10 @@ function formatIdentifier(identifier) {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
+}
+
+function toShowdownId(identifier) {
+  return String(identifier ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
 function localizedName(item, language) {
@@ -360,9 +638,10 @@ function getGrade(price, sourceCategory) {
 async function main() {
   const assignments = new Map()
   const sourceCategories = CATEGORY_GROUPS.flatMap((group) => group.categories)
-  const categoryDetails = await Promise.all(
-    sourceCategories.map((category) => fetchJson(`${API_BASE}/item-category/${category}`)),
-  )
+  const [categoryDetails, showdownItems] = await Promise.all([
+    Promise.all(sourceCategories.map((category) => fetchJson(`${API_BASE}/item-category/${category}`))),
+    loadShowdownItems(),
+  ])
 
   for (const group of CATEGORY_GROUPS) {
     for (const sourceCategory of group.categories) {
@@ -396,6 +675,14 @@ async function main() {
     const effectEntry = item.effect_entries?.find((entry) => entry.language.name === 'en')
       ?? item.effect_entries?.[0]
     const mechanicalEffect = cleanText(effectEntry?.short_effect ?? effectEntry?.effect)
+    const showdownItem = showdownItems[toShowdownId(id)]
+    const berry = assignment.category === 'berry' && id.endsWith('-berry')
+      ? await fetchJson(`${API_BASE}/berry/${id.replace(/-berry$/, '')}`)
+      : null
+    const naturalGiftPower = showdownItem?.naturalGift?.basePower ?? berry?.natural_gift_power
+    const naturalGiftTypeId = showdownItem?.naturalGift?.type?.toLowerCase()
+      ?? berry?.natural_gift_type?.name
+    const flingPower = showdownItem?.fling?.basePower ?? item.fling_power
 
     if (!/[가-힣]/.test(koreanName) || !sprite || !koreanDescription || !mechanicalEffect) return null
 
@@ -413,10 +700,22 @@ async function main() {
       grade: getGrade(price, assignment.sourceCategory),
       generation: getGeneration(item, assignment.sourceCategory),
       sprite,
+      ...(flingPower ? { flingPower } : {}),
+      ...(assignment.category === 'berry'
+        ? { flingEffect: 'berry-effect' }
+        : item.fling_effect?.name ? { flingEffect: item.fling_effect.name } : {}),
+      ...(naturalGiftPower && TYPE_LABELS[naturalGiftTypeId] ? {
+        naturalGiftPower,
+        naturalGiftType: TYPE_LABELS[naturalGiftTypeId],
+      } : {}),
     }
   })).filter(Boolean)
 
   const itemById = new Map(fetchedItemDetails.map((item) => [item.id, item]))
+  MANUAL_BATTLE_ITEMS.forEach((item) => itemById.set(item.id, {
+    ...itemById.get(item.id),
+    ...item,
+  }))
   for (const megaStone of ZA_MEGA_STONES) {
     const targetFormNames = megaStone.forms.map((entry) => entry.name)
     const price = getPrice({ name: megaStone.id }, 'gimmick', 'mega-stones')
@@ -434,6 +733,29 @@ async function main() {
       sprite: megaStone.sprite,
       compatiblePokemon: megaStone.basePokemonName,
       targetFormSlugs: megaStone.forms.map((entry) => entry.slug),
+    })
+  }
+
+  const showdownFlingStatus = {
+    brn: 'burn',
+    par: 'paralyze',
+    psn: 'poison',
+    tox: 'badly-poison',
+  }
+  for (const [itemId, item] of itemById) {
+    const showdownItem = showdownItems[toShowdownId(itemId)]
+    const naturalGiftTypeId = showdownItem?.naturalGift?.type?.toLowerCase()
+    itemById.set(itemId, {
+      ...item,
+      ...(showdownItem?.fling?.basePower ? { flingPower: showdownItem.fling.basePower } : {}),
+      ...(showdownFlingStatus[showdownItem?.fling?.status] ? {
+        flingEffect: showdownFlingStatus[showdownItem.fling.status],
+      } : {}),
+      ...(showdownItem?.fling?.volatileStatus === 'flinch' ? { flingEffect: 'flinch' } : {}),
+      ...(showdownItem?.naturalGift?.basePower && TYPE_LABELS[naturalGiftTypeId] ? {
+        naturalGiftPower: showdownItem.naturalGift.basePower,
+        naturalGiftType: TYPE_LABELS[naturalGiftTypeId],
+      } : {}),
     })
   }
 
@@ -455,7 +777,7 @@ async function main() {
     + `// Pokémon Legends: Z-A Mega Stones use locally stored game sprites.\n\n`
     + `export const GENERATED_BATTLE_ITEM_META = ${JSON.stringify({
       count: itemDetails.length,
-      source: ['https://pokeapi.co/api/v2', 'https://www.serebii.net/itemdex/'],
+      source: ['https://pokeapi.co/api/v2', SHOWDOWN_ITEM_DATA, 'https://www.serebii.net/itemdex/'],
       includedSourceCategories: sourceCategories,
     }, null, 2)}\n\n`
     + `export default ${JSON.stringify(itemDetails, null, 2)}\n`

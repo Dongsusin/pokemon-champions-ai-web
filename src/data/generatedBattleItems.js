@@ -6,16 +6,15 @@ export const GENERATED_BATTLE_ITEM_META = {
   "count": 339,
   "source": [
     "https://pokeapi.co/api/v2",
+    "https://play.pokemonshowdown.com/data/items.js",
     "https://www.serebii.net/itemdex/"
   ],
   "includedSourceCategories": [
-    "effort-drop",
     "medicine",
     "other",
     "in-a-pinch",
     "picky-healing",
     "type-protection",
-    "baking-only",
     "held-items",
     "choice",
     "bad-held-items",
@@ -41,7 +40,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leppa-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leppa-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "격투"
   },
   {
     "id": "lum-berry",
@@ -54,7 +57,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lum-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lum-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "비행"
   },
   {
     "id": "aspear-berry",
@@ -67,7 +74,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aspear-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aspear-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "얼음"
   },
   {
     "id": "cheri-berry",
@@ -80,7 +91,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cheri-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cheri-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "불꽃"
   },
   {
     "id": "rawst-berry",
@@ -93,7 +108,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rawst-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rawst-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "풀"
   },
   {
     "id": "pecha-berry",
@@ -106,7 +125,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pecha-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pecha-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "전기"
   },
   {
     "id": "persim-berry",
@@ -119,7 +142,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/persim-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/persim-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "땅"
   },
   {
     "id": "oran-berry",
@@ -132,7 +159,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oran-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oran-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "독"
   },
   {
     "id": "chesto-berry",
@@ -145,7 +176,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chesto-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chesto-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "물"
   },
   {
     "id": "sitrus-berry",
@@ -158,20 +193,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png"
-  },
-  {
-    "id": "magost-berry",
-    "name": "고스티열매",
-    "englishName": "Magost Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 110,
-    "description": "귀여움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/magost-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "에스퍼"
   },
   {
     "id": "apicot-berry",
@@ -184,85 +210,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/apicot-berry.png"
-  },
-  {
-    "id": "nanab-berry",
-    "name": "나나열매",
-    "englishName": "Nanab Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 100,
-    "description": "귀여움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 담홍색 열매는 먹으면 달다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/nanab-berry.png"
-  },
-  {
-    "id": "nomel-berry",
-    "name": "노멜열매",
-    "englishName": "Nomel Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 90,
-    "description": "강인함을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/nomel-berry.png"
-  },
-  {
-    "id": "durin-berry",
-    "name": "두리열매",
-    "englishName": "Durin Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 120,
-    "description": "슬기로움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/durin-berry.png"
-  },
-  {
-    "id": "grepa-berry",
-    "name": "또뽀열매",
-    "englishName": "Grepa Berry",
-    "category": "berry",
-    "sourceCategory": "effort-drop",
-    "price": 90,
-    "description": "포켓몬에게 주면 매우 친밀해지기 쉬워지지만 특수방어의 기초 포인트가 떨어진다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grepa-berry.png"
-  },
-  {
-    "id": "rabuta-berry",
-    "name": "라부탐열매",
-    "englishName": "Rabuta Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 50,
-    "description": "슬기로움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rabuta-berry.png"
-  },
-  {
-    "id": "razz-berry",
-    "name": "라즈열매",
-    "englishName": "Razz Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 50,
-    "description": "근사함을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 빨간색 열매는 먹으면 맵다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razz-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/apicot-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "땅"
   },
   {
     "id": "lansat-berry",
@@ -275,33 +227,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lansat-berry.png"
-  },
-  {
-    "id": "hondew-berry",
-    "name": "로매열매",
-    "englishName": "Hondew Berry",
-    "category": "berry",
-    "sourceCategory": "effort-drop",
-    "price": 50,
-    "description": "포켓몬에게 주면 매우 친밀해지기 쉬워지지만 특수공격의 기초 포인트가 떨어진다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hondew-berry.png"
-  },
-  {
-    "id": "belue-berry",
-    "name": "루베열매",
-    "englishName": "Belue Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 70,
-    "description": "아름다움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/belue-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lansat-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "비행"
   },
   {
     "id": "mago-berry",
@@ -314,20 +244,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mago-berry.png"
-  },
-  {
-    "id": "spelon-berry",
-    "name": "메호키열매",
-    "englishName": "Spelon Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 90,
-    "description": "귀여움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/spelon-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mago-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "고스트"
   },
   {
     "id": "figy-berry",
@@ -340,59 +261,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/figy-berry.png"
-  },
-  {
-    "id": "bluk-berry",
-    "name": "블리열매",
-    "englishName": "Bluk Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 60,
-    "description": "아름다움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 파란색 열매는 먹으면 떫다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/bluk-berry.png"
-  },
-  {
-    "id": "wepear-berry",
-    "name": "서배열매",
-    "englishName": "Wepear Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 100,
-    "description": "슬기로움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 초록색 열매는 먹으면 쓰다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wepear-berry.png"
-  },
-  {
-    "id": "cornn-berry",
-    "name": "수숙열매",
-    "englishName": "Cornn Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 120,
-    "description": "아름다움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cornn-berry.png"
-  },
-  {
-    "id": "watmel-berry",
-    "name": "슈박열매",
-    "englishName": "Watmel Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 80,
-    "description": "슬기로움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/watmel-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/figy-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "벌레"
   },
   {
     "id": "starf-berry",
@@ -405,20 +278,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/starf-berry.png"
-  },
-  {
-    "id": "kelpsy-berry",
-    "name": "시마열매",
-    "englishName": "Kelpsy Berry",
-    "category": "berry",
-    "sourceCategory": "effort-drop",
-    "price": 100,
-    "description": "포켓몬에게 주면 매우 친밀해지기 쉬워지지만 공격의 기초 포인트가 떨어진다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kelpsy-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/starf-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "에스퍼"
   },
   {
     "id": "aguav-berry",
@@ -431,7 +295,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aguav-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aguav-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "드래곤"
   },
   {
     "id": "petaya-berry",
@@ -444,7 +312,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/petaya-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/petaya-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "독"
   },
   {
     "id": "ganlon-berry",
@@ -457,7 +329,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ganlon-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ganlon-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "얼음"
   },
   {
     "id": "wiki-berry",
@@ -470,20 +346,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wiki-berry.png"
-  },
-  {
-    "id": "pomeg-berry",
-    "name": "유석열매",
-    "englishName": "Pomeg Berry",
-    "category": "berry",
-    "sourceCategory": "effort-drop",
-    "price": 60,
-    "description": "포켓몬에게 주면 매우 친밀해지기 쉬워지지만 HP의 기초 포인트가 떨어진다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pomeg-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wiki-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "바위"
   },
   {
     "id": "enigma-berry",
@@ -496,20 +363,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/enigma-berry.png"
-  },
-  {
-    "id": "pamtre-berry",
-    "name": "자야열매",
-    "englishName": "Pamtre Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 90,
-    "description": "아름다움을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 다른 지방에서는 희귀한 나무열매.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pamtre-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/enigma-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "벌레"
   },
   {
     "id": "liechi-berry",
@@ -522,7 +380,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/liechi-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/liechi-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "풀"
   },
   {
     "id": "salac-berry",
@@ -535,33 +397,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/salac-berry.png"
-  },
-  {
-    "id": "tamato-berry",
-    "name": "토망열매",
-    "englishName": "Tamato Berry",
-    "category": "berry",
-    "sourceCategory": "effort-drop",
-    "price": 100,
-    "description": "포켓몬에게 주면 매우 친밀해지기 쉬워지지만 스피드의 기초 포인트가 떨어진다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tamato-berry.png"
-  },
-  {
-    "id": "qualot-berry",
-    "name": "파비열매",
-    "englishName": "Qualot Berry",
-    "category": "berry",
-    "sourceCategory": "effort-drop",
-    "price": 100,
-    "description": "포켓몬에게 주면 매우 친밀해지기 쉬워지지만 방어의 기초 포인트가 떨어진다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/qualot-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/salac-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "격투"
   },
   {
     "id": "iapapa-berry",
@@ -574,20 +414,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iapapa-berry.png"
-  },
-  {
-    "id": "pinap-berry",
-    "name": "파인열매",
-    "englishName": "Pinap Berry",
-    "category": "berry",
-    "sourceCategory": "baking-only",
-    "price": 100,
-    "description": "강인함을 연마하기 위한 포켓몬스넥을 만들 때 사용된다. 노란색 열매는 먹으면 시다.",
-    "effect": "조건 충족 시 자동 발동",
-    "grade": "일반",
-    "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pinap-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iapapa-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "악"
   },
   {
     "id": "passho-berry",
@@ -600,7 +431,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/passho-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/passho-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "물"
   },
   {
     "id": "chople-berry",
@@ -613,7 +448,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chople-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chople-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "격투"
   },
   {
     "id": "charti-berry",
@@ -626,7 +465,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charti-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charti-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "바위"
   },
   {
     "id": "tanga-berry",
@@ -639,7 +482,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tanga-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tanga-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "벌레"
   },
   {
     "id": "rindo-berry",
@@ -652,7 +499,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rindo-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rindo-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "풀"
   },
   {
     "id": "colbur-berry",
@@ -665,7 +516,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/colbur-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/colbur-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "악"
   },
   {
     "id": "micle-berry",
@@ -678,7 +533,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/micle-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/micle-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "바위"
   },
   {
     "id": "babiri-berry",
@@ -691,7 +550,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/babiri-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/babiri-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "강철"
   },
   {
     "id": "coba-berry",
@@ -704,7 +567,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/coba-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/coba-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "비행"
   },
   {
     "id": "kasib-berry",
@@ -717,7 +584,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kasib-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kasib-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "고스트"
   },
   {
     "id": "shuca-berry",
@@ -730,7 +601,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shuca-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shuca-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "땅"
   },
   {
     "id": "custap-berry",
@@ -743,7 +618,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/custap-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/custap-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "고스트"
   },
   {
     "id": "rowap-berry",
@@ -756,7 +635,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rowap-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rowap-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "악"
   },
   {
     "id": "payapa-berry",
@@ -769,7 +652,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/payapa-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/payapa-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "에스퍼"
   },
   {
     "id": "occa-berry",
@@ -782,7 +669,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/occa-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/occa-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "불꽃"
   },
   {
     "id": "kebia-berry",
@@ -795,7 +686,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kebia-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kebia-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "독"
   },
   {
     "id": "jaboca-berry",
@@ -808,7 +703,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/jaboca-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/jaboca-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "드래곤"
   },
   {
     "id": "wacan-berry",
@@ -821,7 +720,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wacan-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wacan-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "전기"
   },
   {
     "id": "chilan-berry",
@@ -834,7 +737,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chilan-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chilan-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "노말"
   },
   {
     "id": "yache-berry",
@@ -847,7 +754,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/yache-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/yache-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "얼음"
   },
   {
     "id": "haban-berry",
@@ -860,7 +771,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/haban-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/haban-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "드래곤"
   },
   {
     "id": "roseli-berry",
@@ -873,7 +788,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/roseli-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/roseli-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 80,
+    "naturalGiftType": "페어리"
   },
   {
     "id": "kee-berry",
@@ -886,7 +805,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kee-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kee-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "페어리"
   },
   {
     "id": "maranga-berry",
@@ -899,7 +822,11 @@ export default [
     "effect": "조건 충족 시 자동 발동",
     "grade": "일반",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/maranga-berry.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/maranga-berry.png",
+    "flingPower": 10,
+    "flingEffect": "berry-effect",
+    "naturalGiftPower": 100,
+    "naturalGiftType": "악"
   },
   {
     "id": "black-belt",
@@ -912,7 +839,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-belt.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-belt.png",
+    "flingPower": 30
   },
   {
     "id": "black-glasses",
@@ -925,7 +853,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-glasses.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-glasses.png",
+    "flingPower": 30
   },
   {
     "id": "thick-club",
@@ -938,7 +867,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/thick-club.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/thick-club.png",
+    "flingPower": 90
   },
   {
     "id": "metal-coat",
@@ -951,7 +881,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metal-coat.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metal-coat.png",
+    "flingPower": 30
   },
   {
     "id": "metal-powder",
@@ -964,7 +895,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metal-powder.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metal-powder.png",
+    "flingPower": 10
   },
   {
     "id": "miracle-seed",
@@ -977,7 +909,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/miracle-seed.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/miracle-seed.png",
+    "flingPower": 30
   },
   {
     "id": "focus-band",
@@ -990,7 +923,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-band.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-band.png",
+    "flingPower": 10
   },
   {
     "id": "never-melt-ice",
@@ -1003,7 +937,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/never-melt-ice.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/never-melt-ice.png",
+    "flingPower": 30
   },
   {
     "id": "stick",
@@ -1016,7 +951,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/stick.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/stick.png",
+    "flingPower": 60
   },
   {
     "id": "poison-barb",
@@ -1029,7 +965,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poison-barb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poison-barb.png",
+    "flingPower": 70,
+    "flingEffect": "poison"
   },
   {
     "id": "hard-stone",
@@ -1042,7 +980,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hard-stone.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hard-stone.png",
+    "flingPower": 100
   },
   {
     "id": "lucky-punch",
@@ -1055,7 +994,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-punch.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-punch.png",
+    "flingPower": 40
   },
   {
     "id": "leftovers",
@@ -1068,7 +1008,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png",
+    "flingPower": 10
   },
   {
     "id": "charcoal",
@@ -1081,7 +1022,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charcoal.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charcoal.png",
+    "flingPower": 30
   },
   {
     "id": "bright-powder",
@@ -1094,7 +1036,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/bright-powder.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/bright-powder.png",
+    "flingPower": 10
   },
   {
     "id": "soft-sand",
@@ -1107,7 +1050,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/soft-sand.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/soft-sand.png",
+    "flingPower": 10
   },
   {
     "id": "quick-claw",
@@ -1120,7 +1064,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-claw.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-claw.png",
+    "flingPower": 80
   },
   {
     "id": "mystic-water",
@@ -1133,7 +1078,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mystic-water.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mystic-water.png",
+    "flingPower": 30
   },
   {
     "id": "silk-scarf",
@@ -1146,20 +1092,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/silk-scarf.png"
-  },
-  {
-    "id": "smoke-ball",
-    "name": "연막탄",
-    "englishName": "Smoke Ball",
-    "category": "held",
-    "sourceCategory": "held-items",
-    "price": 230,
-    "description": "지니게 한 포켓몬은 야생 포켓몬과의 배틀에서 반드시 도망칠 수 있다.",
-    "effect": "포켓몬에게 지니게 하여 사용",
-    "grade": "고급",
-    "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/smoke-ball.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/silk-scarf.png",
+    "flingPower": 10
   },
   {
     "id": "sharp-beak",
@@ -1172,7 +1106,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sharp-beak.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sharp-beak.png",
+    "flingPower": 50
   },
   {
     "id": "kings-rock",
@@ -1185,7 +1120,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kings-rock.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kings-rock.png",
+    "flingPower": 30,
+    "flingEffect": "flinch"
   },
   {
     "id": "dragon-fang",
@@ -1198,7 +1135,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dragon-fang.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dragon-fang.png",
+    "flingPower": 70
   },
   {
     "id": "silver-powder",
@@ -1211,7 +1149,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/silver-powder.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/silver-powder.png",
+    "flingPower": 10
   },
   {
     "id": "magnet",
@@ -1224,7 +1163,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/magnet.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/magnet.png",
+    "flingPower": 30
   },
   {
     "id": "spell-tag",
@@ -1237,7 +1177,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/spell-tag.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/spell-tag.png",
+    "flingPower": 30
   },
   {
     "id": "light-ball",
@@ -1250,7 +1191,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/light-ball.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/light-ball.png",
+    "flingPower": 30,
+    "flingEffect": "paralyze"
   },
   {
     "id": "scope-lens",
@@ -1263,7 +1206,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/scope-lens.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/scope-lens.png",
+    "flingPower": 30
   },
   {
     "id": "twisted-spoon",
@@ -1276,7 +1220,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 2,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/twisted-spoon.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/twisted-spoon.png",
+    "flingPower": 30
   },
   {
     "id": "choice-band",
@@ -1289,7 +1234,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-band.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-band.png",
+    "flingPower": 10
   },
   {
     "id": "soul-dew",
@@ -1302,7 +1248,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/soul-dew.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/soul-dew.png",
+    "flingPower": 30
   },
   {
     "id": "mental-herb",
@@ -1315,7 +1262,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mental-herb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mental-herb.png",
+    "flingPower": 10,
+    "flingEffect": "herb-effect"
   },
   {
     "id": "lax-incense",
@@ -1328,7 +1277,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lax-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lax-incense.png",
+    "flingPower": 10
   },
   {
     "id": "sea-incense",
@@ -1341,7 +1291,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sea-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sea-incense.png",
+    "flingPower": 10
   },
   {
     "id": "deep-sea-scale",
@@ -1354,7 +1305,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/deep-sea-scale.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/deep-sea-scale.png",
+    "flingPower": 30
   },
   {
     "id": "deep-sea-tooth",
@@ -1367,7 +1319,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/deep-sea-tooth.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/deep-sea-tooth.png",
+    "flingPower": 90
   },
   {
     "id": "shell-bell",
@@ -1380,7 +1333,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shell-bell.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shell-bell.png",
+    "flingPower": 30
   },
   {
     "id": "white-herb",
@@ -1393,7 +1347,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 3,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/white-herb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/white-herb.png",
+    "flingPower": 10,
+    "flingEffect": "herb-effect"
   },
   {
     "id": "black-sludge",
@@ -1406,7 +1362,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-sludge.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-sludge.png",
+    "flingPower": 30
   },
   {
     "id": "iron-ball",
@@ -1419,7 +1376,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iron-ball.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iron-ball.png",
+    "flingPower": 130
   },
   {
     "id": "wide-lens",
@@ -1432,7 +1390,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wide-lens.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wide-lens.png",
+    "flingPower": 10
   },
   {
     "id": "odd-incense",
@@ -1445,7 +1404,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/odd-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/odd-incense.png",
+    "flingPower": 10
   },
   {
     "id": "choice-scarf",
@@ -1458,7 +1418,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png",
+    "flingPower": 10
   },
   {
     "id": "choice-specs",
@@ -1471,7 +1432,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-specs.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-specs.png",
+    "flingPower": 10
   },
   {
     "id": "adamant-orb",
@@ -1484,7 +1446,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/adamant-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/adamant-orb.png",
+    "flingPower": 60
   },
   {
     "id": "focus-sash",
@@ -1497,7 +1460,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png",
+    "flingPower": 10
   },
   {
     "id": "rose-incense",
@@ -1510,7 +1474,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rose-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rose-incense.png",
+    "flingPower": 10
   },
   {
     "id": "grip-claw",
@@ -1523,7 +1488,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grip-claw.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grip-claw.png",
+    "flingPower": 90
   },
   {
     "id": "sticky-barb",
@@ -1536,7 +1502,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sticky-barb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sticky-barb.png",
+    "flingPower": 80
   },
   {
     "id": "lagging-tail",
@@ -1549,7 +1516,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lagging-tail.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lagging-tail.png",
+    "flingPower": 10
   },
   {
     "id": "expert-belt",
@@ -1562,7 +1530,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/expert-belt.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/expert-belt.png",
+    "flingPower": 10
   },
   {
     "id": "heat-rock",
@@ -1575,7 +1544,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heat-rock.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heat-rock.png",
+    "flingPower": 60
   },
   {
     "id": "full-incense",
@@ -1588,7 +1558,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/full-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/full-incense.png",
+    "flingPower": 10
   },
   {
     "id": "toxic-orb",
@@ -1601,7 +1572,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/toxic-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/toxic-orb.png",
+    "flingPower": 30,
+    "flingEffect": "badly-poison"
   },
   {
     "id": "metronome",
@@ -1614,7 +1587,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metronome.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metronome.png",
+    "flingPower": 30
   },
   {
     "id": "wise-glasses",
@@ -1627,7 +1601,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wise-glasses.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wise-glasses.png",
+    "flingPower": 10
   },
   {
     "id": "griseous-orb",
@@ -1640,7 +1615,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/griseous-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/griseous-orb.png",
+    "flingPower": 60
   },
   {
     "id": "lustrous-orb",
@@ -1653,7 +1629,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lustrous-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lustrous-orb.png",
+    "flingPower": 60
   },
   {
     "id": "smooth-rock",
@@ -1666,7 +1643,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/smooth-rock.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/smooth-rock.png",
+    "flingPower": 10
   },
   {
     "id": "light-clay",
@@ -1679,7 +1657,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/light-clay.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/light-clay.png",
+    "flingPower": 30
   },
   {
     "id": "destiny-knot",
@@ -1692,7 +1671,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/destiny-knot.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/destiny-knot.png",
+    "flingPower": 10
   },
   {
     "id": "life-orb",
@@ -1705,7 +1685,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png",
+    "flingPower": 30
   },
   {
     "id": "quick-powder",
@@ -1718,7 +1699,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-powder.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-powder.png",
+    "flingPower": 10
   },
   {
     "id": "shed-shell",
@@ -1731,7 +1713,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shed-shell.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shed-shell.png",
+    "flingPower": 10
   },
   {
     "id": "rock-incense",
@@ -1744,7 +1727,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rock-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rock-incense.png",
+    "flingPower": 10
   },
   {
     "id": "razor-claw",
@@ -1757,7 +1741,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razor-claw.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razor-claw.png",
+    "flingPower": 80
   },
   {
     "id": "razor-fang",
@@ -1770,7 +1755,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razor-fang.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razor-fang.png",
+    "flingPower": 30,
+    "flingEffect": "flinch"
   },
   {
     "id": "wave-incense",
@@ -1783,7 +1770,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wave-incense.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/wave-incense.png",
+    "flingPower": 10
   },
   {
     "id": "icy-rock",
@@ -1796,7 +1784,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/icy-rock.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/icy-rock.png",
+    "flingPower": 40
   },
   {
     "id": "damp-rock",
@@ -1809,7 +1798,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/damp-rock.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/damp-rock.png",
+    "flingPower": 60
   },
   {
     "id": "big-root",
@@ -1822,7 +1812,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/big-root.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/big-root.png",
+    "flingPower": 10
   },
   {
     "id": "power-herb",
@@ -1835,7 +1826,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/power-herb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/power-herb.png",
+    "flingPower": 10
   },
   {
     "id": "zoom-lens",
@@ -1848,7 +1840,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/zoom-lens.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/zoom-lens.png",
+    "flingPower": 10
   },
   {
     "id": "flame-orb",
@@ -1861,7 +1854,9 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/flame-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/flame-orb.png",
+    "flingPower": 30,
+    "flingEffect": "burn"
   },
   {
     "id": "muscle-band",
@@ -1874,7 +1869,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/muscle-band.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/muscle-band.png",
+    "flingPower": 10
   },
   {
     "id": "float-stone",
@@ -1887,7 +1883,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/float-stone.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/float-stone.png",
+    "flingPower": 30
   },
   {
     "id": "steel-gem",
@@ -1913,7 +1910,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ring-target.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ring-target.png",
+    "flingPower": 10
   },
   {
     "id": "fighting-gem",
@@ -1952,7 +1950,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/absorb-bulb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/absorb-bulb.png",
+    "flingPower": 30
   },
   {
     "id": "normal-gem",
@@ -1994,19 +1993,6 @@ export default [
     "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dragon-gem.png"
   },
   {
-    "id": "pass-orb",
-    "name": "딜구슬",
-    "englishName": "Pass Orb",
-    "category": "held",
-    "sourceCategory": "held-items",
-    "price": 210,
-    "description": "딜파워를 발생시킬 때 사용하는 하나지방의 파워가 담긴 이상한 구슬.",
-    "effect": "포켓몬에게 지니게 하여 사용",
-    "grade": "고급",
-    "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pass-orb.png"
-  },
-  {
     "id": "ground-gem",
     "name": "땅주얼",
     "englishName": "Ground Gem",
@@ -2030,7 +2016,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/red-card.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/red-card.png",
+    "flingPower": 10
   },
   {
     "id": "water-gem",
@@ -2069,7 +2056,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shock-drive.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shock-drive.png",
+    "flingPower": 70
   },
   {
     "id": "bug-gem",
@@ -2108,7 +2096,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/burn-drive.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/burn-drive.png",
+    "flingPower": 70
   },
   {
     "id": "flying-gem",
@@ -2134,7 +2123,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/douse-drive.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/douse-drive.png",
+    "flingPower": 70
   },
   {
     "id": "dark-gem",
@@ -2186,7 +2176,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rocky-helmet.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rocky-helmet.png",
+    "flingPower": 60
   },
   {
     "id": "electric-gem",
@@ -2212,7 +2203,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/binding-band.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/binding-band.png",
+    "flingPower": 30
   },
   {
     "id": "eviolite",
@@ -2225,7 +2217,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/eviolite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/eviolite.png",
+    "flingPower": 40
   },
   {
     "id": "cell-battery",
@@ -2238,7 +2231,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cell-battery.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cell-battery.png",
+    "flingPower": 30
   },
   {
     "id": "eject-button",
@@ -2251,7 +2245,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/eject-button.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/eject-button.png",
+    "flingPower": 30
   },
   {
     "id": "grass-gem",
@@ -2277,7 +2272,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/air-balloon.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/air-balloon.png",
+    "flingPower": 10
   },
   {
     "id": "chill-drive",
@@ -2290,7 +2286,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 5,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chill-drive.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/chill-drive.png",
+    "flingPower": 70
   },
   {
     "id": "snowball",
@@ -2303,7 +2300,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/snowball.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/snowball.png",
+    "flingPower": 30
   },
   {
     "id": "assault-vest",
@@ -2316,7 +2314,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/assault-vest.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/assault-vest.png",
+    "flingPower": 80
   },
   {
     "id": "safety-goggles",
@@ -2329,7 +2328,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/safety-goggles.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/safety-goggles.png",
+    "flingPower": 80
   },
   {
     "id": "luminous-moss",
@@ -2342,7 +2342,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luminous-moss.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/luminous-moss.png",
+    "flingPower": 30
   },
   {
     "id": "weakness-policy",
@@ -2355,7 +2356,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/weakness-policy.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/weakness-policy.png",
+    "flingPower": 80
   },
   {
     "id": "fairy-gem",
@@ -2381,7 +2383,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/terrain-extender.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/terrain-extender.png",
+    "flingPower": 60
   },
   {
     "id": "grassy-seed",
@@ -2394,7 +2397,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grassy-seed.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grassy-seed.png",
+    "flingPower": 10
   },
   {
     "id": "misty-seed",
@@ -2407,7 +2411,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/misty-seed.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/misty-seed.png",
+    "flingPower": 10
   },
   {
     "id": "protective-pads",
@@ -2420,7 +2425,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/protective-pads.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/protective-pads.png",
+    "flingPower": 30
   },
   {
     "id": "psychic-seed",
@@ -2433,7 +2439,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/psychic-seed.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/psychic-seed.png",
+    "flingPower": 10
   },
   {
     "id": "electric-seed",
@@ -2446,7 +2453,8 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/electric-seed.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/electric-seed.png",
+    "flingPower": 10
   },
   {
     "id": "adrenaline-orb",
@@ -2459,7 +2467,218 @@ export default [
     "effect": "포켓몬에게 지니게 하여 사용",
     "grade": "고급",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/adrenaline-orb.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/adrenaline-orb.png",
+    "flingPower": 30
+  },
+  {
+    "id": "room-service",
+    "name": "룸서비스",
+    "englishName": "Room Service",
+    "description": "트릭룸이 시작되면 소모되어 스피드가 1단계 떨어진다.",
+    "effect": "트릭룸에서 스피드 하락",
+    "generation": 8,
+    "spriteSheetIndex": 717,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 100
+  },
+  {
+    "id": "utility-umbrella",
+    "name": "만능우산",
+    "englishName": "Utility Umbrella",
+    "description": "지닌 포켓몬이 비와 강한 햇살의 영향을 받지 않게 한다.",
+    "effect": "비·강한 햇살 영향 무시",
+    "generation": 8,
+    "spriteSheetIndex": 718,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 60
+  },
+  {
+    "id": "throat-spray",
+    "name": "목스프레이",
+    "englishName": "Throat Spray",
+    "description": "소리 기술을 사용하면 소모되어 특수공격이 1단계 올라간다.",
+    "effect": "소리 기술 사용 시 특수공격 상승",
+    "generation": 8,
+    "spriteSheetIndex": 713,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "eject-pack",
+    "name": "탈출팩",
+    "englishName": "Eject Pack",
+    "description": "지닌 포켓몬의 능력이 떨어지면 소모되어 교대한다.",
+    "effect": "능력 하락 시 교대",
+    "generation": 8,
+    "spriteSheetIndex": 714,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 50
+  },
+  {
+    "id": "heavy-duty-boots",
+    "name": "통굽부츠",
+    "englishName": "Heavy-Duty Boots",
+    "description": "교대하여 나올 때 진영에 설치된 함정의 효과를 받지 않는다.",
+    "effect": "설치기 효과 무시",
+    "generation": 8,
+    "spriteSheetIndex": 715,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 80
+  },
+  {
+    "id": "blunder-policy",
+    "name": "허탕보험",
+    "englishName": "Blunder Policy",
+    "description": "명중률 때문에 기술이 빗나가면 소모되어 스피드가 2단계 올라간다.",
+    "effect": "빗나가면 스피드 2단계 상승",
+    "generation": 8,
+    "spriteSheetIndex": 716,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 80
+  },
+  {
+    "id": "booster-energy",
+    "name": "부스트에너지",
+    "englishName": "Booster Energy",
+    "description": "고대활성 또는 쿼크차지를 가진 포켓몬이 지니면 조건이 맞지 않을 때 소모되어 가장 높은 능력을 강화한다.",
+    "effect": "패러독스 특성 발동",
+    "generation": 9,
+    "spriteSheetIndex": 745,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "loaded-dice",
+    "name": "속임수주사위",
+    "englishName": "Loaded Dice",
+    "description": "연속 기술의 공격 횟수가 많아지고 연속 명중 기술이 안정적으로 명중한다.",
+    "effect": "연속 기술 강화",
+    "generation": 9,
+    "spriteSheetIndex": 751,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "fairy-feather",
+    "name": "요정의깃털",
+    "englishName": "Fairy Feather",
+    "description": "지니게 하면 페어리타입 기술의 위력이 올라간다.",
+    "effect": "페어리타입 기술 위력 1.2배",
+    "generation": 9,
+    "spriteSheetIndex": 754,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 10
+  },
+  {
+    "id": "covert-cloak",
+    "name": "은밀망토",
+    "englishName": "Covert Cloak",
+    "description": "상대 기술의 데미지 이외 추가 효과를 받지 않게 한다.",
+    "effect": "상대 기술의 추가 효과 방지",
+    "generation": 9,
+    "spriteSheetIndex": 750,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "clear-amulet",
+    "name": "클리어참",
+    "englishName": "Clear Amulet",
+    "description": "상대의 기술이나 특성으로 지닌 포켓몬의 능력이 떨어지는 것을 막는다.",
+    "effect": "상대가 일으키는 능력 하락 방지",
+    "generation": 9,
+    "spriteSheetIndex": 747,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "ability-shield",
+    "name": "특성가드",
+    "englishName": "Ability Shield",
+    "description": "지닌 포켓몬의 특성이 다른 포켓몬이나 기술에 의해 바뀌거나 무효화되는 것을 막는다.",
+    "effect": "특성 변경·무효화 방지",
+    "generation": 9,
+    "spriteSheetIndex": 746,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "punching-glove",
+    "name": "펀치글러브",
+    "englishName": "Punching Glove",
+    "description": "펀치 기술의 위력을 높이고 접촉 효과를 받지 않게 한다.",
+    "effect": "펀치 기술 위력 상승·비접촉화",
+    "generation": 9,
+    "spriteSheetIndex": 749,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
+  },
+  {
+    "id": "mirror-herb",
+    "name": "흉내허브",
+    "englishName": "Mirror Herb",
+    "description": "상대의 능력이 올라가면 한 번만 소모되어 같은 능력 상승을 복사한다.",
+    "effect": "상대의 능력 상승 복사",
+    "generation": 9,
+    "spriteSheetIndex": 748,
+    "category": "held",
+    "sourceCategory": "held-items",
+    "price": 320,
+    "grade": "고급",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 30
   },
   {
     "id": "red-orb",
@@ -2498,7 +2717,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iron-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iron-plate.png",
+    "flingPower": 90
   },
   {
     "id": "icicle-plate",
@@ -2511,7 +2731,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/icicle-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/icicle-plate.png",
+    "flingPower": 90
   },
   {
     "id": "dread-plate",
@@ -2524,7 +2745,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dread-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dread-plate.png",
+    "flingPower": 90
   },
   {
     "id": "earth-plate",
@@ -2537,7 +2759,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/earth-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/earth-plate.png",
+    "flingPower": 90
   },
   {
     "id": "toxic-plate",
@@ -2550,7 +2773,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/toxic-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/toxic-plate.png",
+    "flingPower": 90
   },
   {
     "id": "splash-plate",
@@ -2563,7 +2787,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/splash-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/splash-plate.png",
+    "flingPower": 90
   },
   {
     "id": "flame-plate",
@@ -2576,7 +2801,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/flame-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/flame-plate.png",
+    "flingPower": 90
   },
   {
     "id": "insect-plate",
@@ -2589,7 +2815,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/insect-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/insect-plate.png",
+    "flingPower": 90
   },
   {
     "id": "stone-plate",
@@ -2602,7 +2829,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/stone-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/stone-plate.png",
+    "flingPower": 90
   },
   {
     "id": "draco-plate",
@@ -2615,7 +2843,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/draco-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/draco-plate.png",
+    "flingPower": 90
   },
   {
     "id": "zap-plate",
@@ -2628,7 +2857,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/zap-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/zap-plate.png",
+    "flingPower": 90
   },
   {
     "id": "spooky-plate",
@@ -2641,7 +2871,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/spooky-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/spooky-plate.png",
+    "flingPower": 90
   },
   {
     "id": "mind-plate",
@@ -2654,7 +2885,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mind-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mind-plate.png",
+    "flingPower": 90
   },
   {
     "id": "fist-plate",
@@ -2667,7 +2899,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fist-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fist-plate.png",
+    "flingPower": 90
   },
   {
     "id": "meadow-plate",
@@ -2680,7 +2913,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/meadow-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/meadow-plate.png",
+    "flingPower": 90
   },
   {
     "id": "sky-plate",
@@ -2693,7 +2927,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 4,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sky-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sky-plate.png",
+    "flingPower": 90
   },
   {
     "id": "gardevoirite",
@@ -2706,7 +2941,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gardevoirite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gardevoirite.png",
+    "flingPower": 80
   },
   {
     "id": "steelixite",
@@ -2719,7 +2955,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/steelixite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/steelixite.png",
+    "flingPower": 80
   },
   {
     "id": "gyaradosite",
@@ -2732,7 +2969,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gyaradosite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gyaradosite.png",
+    "flingPower": 80
   },
   {
     "id": "blastoisinite",
@@ -2745,7 +2983,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/blastoisinite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/blastoisinite.png",
+    "flingPower": 80
   },
   {
     "id": "sablenite",
@@ -2758,7 +2997,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sablenite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sablenite.png",
+    "flingPower": 80
   },
   {
     "id": "sceptilite",
@@ -2771,7 +3011,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sceptilite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sceptilite.png",
+    "flingPower": 80
   },
   {
     "id": "abomasite",
@@ -2784,7 +3025,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/abomasite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/abomasite.png",
+    "flingPower": 80
   },
   {
     "id": "audinite",
@@ -2797,7 +3039,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/audinite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/audinite.png",
+    "flingPower": 80
   },
   {
     "id": "banettite",
@@ -2810,7 +3053,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/banettite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/banettite.png",
+    "flingPower": 80
   },
   {
     "id": "swampertite",
@@ -2823,7 +3067,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/swampertite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/swampertite.png",
+    "flingPower": 80
   },
   {
     "id": "beedrillite",
@@ -2836,7 +3081,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beedrillite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/beedrillite.png",
+    "flingPower": 80
   },
   {
     "id": "diancite",
@@ -2849,7 +3095,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/diancite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/diancite.png",
+    "flingPower": 80
   },
   {
     "id": "latiasite",
@@ -2862,7 +3109,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/latiasite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/latiasite.png",
+    "flingPower": 80
   },
   {
     "id": "latiosite",
@@ -2875,7 +3123,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/latiosite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/latiosite.png",
+    "flingPower": 80
   },
   {
     "id": "lucarionite",
@@ -2888,7 +3137,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucarionite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucarionite.png",
+    "flingPower": 80
   },
   {
     "id": "charizardite-x",
@@ -2901,7 +3151,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charizardite-x.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charizardite-x.png",
+    "flingPower": 80
   },
   {
     "id": "charizardite-y",
@@ -2914,7 +3165,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charizardite-y.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/charizardite-y.png",
+    "flingPower": 80
   },
   {
     "id": "tyranitarite",
@@ -2927,7 +3179,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tyranitarite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tyranitarite.png",
+    "flingPower": 80
   },
   {
     "id": "metagrossite",
@@ -2940,7 +3193,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metagrossite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metagrossite.png",
+    "flingPower": 80
   },
   {
     "id": "mewtwonite-x",
@@ -2953,7 +3207,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mewtwonite-x.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mewtwonite-x.png",
+    "flingPower": 80
   },
   {
     "id": "mewtwonite-y",
@@ -2966,7 +3221,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mewtwonite-y.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mewtwonite-y.png",
+    "flingPower": 80
   },
   {
     "id": "blazikenite",
@@ -2979,7 +3235,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/blazikenite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/blazikenite.png",
+    "flingPower": 80
   },
   {
     "id": "salamencite",
@@ -2992,7 +3249,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/salamencite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/salamencite.png",
+    "flingPower": 80
   },
   {
     "id": "aggronite",
@@ -3005,7 +3263,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aggronite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aggronite.png",
+    "flingPower": 80
   },
   {
     "id": "pinsirite",
@@ -3018,7 +3277,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pinsirite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pinsirite.png",
+    "flingPower": 80
   },
   {
     "id": "sharpedonite",
@@ -3031,7 +3291,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sharpedonite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sharpedonite.png",
+    "flingPower": 80
   },
   {
     "id": "manectite",
@@ -3044,7 +3305,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/manectite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/manectite.png",
+    "flingPower": 80
   },
   {
     "id": "absolite",
@@ -3057,7 +3319,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/absolite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/absolite.png",
+    "flingPower": 80
   },
   {
     "id": "slowbronite",
@@ -3070,7 +3333,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/slowbronite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/slowbronite.png",
+    "flingPower": 80
   },
   {
     "id": "glalitite",
@@ -3083,7 +3347,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/glalitite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/glalitite.png",
+    "flingPower": 80
   },
   {
     "id": "galladite",
@@ -3096,7 +3361,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/galladite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/galladite.png",
+    "flingPower": 80
   },
   {
     "id": "medichamite",
@@ -3109,7 +3375,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/medichamite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/medichamite.png",
+    "flingPower": 80
   },
   {
     "id": "venusaurite",
@@ -3122,7 +3389,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/venusaurite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/venusaurite.png",
+    "flingPower": 80
   },
   {
     "id": "lopunnite",
@@ -3135,7 +3403,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lopunnite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lopunnite.png",
+    "flingPower": 80
   },
   {
     "id": "mawilite",
@@ -3148,7 +3417,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mawilite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/mawilite.png",
+    "flingPower": 80
   },
   {
     "id": "ampharosite",
@@ -3161,7 +3431,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ampharosite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ampharosite.png",
+    "flingPower": 80
   },
   {
     "id": "pixie-plate",
@@ -3174,7 +3445,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pixie-plate.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pixie-plate.png",
+    "flingPower": 90
   },
   {
     "id": "kangaskhanite",
@@ -3187,7 +3459,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kangaskhanite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kangaskhanite.png",
+    "flingPower": 80
   },
   {
     "id": "altarianite",
@@ -3200,7 +3473,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/altarianite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/altarianite.png",
+    "flingPower": 80
   },
   {
     "id": "gengarite",
@@ -3213,7 +3487,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gengarite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gengarite.png",
+    "flingPower": 80
   },
   {
     "id": "cameruptite",
@@ -3226,7 +3501,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cameruptite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/cameruptite.png",
+    "flingPower": 80
   },
   {
     "id": "aerodactylite",
@@ -3239,7 +3515,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aerodactylite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/aerodactylite.png",
+    "flingPower": 80
   },
   {
     "id": "pidgeotite",
@@ -3252,7 +3529,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pidgeotite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pidgeotite.png",
+    "flingPower": 80
   },
   {
     "id": "garchompite",
@@ -3265,7 +3543,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/garchompite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/garchompite.png",
+    "flingPower": 80
   },
   {
     "id": "scizorite",
@@ -3278,7 +3557,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/scizorite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/scizorite.png",
+    "flingPower": 80
   },
   {
     "id": "heracronite",
@@ -3291,7 +3571,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heracronite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heracronite.png",
+    "flingPower": 80
   },
   {
     "id": "houndoominite",
@@ -3304,7 +3585,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/houndoominite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/houndoominite.png",
+    "flingPower": 80
   },
   {
     "id": "alakazite",
@@ -3317,7 +3599,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "기믹",
     "generation": 6,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/alakazite.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/alakazite.png",
+    "flingPower": 80
   },
   {
     "id": "steelium-z--held",
@@ -3356,7 +3639,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ghost-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ghost-memory.png",
+    "flingPower": 50
   },
   {
     "id": "ghostium-z--held",
@@ -3382,7 +3666,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ground-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ground-memory.png",
+    "flingPower": 50
   },
   {
     "id": "grass-memory",
@@ -3395,7 +3680,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grass-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/grass-memory.png",
+    "flingPower": 50
   },
   {
     "id": "normalium-z--held",
@@ -3434,7 +3720,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dark-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dark-memory.png",
+    "flingPower": 50
   },
   {
     "id": "poisonium-z--held",
@@ -3460,7 +3747,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dragon-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dragon-memory.png",
+    "flingPower": 50
   },
   {
     "id": "dragonium-z--held",
@@ -3512,7 +3800,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rock-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rock-memory.png",
+    "flingPower": 50
   },
   {
     "id": "lycanium-z--held",
@@ -3616,7 +3905,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/bug-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/bug-memory.png",
+    "flingPower": 50
   },
   {
     "id": "buginium-z--held",
@@ -3668,7 +3958,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/psychic-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/psychic-memory.png",
+    "flingPower": 50
   },
   {
     "id": "solganium-z--held",
@@ -3694,7 +3985,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/steel-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/steel-memory.png",
+    "flingPower": 50
   },
   {
     "id": "ice-memory",
@@ -3707,7 +3999,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ice-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ice-memory.png",
+    "flingPower": 50
   },
   {
     "id": "darkinium-z--held",
@@ -3798,7 +4091,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/water-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/water-memory.png",
+    "flingPower": 50
   },
   {
     "id": "eevium-z--held",
@@ -3824,7 +4118,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/electric-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/electric-memory.png",
+    "flingPower": 50
   },
   {
     "id": "snorlium-z--held",
@@ -3902,7 +4197,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fire-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fire-memory.png",
+    "flingPower": 50
   },
   {
     "id": "fighting-memory",
@@ -3915,7 +4211,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fighting-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fighting-memory.png",
+    "flingPower": 50
   },
   {
     "id": "fairy-memory",
@@ -3928,7 +4225,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fairy-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fairy-memory.png",
+    "flingPower": 50
   },
   {
     "id": "fairium-z--held",
@@ -3954,7 +4252,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poison-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poison-memory.png",
+    "flingPower": 50
   },
   {
     "id": "grassium-z--held",
@@ -3980,7 +4279,8 @@ export default [
     "effect": "배틀 기믹·전용 효과",
     "grade": "희귀",
     "generation": 7,
-    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/flying-memory.png"
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/flying-memory.png",
+    "flingPower": 50
   },
   {
     "id": "pikanium-z--held",
@@ -3994,6 +4294,76 @@ export default [
     "grade": "기믹",
     "generation": 7,
     "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/pikanium-z--held.png"
+  },
+  {
+    "id": "rusted-sword",
+    "name": "녹슨검",
+    "englishName": "Rusted Sword",
+    "description": "자시안이 지니면 배틀에서 검왕의 모습이 된다.",
+    "effect": "자시안 검왕폼",
+    "generation": 8,
+    "spriteSheetIndex": 698,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1"
+  },
+  {
+    "id": "rusted-shield",
+    "name": "녹슨방패",
+    "englishName": "Rusted Shield",
+    "description": "자마젠타가 지니면 배틀에서 방패왕의 모습이 된다.",
+    "effect": "자마젠타 방패왕폼",
+    "generation": 8,
+    "spriteSheetIndex": 699,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1"
+  },
+  {
+    "id": "adamant-crystal",
+    "name": "큰금강옥",
+    "englishName": "Adamant Crystal",
+    "description": "디아루가가 지니면 오리진폼이 되고 강철타입과 드래곤타입 기술의 위력이 올라간다.",
+    "effect": "디아루가 오리진폼·강철/드래곤 위력 상승",
+    "generation": 8,
+    "spriteSheetIndex": 741,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1"
+  },
+  {
+    "id": "griseous-core",
+    "name": "큰백금옥",
+    "englishName": "Griseous Core",
+    "description": "기라티나가 지니면 오리진폼이 되고 고스트타입과 드래곤타입 기술의 위력이 올라간다.",
+    "effect": "기라티나 오리진폼·고스트/드래곤 위력 상승",
+    "generation": 8,
+    "spriteSheetIndex": 743,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1"
+  },
+  {
+    "id": "lustrous-globe",
+    "name": "큰백옥",
+    "englishName": "Lustrous Globe",
+    "description": "펄기아가 지니면 오리진폼이 되고 물타입과 드래곤타입 기술의 위력이 올라간다.",
+    "effect": "펄기아 오리진폼·물/드래곤 위력 상승",
+    "generation": 8,
+    "spriteSheetIndex": 742,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1"
   },
   {
     "id": "greninjite",
@@ -4371,6 +4741,21 @@ export default [
     ]
   },
   {
+    "id": "wellspring-mask",
+    "name": "우물의가면",
+    "englishName": "Wellspring Mask",
+    "description": "오거폰이 지니면 우물의가면 모습이 되고 사용하는 기술의 위력이 올라간다.",
+    "effect": "오거폰 우물폼·기술 위력 상승",
+    "generation": 9,
+    "spriteSheetIndex": 759,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 60
+  },
+  {
     "id": "victreebelite",
     "name": "우츠보트나이트",
     "englishName": "Victreebelite",
@@ -4420,6 +4805,21 @@ export default [
     "targetFormSlugs": [
       "eelektross-mega"
     ]
+  },
+  {
+    "id": "cornerstone-mask",
+    "name": "주춧돌의가면",
+    "englishName": "Cornerstone Mask",
+    "description": "오거폰이 지니면 주춧돌의가면 모습이 되고 사용하는 기술의 위력이 올라간다.",
+    "effect": "오거폰 주춧돌폼·기술 위력 상승",
+    "generation": 9,
+    "spriteSheetIndex": 758,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 60
   },
   {
     "id": "staraptite",
@@ -4556,6 +4956,21 @@ export default [
     "targetFormSlugs": [
       "drampa-mega"
     ]
+  },
+  {
+    "id": "hearthflame-mask",
+    "name": "화덕의가면",
+    "englishName": "Hearthflame Mask",
+    "description": "오거폰이 지니면 화덕의가면 모습이 되고 사용하는 기술의 위력이 올라간다.",
+    "effect": "오거폰 화덕폼·기술 위력 상승",
+    "generation": 9,
+    "spriteSheetIndex": 760,
+    "category": "gimmick",
+    "sourceCategory": "form-battle-gear",
+    "price": 520,
+    "grade": "기믹",
+    "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1",
+    "flingPower": 60
   },
   {
     "id": "pyroarite",

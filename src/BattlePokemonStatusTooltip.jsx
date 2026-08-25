@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import BattleItemSprite from './BattleItemSprite'
 import PokemonSprite from './PokemonSprite'
 import { getBattleItem } from './data/shopData'
 import { typeClassName } from './data/trainingData'
@@ -223,7 +224,7 @@ function BattlePokemonStatusTooltip({
           <span>
             <small>지닌 도구</small>
             <strong>
-              {heldItem?.sprite && <img src={heldItem.sprite} alt="" draggable="false" />}
+              {heldItem?.sprite && <BattleItemSprite item={heldItem} size={17} draggable="false" />}
               {heldItemName}
             </strong>
           </span>

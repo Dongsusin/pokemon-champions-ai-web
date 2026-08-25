@@ -16,6 +16,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react'
+import BattleItemSprite from './BattleItemSprite'
 import {
   BATTLE_ITEM_META,
   BATTLE_ITEMS,
@@ -37,22 +38,17 @@ function normalizeSearchText(value) {
 }
 
 function ItemArtwork({ item, Icon, compact = false }) {
-  const [imageFailed, setImageFailed] = useState(false)
   const className = compact ? 'shop-owned-artwork' : 'shop-item-icon'
 
   return (
     <span className={className} aria-hidden="true">
-      {item.sprite && !imageFailed ? (
-        <img
-          src={item.sprite}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <Icon size={compact ? 16 : 25} />
-      )}
+      <BattleItemSprite
+        item={item}
+        size={compact ? 16 : 34}
+        loading="lazy"
+        decoding="async"
+        fallback={<Icon size={compact ? 16 : 25} />}
+      />
     </span>
   )
 }
