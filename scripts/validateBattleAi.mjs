@@ -8,6 +8,7 @@ import {
   getActivePokemon,
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
+import { selectCounterTeamNumber } from '../src/data/aiTeamSelection.js'
 import { getMoveById } from '../src/data/trainingData.js'
 
 function runtimeMove(moveId) {
@@ -103,6 +104,15 @@ function playerMoveDamage(moveId, configure = () => {}) {
 }
 
 {
+  const state = makeBattle()
+  state.opponent.team[0].moves = [runtimeMove('rest'), runtimeMove('bodyslam')]
+  state.opponent.team[0].status = { id: 'sleep', label: '잠듦', counter: 1, toxicCounter: 0 }
+  state.opponent.team[0].hp = Math.floor(state.opponent.team[0].maxHp * 0.45)
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'bodyslam')
+}
+
+{
   const state = makeBattle({ opponentCount: 2 })
   state.opponent.team[0].moves = [runtimeMove('thunderbolt')]
   state.opponent.team[0].types = ['전기']
@@ -113,6 +123,49 @@ function playerMoveDamage(moveId, configure = () => {}) {
   const action = chooseAiAction(state, () => 0)
   assert.equal(action.type, 'switch')
   assert.equal(action.targetIndex, 1)
+}
+
+{
+  const state = makeBattle({ opponentCount: 2 })
+  state.opponent.team[0].moves = [runtimeMove('icebeam')]
+  state.opponent.team[0].stats.speed = 220
+  state.opponent.team[0].hp = 1
+  state.opponent.team[1].types = ['비행']
+  state.opponent.team[1].moves = [runtimeMove('tackle')]
+  state.player.team[0].types = ['땅']
+  state.player.team[0].moves = [runtimeMove('earthquake')]
+  state.player.team[0].stats.speed = 80
+  state.player.team[0].hp = 1
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(action.type, 'move')
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'icebeam')
+}
+
+{
+  const state = makeBattle({ opponentCount: 2 })
+  state.opponent.team[0].types = ['불꽃']
+  state.opponent.team[0].moves = [runtimeMove('flamethrower')]
+  state.opponent.team[0].hp = 1
+  state.opponent.team[1].types = ['불꽃']
+  state.opponent.team[1].moves = [runtimeMove('tackle')]
+  state.opponent.team[1].hp = 1
+  state.player.team[0].types = ['물']
+  state.player.team[0].moves = [runtimeMove('surf')]
+  state.player.team[0].stats.speed = 220
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(action.type, 'move')
+}
+
+{
+  const trainer = {
+    teams: [
+      { number: 1, pokemon: [{ speciesId: 3, moveIds: ['gigadrain'], moves: ['기가드레인'] }] },
+      { number: 2, pokemon: [{ speciesId: 445, moveIds: ['earthquake'], moves: ['지진'] }] },
+      { number: 3, pokemon: [{ speciesId: 25, moveIds: ['thunderbolt'], moves: ['10만볼트'] }] },
+    ],
+  }
+  const playerTeam = [{ speciesId: 485, moveIds: ['magmastorm'], moves: ['마그마스톰'] }]
+  assert.equal(selectCounterTeamNumber(trainer, playerTeam, () => 0), 2)
 }
 
 {
@@ -364,4 +417,4 @@ function playerMoveDamage(moveId, configure = () => {}) {
   assert.equal(getActivePokemon(state, 'opponent').name, '피카츄')
 }
 
-process.stdout.write('Validated 23 predictive battle AI and damage decisions.\n')
+process.stdout.write('Validated 27 predictive battle AI and damage decisions.\n')

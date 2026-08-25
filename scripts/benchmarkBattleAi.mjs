@@ -36,7 +36,7 @@ const INCLUDE_ANALYSIS = process.env.BATTLE_AI_BENCHMARK_ANALYSIS === '1'
 const TRACE_SEED = Number.parseInt(process.env.BATTLE_AI_TRACE_SEED ?? '', 10)
 const MIN_WIN_RATE = Math.max(0, Math.min(
   1,
-  Number.parseFloat(process.env.BATTLE_AI_MIN_WIN_RATE ?? '0.6') || 0,
+  Number.parseFloat(process.env.BATTLE_AI_MIN_WIN_RATE ?? '0.68') || 0,
 ))
 
 function incrementCount(counts, key) {
@@ -425,6 +425,19 @@ const outcomeStats = ['wins', 'losses'].reduce((summary, outcome) => {
   ]))
   return summary
 }, {})
+const sideWinRates = Object.fromEntries(BENCHMARK_SIDES.map((sideId) => {
+  const sideResults = results.filter((result) => result.advancedSide === sideId)
+  const sideWins = sideResults.filter((result) => result.advancedWon).length
+  const sideDraws = sideResults.filter((result) => result.winner == null).length
+  const sideLosses = sideResults.length - sideWins - sideDraws
+  return [sideId, {
+    matches: sideResults.length,
+    wins: sideWins,
+    losses: sideLosses,
+    draws: sideDraws,
+    winRate: Number((sideWins / Math.max(1, sideResults.length - sideDraws) * 100).toFixed(1)),
+  }]
+}))
 const summary = {
   trainers: SELECTED_TRAINERS,
   teams: BENCHMARK_TEAMS,
@@ -437,6 +450,7 @@ const summary = {
   draws,
   winRate: Number((winRate * 100).toFixed(1)),
   averageTurns: Number(averageTurns.toFixed(1)),
+  sideWinRates,
   decisionStats,
   advancedAverages: outcomeStats,
 }

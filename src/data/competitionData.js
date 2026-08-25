@@ -1,5 +1,6 @@
 import { TRAINERS, getTrainerTeam } from './trainerTeams.js'
 import { createBattleMatchRules } from './battleRules.js'
+import { selectCounterTeamNumber } from './aiTeamSelection.js'
 
 export const PLAYER_PARTICIPANT_ID = 'player'
 
@@ -25,13 +26,13 @@ function shuffle(entries, random) {
   return shuffledEntries
 }
 
-function createTrainerParticipant(trainer, random) {
+function createTrainerParticipant(trainer, playerTeam, random) {
   return {
     id: trainer.id,
     name: trainer.name,
     tier: trainer.tier,
     region: trainer.region,
-    teamNumber: Math.floor(random() * trainer.teams.length) + 1,
+    teamNumber: selectCounterTeamNumber(trainer, playerTeam, random),
     isPlayer: false,
   }
 }
@@ -72,7 +73,7 @@ export function createCompetition(mode, playerTeam, teamName, random = Math.rand
   const rules = COMPETITION_RULES[mode] ?? COMPETITION_RULES.tournament
   const trainers = shuffle(TRAINERS, random)
     .slice(0, rules.entrantCount - 1)
-    .map((trainer) => createTrainerParticipant(trainer, random))
+    .map((trainer) => createTrainerParticipant(trainer, playerTeam, random))
   const player = createPlayerParticipant(teamName)
   const participants = shuffle([player, ...trainers], random)
   const baseCompetition = {

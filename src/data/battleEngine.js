@@ -4065,9 +4065,12 @@ function aiStatusMoveScore(state, attacker, defender, move) {
   }
 
   if (move.id === 'rest') {
+    if (attacker.status?.id === 'sleep') return -Infinity
     if (missingHpRatio < 0.18 && !attacker.status) return -Infinity
     const instantWake = matchingStatusCureBerry(attacker, 'sleep') ? 38 : 0
-    return 70 + missingHpRatio * 90 + (attacker.status ? 25 : 0) + instantWake
+    const canActWhileAsleep = attacker.moves.some((candidate) => ['sleeptalk', 'snore'].includes(candidate.id))
+    const sleepCost = instantWake > 0 ? 0 : canActWhileAsleep ? 12 : 48
+    return 58 + missingHpRatio * 105 + (attacker.status ? 25 : 0) + instantWake - sleepCost
   }
 
   if (['healingwish', 'lunardance'].includes(move.id)) {
@@ -4669,11 +4672,13 @@ function chooseStrategicSwitch(
     const offense = bestAiMoveForPokemon(state, pokemon, targetSlots)
     const incomingThreat = aiIncomingThreatRatio(state, pokemon, opposingAttackers)
     const remainingHpRatio = Math.max(0, pokemon.hp / pokemon.maxHp - hazardRatio)
+    const sacrificePenalty = incomingThreat >= remainingHpRatio ? 175 : 0
     return {
       targetIndex,
       score: Math.max(0, offense?.score ?? 0) * 0.58
         + remainingHpRatio * 65
         - incomingThreat * 88
+        - sacrificePenalty
         + aiEntryAbilityUtility(pokemon)
         + aiRoleUtility(state, pokemon, sideId) * 0.35
         + aiRosterMatchupUtility(state, pokemon, opposingSide.team),
@@ -4692,16 +4697,31 @@ function chooseStrategicSwitch(
   const projectedTargetHp = planning.projectedTargetHp?.get(moveDecision?.action?.targetSlot)
     ?? getActivePokemon(state, opposingSide.id, moveDecision?.action?.targetSlot)?.hp
     ?? Infinity
-  const canKnockOutBeforeHit = moveDecision?.priority > 0 && moveDecision.rawDamage >= projectedTargetHp
+  const canKnockOutBeforeHit = opposingAttackers.length === 1
+    && moveDecision?.knockout
+    && (moveDecision.accuracy ?? 0) >= 0.85
+    && (() => {
+      const defender = opposingAttackers[0]
+      const attackerPriority = Number(moveDecision.priority ?? 0)
+      const defenderPriority = defender.moves.reduce((highest, move) => {
+        if (!move || move.currentPp <= 0 || isStatusMove(move)) return highest
+        return Math.max(highest, environmentMovePriority(state, defender, move))
+      }, -Infinity)
+      return attackerPriority > defenderPriority
+        || (
+          attackerPriority === defenderPriority
+          && effectiveStat(state, attacker, 'speed') > effectiveStat(state, defender, 'speed')
+        )
+    })()
   const urgentSwitch = attacker.perishCount === 1 || attacker.yawnTurns === 1
   const expectedKnockout = currentThreat * attacker.maxHp >= attacker.hp && !canKnockOutBeforeHit
   const badMatchup = !Number.isFinite(moveDecision?.score) || moveDecision.score < (prediction ? 58 : 48)
-  const lowHp = currentHpRatio < 0.34
   const advantage = bestSwitch.score - stayScore
 
+  if (!urgentSwitch && canKnockOutBeforeHit) return null
   if (!urgentSwitch && aiPositiveStageTotal(attacker) >= 3) return null
-  if (!urgentSwitch && !expectedKnockout && !badMatchup && !lowHp) return null
-  if (!urgentSwitch && advantage < (expectedKnockout ? -12 : prediction ? 4 : 12)) return null
+  if (!urgentSwitch && !expectedKnockout && !badMatchup) return null
+  if (!urgentSwitch && advantage < (expectedKnockout ? 12 : prediction ? 10 : 18)) return null
   return {
     action: {
       type: 'switch',
