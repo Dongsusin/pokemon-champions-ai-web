@@ -222,7 +222,15 @@ const modes = [
   },
 ]
 
-function GameApp({ user, accountError, authBusy, autoLogin, onAutoLoginChange, onSignOut }) {
+function GameApp({
+  user,
+  accountError,
+  authBusy,
+  autoLogin,
+  onAutoLoginChange,
+  onConnectGoogle,
+  onSignOut,
+}) {
   const initialCollection = useRef(null)
   if (initialCollection.current === null) initialCollection.current = loadStoredBox()
   const initialTeamState = useRef(null)
@@ -963,6 +971,7 @@ function GameApp({ user, accountError, authBusy, autoLogin, onAutoLoginChange, o
           authBusy={authBusy}
           autoLogin={autoLogin}
           onAutoLoginChange={onAutoLoginChange}
+          onConnectGoogle={onConnectGoogle}
           onChange={updateSetting}
           onClose={() => setSettingsOpen(false)}
           onReset={resetSettings}
@@ -990,6 +999,7 @@ function App() {
     autoLogin,
     setAutoLogin,
     signInWithGoogle,
+    connectGuestToGoogle,
     signInAsGuest,
     signOut,
   } = useAuth()
@@ -1018,6 +1028,7 @@ function App() {
       authBusy={busy}
       autoLogin={autoLogin}
       onAutoLoginChange={setAutoLogin}
+      onConnectGoogle={connectGuestToGoogle}
       onSignOut={signOut}
     />
   )

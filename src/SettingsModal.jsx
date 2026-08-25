@@ -6,6 +6,7 @@ import {
   Hash,
   HeartPulse,
   Headphones,
+  Link2,
   LogOut,
   Megaphone,
   Mic2,
@@ -99,7 +100,15 @@ function AudioSlider({ channel, value, disabled, onChange }) {
   )
 }
 
-function AccountPanel({ user, accountError, authBusy, autoLogin, onAutoLoginChange, onSignOut }) {
+function AccountPanel({
+  user,
+  accountError,
+  authBusy,
+  autoLogin,
+  onAutoLoginChange,
+  onConnectGoogle,
+  onSignOut,
+}) {
   const isGuest = Boolean(user?.isLocalGuest)
   const accountName = user?.displayName?.trim()
     || user?.email?.split('@')[0]
@@ -154,10 +163,18 @@ function AccountPanel({ user, accountError, authBusy, autoLogin, onAutoLoginChan
 
       {accountError && <p className="settings-account-error" role="alert">{accountError}</p>}
 
-      <button className="settings-sign-out-button" type="button" disabled={authBusy} onClick={onSignOut}>
-        <LogOut size={19} />
-        {authBusy ? '계정 전환 중' : '로그아웃하고 계정 전환'}
-      </button>
+      <div className="settings-account-actions">
+        {isGuest && (
+          <button className="settings-connect-account-button" type="button" disabled={authBusy} onClick={onConnectGoogle}>
+            <Link2 size={19} />
+            {authBusy ? 'Google 연결 중' : 'Google 계정에 연결'}
+          </button>
+        )}
+        <button className="settings-sign-out-button" type="button" disabled={authBusy} onClick={onSignOut}>
+          <LogOut size={19} />
+          {authBusy ? '계정 전환 중' : '로그아웃하고 계정 전환'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -169,6 +186,7 @@ function SettingsModal({
   authBusy,
   autoLogin,
   onAutoLoginChange,
+  onConnectGoogle,
   onChange,
   onClose,
   onReset,
@@ -332,6 +350,7 @@ function SettingsModal({
               authBusy={authBusy}
               autoLogin={autoLogin}
               onAutoLoginChange={onAutoLoginChange}
+              onConnectGoogle={onConnectGoogle}
               onSignOut={onSignOut}
             />
           )}

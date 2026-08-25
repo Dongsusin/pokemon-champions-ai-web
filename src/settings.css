@@ -470,6 +470,34 @@
   cursor: pointer;
 }
 
+.settings-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.settings-connect-account-button {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid rgba(105, 239, 255, 0.58);
+  border-radius: 10px;
+  color: #ecfeff;
+  font-weight: 900;
+  background: linear-gradient(180deg, rgba(43, 111, 165, 0.88), rgba(40, 64, 133, 0.9));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 0 22px rgba(80, 210, 255, 0.1);
+  cursor: pointer;
+}
+
+.settings-connect-account-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
 .settings-modal-footer {
   display: flex;
   gap: 10px;
@@ -567,8 +595,14 @@
   }
 
   .settings-account-toggle,
+  .settings-connect-account-button,
   .settings-sign-out-button {
     justify-self: stretch;
+  }
+
+  .settings-account-actions {
+    display: grid;
+    justify-content: stretch;
   }
 
   .settings-segmented-control {

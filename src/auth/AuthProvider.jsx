@@ -225,6 +225,11 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  const connectGuestToGoogle = useCallback(async () => {
+    if (!userRef.current?.isLocalGuest) return
+    await signInWithGoogle()
+  }, [signInWithGoogle])
+
   const signInAsGuest = useCallback(async () => {
     setBusy(true)
     setError('')
@@ -271,11 +276,13 @@ export function AuthProvider({ children }) {
     missingConfiguration: missingFirebaseEnvironmentVariables,
     setAutoLogin: updateAutoLogin,
     signInWithGoogle,
+    connectGuestToGoogle,
     signInAsGuest,
     signOut,
   }), [
     autoLogin,
     busy,
+    connectGuestToGoogle,
     error,
     profileSyncError,
     ready,
