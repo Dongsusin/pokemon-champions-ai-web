@@ -44,9 +44,6 @@ export const BATTLE_TERRAINS = [
 export const BATTLE_FORMATS = [
   { id: 'single', label: '싱글배틀', shortLabel: '싱글', activeSlots: 1, actionSlots: 1, description: '서로 포켓몬 1마리씩 내보내 대전합니다.' },
   { id: 'double', label: '더블배틀', shortLabel: '더블', activeSlots: 2, actionSlots: 2, description: '서로 포켓몬 2마리씩 내보내며, 각 포켓몬의 행동과 대상을 선택합니다.' },
-  { id: 'triple', label: '트리플배틀', shortLabel: '트리플', activeSlots: 3, actionSlots: 3, description: '서로 포켓몬 3마리씩 내보내며, 각 포켓몬의 행동과 대상을 선택합니다.' },
-  { id: 'rotation', label: '로테이션배틀', shortLabel: '로테이션', activeSlots: 3, actionSlots: 1, rotation: true, description: '포켓몬 3마리를 내보낸 뒤 매 턴 전열을 회전하고, 앞에 선 포켓몬 1마리만 행동합니다.' },
-  { id: 'inverse', label: '거꾸로배틀', shortLabel: '거꾸로', activeSlots: 1, actionSlots: 1, inverse: true, description: '타입 상성이 반대로 적용됩니다. 효과가 굉장한 상성은 반감되고, 반감과 무효 상성은 약점이 됩니다.' },
 ]
 
 export const BATTLE_TEAM_RULES = [
