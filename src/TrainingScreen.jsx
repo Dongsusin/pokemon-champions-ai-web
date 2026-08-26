@@ -76,6 +76,7 @@ function trainingSignature(pokemon) {
 
   return JSON.stringify({
     speciesId: pokemon.speciesId,
+    isShiny: Boolean(pokemon.isShiny),
     nature: pokemon.nature,
     ability: pokemon.ability,
     moves: pokemon.moves,
@@ -272,6 +273,11 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   const updateSelected = (updates) => {
     if (isPreviewForm) return
     writeSelected(updates)
+  }
+
+  const toggleShiny = () => {
+    if (!editablePokemon?.shinyObtained || isPreviewForm) return
+    updateSelected({ isShiny: !editablePokemon.isShiny })
   }
 
   const updateMove = (slotIndex, moveName) => {
@@ -704,6 +710,29 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                   </div>
 
                   <div className="training-select-stack">
+                    {selectedPokemon.shinyObtained && (
+                      <div className={`training-picker-field training-shiny-field${selectedPokemon.isShiny ? ' active' : ''}`}>
+                        <span>
+                          <Sparkles size={14} /> 이로치 설정
+                          <em className="training-field-cost is-free">무료</em>
+                        </span>
+                        <button
+                          className="training-shiny-toggle"
+                          type="button"
+                          disabled={isPreviewForm}
+                          aria-label={`이로치 색상 ${selectedPokemon.isShiny ? '끄기' : '켜기'}`}
+                          aria-pressed={selectedPokemon.isShiny}
+                          onClick={toggleShiny}
+                        >
+                          <span>
+                            <strong>{selectedPokemon.isShiny ? '이로치 색상' : '일반 색상'}</strong>
+                            <small>획득한 이로치 색상을 자유롭게 전환</small>
+                          </span>
+                          <em>{selectedPokemon.isShiny ? 'ON' : 'OFF'}</em>
+                          <i className="training-shiny-switch" aria-hidden="true"><b /></i>
+                        </button>
+                      </div>
+                    )}
                     <div className="training-picker-field">
                       <span>
                         <Dna size={14} /> 진화 형태
@@ -1034,7 +1063,9 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                       ? '배틀 기믹 폼은 미리보기 전용이며 저장할 수 없습니다.'
                       : hasChanges
                         ? canAffordTraining
-                          ? '변경한 항목만 계산됩니다.'
+                          ? trainingCost.total === 0
+                            ? '이로치 색상 전환은 무료입니다.'
+                            : '변경한 항목만 계산됩니다.'
                           : `${trainingShortfall.toLocaleString()} VP가 부족합니다.`
                         : '현재 저장된 설정입니다.'}
                   </span>
@@ -1042,15 +1073,19 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                     <div className="training-cost-breakdown" aria-label={`트레이닝 비용 ${trainingCost.total.toLocaleString()} VP`}>
                       <div>
                         {trainingCost.items.map((item) => (
-                          <span key={item.id}>
+                          <span className={item.free ? 'free' : ''} key={item.id}>
                             <small>{item.label} {item.units}{item.unitLabel}</small>
-                            <strong>{item.cost.toLocaleString()} VP</strong>
+                            <strong>{item.free ? '무료' : `${item.cost.toLocaleString()} VP`}</strong>
                           </span>
                         ))}
                       </div>
-                      <strong className={`training-cost-total${canAffordTraining ? '' : ' insufficient'}`}>
-                        <Zap size={13} fill="currentColor" />
-                        {trainingCost.total.toLocaleString()} <em>VP</em>
+                      <strong className={`training-cost-total${canAffordTraining ? '' : ' insufficient'}${trainingCost.total === 0 ? ' free' : ''}`}>
+                        {trainingCost.total === 0
+                          ? <Sparkles size={13} />
+                          : <Zap size={13} fill="currentColor" />}
+                        {trainingCost.total === 0
+                          ? '무료'
+                          : <>{trainingCost.total.toLocaleString()} <em>VP</em></>}
                       </strong>
                     </div>
                   )}
@@ -1059,12 +1094,18 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                   <RotateCcw size={16} /> {isPreviewForm ? '미리보기 종료' : '저장값으로 초기화'}
                 </button>
                 <button className="primary" type="button" disabled={!canSave} onClick={saveTraining}>
-                  {isPreviewForm ? <LockKeyhole size={17} /> : hasChanges ? <Zap size={17} /> : <Check size={17} />}
+                  {isPreviewForm
+                    ? <LockKeyhole size={17} />
+                    : hasChanges
+                      ? trainingCost.total === 0 ? <Sparkles size={17} /> : <Zap size={17} />
+                      : <Check size={17} />}
                   {isPreviewForm
                     ? '미리보기는 저장 불가'
                     : hasChanges
                       ? canAffordTraining
-                        ? `트레이닝 · ${trainingCost.total.toLocaleString()} VP`
+                        ? trainingCost.total === 0
+                          ? '설정 저장 · 무료'
+                          : `트레이닝 · ${trainingCost.total.toLocaleString()} VP`
                         : `${trainingShortfall.toLocaleString()} VP 부족`
                       : '설정 저장'}
                 </button>

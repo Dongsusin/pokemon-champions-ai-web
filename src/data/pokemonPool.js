@@ -341,7 +341,7 @@ export function migratePokemonCollection(storedPokemon = []) {
         ...existing,
         directDrawCount: existing.directDrawCount + directDrawCount,
         shinyObtained: existing.shinyObtained || shinyObtained,
-        isShiny: existing.isShiny || shinyObtained,
+        isShiny: Boolean(existing.isShiny || (rawPokemon.isShiny ?? shinyObtained)),
         lastDrawnAt: rawPokemon.lastDrawnAt ?? rawPokemon.obtainedAt ?? existing.lastDrawnAt,
       }))
     } else {
@@ -402,6 +402,7 @@ export function mergePokemonDraws(collection, results) {
     ensureEvolutionRoute(collectionMap, result.id, obtainedAt)
     const currentPokemon = collectionMap.get(result.id) ?? createCollectionPokemon(result.id)
     const shinyObtained = currentPokemon.shinyObtained || result.isShiny
+    const isFirstShinyUnlock = !currentPokemon.shinyObtained && result.isShiny
 
     collectionMap.set(result.id, normalizePokemon({
       ...currentPokemon,
@@ -409,7 +410,7 @@ export function mergePokemonDraws(collection, results) {
       dexSpeciesId: result.id,
       directDrawCount: currentPokemon.directDrawCount + 1,
       shinyObtained,
-      isShiny: shinyObtained,
+      isShiny: isFirstShinyUnlock ? true : currentPokemon.isShiny,
       lastDrawnAt: obtainedAt,
     }))
   }

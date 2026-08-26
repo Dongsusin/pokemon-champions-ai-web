@@ -241,6 +241,20 @@ const formCost = getTrainingCostBreakdown(baseGastrodon, normalizedGastrodon)
 assert.equal(formCost.total, TRAINING_COSTS.form)
 assert.equal(formCost.items[0].id, 'form')
 
+const shinyGastrodon = normalizePokemon({
+  ...baseGastrodon,
+  shinyObtained: true,
+  isShiny: true,
+})
+const shinyToggleCost = getTrainingCostBreakdown(
+  shinyGastrodon,
+  normalizePokemon({ ...shinyGastrodon, isShiny: false }),
+)
+assert.equal(TRAINING_COSTS.shiny, 0)
+assert.equal(shinyToggleCost.total, 0)
+assert.deepEqual(shinyToggleCost.items.map((item) => item.id), ['shiny'])
+assert.equal(shinyToggleCost.items[0].free, true)
+
 for (const baseProfile of profiles.filter((profile) => !profile.parentSpeciesId)) {
   assert(getPersistentFormOptions(baseProfile.id).every(isSavablePokemonForm))
   assert(getBattleFormOptions(baseProfile.id).every((profile) => !isSavablePokemonForm(profile)))

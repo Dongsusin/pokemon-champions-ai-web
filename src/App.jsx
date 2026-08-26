@@ -766,7 +766,9 @@ function GameApp({
     )))
     setVp(nextVp)
     gameAudioRef.current?.playEvent('save')
-    showNotice(`${normalizedPokemon.name} 트레이닝 완료 · ${trainingCost.total.toLocaleString()} VP 사용 · 남은 ${nextVp.toLocaleString()} VP`)
+    showNotice(trainingCost.total === 0
+      ? `${normalizedPokemon.name} 설정 저장 완료 · 이로치 색상 전환 무료`
+      : `${normalizedPokemon.name} 트레이닝 완료 · ${trainingCost.total.toLocaleString()} VP 사용 · 남은 ${nextVp.toLocaleString()} VP`)
     return true
   }
 

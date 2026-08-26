@@ -5,6 +5,7 @@ export const TRAINING_COSTS = Object.freeze({
   move: 100,
   nature: 200,
   ability: 400,
+  shiny: 0,
   form: 250,
   evolution: 400,
 })
@@ -52,6 +53,7 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
   const speciesChanged = Number(savedPokemon.speciesId) !== Number(draftPokemon.speciesId)
   const formChanged = speciesChanged && savedBaseSpeciesId === draftBaseSpeciesId
   const evolutionChanged = speciesChanged && savedBaseSpeciesId !== draftBaseSpeciesId
+  const shinyChanged = Boolean(savedPokemon.isShiny) !== Boolean(draftPokemon.isShiny)
 
   const items = [
     {
@@ -87,6 +89,15 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
       cost: savedPokemon.ability !== draftPokemon.ability ? TRAINING_COSTS.ability : 0,
     },
     {
+      id: 'shiny',
+      label: '이로치',
+      units: Number(shinyChanged),
+      unitLabel: '회',
+      unitCost: TRAINING_COSTS.shiny,
+      cost: 0,
+      free: true,
+    },
+    {
       id: 'form',
       label: '폼',
       units: Number(formChanged),
@@ -102,7 +113,7 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
       unitCost: TRAINING_COSTS.evolution,
       cost: evolutionChanged ? TRAINING_COSTS.evolution : 0,
     },
-  ].filter((item) => item.cost > 0)
+  ].filter((item) => item.cost > 0 || (item.free && item.units > 0))
 
   return {
     items,

@@ -20,6 +20,17 @@ const originalPokemon = partialCollection.find((pokemon) => pokemon.dexSpeciesId
 const completeCollection = createCompletePokemonCollection(partialCollection)
 const completeDexIds = new Set(completeCollection.map((pokemon) => pokemon.dexSpeciesId))
 const preservedPokemon = completeCollection.find((pokemon) => pokemon.dexSpeciesId === directlyDrawnPokemon.id)
+const normalColorPreference = { ...originalPokemon, isShiny: false }
+const migratedNormalColor = createCompletePokemonCollection([normalColorPreference])
+  .find((pokemon) => pokemon.dexSpeciesId === directlyDrawnPokemon.id)
+const redrawnNormalColor = mergePokemonDraws([normalColorPreference], [{
+  ...directlyDrawnPokemon,
+  isShiny: false,
+}]).collection.find((pokemon) => pokemon.dexSpeciesId === directlyDrawnPokemon.id)
+
+if (!originalPokemon?.shinyObtained || !originalPokemon.isShiny) {
+  failures.push('첫 이로치 획득 시 이로치 색상이 자동으로 활성화되지 않음')
+}
 
 if (completeCollection.length !== NATIONAL_DEX.length) {
   failures.push(`전체 도감 수 불일치: ${completeCollection.length}/${NATIONAL_DEX.length}`)
@@ -36,6 +47,15 @@ if (
   || preservedPokemon.nature !== originalPokemon.nature
 ) {
   failures.push('기존 포켓몬의 획득·이로치·육성 정보가 보존되지 않음')
+}
+
+if (
+  !migratedNormalColor?.shinyObtained
+  || migratedNormalColor.isShiny
+  || !redrawnNormalColor?.shinyObtained
+  || redrawnNormalColor.isShiny
+) {
+  failures.push('이로치 보유 포켓몬의 일반색 설정이 저장 또는 중복 뽑기 후 유지되지 않음')
 }
 
 const completeInventory = createCompleteBattleItemInventory()
