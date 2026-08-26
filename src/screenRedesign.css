@@ -11455,20 +11455,46 @@
 }
 
 .training-editor-body {
-  align-items: start;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(98, 79, 181, 0.46) transparent;
+  align-items: stretch;
+  overflow: visible;
 }
 
 .training-profile-column,
 .training-stat-column,
 .training-move-column {
   width: 100%;
-  align-self: start;
+  align-self: stretch;
+}
+
+@media (min-width: 1081px) {
+  .training-profile-column {
+    overflow: hidden;
+  }
+
+  .training-art-card {
+    flex: 0 0 auto;
+  }
+
+  .training-select-stack {
+    min-height: 0;
+    padding-right: 5px;
+    padding-bottom: 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(98, 79, 181, 0.46) transparent;
+  }
+
+  .training-select-stack::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .training-select-stack::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(98, 79, 181, 0.42);
+  }
 }
 
 .training-inline-info {
