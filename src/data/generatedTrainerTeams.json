@@ -61500,9 +61500,9 @@
       "specialties": [],
       "ace": {
         "dexSpeciesId": 670,
-        "speciesId": 670,
-        "slug": "floette",
-        "name": "플라엣테"
+        "speciesId": 10061,
+        "slug": "floette-eternal",
+        "name": "플라엣테 영원의꽃"
       },
       "mechanicPreferences": [
         "mega-evolution"
@@ -61530,9 +61530,9 @@
           "pokemon": [
             {
               "dexSpeciesId": 670,
-              "speciesId": 670,
-              "slug": "floette",
-              "name": "플라엣테",
+              "speciesId": 10061,
+              "slug": "floette-eternal",
+              "name": "플라엣테 영원의꽃",
               "level": 50,
               "role": "특수 스위퍼",
               "ability": "페어리오라",
@@ -61769,8 +61769,8 @@
             {
               "type": "mega-evolution",
               "label": "메가진화",
-              "pokemonSlug": "floette",
-              "pokemonName": "플라엣테",
+              "pokemonSlug": "floette-eternal",
+              "pokemonName": "플라엣테 영원의꽃",
               "targetFormId": 10296,
               "targetFormSlug": "floette-mega",
               "targetFormName": "메가플라엣테",
@@ -61780,11 +61780,11 @@
             }
           ],
           "strategy": {
-            "lead": "플라엣테",
+            "lead": "플라엣테 영원의꽃",
             "winConditions": [
-              "플라엣테의 메가진화"
+              "플라엣테 영원의꽃의 메가진화"
             ],
-            "summary": "플라엣테로 초반 주도권을 잡고, 제르네아스의 필드 정리로 전개를 유지하고, 플라엣테의 메가진화을 승리 수단으로 운용합니다."
+            "summary": "플라엣테 영원의꽃으로 초반 주도권을 잡고, 제르네아스의 필드 정리로 전개를 유지하고, 플라엣테 영원의꽃의 메가진화를 승리 수단으로 운용합니다."
           }
         },
         {
@@ -61792,9 +61792,9 @@
           "pokemon": [
             {
               "dexSpeciesId": 670,
-              "speciesId": 670,
-              "slug": "floette",
-              "name": "플라엣테",
+              "speciesId": 10061,
+              "slug": "floette-eternal",
+              "name": "플라엣테 영원의꽃",
               "level": 50,
               "role": "특수 스위퍼",
               "ability": "페어리오라",
@@ -62031,8 +62031,8 @@
             {
               "type": "mega-evolution",
               "label": "메가진화",
-              "pokemonSlug": "floette",
-              "pokemonName": "플라엣테",
+              "pokemonSlug": "floette-eternal",
+              "pokemonName": "플라엣테 영원의꽃",
               "targetFormId": 10296,
               "targetFormSlug": "floette-mega",
               "targetFormName": "메가플라엣테",
@@ -62044,9 +62044,9 @@
           "strategy": {
             "lead": "이벨타르",
             "winConditions": [
-              "플라엣테의 메가진화"
+              "플라엣테 영원의꽃의 메가진화"
             ],
-            "summary": "이벨타르로 초반 주도권을 잡고, 플라엣테의 메가진화을 승리 수단으로 운용합니다."
+            "summary": "이벨타르로 초반 주도권을 잡고, 플라엣테 영원의꽃의 메가진화를 승리 수단으로 운용합니다."
           }
         },
         {
@@ -62054,9 +62054,9 @@
           "pokemon": [
             {
               "dexSpeciesId": 670,
-              "speciesId": 670,
-              "slug": "floette",
-              "name": "플라엣테",
+              "speciesId": 10061,
+              "slug": "floette-eternal",
+              "name": "플라엣테 영원의꽃",
               "level": 50,
               "role": "특수 스위퍼",
               "ability": "페어리오라",
@@ -62293,8 +62293,8 @@
             {
               "type": "mega-evolution",
               "label": "메가진화",
-              "pokemonSlug": "floette",
-              "pokemonName": "플라엣테",
+              "pokemonSlug": "floette-eternal",
+              "pokemonName": "플라엣테 영원의꽃",
               "targetFormId": 10296,
               "targetFormSlug": "floette-mega",
               "targetFormName": "메가플라엣테",
@@ -62304,11 +62304,11 @@
             }
           ],
           "strategy": {
-            "lead": "플라엣테",
+            "lead": "플라엣테 영원의꽃",
             "winConditions": [
-              "플라엣테의 메가진화"
+              "플라엣테 영원의꽃의 메가진화"
             ],
-            "summary": "플라엣테로 초반 주도권을 잡고, 제르네아스의 필드 정리로 전개를 유지하고, 플라엣테의 메가진화을 승리 수단으로 운용합니다."
+            "summary": "플라엣테 영원의꽃으로 초반 주도권을 잡고, 제르네아스의 필드 정리로 전개를 유지하고, 플라엣테 영원의꽃의 메가진화를 승리 수단으로 운용합니다."
           }
         }
       ]
@@ -125850,9 +125850,9 @@
               "label": "메가진화",
               "pokemonSlug": "meowstic",
               "pokemonName": "냐오닉스",
-              "targetFormId": 10326,
-              "targetFormSlug": "meowstic-female-mega",
-              "targetFormName": "메가냐오닉스 (암컷의 모습)",
+              "targetFormId": 10314,
+              "targetFormSlug": "meowstic-male-mega",
+              "targetFormName": "메가냐오닉스 (수컷의 모습)",
               "targetAbility": "트레이스",
               "heldItemId": "meowsticite",
               "heldItemName": "냐오닉스나이트"
@@ -126374,9 +126374,9 @@
               "label": "메가진화",
               "pokemonSlug": "meowstic",
               "pokemonName": "냐오닉스",
-              "targetFormId": 10326,
-              "targetFormSlug": "meowstic-female-mega",
-              "targetFormName": "메가냐오닉스 (암컷의 모습)",
+              "targetFormId": 10314,
+              "targetFormSlug": "meowstic-male-mega",
+              "targetFormName": "메가냐오닉스 (수컷의 모습)",
               "targetAbility": "트레이스",
               "heldItemId": "meowsticite",
               "heldItemName": "냐오닉스나이트"
@@ -168964,9 +168964,9 @@
               "label": "메가진화",
               "pokemonSlug": "meowstic",
               "pokemonName": "냐오닉스",
-              "targetFormId": 10326,
-              "targetFormSlug": "meowstic-female-mega",
-              "targetFormName": "메가냐오닉스 (암컷의 모습)",
+              "targetFormId": 10314,
+              "targetFormSlug": "meowstic-male-mega",
+              "targetFormName": "메가냐오닉스 (수컷의 모습)",
               "targetAbility": "트레이스",
               "heldItemId": "meowsticite",
               "heldItemName": "냐오닉스나이트"
@@ -169488,9 +169488,9 @@
               "label": "메가진화",
               "pokemonSlug": "meowstic",
               "pokemonName": "냐오닉스",
-              "targetFormId": 10326,
-              "targetFormSlug": "meowstic-female-mega",
-              "targetFormName": "메가냐오닉스 (암컷의 모습)",
+              "targetFormId": 10314,
+              "targetFormSlug": "meowstic-male-mega",
+              "targetFormName": "메가냐오닉스 (수컷의 모습)",
               "targetAbility": "트레이스",
               "heldItemId": "meowsticite",
               "heldItemName": "냐오닉스나이트"
@@ -173031,9 +173031,9 @@
               "label": "메가진화",
               "pokemonSlug": "meowstic",
               "pokemonName": "냐오닉스",
-              "targetFormId": 10326,
-              "targetFormSlug": "meowstic-female-mega",
-              "targetFormName": "메가냐오닉스 (암컷의 모습)",
+              "targetFormId": 10314,
+              "targetFormSlug": "meowstic-male-mega",
+              "targetFormName": "메가냐오닉스 (수컷의 모습)",
               "targetAbility": "트레이스",
               "heldItemId": "meowsticite",
               "heldItemName": "냐오닉스나이트"

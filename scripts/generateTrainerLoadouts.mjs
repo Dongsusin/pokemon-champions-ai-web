@@ -4,6 +4,7 @@ import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import generatedBattleItems from '../src/data/generatedBattleItems.js'
 import { isBattleMoveSupported } from '../src/data/moveSupportData.js'
+import { isBattleFormCompatible } from '../src/data/trainingData.js'
 import { canUseZMove } from '../src/data/zMoveData.js'
 import { getZaMegaStoneByFormSlug, isZaMegaForm } from '../src/data/zaMegaData.js'
 import { mechanicPreferencesFor } from './trainerBattleRules.mjs'
@@ -688,8 +689,8 @@ function transitionPlan(option, context) {
 
 function megaPlanFor(trainer, team, contexts, usedTargetIndexes) {
   for (const context of orderedMechanicContexts(trainer, contexts, usedTargetIndexes)) {
-    if (context.slot.speciesId !== context.slot.dexSpeciesId) continue
     const options = (megaOptionsByDexId.get(context.slot.dexSpeciesId) ?? [])
+      .filter((option) => isBattleFormCompatible(context.species, option.targetForm))
       .filter((option) => !option.requiredMoveId || context.legalMoveIds.has(option.requiredMoveId))
       .sort((left, right) => (
         trainer.region === 'za'
@@ -1142,7 +1143,7 @@ function validateTrainerLoadouts(data) {
         if (gimmick.type === 'mega-evolution') {
           const option = (megaOptionsByDexId.get(target.dexSpeciesId) ?? [])
             .find((candidate) => candidate.targetForm.id === gimmick.targetFormId)
-          if (!option || target.speciesId !== target.dexSpeciesId) {
+          if (!option || !isBattleFormCompatible(profileById.get(target.speciesId), option.targetForm)) {
             throw new Error(`${trainer.name} ${target.name}: invalid Mega Evolution form`)
           }
           if (option.heldItem && target.heldItemId !== option.heldItem.id) {

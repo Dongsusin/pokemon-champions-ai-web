@@ -116,10 +116,10 @@ function preloadMoveAssetsWithTimeout(assets, timeout = 1800) {
 }
 
 function getBattleSpriteAssets(pokemon) {
-  const battleBaseSpeciesId = Number(
-    pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId ?? pokemon.speciesId,
+  const battleSourceSpeciesId = Number(
+    pokemon.originalSpeciesId ?? pokemon.speciesId ?? pokemon.battleBaseSpeciesId,
   )
-  const formAssets = getBattleFormOptions(battleBaseSpeciesId)
+  const formAssets = getBattleFormOptions(battleSourceSpeciesId)
     .filter((form) => (
       form.formMetadata?.formKind !== 'item'
       || Number(form.id) === Number(pokemon.speciesId)

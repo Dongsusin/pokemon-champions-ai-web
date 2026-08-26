@@ -2,6 +2,7 @@ import {
   calculateStats,
   getBattleFormOptions,
   getEvolutionOptions,
+  getGigantamaxProfile,
   getMove,
   getMoveById,
   getRelatedFormOptions,
@@ -5459,12 +5460,42 @@ function applyKnockoutTriggeredFormAfterFaint(state, attacker, defender, directD
   })
 }
 
-function transformPokemon(state, pokemon, formId, mechanicId) {
-  const fallbackOptions = getBattleFormOptions(pokemon.originalSpeciesId)
-  const form = getSpeciesProfile(formId)
-    ?? fallbackOptions.find((option) => (
-      mechanicId === 'primal' ? option.slug.includes('-primal') : option.slug.includes('-mega')
+function battleMechanicFormOptions(pokemon, mechanicId) {
+  const formMarker = mechanicId === 'primal' ? '-primal' : '-mega'
+  return getBattleFormOptions(pokemon.originalSpeciesId)
+    .filter((option) => option.slug?.includes(formMarker))
+}
+
+function resolveBattleMechanicForm(pokemon, mechanicId, requestedFormId = null) {
+  const candidates = battleMechanicFormOptions(pokemon, mechanicId)
+  if (!candidates.length) return null
+
+  const requestedForm = getSpeciesProfile(requestedFormId)
+  if (requestedForm && candidates.some((candidate) => candidate.id === requestedForm.id)) {
+    return requestedForm
+  }
+
+  if (mechanicId === 'mega') {
+    const item = getBattleItem(pokemon.heldItemId)
+    const configuredTarget = item?.targetFormSlugs?.find((slug) => (
+      candidates.some((candidate) => candidate.slug === slug)
     ))
+    if (configuredTarget) return candidates.find((candidate) => candidate.slug === configuredTarget)
+
+    const variant = pokemon.heldItemId?.match(/-(x|y|z)$/)?.[1]
+    if (variant) {
+      const variantForm = candidates.find((candidate) => candidate.slug.endsWith(`-mega-${variant}`))
+      if (variantForm) return variantForm
+    }
+  }
+
+  return candidates[0]
+}
+
+function transformPokemon(state, pokemon, formId, mechanicId) {
+  const form = mechanicId === 'ultra'
+    ? getSpeciesProfile(formId)
+    : resolveBattleMechanicForm(pokemon, mechanicId, formId)
   if (!form) return false
 
   if (!changeBattleForm(state, pokemon, form, MECHANIC_LABELS[mechanicId], { log: false, animate: false })) return false
@@ -5489,11 +5520,11 @@ function activateUltraBurst(state, pokemon) {
 }
 
 function transformGigantamax(pokemon) {
-  const formOptions = getBattleFormOptions(pokemon.originalSpeciesId)
+  const compatibleForm = getGigantamaxProfile(pokemon.originalSpeciesId)
   const configuredForm = pokemon.gimmickFormId ? getSpeciesProfile(pokemon.gimmickFormId) : null
-  const form = configuredForm?.slug?.includes('-gmax')
+  const form = configuredForm?.slug?.includes('-gmax') && configuredForm.id === compatibleForm?.id
     ? configuredForm
-    : formOptions.find((option) => option.slug.includes('-gmax'))
+    : compatibleForm
   if (!form) return false
 
   pokemon.dynamaxOriginalForm = {
@@ -5547,19 +5578,22 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
     })
   }
 
-  const formOptions = getBattleFormOptions(pokemon.originalSpeciesId)
-  const hasMegaForm = Boolean(pokemon.gimmickFormId || formOptions.some((form) => form.slug.includes('-mega')))
-  const hasPrimalForm = Boolean(pokemon.gimmickFormId || formOptions.some((form) => form.slug.includes('-primal')))
+  const hasMegaForm = battleMechanicFormOptions(pokemon, 'mega').length > 0
+  const hasPrimalForm = battleMechanicFormOptions(pokemon, 'primal').length > 0
   const rayquazaCanMegaEvolve = currentSpeciesSlug(pokemon) === 'rayquaza'
     && pokemon.moves.some((move) => move.id === 'dragonascent')
-  const hasMegaStone = pokemon.heldItemId?.includes('ite') || configured.includes('mega') || rayquazaCanMegaEvolve
+  const hasMegaStone = megaStoneMatchesPokemon(getBattleItem(pokemon.heldItemId), pokemon)
+    || configured.includes('mega')
+    || rayquazaCanMegaEvolve
+  const hasPrimalOrb = hasHeldItem(pokemon, currentSpeciesSlug(pokemon) === 'groudon' ? 'red-orb' : 'blue-orb')
+    || configured.includes('primal')
   const hasZCrystal = pokemon.heldItemId?.includes('-z') || pokemon.heldItemId?.includes('ium-z')
   const hasCompatibleZMove = hasZCrystal && hasCompatibleBattleZMove(pokemon)
 
   if (!side.usedMechanics.mega && allow('mega') && hasMegaForm && hasMegaStone) {
     available.push({ id: 'mega', label: '메가진화', shortLabel: 'MEGA' })
   }
-  if (!side.usedMechanics.primal && allow('primal') && hasPrimalForm) {
+  if (!side.usedMechanics.primal && allow('primal') && hasPrimalForm && hasPrimalOrb) {
     available.push({ id: 'primal', label: '원시회귀', shortLabel: 'PRIMAL' })
   }
   if (!side.usedMechanics.zmove && allow('zmove') && hasCompatibleZMove) {
@@ -9423,11 +9457,7 @@ function projectAiPokemonForMechanic(attacker, gimmick) {
   }
 
   if (!['mega', 'primal'].includes(gimmick)) return attacker
-  const formOptions = getBattleFormOptions(attacker.originalSpeciesId)
-  const form = getSpeciesProfile(attacker.gimmickFormId)
-    ?? formOptions.find((option) => (
-      gimmick === 'primal' ? option.slug.includes('-primal') : option.slug.includes('-mega')
-    ))
+  const form = resolveBattleMechanicForm(attacker, gimmick, attacker.gimmickFormId)
   if (!form) return attacker
   const transformed = normalizePokemon({
     ...attacker,

@@ -150,16 +150,6 @@ export const DYNAMAX_MODES = [
   },
 ]
 
-const GIGANTAMAX_FORM_ID_BY_SPECIES_ID = new Map()
-
-pokemonData.forms.forEach((entry) => {
-  if (!entry.slug?.includes('-gmax')) return
-  const speciesId = Number(entry.parentSpeciesId)
-  if (!GIGANTAMAX_FORM_ID_BY_SPECIES_ID.has(speciesId)) {
-    GIGANTAMAX_FORM_ID_BY_SPECIES_ID.set(speciesId, entry.id)
-  }
-})
-
 export function typeClassName(type) {
   return TYPE_CLASS[type] ?? 'normal'
 }
@@ -185,19 +175,6 @@ function resolveHiddenPowerConfiguration(pokemon = {}) {
     ),
     hiddenPowerTypeConfigured,
   }
-}
-
-export function canGigantamax(speciesId) {
-  const species = getSpeciesProfile(speciesId)
-  const baseSpeciesId = Number(species?.parentSpeciesId ?? species?.id ?? speciesId)
-  return GIGANTAMAX_FORM_ID_BY_SPECIES_ID.has(baseSpeciesId)
-}
-
-export function getGigantamaxProfile(speciesId) {
-  const species = getSpeciesProfile(speciesId)
-  const baseSpeciesId = Number(species?.parentSpeciesId ?? species?.id ?? speciesId)
-  const formId = GIGANTAMAX_FORM_ID_BY_SPECIES_ID.get(baseSpeciesId)
-  return formId ? getSpeciesProfile(formId) : null
 }
 
 export function normalizeDynamaxMode(dynamaxMode, speciesId) {
@@ -448,6 +425,30 @@ const PROFILE_LIST = [...GENERATED_PROFILE_LIST, ...VIRTUAL_FORM_PROFILES].map(p
 const PROFILE_BY_SLUG = new Map(PROFILE_LIST.map((entry) => [entry.slug, entry]))
 const RELATED_PROFILE_OPTIONS_BY_BASE_ID = new Map()
 
+const BATTLE_FORM_SOURCE_SLUGS = Object.freeze({
+  'darmanitan-zen': ['darmanitan'],
+  'darmanitan-galar-zen': ['darmanitan-galar-standard'],
+  'eevee-gmax': ['eevee'],
+  'floette-mega': ['floette-eternal'],
+  'greninja-ash': ['greninja-battle-bond'],
+  'greninja-mega': ['greninja'],
+  'meowstic-male-mega': ['meowstic'],
+  'meowstic-female-mega': ['meowstic-female'],
+  'meowth-gmax': ['meowth'],
+  'mimikyu-busted': ['mimikyu'],
+  'mimikyu-totem-busted': ['mimikyu-totem-disguised'],
+  'necrozma-ultra': ['necrozma-dusk', 'necrozma-dawn'],
+  'pikachu-gmax': ['pikachu', 'pikachu-f'],
+  'raichu-mega-x': ['raichu', 'raichu-f'],
+  'raichu-mega-y': ['raichu', 'raichu-f'],
+  'slowbro-mega': ['slowbro'],
+  'toxtricity-amped-gmax': ['toxtricity'],
+  'toxtricity-low-key-gmax': ['toxtricity-low-key'],
+  'urshifu-single-strike-gmax': ['urshifu'],
+  'urshifu-rapid-strike-gmax': ['urshifu-rapid-strike'],
+  'zygarde-complete': ['zygarde', 'zygarde-10'],
+})
+
 PROFILE_LIST.forEach((option) => {
   const baseSpeciesId = Number(option.parentSpeciesId ?? option.id)
   const relatedOptions = RELATED_PROFILE_OPTIONS_BY_BASE_ID.get(baseSpeciesId) ?? []
@@ -494,6 +495,38 @@ export function getRelatedFormOptions(speciesId) {
   return RELATED_PROFILE_OPTIONS_BY_BASE_ID.get(baseSpeciesId) ?? []
 }
 
+function miniorColorFromSlug(slug) {
+  if (slug === 'minior') return 'red'
+  return slug?.match(/^minior-(red|orange|yellow|green|blue|indigo|violet)(?:-meteor)?$/)?.[1] ?? null
+}
+
+export function isBattleFormCompatible(sourceSpeciesOrProfile, formSpeciesOrProfile) {
+  const requestedSource = typeof sourceSpeciesOrProfile === 'object'
+    ? sourceSpeciesOrProfile
+    : getSpeciesProfile(sourceSpeciesOrProfile)
+  const source = getCanonicalPokemonFormProfile(requestedSource)
+  const form = typeof formSpeciesOrProfile === 'object'
+    ? formSpeciesOrProfile
+    : getSpeciesProfile(formSpeciesOrProfile)
+  if (!source || !form) return false
+
+  const sourceBaseSpeciesId = Number(source.parentSpeciesId ?? source.id)
+  const formBaseSpeciesId = Number(form.parentSpeciesId ?? form.id)
+  if (sourceBaseSpeciesId !== formBaseSpeciesId) return false
+
+  const allowedSourceSlugs = BATTLE_FORM_SOURCE_SLUGS[form.slug]
+  if (allowedSourceSlugs) return allowedSourceSlugs.includes(source.slug)
+
+  if (form.slug?.startsWith('minior-') && form.slug.endsWith('-meteor')) {
+    return miniorColorFromSlug(source.slug) === miniorColorFromSlug(form.slug)
+  }
+
+  const sourceMetadata = getPokemonFormMetadata(source)
+  const formMetadata = getPokemonFormMetadata(form)
+  if (sourceMetadata.formKind === 'regional' && formMetadata.formKind === 'gimmick') return false
+  return true
+}
+
 export function getPersistentFormOptions(speciesId) {
   return getRelatedFormOptions(speciesId)
     .filter((option) => (
@@ -534,12 +567,23 @@ export function isSavablePokemonForm(speciesOrProfile) {
 }
 
 export function getBattleFormOptions(speciesId) {
+  const source = getSpeciesProfile(speciesId)
   return getRelatedFormOptions(speciesId)
     .filter((option) => (
       option?.parentSpeciesId
       && !isSavableFormProfile(option)
       && !getPokemonFormMetadata(option).hiddenFromFormPicker
+      && isBattleFormCompatible(source, option)
     ))
+}
+
+export function getGigantamaxProfile(speciesId) {
+  return getBattleFormOptions(speciesId)
+    .find((option) => option.slug?.includes('-gmax')) ?? null
+}
+
+export function canGigantamax(speciesId) {
+  return Boolean(getGigantamaxProfile(speciesId))
 }
 
 export function getEvolutionSpeciesIds(speciesId) {

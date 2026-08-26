@@ -392,6 +392,17 @@ const FORM_METADATA_BY_SLUG = Object.freeze({
   'meloetta-pirouette': { formKind: 'move', saveable: false, requirement: '기술 · 옛노래 명중' },
   'mimikyu-busted': { formKind: 'ability', saveable: false, requirement: '특성 · 탈 파괴' },
   'mimikyu-totem-busted': { formKind: 'ability', saveable: false, requirement: '특성 · 탈 파괴' },
+  ...Object.fromEntries(
+    ['orange', 'yellow', 'green', 'blue', 'indigo', 'violet'].map((color) => [
+      `minior-${color}-meteor`,
+      {
+        formKind: 'ability',
+        saveable: false,
+        requiredAbility: '리밋실드',
+        requirement: '특성 · HP가 절반보다 높을 때',
+      },
+    ]),
+  ),
   'morpeko-hangry': { formKind: 'ability', saveable: false, requirement: '특성 · 턴 종료' },
   'palafin-hero': { formKind: 'ability', saveable: false, requirement: '특성 · 교대 후 재등장' },
   'terapagos-terastal': { formKind: 'ability', saveable: false, requirement: '특성 · 등장 시' },

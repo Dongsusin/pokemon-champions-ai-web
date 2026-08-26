@@ -156,6 +156,113 @@ function turn(state, playerAction, opponentAction) {
 }
 
 {
+  const state = battle(
+    [pokemon('charizard', ['protect'], { heldItemId: 'charizardite-y' })],
+    [pokemon('snorlax')],
+  )
+  assert(getAvailableBattleMechanics(state, 'player', 0).some((mechanic) => mechanic.id === 'mega'))
+  const nextState = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'mega' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get('charizard-mega-y').id)
+  assert.equal(nextState.rules.weather.id, 'sun')
+}
+
+{
+  const state = battle(
+    [pokemon('charizard', ['protect'], { heldItemId: 'venusaurite' })],
+    [pokemon('snorlax')],
+  )
+  assert(!getAvailableBattleMechanics(state, 'player', 0).some((mechanic) => mechanic.id === 'mega'))
+}
+
+for (const [sourceSlug, itemId, expectedMegaSlug] of [
+  ['mewtwo', 'mewtwonite-y', 'mewtwo-mega-y'],
+  ['raichu', 'raichunite-y', 'raichu-mega-y'],
+]) {
+  const state = battle(
+    [pokemon(sourceSlug, ['protect'], { heldItemId: itemId })],
+    [pokemon('snorlax')],
+  )
+  const nextState = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'mega' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get(expectedMegaSlug).id)
+}
+
+{
+  const state = battle(
+    [pokemon('meowstic-female', ['protect'], { heldItemId: 'meowsticite' })],
+    [pokemon('snorlax')],
+  )
+  const nextState = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'mega' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get('meowstic-female-mega').id)
+}
+
+{
+  const regularState = battle(
+    [pokemon('floette', ['protect'], { heldItemId: 'floettite' })],
+    [pokemon('snorlax')],
+  )
+  assert(!getAvailableBattleMechanics(regularState, 'player', 0).some((mechanic) => mechanic.id === 'mega'))
+
+  const eternalState = battle(
+    [pokemon('floette-eternal', ['protect'], { heldItemId: 'floettite' })],
+    [pokemon('snorlax')],
+  )
+  const nextState = turn(
+    eternalState,
+    { type: 'move', moveIndex: 0, gimmick: 'mega' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get('floette-mega').id)
+}
+
+for (const [sourceSlug, expectedGmaxSlug] of [
+  ['toxtricity-low-key', 'toxtricity-low-key-gmax'],
+  ['urshifu-rapid-strike', 'urshifu-rapid-strike-gmax'],
+]) {
+  const state = battle(
+    [pokemon(sourceSlug, ['protect'], { dynamaxMode: 'gigantamax' })],
+    [pokemon('snorlax')],
+  )
+  const nextState = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'dynamax' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get(expectedGmaxSlug).id)
+}
+
+{
+  const groudonWithoutOrb = battle([pokemon('groudon')], [pokemon('snorlax')])
+  assert(!getAvailableBattleMechanics(groudonWithoutOrb, 'player', 0)
+    .some((mechanic) => mechanic.id === 'primal'))
+
+  const groudonWithOrb = battle(
+    [pokemon('groudon', ['protect'], { heldItemId: 'red-orb' })],
+    [pokemon('snorlax')],
+  )
+  assert(getAvailableBattleMechanics(groudonWithOrb, 'player', 0)
+    .some((mechanic) => mechanic.id === 'primal'))
+  const nextState = turn(
+    groudonWithOrb,
+    { type: 'move', moveIndex: 0, gimmick: 'primal' },
+    { type: 'move', moveIndex: 0 },
+  )
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get('groudon-primal').id)
+  assert.equal(nextState.rules.weather.id, 'desolateland')
+}
+
+{
   let state = battle(
     [pokemon('aegislash', ['shadowball', 'kingsshield'])],
     [pokemon('snorlax', ['tackle'])],
@@ -223,6 +330,14 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
   state.player.team[0].hp = Math.floor(state.player.team[0].maxHp / 2)
   state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('minior-red').id)
+}
+
+{
+  let state = battle([pokemon('minior-blue')], [pokemon('snorlax')])
+  assert.equal(state.player.team[0].speciesId, profileBySlug.get('minior-blue-meteor').id)
+  state.player.team[0].hp = Math.floor(state.player.team[0].maxHp / 2)
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].speciesId, profileBySlug.get('minior-blue').id)
 }
 
 {
@@ -307,6 +422,15 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
   const nextState = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
   assert.equal(nextState.player.team[0].speciesId, profileBySlug.get('mimikyu-busted').id)
   assert.equal(nextState.player.team[0].hp, hpBefore - Math.floor(hpBefore / 8))
+}
+
+{
+  const state = battle(
+    [pokemon('mimikyu-totem-disguised', ['swordsdance'])],
+    [pokemon('snorlax', ['bite'])],
+  )
+  const nextState = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(nextState.player.team[0].speciesId, profileBySlug.get('mimikyu-totem-busted').id)
 }
 
 {

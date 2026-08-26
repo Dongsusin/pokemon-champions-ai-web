@@ -101,7 +101,7 @@ export const TRAINER_BLUEPRINTS = [
   trainer('B', '즈미', 'kalos', 'water', 'clawitzer starmie gyarados barbaracle slowking blastoise', { support: 'pelipper rotom-wash' }),
   trainer('B', '드라세나', 'kalos', 'dragon', 'dragalge noivern druddigon altaria dragapult goodra', { support: 'archaludon corviknight' }),
   trainer('B', '플라드리', 'kalos', 'fire dark', 'gyarados pyroar mienshao honchkrow houndoom xerneas', { support: 'kingambit volcarona' }),
-  trainer('B', 'AZ', 'kalos', '', 'floette golurk torkoal sigilyph aegislash zygarde', { support: 'clefable corviknight' }),
+  trainer('B', 'AZ', 'kalos', '', 'floette-eternal golurk torkoal sigilyph aegislash zygarde', { support: 'clefable corviknight' }),
   trainer('B', '하우', 'alola', '', 'raichu-alola decidueye incineroar primarina crabominable flareon tauros', { support: 'tapu-koko corviknight' }),
   trainer('B', '할라', 'alola', 'fighting', 'crabominable hariyama bewear poliwrath primeape machamp', { support: 'annihilape corviknight' }),
   trainer('B', '라이치', 'alola', 'rock', 'lycanroc probopass golem-alola carbink relicanth gigalith', { support: 'glimmora excadrill' }),

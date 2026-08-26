@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
+import trainerData from '../src/data/generatedTrainerTeams.json' with { type: 'json' }
 import {
   SPECIES_PROFILES,
+  canGigantamax,
   getBattleFormOptions,
   getFormMetadata,
+  getGigantamaxProfile,
   getPersistentFormOptions,
   getSpeciesProfile,
+  isBattleFormCompatible,
   isSavablePokemonForm,
   normalizePokemon,
   resolveMoveTriggeredFormSpeciesId,
@@ -69,7 +73,8 @@ const floettePersistent = slugs(getPersistentFormOptions(670))
 for (const slug of ['floette', 'floette-blue', 'floette-orange', 'floette-white', 'floette-yellow', 'floette-eternal']) {
   assert(floettePersistent.has(slug), `Floette form is unavailable: ${slug}`)
 }
-assert(slugs(getBattleFormOptions(670)).has('floette-mega'))
+assert(!slugs(getBattleFormOptions(670)).has('floette-mega'))
+assert(slugs(getBattleFormOptions(requireProfile('floette-eternal').id)).has('floette-mega'))
 
 assert(slugs(getPersistentFormOptions(423)).has('gastrodon-east'))
 assert.equal(requireProfile('jellicent-f').gender, 'F')
@@ -85,7 +90,56 @@ assert.equal(getFormMetadata(spikyPichu).evolutionLocked, true)
 const greninjaPersistent = slugs(getPersistentFormOptions(658))
 assert(greninjaPersistent.has('greninja-battle-bond'))
 assert(!greninjaPersistent.has('greninja-ash'))
-assert(slugs(getBattleFormOptions(658)).has('greninja-ash'))
+assert(!slugs(getBattleFormOptions(658)).has('greninja-ash'))
+assert(slugs(getBattleFormOptions(658)).has('greninja-mega'))
+assert.deepEqual(
+  slugs(getBattleFormOptions(requireProfile('greninja-battle-bond').id)),
+  new Set(['greninja-ash']),
+)
+
+assert.deepEqual(slugs(getBattleFormOptions(555)), new Set(['darmanitan-zen']))
+assert.deepEqual(
+  slugs(getBattleFormOptions(requireProfile('darmanitan-galar-standard').id)),
+  new Set(['darmanitan-galar-zen']),
+)
+assert.deepEqual(slugs(getBattleFormOptions(778)), new Set(['mimikyu-busted']))
+assert.deepEqual(
+  slugs(getBattleFormOptions(requireProfile('mimikyu-totem-disguised').id)),
+  new Set(['mimikyu-totem-busted']),
+)
+assert.deepEqual(
+  slugs(getBattleFormOptions(requireProfile('minior-blue').id)),
+  new Set(['minior-blue-meteor']),
+)
+assert.equal(getFormMetadata(requireProfile('minior-blue-meteor')).requiredAbility, '리밋실드')
+assert.deepEqual(slugs(getBattleFormOptions(678)), new Set(['meowstic-male-mega']))
+assert.deepEqual(
+  slugs(getBattleFormOptions(requireProfile('meowstic-female').id)),
+  new Set(['meowstic-female-mega']),
+)
+assert.deepEqual(slugs(getBattleFormOptions(800)), new Set())
+assert.deepEqual(
+  slugs(getBattleFormOptions(requireProfile('necrozma-dusk').id)),
+  new Set(['necrozma-ultra']),
+)
+assert(isBattleFormCompatible(requireProfile('necrozma-dawn'), requireProfile('necrozma-ultra')))
+
+assert.equal(getGigantamaxProfile(849)?.slug, 'toxtricity-amped-gmax')
+assert.equal(
+  getGigantamaxProfile(requireProfile('toxtricity-low-key').id)?.slug,
+  'toxtricity-low-key-gmax',
+)
+assert.equal(getGigantamaxProfile(892)?.slug, 'urshifu-single-strike-gmax')
+assert.equal(
+  getGigantamaxProfile(requireProfile('urshifu-rapid-strike').id)?.slug,
+  'urshifu-rapid-strike-gmax',
+)
+assert(canGigantamax(52))
+assert(!canGigantamax(requireProfile('meowth-galar').id))
+assert(!canGigantamax(requireProfile('pikachu-world-cap').id))
+assert(!canGigantamax(requireProfile('eevee-starter').id))
+assert.deepEqual(slugs(getBattleFormOptions(requireProfile('raichu-alola').id)), new Set())
+assert.deepEqual(slugs(getBattleFormOptions(requireProfile('slowbro-galar').id)), new Set())
 
 const arceusForms = getBattleFormOptions(493)
 assert.equal(arceusForms.filter((profile) => profile.formMetadata.formKind === 'item').length, 17)
@@ -100,6 +154,36 @@ assert(!slugs(getPersistentFormOptions(6)).has('charizard-mega-x'))
 for (const profile of profiles.filter((entry) => /(?:-mega(?:-x|-y|x|y)?|-gmax|-primal)$/.test(entry.slug))) {
   assert(!isSavablePokemonForm(profile), `Battle gimmick form became saveable: ${profile.slug}`)
 }
+
+for (const form of profiles.filter((profile) => (
+  profile.parentSpeciesId
+  && !isSavablePokemonForm(profile)
+  && !getFormMetadata(profile).hiddenFromFormPicker
+))) {
+  const compatibleSources = getPersistentFormOptions(form.parentSpeciesId)
+    .filter((source) => isBattleFormCompatible(source, form))
+  assert(compatibleSources.length > 0, `Battle form has no compatible source form: ${form.slug}`)
+}
+
+let trainerBattleFormCount = 0
+for (const trainer of trainerData.trainers) {
+  for (const team of trainer.teams ?? []) {
+    for (const gimmick of team.battleGimmicks ?? []) {
+      if (!gimmick.targetFormSlug) continue
+      trainerBattleFormCount += 1
+      const sourceSlot = (team.pokemon ?? []).find((pokemon) => pokemon.slug === gimmick.pokemonSlug)
+      const source = profileBySlug.get(sourceSlot?.slug)
+      const target = profileBySlug.get(gimmick.targetFormSlug)
+      assert(source, `Trainer battle form source is missing: ${trainer.name} team ${team.number} / ${gimmick.pokemonSlug}`)
+      assert(target, `Trainer battle form target is missing: ${trainer.name} team ${team.number} / ${gimmick.targetFormSlug}`)
+      assert(
+        isBattleFormCompatible(source, target),
+        `Trainer battle form mismatch: ${trainer.name} team ${team.number} / ${source.slug} -> ${target.slug}`,
+      )
+    }
+  }
+}
+assert(trainerBattleFormCount > 0)
 
 const keldeoResolute = requireProfile('keldeo-resolute')
 assert.equal(getFormMetadata(keldeoResolute).requiredMove, '신비의칼')
@@ -131,4 +215,4 @@ for (const baseProfile of profiles.filter((profile) => !profile.parentSpeciesId)
   assert(getBattleFormOptions(baseProfile.id).every((profile) => !isSavablePokemonForm(profile)))
 }
 
-console.log(`Validated ${profiles.length} Pokémon profiles including persistent, gender, cosmetic, item, ability, move, and battle-only forms.`)
+console.log(`Validated ${profiles.length} Pokémon profiles and ${trainerBattleFormCount} trainer battle-form assignments.`)
