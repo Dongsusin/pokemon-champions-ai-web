@@ -276,8 +276,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   }
 
   const toggleShiny = () => {
-    if (!editablePokemon?.shinyObtained || isPreviewForm) return
-    updateSelected({ isShiny: !editablePokemon.isShiny })
+    if (!editablePokemon?.shinyObtained) return
+    writeSelected({ isShiny: !editablePokemon.isShiny })
   }
 
   const updateMove = (slotIndex, moveName) => {
@@ -719,7 +719,6 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                         <button
                           className="training-shiny-toggle"
                           type="button"
-                          disabled={isPreviewForm}
                           aria-label={`이로치 색상 ${selectedPokemon.isShiny ? '끄기' : '켜기'}`}
                           aria-pressed={selectedPokemon.isShiny}
                           onClick={toggleShiny}
