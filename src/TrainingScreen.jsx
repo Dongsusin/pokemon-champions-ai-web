@@ -675,7 +675,20 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                 <div className="training-profile-column">
                   <div className={`training-art-card${selectedPokemon.isShiny ? ' is-shiny' : ''}`}>
                     <span className="training-art-ring" aria-hidden="true" />
-                    {selectedPokemon.isShiny && <span className="training-art-shiny-label">★ SHINY</span>}
+                    {selectedPokemon.shinyObtained && (
+                      <button
+                        className={`training-art-shiny-toggle${selectedPokemon.isShiny ? ' active' : ''}`}
+                        type="button"
+                        aria-label={`이로치 색상 ${selectedPokemon.isShiny ? '끄기' : '켜기'}`}
+                        aria-pressed={selectedPokemon.isShiny}
+                        title={`이로치 색상 ${selectedPokemon.isShiny ? '끄기' : '켜기'}`}
+                        onClick={toggleShiny}
+                      >
+                        <Sparkles size={10} aria-hidden="true" />
+                        <span>SHINY</span>
+                        <em>{selectedPokemon.isShiny ? 'ON' : 'OFF'}</em>
+                      </button>
+                    )}
                     <div className="training-sprite-facing" role="group" aria-label="전투 스프라이트 방향">
                       <button
                         className={spriteSide === 'front' ? 'active' : ''}
@@ -710,28 +723,6 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                   </div>
 
                   <div className="training-select-stack">
-                    {selectedPokemon.shinyObtained && (
-                      <div className={`training-picker-field training-shiny-field${selectedPokemon.isShiny ? ' active' : ''}`}>
-                        <span>
-                          <Sparkles size={14} /> 이로치 설정
-                          <em className="training-field-cost is-free">무료</em>
-                        </span>
-                        <button
-                          className="training-shiny-toggle"
-                          type="button"
-                          aria-label={`이로치 색상 ${selectedPokemon.isShiny ? '끄기' : '켜기'}`}
-                          aria-pressed={selectedPokemon.isShiny}
-                          onClick={toggleShiny}
-                        >
-                          <span>
-                            <strong>{selectedPokemon.isShiny ? '이로치 색상' : '일반 색상'}</strong>
-                            <small>획득한 이로치 색상을 자유롭게 전환</small>
-                          </span>
-                          <em>{selectedPokemon.isShiny ? 'ON' : 'OFF'}</em>
-                          <i className="training-shiny-switch" aria-hidden="true"><b /></i>
-                        </button>
-                      </div>
-                    )}
                     <div className="training-picker-field">
                       <span>
                         <Dna size={14} /> 진화 형태
