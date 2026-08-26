@@ -27,6 +27,7 @@
     "validate:battle-content": "npm run validate:battle-move-conditions && npm run validate:battle-move-effects && npm run validate:battle-mechanics && npm run validate:battle-abilities && npm run validate:battle-ability-effects",
     "validate:signature-z-moves": "node scripts/validateSignatureZMoves.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",
+    "generate:pokemon-genders": "node scripts/generatePokemonGenderData.mjs",
     "validate:pokemon-learnsets": "node scripts/validatePokemonLearnsets.mjs",
     "validate:pokemon-forms": "node scripts/validatePokemonForms.mjs",
     "validate:training-moves": "node scripts/validateTrainingMoves.mjs",

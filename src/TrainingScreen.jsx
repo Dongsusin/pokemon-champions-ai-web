@@ -31,6 +31,7 @@ import {
   getFormMetadata,
   getLearnableMoves,
   getMove,
+  getPokemonGenderOptions,
   getPersistentFormOptions,
   getSpeciesProfile,
   HIDDEN_POWER_TYPES,
@@ -38,6 +39,7 @@ import {
   normalizePokemon,
   resolveMoveForPokemon,
   resolveMoveTriggeredFormSpeciesId,
+  resolvePokemonGenderProfile,
   STAT_META,
   STAT_POINT_PER_STAT,
   STAT_POINT_TOTAL,
@@ -76,6 +78,7 @@ function trainingSignature(pokemon) {
 
   return JSON.stringify({
     speciesId: pokemon.speciesId,
+    gender: pokemon.gender,
     isShiny: Boolean(pokemon.isShiny),
     nature: pokemon.nature,
     ability: pokemon.ability,
@@ -209,6 +212,11 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   const evolutionOptions = editablePokemon ? getEvolutionOptions(editablePokemon.speciesId) : []
   const persistentFormOptions = editablePokemon ? getPersistentFormOptions(editablePokemon.speciesId) : []
   const battleFormOptions = editablePokemon ? getBattleFormOptions(editablePokemon.speciesId) : []
+  const genderOptions = editableSpecies ? getPokemonGenderOptions(editableSpecies) : []
+  const selectedGender = genderOptions.includes(editablePokemon?.gender)
+    ? editablePokemon.gender
+    : genderOptions[0] ?? null
+  const canToggleGender = genderOptions.length > 1
   const stats = useMemo(
     () => (selectedPokemon ? calculateStats(selectedPokemon) : []),
     [selectedPokemon],
@@ -279,6 +287,18 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
   const toggleShiny = () => {
     if (!editablePokemon?.shinyObtained) return
     writeSelected({ isShiny: !editablePokemon.isShiny })
+  }
+
+  const toggleGender = () => {
+    if (!editablePokemon || !editableSpecies || !canToggleGender) return
+    const nextGender = selectedGender === 'M' ? 'F' : 'M'
+    const nextSpecies = resolvePokemonGenderProfile(editableSpecies, nextGender)
+
+    setPreviewSpeciesId(null)
+    writeSelected({
+      gender: nextGender,
+      speciesId: nextSpecies?.id ?? editableSpecies.id,
+    })
   }
 
   const updateMove = (slotIndex, moveName) => {
@@ -656,6 +676,23 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                     <small>NO. {String(species.id).padStart(4, '0')}</small>
                     <h2>{species.name}</h2>
                   </div>
+                  {selectedGender && (
+                    <button
+                      className={`training-gender-toggle ${selectedGender === 'F' ? 'female' : 'male'}${canToggleGender ? '' : ' fixed'}`}
+                      type="button"
+                      aria-label={canToggleGender
+                        ? `${selectedGender === 'M' ? '암컷' : '수컷'}으로 변경`
+                        : `${selectedGender === 'M' ? '수컷' : '암컷'} 고정`}
+                      title={canToggleGender
+                        ? `${selectedGender === 'M' ? '암컷' : '수컷'}으로 변경`
+                        : `${selectedGender === 'M' ? '수컷' : '암컷'} 고정`}
+                      disabled={!canToggleGender}
+                      onClick={toggleGender}
+                    >
+                      <strong aria-hidden="true">{selectedGender === 'M' ? '♂' : '♀'}</strong>
+                      <span>{selectedGender === 'M' ? '수컷' : '암컷'}</span>
+                    </button>
+                  )}
                   {selectedPokemon.isShiny && <span className="inline-shiny-label">★ 이로치</span>}
                   {isPreviewForm && (
                     <span className={`training-preview-badge${zaMegaStone ? ' za-mega' : ''}`}>

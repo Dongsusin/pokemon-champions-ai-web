@@ -208,6 +208,7 @@ const EXPLICIT_VIRTUAL_FORMS = [
     formKind: 'standard',
     saveable: true,
     gender: 'F',
+    genderLocked: true,
     abilities: ['정전기'],
     extraLearnsetMoveIds: [220],
     shinyUnavailable: true,
@@ -570,6 +571,12 @@ export function getPokemonFormMetadata(profile) {
     requiredAbility: explicit?.requiredAbility ?? profile.requiredAbility,
     requiredMove: explicit?.requiredMove ?? profile.requiredMove,
     evolutionLocked: Boolean(explicit?.evolutionLocked ?? profile.evolutionLocked),
+    gender: explicit?.gender ?? profile.gender,
+    genderLocked: Boolean(
+      explicit?.genderLocked
+      ?? profile.genderLocked
+      ?? (explicit?.gender && formKind !== 'gender'),
+    ),
   }
 }
 

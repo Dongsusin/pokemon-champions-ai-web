@@ -6,6 +6,8 @@ import {
   getBattleFormOptions,
   getFormMetadata,
   getGigantamaxProfile,
+  getLearnableMoves,
+  getPokemonGenderOptions,
   getPersistentFormOptions,
   getSpeciesProfile,
   isBattleFormCompatible,
@@ -80,6 +82,48 @@ assert(slugs(getPersistentFormOptions(423)).has('gastrodon-east'))
 assert.equal(requireProfile('jellicent-f').gender, 'F')
 assert.equal(requireProfile('meowstic').gender, 'M')
 assert.equal(requireProfile('meowstic-female').gender, 'F')
+
+assert.deepEqual(getPokemonGenderOptions(requireProfile('bulbasaur')), ['M', 'F'])
+assert.deepEqual(getPokemonGenderOptions(requireProfile('magnemite')), [])
+assert.deepEqual(getPokemonGenderOptions(requireProfile('tauros')), ['M'])
+assert.deepEqual(getPokemonGenderOptions(requireProfile('miltank')), ['F'])
+assert.deepEqual(getPokemonGenderOptions(requireProfile('pichu-spiky-eared')), ['F'])
+
+const femaleBulbasaur = normalizePokemon({ speciesId: requireProfile('bulbasaur').id, gender: 'F' })
+assert.equal(femaleBulbasaur.speciesId, requireProfile('bulbasaur').id)
+assert.equal(femaleBulbasaur.gender, 'F')
+assert.equal(
+  getTrainingCostBreakdown(
+    normalizePokemon({ ...femaleBulbasaur, gender: 'M' }),
+    femaleBulbasaur,
+  ).total,
+  0,
+)
+
+const maleHippowdon = normalizePokemon({ speciesId: requireProfile('hippowdon').id, gender: 'M' })
+const femaleHippowdon = normalizePokemon({ ...maleHippowdon, gender: 'F' })
+assert.equal(femaleHippowdon.speciesId, requireProfile('hippowdon-f').id)
+assert.equal(femaleHippowdon.gender, 'F')
+assert(femaleHippowdon.spriteFront.includes('hippowdon-f'))
+assert.equal(
+  normalizePokemon({ ...femaleHippowdon, gender: 'M' }).speciesId,
+  requireProfile('hippowdon').id,
+)
+
+const maleMeowstic = normalizePokemon({
+  speciesId: requireProfile('meowstic').id,
+  gender: 'M',
+  moves: ['미라클아이', '방어'],
+})
+const femaleMeowstic = normalizePokemon({ ...maleMeowstic, gender: 'F' })
+const femaleMeowsticLearnset = new Set(
+  getLearnableMoves(femaleMeowstic.speciesId).map((move) => move.name),
+)
+assert.equal(femaleMeowstic.speciesId, requireProfile('meowstic-female').id)
+assert(!femaleMeowstic.moves.includes('미라클아이'))
+assert(femaleMeowsticLearnset.has('미래예지'))
+assert(!femaleMeowsticLearnset.has('미라클아이'))
+assert(!getTrainingCostBreakdown(maleMeowstic, femaleMeowstic).items.some((item) => item.id === 'form'))
 
 const cosmeticGenderProfiles = profiles.filter((profile) => (
   profile.id >= 20_000

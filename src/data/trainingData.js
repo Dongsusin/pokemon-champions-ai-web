@@ -1,4 +1,5 @@
 import pokemonData from './generatedPokemonData.json' with { type: 'json' }
+import pokemonGenderData from './generatedPokemonGenderData.json' with { type: 'json' }
 import gen5SpriteManifest from './generatedGen5SpriteManifest.json' with { type: 'json' }
 import battleMoveData from './generatedBattleMoves.json' with { type: 'json' }
 import { isBattleMoveSupported } from './moveSupportData.js'
@@ -495,6 +496,99 @@ export function getRelatedFormOptions(speciesId) {
   return RELATED_PROFILE_OPTIONS_BY_BASE_ID.get(baseSpeciesId) ?? []
 }
 
+function normalizePokemonGender(gender) {
+  const normalizedGender = String(gender ?? '').trim().toLowerCase()
+  if (normalizedGender === 'm' || normalizedGender === 'male' || normalizedGender === '수컷') return 'M'
+  if (normalizedGender === 'f' || normalizedGender === 'female' || normalizedGender === '암컷') return 'F'
+  return null
+}
+
+function getPokemonSpeciesGenderData(speciesOrProfile) {
+  const profile = typeof speciesOrProfile === 'object'
+    ? speciesOrProfile
+    : getSpeciesProfile(speciesOrProfile)
+  const baseSpeciesId = Number(profile?.parentSpeciesId ?? profile?.id)
+  return pokemonGenderData.species[String(baseSpeciesId)] ?? null
+}
+
+export function getPokemonGenderOptions(speciesOrProfile) {
+  const profile = typeof speciesOrProfile === 'object'
+    ? speciesOrProfile
+    : getSpeciesProfile(speciesOrProfile)
+  if (!profile) return []
+
+  const metadata = getPokemonFormMetadata(profile)
+  const fixedGender = metadata.genderLocked
+    ? normalizePokemonGender(metadata.gender ?? profile.gender)
+    : null
+  if (fixedGender) return [fixedGender]
+
+  const genderRate = Number(getPokemonSpeciesGenderData(profile)?.genderRate)
+  if (genderRate === -1) return []
+  if (genderRate === 0) return ['M']
+  if (genderRate === 8) return ['F']
+  if (genderRate >= 1 && genderRate <= 7) return ['M', 'F']
+
+  const profileGender = normalizePokemonGender(profile.gender)
+  if (metadata.formKind === 'gender') return ['M', 'F']
+  return profileGender ? [profileGender] : []
+}
+
+export function resolvePokemonGenderProfile(speciesOrProfile, requestedGender) {
+  const profile = typeof speciesOrProfile === 'object'
+    ? speciesOrProfile
+    : getSpeciesProfile(speciesOrProfile)
+  if (!profile) return null
+
+  const genderOptions = getPokemonGenderOptions(profile)
+  const normalizedGender = normalizePokemonGender(requestedGender)
+  const targetGender = genderOptions.includes(normalizedGender)
+    ? normalizedGender
+    : genderOptions[0] ?? null
+  const metadata = getPokemonFormMetadata(profile)
+
+  if (!targetGender || metadata.genderLocked || genderOptions.length < 2) return profile
+  if (normalizePokemonGender(profile.gender) === targetGender) return profile
+
+  if (targetGender === 'M' && metadata.formKind === 'gender') {
+    if (profile.sourceSlug) return PROFILE_BY_SLUG.get(profile.sourceSlug) ?? profile
+    return getSpeciesProfile(profile.parentSpeciesId) ?? profile
+  }
+
+  if (targetGender === 'F') {
+    const femaleOptions = getRelatedFormOptions(profile.id).filter((option) => (
+      getPokemonFormMetadata(option).formKind === 'gender'
+      && normalizePokemonGender(option.gender) === 'F'
+    ))
+    return femaleOptions.find((option) => option.sourceSlug === profile.slug)
+      ?? femaleOptions.find((option) => option.slug === `${profile.slug}-female`)
+      ?? femaleOptions.find((option) => option.slug === `${profile.slug}-f`)
+      ?? profile
+  }
+
+  return profile
+}
+
+export function arePokemonGenderCounterparts(firstSpeciesOrProfile, secondSpeciesOrProfile) {
+  const firstProfile = typeof firstSpeciesOrProfile === 'object'
+    ? firstSpeciesOrProfile
+    : getSpeciesProfile(firstSpeciesOrProfile)
+  const secondProfile = typeof secondSpeciesOrProfile === 'object'
+    ? secondSpeciesOrProfile
+    : getSpeciesProfile(secondSpeciesOrProfile)
+  if (!firstProfile || !secondProfile || firstProfile.id === secondProfile.id) return false
+
+  const firstBaseSpeciesId = Number(firstProfile.parentSpeciesId ?? firstProfile.id)
+  const secondBaseSpeciesId = Number(secondProfile.parentSpeciesId ?? secondProfile.id)
+  if (firstBaseSpeciesId !== secondBaseSpeciesId) return false
+
+  const secondGender = normalizePokemonGender(secondProfile.gender)
+  return Boolean(
+    secondGender
+    && resolvePokemonGenderProfile(firstProfile, secondGender)?.id === secondProfile.id,
+  )
+}
+
 function miniorColorFromSlug(slug) {
   if (slug === 'minior') return 'red'
   return slug?.match(/^minior-(red|orange|yellow|green|blue|indigo|violet)(?:-meteor)?$/)?.[1] ?? null
@@ -717,9 +811,19 @@ function getDefaultTrainingPoints(species) {
 
 export function normalizePokemon(pokemon) {
   const requestedSpecies = getSpeciesProfile(pokemon.speciesId)
-  const species = getCanonicalPokemonFormProfile(requestedSpecies)
+  const canonicalSpecies = getCanonicalPokemonFormProfile(requestedSpecies)
 
-  if (!species) return { ...pokemon, level: BATTLE_LEVEL }
+  if (!canonicalSpecies) return { ...pokemon, level: BATTLE_LEVEL }
+
+  const genderOptions = getPokemonGenderOptions(canonicalSpecies)
+  const requestedGender = normalizePokemonGender(pokemon.gender)
+  const profileGender = normalizePokemonGender(canonicalSpecies.gender)
+  const gender = genderOptions.includes(requestedGender)
+    ? requestedGender
+    : genderOptions.includes(profileGender)
+    ? profileGender
+    : genderOptions[0] ?? null
+  const species = resolvePokemonGenderProfile(canonicalSpecies, gender) ?? canonicalSpecies
 
   const defaultMoves = getDefaultMoves(species.id)
   const learnableMoveNames = new Set(getLearnableMoves(species.id).map((move) => move.name))
@@ -780,7 +884,7 @@ export function normalizePokemon(pokemon) {
     hiddenPowerType,
     hiddenPowerTypeConfigured,
     ability,
-    gender: species.gender ?? pokemon.gender ?? null,
+    gender,
     nature,
     moves,
     trainingPoints,

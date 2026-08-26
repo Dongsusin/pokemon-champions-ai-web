@@ -1,4 +1,4 @@
-import { getSpeciesProfile, STAT_META } from './trainingData.js'
+import { arePokemonGenderCounterparts, getSpeciesProfile, STAT_META } from './trainingData.js'
 
 export const TRAINING_COSTS = Object.freeze({
   trainingPoint: 2,
@@ -51,7 +51,8 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
   const savedBaseSpeciesId = Number(savedProfile?.parentSpeciesId ?? savedProfile?.id ?? savedPokemon.speciesId)
   const draftBaseSpeciesId = Number(draftProfile?.parentSpeciesId ?? draftProfile?.id ?? draftPokemon.speciesId)
   const speciesChanged = Number(savedPokemon.speciesId) !== Number(draftPokemon.speciesId)
-  const formChanged = speciesChanged && savedBaseSpeciesId === draftBaseSpeciesId
+  const genderProfileChanged = speciesChanged && arePokemonGenderCounterparts(savedProfile, draftProfile)
+  const formChanged = speciesChanged && savedBaseSpeciesId === draftBaseSpeciesId && !genderProfileChanged
   const evolutionChanged = speciesChanged && savedBaseSpeciesId !== draftBaseSpeciesId
   const shinyChanged = Boolean(savedPokemon.isShiny) !== Boolean(draftPokemon.isShiny)
 
