@@ -81,6 +81,24 @@ assert.equal(requireProfile('jellicent-f').gender, 'F')
 assert.equal(requireProfile('meowstic').gender, 'M')
 assert.equal(requireProfile('meowstic-female').gender, 'F')
 
+const cosmeticGenderProfiles = profiles.filter((profile) => (
+  profile.id >= 20_000
+  && getFormMetadata(profile).formKind === 'gender'
+  && /-f$/.test(profile.slug)
+))
+assert(cosmeticGenderProfiles.length > 0)
+for (const profile of cosmeticGenderProfiles) {
+  assert.equal(getFormMetadata(profile).hiddenFromFormPicker, true)
+  assert(isSavablePokemonForm(profile))
+  assert(!slugs(getPersistentFormOptions(profile.parentSpeciesId)).has(profile.slug))
+}
+
+for (const slug of ['meowstic-female', 'indeedee-female', 'oinkologne-female', 'basculegion-female']) {
+  const profile = requireProfile(slug)
+  assert.equal(getFormMetadata(profile).hiddenFromFormPicker, false)
+  assert(slugs(getPersistentFormOptions(profile.parentSpeciesId)).has(slug))
+}
+
 const spikyPichu = requireProfile('pichu-spiky-eared')
 assert.equal(spikyPichu.gender, 'F')
 assert.deepEqual(spikyPichu.abilities, ['정전기'])
