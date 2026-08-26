@@ -849,6 +849,27 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
       }
     } else if (cue.phase === 'form') {
       const pan = sidePan(cue.sideId)
+      if (cue.mechanicId === 'battle-bond') {
+        noise(now, 0.58, { volume: 0.1, frequency: 3100, q: 2.8, pan })
+        sequence([247, 330, 494, 659, 988, 1319], {
+          step: 0.1,
+          duration: 0.17,
+          volume: 0.13,
+          wave: 'triangle',
+          pan,
+        })
+        tone(196, now + 0.18, 0.72, { volume: 0.12, slide: 1568, wave: 'sawtooth', pan })
+        playCry({
+          speciesId: cue.actorSpeciesId,
+          originalSpeciesId: cue.actorOriginalSpeciesId,
+          name: cue.actorName,
+          sideId: cue.sideId,
+          delay: 0.86,
+          rate: 1.04,
+          volume: 0.58,
+        })
+        return
+      }
       noise(now, 0.42, { volume: 0.12, frequency: 2400, pan })
       sequence([330, 494, 659, 880], {
         step: 0.11,

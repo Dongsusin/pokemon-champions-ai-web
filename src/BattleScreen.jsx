@@ -225,6 +225,7 @@ const HP_BAR_DURATIONS = {
 
 const GIMMICK_STEP_DURATIONS = {
   form: 1200,
+  'battle-bond': 1800,
   mega: 3000,
   zmove: 2700,
   dynamax: 3300,
@@ -735,6 +736,10 @@ const GIMMICK_PRESENTATION = {
     eyebrow: 'BATTLE FORM SHIFT',
     title: '폼체인지',
   },
+  'battle-bond': {
+    eyebrow: 'TRAINER & POKÉMON · PERFECT SYNC',
+    title: '유대진화',
+  },
   mega: {
     eyebrow: 'KEY STONE RESONANCE',
     title: '메가진화',
@@ -761,7 +766,7 @@ function gimmickDetail(cue) {
   if (cue.mechanicId === 'tera') return `${cue.mechanicType ?? '노말'} TERA TYPE`
   if (cue.mechanicId === 'dynamax') return cue.mechanicMode === 'gigantamax' ? '거다이맥스' : '다이맥스'
   if (cue.mechanicId === 'zmove') return cue.chargedMoveName ?? 'Z-MOVE CHARGED'
-  if (cue.mechanicId === 'form') {
+  if (['form', 'battle-bond'].includes(cue.mechanicId)) {
     const transition = cue.actorPreviousName && cue.actorPreviousName !== cue.actorName
       ? `${cue.actorPreviousName}  →  ${cue.actorName}`
       : cue.actorName
@@ -857,12 +862,21 @@ function GimmickAnimation({ cue }) {
         </div>
       )}
 
-      {cue.mechanicId === 'form' && (
+      {['form', 'battle-bond'].includes(cue.mechanicId) && (
         <div className="gimmick-form-layer" aria-hidden="true">
           <span className="gimmick-form-core" />
           <span className="gimmick-form-wave wave-one" />
           <span className="gimmick-form-wave wave-two" />
           <span className="gimmick-form-wave wave-three" />
+        </div>
+      )}
+
+      {cue.mechanicId === 'battle-bond' && (
+        <div className="gimmick-battle-bond-layer" aria-hidden="true">
+          <span className="gimmick-bond-trainer"><i /></span>
+          <span className="gimmick-bond-pokemon"><i /></span>
+          <span className="gimmick-bond-link"><i /><i /><i /></span>
+          <span className="gimmick-bond-emblem">SYNC</span>
         </div>
       )}
 

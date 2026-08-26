@@ -1636,6 +1636,7 @@ function emitFormChangeTimeline(state, pokemon, previousSnapshot, sourceName, op
   if (!context || !location) return
 
   const currentSnapshot = mechanicPokemonSnapshot(pokemon)
+  const mechanicId = options.mechanicId ?? 'form'
   const fallbackMessage = `${previousSnapshot.name}이(가) ${sourceName || '폼체인지'}로 모습을 바꿨다!`
   const step = {
     phase: 'form',
@@ -1647,7 +1648,7 @@ function emitFormChangeTimeline(state, pokemon, previousSnapshot, sourceName, op
     actorSpeciesId: currentSnapshot.speciesId,
     actorOriginalSpeciesId: currentSnapshot.originalSpeciesId,
     actorPreviousName: previousSnapshot.name,
-    mechanicId: 'form',
+    mechanicId,
     mechanicLabel: sourceName || '폼체인지',
     formSourceName: sourceName || '폼체인지',
     spriteBeforeFront: previousSnapshot.spriteFront,
@@ -5437,19 +5438,25 @@ function applyMoveTriggeredFormAfterHit(state, attacker, defender, move, damage)
       )
     }
   }
+}
 
+function applyKnockoutTriggeredFormAfterFaint(state, attacker, defender, directDamage) {
   if (
-    damage > 0
-    && defender.hp <= 0
-    && attacker.hp > 0
-    && attacker.ability === '유대변화'
-    && !attacker.bondTriggered
-    && currentSpeciesSlug(attacker) === 'greninja-battle-bond'
-    && remainingCount(getPokemonSide(state, defender)) > 0
-  ) {
-    attacker.bondTriggered = true
-    changeBattleForm(state, attacker, 'greninja-ash', attacker.ability)
-  }
+    directDamage <= 0
+    || !defender.fainted
+    || attacker.hp <= 0
+    || attacker.fainted
+    || attacker.transformSnapshot
+    || attacker.ability !== '유대변화'
+    || attacker.bondTriggered
+    || currentSpeciesSlug(attacker) !== 'greninja-battle-bond'
+    || remainingCount(getPokemonSide(state, defender)) <= 0
+  ) return false
+
+  attacker.bondTriggered = true
+  return changeBattleForm(state, attacker, 'greninja-ash', attacker.ability, {
+    mechanicId: 'battle-bond',
+  })
 }
 
 function transformPokemon(state, pokemon, formId, mechanicId) {
@@ -8076,7 +8083,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
 
   const hasPostEffectLog = state.log.length > postEffectLogLength
   const postEffectMessage = latestLogMessage(state, `${move.name}의 추가 효과가 발동했다!`)
-  markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
+  const targetFainted = markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
 
   if (hasPostEffectLog) {
     pushTimelineStep(timeline, state, {
@@ -8088,6 +8095,9 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+  if (targetFainted) {
+    applyKnockoutTriggeredFormAfterFaint(state, attacker, defender, directDamage)
+  }
   markActiveFaints(state, timeline, actionOrder)
 
   if (damage > 0) applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)

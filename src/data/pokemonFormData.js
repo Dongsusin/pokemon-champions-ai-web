@@ -379,7 +379,7 @@ const FORM_METADATA_BY_SLUG = Object.freeze({
   'greninja-ash': {
     formKind: 'ability',
     saveable: false,
-    requirement: '유대변화로 상대를 쓰러뜨렸을 때',
+    requirement: '유대변화 · 직접 공격으로 상대를 쓰러뜨렸을 때',
     name: '지우개굴닌자',
     gender: 'M',
   },

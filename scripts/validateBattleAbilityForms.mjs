@@ -703,13 +703,63 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
 }
 
 {
-  let state = battle(
+  const state = battle(
     [pokemon('greninja-battle-bond', ['watershuriken'])],
     [pokemon('snorlax', ['tackle']), pokemon('snorlax', ['protect'], { captureId: 'ability-snorlax-backup' })],
   )
   state.opponent.team[0].hp = 1
-  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
-  assert.equal(state.player.team[0].speciesId, profileBySlug.get('greninja-ash').id)
+  state.opponent.team[0].trappedTurns = 2
+  state.opponent.team[0].moves.slice(1).forEach((move) => { move.currentPp = 0 })
+  const oldAttack = state.player.team[0].stats.attack
+  const oldSpecialAttack = state.player.team[0].stats.specialAttack
+  const oldSpeed = state.player.team[0].stats.speed
+  const result = createBattleTurnTimeline(state, { type: 'move', moveIndex: 0 }, () => 0.5)
+  const faintIndex = result.timeline.findIndex((step) => step.phase === 'faint' && step.targetSideId === 'opponent')
+  const bondIndex = result.timeline.findIndex((step) => step.phase === 'form' && step.mechanicId === 'battle-bond')
+  const transformed = result.state.player.team[0]
+
+  assert(faintIndex >= 0)
+  assert(bondIndex > faintIndex)
+  assert.equal(transformed.speciesId, profileBySlug.get('greninja-ash').id)
+  assert.equal(transformed.bondTriggered, true)
+  assert(transformed.stats.attack > oldAttack)
+  assert(transformed.stats.specialAttack > oldSpecialAttack)
+  assert(transformed.stats.speed > oldSpeed)
+  assert.equal(getBattleMovePreview(result.state, 'player', 0).power, 20)
+  assert.equal(getBattleMovePreview(result.state, 'player', 0).multihit, 3)
+  assert(result.timeline[bondIndex].spriteBeforeBack.includes('/10116.png'))
+  assert(result.timeline[bondIndex].spriteAfterBack.includes('/10117.png'))
+}
+
+{
+  const state = battle(
+    [pokemon('greninja-battle-bond', ['watershuriken'])],
+    [pokemon('snorlax', ['tackle'])],
+  )
+  state.opponent.team[0].hp = 1
+  state.opponent.team[0].moves.slice(1).forEach((move) => { move.currentPp = 0 })
+  const result = createBattleTurnTimeline(state, { type: 'move', moveIndex: 0 }, () => 0.5)
+  assert.equal(result.state.player.team[0].speciesId, profileBySlug.get('greninja-battle-bond').id)
+  assert(!result.timeline.some((step) => step.mechanicId === 'battle-bond'))
+}
+
+{
+  const state = battle(
+    [pokemon('greninja-battle-bond', ['watershuriken'])],
+    [pokemon('gengar', ['destinybond']), pokemon('snorlax', ['protect'], { captureId: 'ability-snorlax-bond-backup' })],
+  )
+  const gengarIndex = state.opponent.team.findIndex((member) => member.slug === 'gengar')
+  const gengar = state.opponent.team[gengarIndex]
+  state.opponent.activeIndex = gengarIndex
+  state.opponent.activeIndexes = [gengarIndex]
+  gengar.hp = 1
+  gengar.trappedTurns = 2
+  gengar.moves.slice(1).forEach((move) => { move.currentPp = 0 })
+  gengar.destinyBondActive = true
+  const result = createBattleTurnTimeline(state, { type: 'move', moveIndex: 0 }, () => 0.5)
+  assert.equal(result.state.player.team[0].fainted, true)
+  assert.equal(result.state.player.team[0].speciesId, profileBySlug.get('greninja-battle-bond').id)
+  assert(!result.timeline.some((step) => step.mechanicId === 'battle-bond'))
 }
 
 {

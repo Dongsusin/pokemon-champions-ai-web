@@ -929,6 +929,12 @@
   --gimmick-highlight: #fff7b0;
 }
 
+.app-shell.battle-view .battle-gimmick-sequence.mechanic-battle-bond {
+  --gimmick-primary: #45dfff;
+  --gimmick-secondary: #e74968;
+  --gimmick-highlight: #fff8d5;
+}
+
 .app-shell.battle-view .battle-gimmick-sequence.tera-type-normal { --gimmick-primary: #d8d3cd; --gimmick-secondary: #8e8a84; }
 .app-shell.battle-view .battle-gimmick-sequence.tera-type-fire { --gimmick-primary: #ff7453; --gimmick-secondary: #d82f40; }
 .app-shell.battle-view .battle-gimmick-sequence.tera-type-water { --gimmick-primary: #54cfff; --gimmick-secondary: #277bdc; }

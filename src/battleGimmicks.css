@@ -139,6 +139,95 @@
   animation-delay: calc(var(--gimmick-duration) * 0.16);
 }
 
+.app-shell.battle-view .gimmick-battle-bond-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.app-shell.battle-view .gimmick-bond-trainer,
+.app-shell.battle-view .gimmick-bond-pokemon {
+  position: absolute;
+  top: 55%;
+  width: clamp(68px, 8vw, 118px);
+  aspect-ratio: 1;
+  border: 3px solid rgba(255, 255, 255, 0.94);
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, #fff 0 8%, var(--gimmick-primary) 18%, transparent 66%);
+  box-shadow: 0 0 18px #fff, 0 0 42px var(--gimmick-primary);
+  transform: translate(-50%, -50%) scale(0.3);
+  animation: battle-bond-node var(--gimmick-duration) cubic-bezier(0.18, 0.8, 0.2, 1) both;
+}
+
+.app-shell.battle-view .gimmick-bond-trainer {
+  left: 27%;
+}
+
+.app-shell.battle-view .gimmick-bond-pokemon {
+  right: 27%;
+  background: radial-gradient(circle, #fff 0 8%, var(--gimmick-secondary) 18%, transparent 66%);
+  box-shadow: 0 0 18px #fff, 0 0 42px var(--gimmick-secondary);
+  transform: translate(50%, -50%) scale(0.3);
+  animation-name: battle-bond-node-opposite;
+}
+
+.app-shell.battle-view .gimmick-bond-trainer i,
+.app-shell.battle-view .gimmick-bond-pokemon i {
+  position: absolute;
+  inset: 19%;
+  border: 2px dashed rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  animation: battle-bond-orbit calc(var(--gimmick-duration) * 0.44) linear infinite;
+}
+
+.app-shell.battle-view .gimmick-bond-link {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  width: 46%;
+  height: 10px;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, var(--gimmick-primary), #fff 47% 53%, var(--gimmick-secondary), transparent);
+  filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 15px var(--gimmick-primary));
+  transform: translate(-50%, -50%) scaleX(0.08);
+  animation: battle-bond-link var(--gimmick-duration) ease-in-out both;
+}
+
+.app-shell.battle-view .gimmick-bond-link i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(36px, 4vw, 62px);
+  aspect-ratio: 1;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(var(--bond-ring-scale, 0.7));
+}
+
+.app-shell.battle-view .gimmick-bond-link i:nth-child(2) { --bond-ring-scale: 1.14; }
+.app-shell.battle-view .gimmick-bond-link i:nth-child(3) { --bond-ring-scale: 1.58; }
+
+.app-shell.battle-view .gimmick-bond-emblem {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  padding: 5px 14px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  font-size: clamp(11px, 1.2vw, 18px);
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  opacity: 0;
+  background: rgba(14, 37, 82, 0.78);
+  box-shadow: 0 0 18px #fff, 0 0 36px var(--gimmick-primary);
+  transform: translate(-50%, -50%) scale(0.35);
+  animation: battle-bond-emblem var(--gimmick-duration) steps(8, end) both;
+}
+
 .app-shell.battle-view .mechanic-mega .battle-gimmick-screen-tint {
   background:
     radial-gradient(circle at 50% 54%, rgba(255, 255, 255, 0.2), transparent 24%),
@@ -1251,6 +1340,38 @@
   28% { opacity: 0.9; }
   76% { opacity: 0.58; }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(2.15) rotate(calc(var(--form-wave-angle) + 70deg)); }
+}
+
+@keyframes battle-bond-node {
+  0%, 10% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  24%, 62% { opacity: 0.94; transform: translate(-50%, -50%) scale(1); }
+  76% { opacity: 1; transform: translate(150%, -50%) scale(0.6); }
+  100% { opacity: 0; transform: translate(235%, -50%) scale(0.18); }
+}
+
+@keyframes battle-bond-node-opposite {
+  0%, 10% { opacity: 0; transform: translate(50%, -50%) scale(0.3); }
+  24%, 62% { opacity: 0.94; transform: translate(50%, -50%) scale(1); }
+  76% { opacity: 1; transform: translate(-150%, -50%) scale(0.6); }
+  100% { opacity: 0; transform: translate(-235%, -50%) scale(0.18); }
+}
+
+@keyframes battle-bond-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes battle-bond-link {
+  0%, 18% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.08); }
+  34%, 66% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+  76% { opacity: 1; transform: translate(-50%, -50%) scaleX(0.12); filter: brightness(2.2) drop-shadow(0 0 16px #fff); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(0); }
+}
+
+@keyframes battle-bond-emblem {
+  0%, 44% { opacity: 0; transform: translate(-50%, -50%) scale(0.35); }
+  54%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  78% { opacity: 1; transform: translate(-50%, -50%) scale(1.22); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
 }
 
 @media (max-width: 760px) {
