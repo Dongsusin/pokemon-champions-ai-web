@@ -9446,6 +9446,9 @@ const AI_STAGE_WEIGHTS = {
 }
 
 const AI_NON_TARGETED_MOVE_TARGETS = new Set(['self', 'allySide', 'allyTeam', 'foeSide', 'all'])
+const AI_NON_HOSTILE_STATUS_TARGETS = new Set(['self', 'allySide', 'allyTeam', 'all'])
+const AI_HAZARD_CLEAR_MOVE_IDS = new Set(['defog', 'rapidspin', 'mortalspin', 'tidyup'])
+const AI_SPREAD_MOVE_TARGETS = new Set(['allAdjacent', 'allAdjacentFoes'])
 
 function projectAiPokemonForMechanic(attacker, gimmick) {
   if (gimmick === 'tera' && attacker.teraType) {
@@ -9728,11 +9731,189 @@ function aiEnvironmentUtility(state, attacker, kind, environmentId) {
   return 58 + synergyCount * 7
 }
 
+function aiIncomingCategoryPressure(state, sideId, categoryId = null) {
+  const defenders = getActivePokemonList(state, sideId)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  const attackers = getActivePokemonList(state, getOtherSide(state, sideId).id)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  return attackers.reduce((total, attacker) => {
+    const highest = attacker.moves.reduce((best, move) => {
+      if (
+        move.currentPp <= 0
+        || isStatusMove(move)
+        || categoryId && move.categoryId !== categoryId
+      ) return best
+      return defenders.reduce((bestAgainstDefender, defender) => {
+        const resolved = resolveAiMove(state, attacker, defender, move, null)
+        if (!resolved) return bestAgainstDefender
+        const estimate = estimateAiDamage(state, resolved.attacker, defender, resolved.move)
+        return Math.max(
+          bestAgainstDefender,
+          estimate.expectedDamage / Math.max(1, defender.maxHp),
+        )
+      }, best)
+    }, 0)
+    return total + highest
+  }, 0)
+}
+
+function aiSpeedControlSwingCount(state, sideId, tailwind = false) {
+  const ownTeam = getActivePokemonList(state, sideId)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  const opposingTeam = getActivePokemonList(state, getOtherSide(state, sideId).id)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  return ownTeam.reduce((total, pokemon) => (
+    total + opposingTeam.filter((opponent) => {
+      const ownSpeed = effectiveStat(state, pokemon, 'speed') * (tailwind ? 2 : 1)
+      const opponentSpeed = effectiveStat(state, opponent, 'speed')
+      return tailwind
+        ? ownSpeed > opponentSpeed && ownSpeed / 2 <= opponentSpeed
+        : ownSpeed < opponentSpeed
+    }).length
+  ), 0)
+}
+
+function aiHazardSetupUtility(state, attacker, defender, move, damaging = false) {
+  const rule = HAZARD_MOVE_RULES[move.id]
+  if (!rule) return null
+  const targetSide = getPokemonSide(state, defender)
+  const currentValue = Number(targetSide.hazards?.[rule.key] ?? 0)
+  if (currentValue >= rule.maximum) return damaging ? 0 : -Infinity
+  const nextHazards = {
+    ...targetSide.hazards,
+    [rule.key]: rule.maximum === 1 ? true : currentValue + 1,
+  }
+  const livingTargets = targetSide.team.filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
+  const addedPressure = livingTargets.reduce((total, pokemon) => (
+    total
+      + aiHazardEntryPenaltyScore(state, targetSide, pokemon, nextHazards)
+      - aiHazardEntryPenaltyScore(state, targetSide, pokemon)
+  ), 0)
+  const benchPressure = availableBenchIndexes(targetSide).length * 7
+  return 24 + addedPressure * 0.85 + benchPressure
+}
+
+function aiHazardClearUtility(state, attacker, move) {
+  if (!AI_HAZARD_CLEAR_MOVE_IDS.has(move.id)) return null
+  const ownSide = getPokemonSide(state, attacker)
+  const opposingSide = getOtherSide(state, ownSide.id)
+  const ownPressure = ownSide.team
+    .filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
+    .reduce((total, pokemon) => total + aiHazardEntryPenaltyScore(state, ownSide, pokemon), 0)
+  const clearsBothSides = ['defog', 'tidyup'].includes(move.id)
+  const opposingPressure = clearsBothSides
+    ? opposingSide.team
+      .filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
+      .reduce((total, pokemon) => total + aiHazardEntryPenaltyScore(state, opposingSide, pokemon), 0)
+    : 0
+  return ownPressure - opposingPressure * 0.72
+}
+
+function aiSideConditionMoveScore(state, attacker, move) {
+  const rule = SIDE_CONDITION_MOVE_RULES[move.id]
+  if (!rule) return null
+  const side = getPokemonSide(state, attacker)
+  if (move.id === 'auroraveil' && effectiveWeatherFamilyId(state) !== 'snow') return -Infinity
+  if (Number(side[rule.key] ?? 0) > 1) return -Infinity
+
+  const livingCount = side.team.filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted).length
+  const opponents = getActivePokemonList(state, getOtherSide(state, side.id).id)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  const physicalPressure = aiIncomingCategoryPressure(state, side.id, 'physical')
+  const specialPressure = aiIncomingCategoryPressure(state, side.id, 'special')
+
+  if (move.id === 'reflect') return 28 + physicalPressure * 88 + livingCount * 4
+  if (move.id === 'lightscreen') return 28 + specialPressure * 88 + livingCount * 4
+  if (move.id === 'auroraveil') return 48 + (physicalPressure + specialPressure) * 72 + livingCount * 6
+  if (move.id === 'tailwind') {
+    const speedSwings = aiSpeedControlSwingCount(state, side.id, true)
+    return 34 + speedSwings * 34 + livingCount * 4
+  }
+  if (move.id === 'wideguard') {
+    if ((state.rules?.format?.activeSlots ?? 1) <= 1) return -Infinity
+    const spreadThreats = opponents.flatMap((pokemon) => pokemon.moves)
+      .filter((candidate) => candidate.currentPp > 0 && AI_SPREAD_MOVE_TARGETS.has(candidate.target)).length
+    return spreadThreats > 0 ? 58 + spreadThreats * 24 : -Infinity
+  }
+  if (move.id === 'quickguard') {
+    const priorityThreats = opponents.reduce((total, pokemon) => (
+      total + pokemon.moves.filter((candidate) => (
+        candidate.currentPp > 0 && environmentMovePriority(state, pokemon, candidate) > 0
+      )).length
+    ), 0)
+    return priorityThreats > 0 ? 48 + priorityThreats * 22 : -Infinity
+  }
+  if (move.id === 'craftyshield') {
+    const statusThreats = opponents.flatMap((pokemon) => pokemon.moves)
+      .filter((candidate) => candidate.currentPp > 0 && isStatusMove(candidate) && candidate.target === 'normal').length
+    return statusThreats > 0 ? 46 + statusThreats * 18 : -Infinity
+  }
+  if (move.id === 'matblock') {
+    if ((attacker.activeMoveActions ?? 0) > 0) return -Infinity
+    return 52 + (physicalPressure + specialPressure) * 72
+  }
+  if (move.id === 'safeguard') {
+    const statusThreats = opponents.flatMap((pokemon) => pokemon.moves)
+      .filter((candidate) => candidate.currentPp > 0 && isStatusMove(candidate)).length
+    return statusThreats > 0 ? 34 + statusThreats * 13 + livingCount * 3 : 12
+  }
+  if (move.id === 'mist') {
+    const dropThreats = opponents.flatMap((pokemon) => pokemon.moves)
+      .filter((candidate) => (
+        candidate.currentPp > 0
+        && Object.values(normalizedStageChanges(candidate.boosts)).some((amount) => amount < 0)
+      )).length
+    return dropThreats > 0 ? 32 + dropThreats * 15 : 10
+  }
+  if (move.id === 'luckychant') return 20 + livingCount * 3
+  return 20 + (physicalPressure + specialPressure) * 28
+}
+
+function aiFieldEffectMoveScore(state, attacker, move) {
+  const rule = FIELD_EFFECT_MOVE_RULES[move.id]
+  if (!rule) return null
+  const side = getPokemonSide(state, attacker)
+  const opposingSide = getOtherSide(state, side.id)
+  if (move.id === 'trickroom') {
+    const slowerPairs = aiSpeedControlSwingCount(state, side.id)
+    const ownActiveCount = aiLivingActiveSlots(state, side.id).length
+    const opposingActiveCount = aiLivingActiveSlots(state, opposingSide.id).length
+    const totalPairs = Math.max(1, ownActiveCount * opposingActiveCount)
+    const fasterPairs = Math.max(0, totalPairs - slowerPairs)
+    const active = Number(state.environment?.trickRoomTurns ?? 0) > 0
+    const advantage = slowerPairs - fasterPairs
+    if (active) return advantage < 0 ? 62 + Math.abs(advantage) * 28 : -Infinity
+    return advantage > 0 ? 58 + advantage * 30 : 8
+  }
+  if (move.id === 'magicroom') {
+    const ownItems = side.team.filter((pokemon) => pokemon.hp > 0 && heldItemEffectsActive(pokemon)).length
+    const opposingItems = opposingSide.team.filter((pokemon) => pokemon.hp > 0 && heldItemEffectsActive(pokemon)).length
+    const active = Number(state.environment?.magicRoomTurns ?? 0) > 0
+    const advantage = opposingItems - ownItems
+    if (active) return advantage < 0 ? 48 + Math.abs(advantage) * 12 : -Infinity
+    return advantage > 0 ? 42 + advantage * 12 : 4
+  }
+  if (move.id === 'gravity') {
+    const inaccurateMoves = side.team.flatMap((pokemon) => pokemon.moves)
+      .filter((candidate) => candidate.currentPp > 0 && Number(candidate.accuracy ?? 100) < 85).length
+    return 30 + inaccurateMoves * 10
+  }
+  return 24
+}
+
 function aiStatusMoveScore(state, attacker, defender, move) {
   const hpRatio = attacker.hp / Math.max(1, attacker.maxHp)
   const missingHpRatio = 1 - hpRatio
   const accuracy = aiMoveAccuracy(state, attacker, defender, move)
   if (attacker.healBlockTurns > 0 && isHealingMove(move)) return -Infinity
+  const hazardUtility = aiHazardSetupUtility(state, attacker, defender, move)
+  if (hazardUtility != null) return hazardUtility * accuracy
+  const sideConditionUtility = aiSideConditionMoveScore(state, attacker, move)
+  if (sideConditionUtility != null) return sideConditionUtility * accuracy
+  const fieldEffectUtility = aiFieldEffectMoveScore(state, attacker, move)
+  if (fieldEffectUtility != null) return fieldEffectUtility * accuracy
+  const hazardClearUtility = aiHazardClearUtility(state, attacker, move)
+  if (hazardClearUtility != null) return hazardClearUtility > 0 ? 26 + hazardClearUtility : -Infinity
   const weatherId = SHOWDOWN_WEATHER_IDS[String(move.weather ?? move.id).toLowerCase()]
   const terrainId = SHOWDOWN_TERRAIN_IDS[String(move.terrain ?? move.id).toLowerCase()]
   if (weatherId) return aiEnvironmentUtility(state, attacker, 'weather', weatherId)
@@ -9870,16 +10051,35 @@ function aiSecondaryUtility(state, attacker, defender, move) {
   }, 0)
 }
 
+function aiThreatMechanics(state, attacker) {
+  const side = getPokemonSide(state, attacker)
+  const teamIndex = side.team.indexOf(attacker)
+  const activeSlot = (side.activeIndexes ?? [side.activeIndex]).indexOf(teamIndex)
+  if (activeSlot < 0) return [null]
+  return [
+    null,
+    ...getAvailableBattleMechanics(state, side.id, activeSlot).map((mechanic) => mechanic.id),
+  ]
+}
+
 function aiIncomingThreatRatio(state, pokemon, attackers) {
   const threatRatios = attackers
     .filter((attacker) => attacker && attacker.hp > 0 && !attacker.fainted)
-    .map((attacker) => attacker.moves.reduce((highest, move) => {
-      if (move.currentPp <= 0 || isStatusMove(move)) return highest
-      const resolved = resolveAiMove(state, attacker, pokemon, move, null)
-      if (!resolved) return highest
-      const estimate = estimateAiDamage(state, resolved.attacker, pokemon, resolved.move)
-      return Math.max(highest, estimate.expectedDamage / Math.max(1, pokemon.maxHp))
-    }, 0))
+    .map((attacker) => {
+      const mechanics = aiThreatMechanics(state, attacker)
+      return attacker.moves.reduce((highest, move) => {
+        if (move.currentPp <= 0 || isStatusMove(move)) return highest
+        return mechanics.reduce((highestWithMechanic, gimmick) => {
+          const resolved = resolveAiMove(state, attacker, pokemon, move, gimmick)
+          if (!resolved) return highestWithMechanic
+          const estimate = estimateAiDamage(state, resolved.attacker, pokemon, resolved.move)
+          return Math.max(
+            highestWithMechanic,
+            estimate.expectedDamage / Math.max(1, pokemon.maxHp),
+          )
+        }, highest)
+      }, 0)
+    })
     .sort((first, second) => second - first)
   if (threatRatios.length === 0) return 0
   return Math.min(2, threatRatios[0] + threatRatios.slice(1).reduce((total, ratio) => total + ratio * 0.4, 0))
@@ -9983,8 +10183,9 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   }
 
   if (isStatusMove(resolvedMove)) {
+    const targetsOpponent = !AI_NON_HOSTILE_STATUS_TARGETS.has(resolvedMove.target)
     if (
-      resolvedMove.target !== 'self'
+      targetsOpponent
       && (
         !resolvedMove.ignoreAbility && abilityImmunity(
           state,
@@ -10015,7 +10216,7 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
       resolvedMove,
     }
     score += aiMechanicUtility(state, attacker, defender, resolvedMove, gimmick, evaluation)
-    if (context.targetReserved && resolvedMove.target !== 'self') score -= 60
+    if (context.targetReserved && targetsOpponent) score -= 60
     return { ...evaluation, score }
   }
 
@@ -10079,6 +10280,8 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   if (resolvedMove.selfSwitch && availableBenchIndexes(attackerSide).length > 0) score += 16
   if (resolvedMove.forceSwitch && availableBenchIndexes(defenderSide).length > 0) score += 12
   score += aiSecondaryUtility(state, projectedAttacker, defender, resolvedMove)
+  score += aiHazardSetupUtility(state, projectedAttacker, defender, resolvedMove, true) ?? 0
+  score += Math.max(0, aiHazardClearUtility(state, projectedAttacker, resolvedMove) ?? 0)
 
   const evaluation = {
     score,
@@ -10094,12 +10297,34 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   return { ...evaluation, score }
 }
 
-function aiHazardDamageRatio(state, side, pokemon) {
-  if (pokemon.ability === '매직가드') return 0
+function aiHazardDamageRatio(state, side, pokemon, hazards = side.hazards ?? {}) {
+  if (hasActiveHeldItem(pokemon, 'heavy-duty-boots') || pokemon.ability === '매직가드') return 0
   let ratio = 0
-  if (side.hazards?.stealthRock) ratio += getBattleTypeEffectiveness(state, '바위', pokemon.types) / 8
-  if (side.hazards?.steelsurge) ratio += getBattleTypeEffectiveness(state, '강철', pokemon.types) / 8
+  if (hazards.stealthRock) ratio += getBattleTypeEffectiveness(state, '바위', pokemon.types) / 8
+  if (hazards.steelsurge) ratio += getBattleTypeEffectiveness(state, '강철', pokemon.types) / 8
+  if (Number(hazards.spikes ?? 0) > 0 && isGrounded(pokemon, state)) {
+    const denominator = Number(hazards.spikes) >= 3 ? 4 : Number(hazards.spikes) === 2 ? 6 : 8
+    ratio += 1 / denominator
+  }
   return ratio
+}
+
+function aiHazardEntryPenaltyScore(state, side, pokemon, hazards = side.hazards ?? {}) {
+  if (hasActiveHeldItem(pokemon, 'heavy-duty-boots')) return 0
+  let score = aiHazardDamageRatio(state, side, pokemon, hazards) * 100
+  if (!isGrounded(pokemon, state)) return score
+  if (hazards.stickyWeb && !['클리어바디', '하얀연기', '메탈프로텍트'].includes(pokemon.ability)) {
+    score += 18
+  }
+  if (
+    Number(hazards.toxicSpikes ?? 0) > 0
+    && !pokemon.status
+    && !pokemon.types.some((type) => ['독', '강철'].includes(type))
+    && !['면역', '정화의소금'].includes(pokemon.ability)
+  ) {
+    score += Number(hazards.toxicSpikes) >= 2 ? 34 : 20
+  }
+  return score
 }
 
 function aiEntryAbilityUtility(pokemon) {
@@ -10109,7 +10334,11 @@ function aiEntryAbilityUtility(pokemon) {
 }
 
 function aiPositiveStageTotal(pokemon) {
-  return Object.values(pokemon.statStages).reduce((total, stage) => total + Math.max(0, stage), 0)
+  const difficultyBaseline = Math.max(0, Number(pokemon.difficultyBoostStage ?? 0))
+  return Object.entries(pokemon.statStages).reduce((total, [statKey, stage]) => {
+    const baseline = AI_DIFFICULTY_STAGE_STATS.includes(statKey) ? difficultyBaseline : 0
+    return total + Math.max(0, Number(stage ?? 0) - baseline)
+  }, 0)
 }
 
 const AI_ROLE_KEYWORDS = ['에이스', '스위퍼', '피니셔', '승리', '전개', '날씨', '필드', '트릭룸']
@@ -10136,6 +10365,28 @@ const AI_SIMULATION_RANDOM = () => 0.5
 const AI_CONTINUATION_WEIGHT = 0.38
 const AI_CONTINUATION_RESPONSE_COUNT = AI_MAX_RESPONSE_PLAN_COUNT
 const AI_MAX_SWITCH_CANDIDATES = 3
+const AI_HARD_MAX_PLAN_COUNT = 160
+const AI_HARD_MAX_RESPONSE_PLAN_COUNT = 18
+const AI_HARD_CONTINUATION_RESPONSE_COUNT = 4
+const AI_HARD_CONTINUATION_PLAN_COUNT = 4
+const AI_HARD_ROBUST_ROOT_PLAN_COUNT = 4
+
+function aiSearchSettings(state, sideId) {
+  const hard = sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'hard'
+  const multiBattle = (state.rules?.format?.activeSlots ?? 1) > 1
+  return {
+    hard,
+    ownDecisionLimit: multiBattle ? hard ? 6 : 5 : hard ? 10 : 8,
+    responseDecisionLimit: multiBattle ? hard ? 5 : 4 : hard ? 8 : 6,
+    maxPlanCount: hard ? AI_HARD_MAX_PLAN_COUNT : AI_MAX_PLAN_COUNT,
+    maxResponsePlanCount: hard ? AI_HARD_MAX_RESPONSE_PLAN_COUNT : AI_MAX_RESPONSE_PLAN_COUNT,
+    responseTemperature: hard ? 14 : AI_RESPONSE_TEMPERATURE,
+    continuationWeight: hard ? 0.46 : AI_CONTINUATION_WEIGHT,
+    continuationResponseCount: hard
+      ? AI_HARD_CONTINUATION_RESPONSE_COUNT
+      : AI_CONTINUATION_RESPONSE_COUNT,
+  }
+}
 
 function aiRoleUtility(state, pokemon, sideId) {
   const role = String(pokemon.role ?? '')
@@ -10223,6 +10474,29 @@ function aiEnvironmentAffinityScore(state, sideId) {
   }, 0)
 }
 
+function aiSideConditionBoardScore(state, sideId) {
+  const side = getSide(state, sideId)
+  const livingCount = remainingCount(side)
+  const turnValue = (turns, base, perTurn = 3) => (
+    Number(turns ?? 0) > 0 ? base + Math.min(5, Number(turns)) * perTurn + livingCount * 2 : 0
+  )
+  return turnValue(side.auroraVeilTurns, 34, 5)
+    + turnValue(side.reflectTurns, 20, 4)
+    + turnValue(side.lightScreenTurns, 20, 4)
+    + turnValue(side.tailwindTurns, 24, 5)
+    + turnValue(side.safeguardTurns, 12, 2)
+    + turnValue(side.mistTurns, 10, 2)
+}
+
+function aiTrickRoomBoardScore(state, sideId) {
+  if (Number(state.environment?.trickRoomTurns ?? 0) <= 0) return 0
+  const ownCount = aiLivingActiveSlots(state, sideId).length
+  const opposingCount = aiLivingActiveSlots(state, getOtherSide(state, sideId).id).length
+  const totalPairs = Math.max(1, ownCount * opposingCount)
+  const slowerPairs = aiSpeedControlSwingCount(state, sideId)
+  return (slowerPairs - Math.max(0, totalPairs - slowerPairs)) * 16
+}
+
 function aiPokemonBoardValue(state, pokemon, sideId, active) {
   if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return 0
   const hpRatio = pokemon.hp / Math.max(1, pokemon.maxHp)
@@ -10281,7 +10555,7 @@ function aiSideBoardValue(state, sideId) {
   ), 0)
   const hazardPenalty = side.team.reduce((total, pokemon, index) => {
     if (activeIndexes.has(index) || pokemon.fainted || pokemon.hp <= 0) return total
-    return total + aiHazardDamageRatio(state, side, pokemon) * 86
+    return total + aiHazardEntryPenaltyScore(state, side, pokemon) * 0.9
   }, 0)
   const activePressure = getActivePokemonList(state, sideId).reduce((total, pokemon) => {
     if (!pokemon || pokemon.fainted || pokemon.hp <= 0) return total
@@ -10289,9 +10563,10 @@ function aiSideBoardValue(state, sideId) {
   }, 0)
   return pokemonValue
     + aiEnvironmentAffinityScore(state, sideId)
+    + aiSideConditionBoardScore(state, sideId)
+    + aiTrickRoomBoardScore(state, sideId)
     + aiTeamCoverageScore(state, sideId)
     + aiActiveTacticalValue(state, sideId)
-    + (side.auroraVeilTurns > 0 ? 24 : 0)
     + activePressure
     - hazardPenalty
 }
@@ -10341,7 +10616,7 @@ function aiLeadUtility(pokemon, preferredLeadName = '') {
     && ['focus-sash', 'mental-herb', 'light-clay'].includes(pokemon.heldItemId)
     ? 10
     : 0
-  return roleUtility + moveUtility + itemUtility + (pokemon.name === preferredLeadName ? 18 : 0)
+  return roleUtility + moveUtility + itemUtility + (pokemon.name === preferredLeadName ? 52 : 0)
 }
 
 function aiLeadCandidateScore(state, sideId, pokemon, targetSlots, preferredLeadName) {
@@ -10403,6 +10678,12 @@ function aiReplacementCandidates(state, sideId, activeSlot = 0) {
       const offense = bestAiMoveForPokemon(state, pokemon, targetSlots)
       const incomingThreat = aiIncomingThreatRatio(state, pokemon, opposingAttackers)
       const remainingHpRatio = Math.max(0, pokemon.hp / Math.max(1, pokemon.maxHp) - hazardRatio)
+      const hazardPenalty = aiHazardEntryPenaltyScore(state, side, pokemon)
+      const toxicSpikesAbsorption = Number(side.hazards?.toxicSpikes ?? 0) > 0
+        && isGrounded(pokemon, state)
+        && pokemon.types.includes('독')
+        ? 28
+        : 0
       const speedEdges = opposingAttackers.filter((opponent) => (
         effectiveStat(state, pokemon, 'speed') > effectiveStat(state, opponent, 'speed')
       )).length
@@ -10422,6 +10703,8 @@ function aiReplacementCandidates(state, sideId, activeSlot = 0) {
           + aiEntryAbilityUtility(pokemon)
           + aiRoleUtility(state, pokemon, sideId) * 0.4
           + aiRosterMatchupUtility(state, pokemon, opposingSide.team)
+          + toxicSpikesAbsorption
+          - hazardPenalty * 0.72
           - partnerTypePenalty,
       }
     })
@@ -10458,6 +10741,12 @@ function chooseStrategicSwitches(
     const offense = bestAiMoveForPokemon(state, pokemon, targetSlots)
     const incomingThreat = aiIncomingThreatRatio(state, pokemon, opposingAttackers)
     const remainingHpRatio = Math.max(0, pokemon.hp / pokemon.maxHp - hazardRatio)
+    const hazardPenalty = aiHazardEntryPenaltyScore(state, side, pokemon)
+    const toxicSpikesAbsorption = Number(side.hazards?.toxicSpikes ?? 0) > 0
+      && isGrounded(pokemon, state)
+      && pokemon.types.includes('독')
+      ? 28
+      : 0
     const sacrificePenalty = incomingThreat >= remainingHpRatio ? 175 : 0
     return {
       targetIndex,
@@ -10467,7 +10756,9 @@ function chooseStrategicSwitches(
         - sacrificePenalty
         + aiEntryAbilityUtility(pokemon)
         + aiRoleUtility(state, pokemon, sideId) * 0.35
-        + aiRosterMatchupUtility(state, pokemon, opposingSide.team),
+        + aiRosterMatchupUtility(state, pokemon, opposingSide.team)
+        + toxicSpikesAbsorption
+        - hazardPenalty * 0.72,
     }
   }).sort((first, second) => second.score - first.score)
   if (!candidates.some((candidate) => Number.isFinite(candidate.score))) return []
@@ -10847,11 +11138,11 @@ function simulateAiGreedyContinuation(state, sideId) {
   return simulateAiActionPlans(continuation, sideId, ownPlan.decisions, responsePlan.decisions)
 }
 
-function aiResponseWeights(responsePlans) {
+function aiResponseWeights(responsePlans, temperature = AI_RESPONSE_TEMPERATURE) {
   if (responsePlans.length === 0) return []
   const bestScore = responsePlans[0].score
   const rawWeights = responsePlans.map((plan) => Math.exp(
-    Math.max(-8, (plan.score - bestScore) / AI_RESPONSE_TEMPERATURE),
+    Math.max(-8, (plan.score - bestScore) / temperature),
   ))
   const total = rawWeights.reduce((sum, weight) => sum + weight, 0)
   return rawWeights.map((weight) => weight / Math.max(1, total))
@@ -10868,19 +11159,92 @@ function aiPlanReliabilityPenalty(plan) {
   }, 0)
 }
 
-function scorePredictiveAiPlan(state, sideId, ownPlan, responsePlans, baseAdvantage) {
+function scoreAiRobustContinuation(state, sideId, searchSettings) {
+  if (state.winner || state.rules?.format?.activeSlots !== 1 || state.rules?.format?.rotation) return 0
+  const continuationState = cloneBattle(state)
+  continuationState.turn += 1
+  const responseSideId = getOtherSide(continuationState, sideId).id
+  const ownGroups = createSideCandidateGroups(
+    continuationState,
+    sideId,
+    () => 0,
+    AI_HARD_CONTINUATION_PLAN_COUNT,
+    null,
+    false,
+  )
+  const responseGroups = createSideCandidateGroups(
+    continuationState,
+    responseSideId,
+    () => 0,
+    AI_HARD_CONTINUATION_PLAN_COUNT,
+    null,
+    true,
+  )
+  if (
+    ownGroups.length === 0
+    || responseGroups.length === 0
+    || ownGroups.some((group) => group.length === 0)
+    || responseGroups.some((group) => group.length === 0)
+  ) return 0
+
+  const ownPlans = buildAiActionPlans(
+    continuationState,
+    sideId,
+    ownGroups,
+    AI_HARD_CONTINUATION_PLAN_COUNT,
+  )
+  const responsePlans = buildAiActionPlans(
+    continuationState,
+    responseSideId,
+    responseGroups,
+    AI_HARD_CONTINUATION_PLAN_COUNT,
+  )
+  const responseWeights = aiResponseWeights(responsePlans, searchSettings.responseTemperature)
+  const baseAdvantage = aiBoardAdvantage(continuationState, sideId)
+  return ownPlans.reduce((bestScore, ownPlan) => {
+    const outcomes = responsePlans.map((responsePlan, index) => ({
+      score: aiBoardAdvantage(
+        simulateAiActionPlans(continuationState, sideId, ownPlan.decisions, responsePlan.decisions),
+        sideId,
+      ) - baseAdvantage,
+      weight: responseWeights[index] ?? 1,
+    }))
+    const expectedScore = outcomes.reduce((total, outcome) => total + outcome.score * outcome.weight, 0)
+    const worstScore = outcomes.reduce((worst, outcome) => Math.min(worst, outcome.score), Infinity)
+    const robustScore = expectedScore * 0.62
+      + worstScore * 0.38
+      + ownPlan.score * 0.05
+      - aiPlanReliabilityPenalty(ownPlan) * 0.45
+    return Math.max(bestScore, robustScore)
+  }, -Infinity)
+}
+
+function scorePredictiveAiPlan(
+  state,
+  sideId,
+  ownPlan,
+  responsePlans,
+  baseAdvantage,
+  searchSettings,
+  robustContinuation,
+) {
   const resolvedResponses = responsePlans.length > 0 ? responsePlans : [{ decisions: [], score: 0 }]
-  const responseWeights = aiResponseWeights(resolvedResponses)
+  const responseWeights = aiResponseWeights(resolvedResponses, searchSettings.responseTemperature)
   const outcomes = resolvedResponses.map((responsePlan, index) => {
     const simulation = simulateAiActionPlans(state, sideId, ownPlan.decisions, responsePlan.decisions)
     const immediateScore = aiBoardAdvantage(simulation, sideId) - baseAdvantage
-    const continuation = index < AI_CONTINUATION_RESPONSE_COUNT
-      ? simulateAiGreedyContinuation(simulation, sideId)
-      : simulation
-    const continuationScore = aiBoardAdvantage(continuation, sideId) - baseAdvantage
+    let continuationScore = immediateScore
+    if (index < searchSettings.continuationResponseCount) {
+      if (searchSettings.hard && robustContinuation) {
+        continuationScore += scoreAiRobustContinuation(simulation, sideId, searchSettings)
+      } else {
+        const continuation = simulateAiGreedyContinuation(simulation, sideId)
+        continuationScore = aiBoardAdvantage(continuation, sideId) - baseAdvantage
+      }
+    }
     return {
-      score: immediateScore * (1 - AI_CONTINUATION_WEIGHT)
-        + continuationScore * AI_CONTINUATION_WEIGHT,
+      score: immediateScore * (1 - searchSettings.continuationWeight)
+        + continuationScore * searchSettings.continuationWeight,
       weight: responseWeights[index] ?? 1,
     }
   })
@@ -10892,46 +11256,55 @@ function scorePredictiveAiPlan(state, sideId, ownPlan, responsePlans, baseAdvant
     .sort((first, second) => first - second)
     .slice(0, tailCount)
     .reduce((total, score) => total + score, 0) / tailCount
-  return ownPlan.score * 0.12
-    + expectedScore * 0.64
-    + worstScore * 0.2
-    + tailScore * 0.16
-    - aiPlanReliabilityPenalty(ownPlan) * 0.5
+  return ownPlan.score * (searchSettings.hard ? 0.08 : 0.12)
+    + expectedScore * (searchSettings.hard ? 0.58 : 0.64)
+    + worstScore * (searchSettings.hard ? 0.27 : 0.2)
+    + tailScore * (searchSettings.hard ? 0.19 : 0.16)
+    - aiPlanReliabilityPenalty(ownPlan) * (searchSettings.hard ? 0.62 : 0.5)
 }
 
 function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
   const responseSideId = getOtherSide(state, sideId).id
+  const searchSettings = aiSearchSettings(state, sideId)
   const ownGroups = createSideCandidateGroups(
     state,
     sideId,
     random,
-    state.rules?.format?.activeSlots > 1 ? 5 : 8,
+    searchSettings.ownDecisionLimit,
     restrictedSlots,
     false,
   )
   if (ownGroups.length === 0 || ownGroups.some((group) => group.length === 0)) return null
-  const ownPlans = buildAiActionPlans(state, sideId, ownGroups, AI_MAX_PLAN_COUNT)
+  const ownPlans = buildAiActionPlans(state, sideId, ownGroups, searchSettings.maxPlanCount)
   const responseGroups = createSideCandidateGroups(
     state,
     responseSideId,
     () => 0,
-    state.rules?.format?.activeSlots > 1 ? 4 : 6,
+    searchSettings.responseDecisionLimit,
     null,
     true,
   )
   const responsePlans = responseGroups.length > 0
-    ? buildAiActionPlans(state, responseSideId, responseGroups, AI_MAX_RESPONSE_PLAN_COUNT)
+    ? buildAiActionPlans(state, responseSideId, responseGroups, searchSettings.maxResponsePlanCount)
     : []
   const baseAdvantage = aiBoardAdvantage(state, sideId)
   const sideNoise = sideId === 'opponent'
     ? AI_TIER_NOISE[String(state.opponentMeta?.tier ?? 'S').toUpperCase()] ?? 1.4
     : AI_TIER_NOISE.S
-  const finalNoise = sideNoise * 0.1
+  const finalNoise = searchSettings.hard ? 0 : sideNoise * 0.1
 
   return ownPlans
-    .map((plan) => ({
+    .map((plan, planIndex) => ({
       ...plan,
-      predictiveScore: scorePredictiveAiPlan(state, sideId, plan, responsePlans, baseAdvantage)
+      predictiveScore: scorePredictiveAiPlan(
+        state,
+        sideId,
+        plan,
+        responsePlans,
+        baseAdvantage,
+        searchSettings,
+        searchSettings.hard && planIndex < AI_HARD_ROBUST_ROOT_PLAN_COUNT,
+      )
         + (finalNoise > 0 ? random() * finalNoise : 0),
     }))
     .sort((first, second) => second.predictiveScore - first.predictiveScore)[0] ?? null

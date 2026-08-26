@@ -19,7 +19,7 @@ function runtimeMove(moveId) {
   return { ...move, maxPp: move.pp, currentPp: move.pp }
 }
 
-function battleRules(activeSlots = 1) {
+function battleRules(activeSlots = 1, aiDifficulty = 'normal') {
   return {
     weather: { id: 'clear', label: '맑음' },
     terrain: { id: 'neutral', label: '일반 필드' },
@@ -31,6 +31,7 @@ function battleRules(activeSlots = 1) {
     },
     teamRule: { id: 'full', label: '6대6', battleSize: 6 },
     disabledGimmickId: null,
+    aiDifficulty,
     gimmickRestriction: { id: null, label: '제한 없음' },
   }
 }
@@ -40,6 +41,7 @@ function makeBattle({
   opponentCount = 1,
   activeSlots = 1,
   opponentEntry = {},
+  aiDifficulty = 'normal',
 } = {}) {
   const state = createBattle({
     playerPokemon: Array.from({ length: playerCount }, (_, index) => ({
@@ -56,7 +58,7 @@ function makeBattle({
       battleGimmicks: [],
       strategy: {},
     },
-    rules: battleRules(activeSlots),
+    rules: battleRules(activeSlots, aiDifficulty),
   })
   state.opponent.activeIndexes = Array.from({ length: activeSlots }, (_, index) => index)
   state.opponent.activeIndex = state.opponent.activeIndexes[0] ?? 0
@@ -455,4 +457,76 @@ function playerMoveDamage(moveId, configure = () => {}) {
   assert.equal(getActivePokemon(state, 'opponent').name, '피카츄')
 }
 
-process.stdout.write('Validated 29 predictive battle AI and damage decisions.\n')
+{
+  const state = makeBattle({ playerCount: 4 })
+  state.player.team.forEach((pokemon) => { pokemon.moves = [runtimeMove('splash')] })
+  state.opponent.team[0].moves = [runtimeMove('spikes'), runtimeMove('tackle')]
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'spikes')
+}
+
+{
+  const state = makeBattle({ playerCount: 4 })
+  state.player.team.forEach((pokemon) => { pokemon.moves = [runtimeMove('splash')] })
+  state.opponent.team[0].moves = [runtimeMove('spikes'), runtimeMove('tackle')]
+  state.player.hazards.spikes = 3
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'tackle')
+}
+
+{
+  const state = makeBattle({ opponentCount: 3 })
+  state.player.team[0].moves = [runtimeMove('splash')]
+  state.opponent.team[0].moves = [runtimeMove('defog'), runtimeMove('tackle')]
+  state.opponent.hazards.stealthRock = true
+  state.opponent.hazards.spikes = 3
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'defog')
+}
+
+{
+  const state = makeBattle()
+  state.player.team[0].moves = [runtimeMove('surf')]
+  state.player.team[0].stats.speed = 180
+  state.player.team[0].stats.specialAttack = 70
+  state.opponent.team[0].moves = [runtimeMove('tailwind'), runtimeMove('tackle')]
+  state.opponent.team[0].stats.speed = 60
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'tailwind')
+}
+
+{
+  const state = createBattle({
+    playerPokemon: [{
+      speciesId: 25,
+      battleMechanics: ['z-move'],
+      heldItemId: 'electrium-z--held',
+      moveIds: ['thunderbolt'],
+    }],
+    opponent: { name: 'Hard AI', tier: 'S' },
+    opponentTeam: {
+      pokemon: [
+        { speciesId: 9, moveIds: ['tackle'] },
+        { speciesId: 450, moveIds: ['earthquake'] },
+      ],
+      battleGimmicks: [],
+      strategy: {},
+    },
+    rules: battleRules(1, 'hard'),
+  })
+  state.player.activeIndexes = [0]
+  state.player.activeIndex = 0
+  state.opponent.activeIndexes = [0]
+  state.opponent.activeIndex = 0
+  state.player.team[0].moves = [runtimeMove('thunderbolt')]
+  state.player.team[0].stats.specialAttack = 150
+  state.player.team[0].stats.speed = 500
+  state.opponent.team[0].moves = [runtimeMove('tackle')]
+  state.opponent.team[0].hp = Math.ceil(state.opponent.team[0].maxHp * 0.15)
+  state.opponent.team[1].moves = [runtimeMove('earthquake')]
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(action.type, 'switch')
+  assert.equal(action.targetIndex, 1)
+}
+
+process.stdout.write('Validated 34 predictive battle AI and damage decisions.\n')
