@@ -5450,7 +5450,7 @@ function applyKnockoutTriggeredFormAfterFaint(state, attacker, defender, directD
     || attacker.transformSnapshot
     || attacker.ability !== '유대변화'
     || attacker.bondTriggered
-    || currentSpeciesSlug(attacker) !== 'greninja-battle-bond'
+    || currentSpeciesSlug(attacker) !== 'greninja'
     || remainingCount(getPokemonSide(state, defender)) <= 0
   ) return false
 

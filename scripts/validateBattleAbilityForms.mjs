@@ -828,7 +828,7 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
 
 {
   const state = battle(
-    [pokemon('greninja-battle-bond', ['watershuriken'])],
+    [pokemon('greninja', ['watershuriken'], { ability: '유대변화' })],
     [pokemon('snorlax', ['tackle']), pokemon('snorlax', ['protect'], { captureId: 'ability-snorlax-backup' })],
   )
   state.opponent.team[0].hp = 1
@@ -851,25 +851,25 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
   assert(transformed.stats.speed > oldSpeed)
   assert.equal(getBattleMovePreview(result.state, 'player', 0).power, 20)
   assert.equal(getBattleMovePreview(result.state, 'player', 0).multihit, 3)
-  assert(result.timeline[bondIndex].spriteBeforeBack.includes('/10116.png'))
+  assert(result.timeline[bondIndex].spriteBeforeBack.includes('/658.png'))
   assert(result.timeline[bondIndex].spriteAfterBack.includes('/10117.png'))
 }
 
 {
   const state = battle(
-    [pokemon('greninja-battle-bond', ['watershuriken'])],
+    [pokemon('greninja', ['watershuriken'], { ability: '유대변화' })],
     [pokemon('snorlax', ['tackle'])],
   )
   state.opponent.team[0].hp = 1
   state.opponent.team[0].moves.slice(1).forEach((move) => { move.currentPp = 0 })
   const result = createBattleTurnTimeline(state, { type: 'move', moveIndex: 0 }, () => 0.5)
-  assert.equal(result.state.player.team[0].speciesId, profileBySlug.get('greninja-battle-bond').id)
+  assert.equal(result.state.player.team[0].speciesId, profileBySlug.get('greninja').id)
   assert(!result.timeline.some((step) => step.mechanicId === 'battle-bond'))
 }
 
 {
   const state = battle(
-    [pokemon('greninja-battle-bond', ['watershuriken'])],
+    [pokemon('greninja', ['watershuriken'], { ability: '유대변화' })],
     [pokemon('gengar', ['destinybond']), pokemon('snorlax', ['protect'], { captureId: 'ability-snorlax-bond-backup' })],
   )
   const gengarIndex = state.opponent.team.findIndex((member) => member.slug === 'gengar')
@@ -882,7 +882,7 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
   gengar.destinyBondActive = true
   const result = createBattleTurnTimeline(state, { type: 'move', moveIndex: 0 }, () => 0.5)
   assert.equal(result.state.player.team[0].fainted, true)
-  assert.equal(result.state.player.team[0].speciesId, profileBySlug.get('greninja-battle-bond').id)
+  assert.equal(result.state.player.team[0].speciesId, profileBySlug.get('greninja').id)
   assert(!result.timeline.some((step) => step.mechanicId === 'battle-bond'))
 }
 

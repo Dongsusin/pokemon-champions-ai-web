@@ -430,7 +430,7 @@ const BATTLE_FORM_SOURCE_SLUGS = Object.freeze({
   'darmanitan-galar-zen': ['darmanitan-galar-standard'],
   'eevee-gmax': ['eevee'],
   'floette-mega': ['floette-eternal'],
-  'greninja-ash': ['greninja-battle-bond'],
+  'greninja-ash': ['greninja'],
   'greninja-mega': ['greninja'],
   'meowstic-male-mega': ['meowstic'],
   'meowstic-female-mega': ['meowstic-female'],

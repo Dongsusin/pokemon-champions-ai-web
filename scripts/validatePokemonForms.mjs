@@ -88,14 +88,27 @@ assert(spikyPichu.spriteFront.includes('/pichu-spikyeared.png'))
 assert.equal(getFormMetadata(spikyPichu).evolutionLocked, true)
 
 const greninjaPersistent = slugs(getPersistentFormOptions(658))
-assert(greninjaPersistent.has('greninja-battle-bond'))
+const greninja = requireProfile('greninja')
+const legacyBattleBondGreninja = requireProfile('greninja-battle-bond')
+assert(!greninjaPersistent.has('greninja-battle-bond'))
 assert(!greninjaPersistent.has('greninja-ash'))
-assert(!slugs(getBattleFormOptions(658)).has('greninja-ash'))
-assert(slugs(getBattleFormOptions(658)).has('greninja-mega'))
-assert.deepEqual(
-  slugs(getBattleFormOptions(requireProfile('greninja-battle-bond').id)),
-  new Set(['greninja-ash']),
-)
+assert.deepEqual(new Set(greninja.abilities), new Set(['급류', '변환자재', '유대변화']))
+assert.equal(getFormMetadata(legacyBattleBondGreninja).canonicalFormSlug, 'greninja')
+assert.equal(getFormMetadata(legacyBattleBondGreninja).hiddenFromFormPicker, true)
+assert.equal(isSavablePokemonForm(legacyBattleBondGreninja), false)
+assert.equal(normalizePokemon({ speciesId: legacyBattleBondGreninja.id }).speciesId, greninja.id)
+assert.equal(normalizePokemon({ speciesId: legacyBattleBondGreninja.id }).ability, '유대변화')
+assert.deepEqual(slugs(getBattleFormOptions(658)), new Set(['greninja-ash', 'greninja-mega']))
+assert.equal(getFormMetadata(requireProfile('greninja-ash')).requiredAbility, '유대변화')
+
+const migratedBattleBondGreninja = migratePokemonCollection([{
+  captureId: 'legacy-greninja-battle-bond',
+  speciesId: legacyBattleBondGreninja.id,
+  dexSpeciesId: 658,
+  directDrawCount: 1,
+}]).find((pokemon) => pokemon.dexSpeciesId === 658)
+assert.equal(migratedBattleBondGreninja?.speciesId, greninja.id)
+assert.equal(migratedBattleBondGreninja?.ability, '유대변화')
 
 assert.deepEqual(slugs(getBattleFormOptions(555)), new Set(['darmanitan-zen']))
 assert.deepEqual(
