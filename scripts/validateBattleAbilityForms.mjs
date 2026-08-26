@@ -184,8 +184,11 @@ function turn(state, playerAction, opponentAction) {
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('wishiwashi').id)
 }
 
-{
-  let state = battle([pokemon('zygarde-50-power-construct')], [pokemon('snorlax')])
+for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
+  let state = battle(
+    [pokemon(zygardeSlug, ['protect'], { ability: '스웜체인지' })],
+    [pokemon('snorlax')],
+  )
   const oldMaxHp = state.player.team[0].maxHp
   state.player.team[0].hp = Math.floor(oldMaxHp / 2)
   state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })

@@ -445,6 +445,7 @@ const GENERATED_PROFILE_LIST = [...pokemonData.species, ...pokemonData.forms]
   .map(decorateGeneratedPokemonProfile)
 const VIRTUAL_FORM_PROFILES = createVirtualPokemonFormProfiles(GENERATED_PROFILE_LIST)
 const PROFILE_LIST = [...GENERATED_PROFILE_LIST, ...VIRTUAL_FORM_PROFILES].map(profile)
+const PROFILE_BY_SLUG = new Map(PROFILE_LIST.map((entry) => [entry.slug, entry]))
 const RELATED_PROFILE_OPTIONS_BY_BASE_ID = new Map()
 
 PROFILE_LIST.forEach((option) => {
@@ -473,6 +474,14 @@ export function getSpeciesProfile(speciesId) {
   return SPECIES_PROFILES[speciesId] ?? null
 }
 
+export function getCanonicalPokemonFormProfile(speciesOrProfile) {
+  const profile = typeof speciesOrProfile === 'object'
+    ? speciesOrProfile
+    : getSpeciesProfile(speciesOrProfile)
+  const canonicalFormSlug = getPokemonFormMetadata(profile).canonicalFormSlug
+  return canonicalFormSlug ? PROFILE_BY_SLUG.get(canonicalFormSlug) ?? profile : profile
+}
+
 export function getEvolutionOptions(speciesId) {
   const route = EVOLUTION_ROUTE_BY_ID.get(Number(speciesId))
   const speciesIds = route?.speciesIds ?? [Number(speciesId)]
@@ -487,7 +496,10 @@ export function getRelatedFormOptions(speciesId) {
 
 export function getPersistentFormOptions(speciesId) {
   return getRelatedFormOptions(speciesId)
-    .filter((option) => isSavableFormProfile(option))
+    .filter((option) => (
+      isSavableFormProfile(option)
+      && !getPokemonFormMetadata(option).hiddenFromFormPicker
+    ))
 }
 
 export function resolveMoveTriggeredFormSpeciesId(speciesId, moveNames = []) {
@@ -523,7 +535,11 @@ export function isSavablePokemonForm(speciesOrProfile) {
 
 export function getBattleFormOptions(speciesId) {
   return getRelatedFormOptions(speciesId)
-    .filter((option) => option?.parentSpeciesId && !isSavableFormProfile(option))
+    .filter((option) => (
+      option?.parentSpeciesId
+      && !isSavableFormProfile(option)
+      && !getPokemonFormMetadata(option).hiddenFromFormPicker
+    ))
 }
 
 export function getEvolutionSpeciesIds(speciesId) {
@@ -656,7 +672,8 @@ function getDefaultTrainingPoints(species) {
 }
 
 export function normalizePokemon(pokemon) {
-  const species = getSpeciesProfile(pokemon.speciesId)
+  const requestedSpecies = getSpeciesProfile(pokemon.speciesId)
+  const species = getCanonicalPokemonFormProfile(requestedSpecies)
 
   if (!species) return { ...pokemon, level: BATTLE_LEVEL }
 
@@ -686,7 +703,8 @@ export function normalizePokemon(pokemon) {
     pointOverflow -= reduction
   }
   const nature = NATURE_OPTIONS.some((option) => option.label === pokemon.nature) ? pokemon.nature : '노력'
-  const ability = species.abilities.includes(pokemon.ability) ? pokemon.ability : species.abilities[0]
+  const requestedAbility = pokemon.ability ?? requestedSpecies?.abilities?.[0]
+  const ability = species.abilities.includes(requestedAbility) ? requestedAbility : species.abilities[0]
   const teraType = normalizeTeraType(pokemon.teraType, species.types[0])
   const dynamaxMode = normalizeDynamaxMode(pokemon.dynamaxMode, species.id)
   const { hiddenPowerType, hiddenPowerTypeConfigured } = resolveHiddenPowerConfiguration(pokemon)

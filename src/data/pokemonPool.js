@@ -1,6 +1,7 @@
 import {
   NATIONAL_DEX,
   NATIONAL_DEX_COUNT,
+  getCanonicalPokemonFormProfile,
   getEvolutionSpeciesIds,
   getSpeciesProfile,
   isSavablePokemonForm,
@@ -345,16 +346,18 @@ export function migratePokemonCollection(storedPokemon = []) {
       }))
     } else {
       const storedProfile = getSpeciesProfile(rawPokemon.speciesId)
+      const canonicalProfile = getCanonicalPokemonFormProfile(storedProfile)
       const speciesId = Number(
-        isSavablePokemonForm(storedProfile)
-          ? storedProfile?.id ?? dexSpeciesId
-          : storedProfile?.parentSpeciesId ?? storedProfile?.id ?? dexSpeciesId,
+        isSavablePokemonForm(canonicalProfile)
+          ? canonicalProfile?.id ?? dexSpeciesId
+          : canonicalProfile?.parentSpeciesId ?? canonicalProfile?.id ?? dexSpeciesId,
       )
       collectionMap.set(dexSpeciesId, normalizePokemon({
         ...rawPokemon,
         captureId: `dex-${dexSpeciesId}`,
         dexSpeciesId,
         speciesId,
+        ability: rawPokemon.ability ?? storedProfile?.abilities?.[0],
         directDrawCount,
         shinyObtained,
         isShiny: shinyObtained && Boolean(rawPokemon.isShiny ?? true),

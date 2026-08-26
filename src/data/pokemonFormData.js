@@ -397,19 +397,29 @@ const FORM_METADATA_BY_SLUG = Object.freeze({
   'terapagos-terastal': { formKind: 'ability', saveable: false, requirement: '특성 · 등장 시' },
   'terapagos-stellar': { formKind: 'gimmick', saveable: false, requirement: '테라스탈' },
   'wishiwashi-school': { formKind: 'ability', saveable: false, requirement: '특성 · 레벨 20 이상, HP 25% 초과' },
+  zygarde: { additionalAbilities: ['스웜체인지'] },
   'zygarde-10-power-construct': {
     formKind: 'ability',
-    saveable: true,
+    saveable: false,
+    hiddenFromFormPicker: true,
+    canonicalFormSlug: 'zygarde-10',
     requirement: '10%폼 · 특성 스웜체인지',
     name: '지가르데 10%폼 · 스웜체인지',
   },
   'zygarde-50-power-construct': {
     formKind: 'ability',
-    saveable: true,
+    saveable: false,
+    hiddenFromFormPicker: true,
+    canonicalFormSlug: 'zygarde',
     requirement: '50%폼 · 특성 스웜체인지',
     name: '지가르데 50%폼 · 스웜체인지',
   },
-  'zygarde-10': { formKind: 'standard', saveable: true, requirement: '10%폼 · 특성 오라브레이크' },
+  'zygarde-10': {
+    formKind: 'standard',
+    saveable: true,
+    requirement: '10%폼',
+    additionalAbilities: ['스웜체인지'],
+  },
   'zygarde-complete': { formKind: 'ability', saveable: false, requirement: '스웜체인지 · HP 절반 이하' },
   'floette-eternal': {
     formKind: 'standard',
@@ -557,6 +567,7 @@ export function decorateGeneratedPokemonProfile(entry) {
   return {
     ...entry,
     name: explicit.name ?? entry.name,
+    abilities: [...new Set([...(entry.abilities ?? []), ...(explicit.additionalAbilities ?? [])])],
     gender: explicit.gender ?? defaultGenderForProfile(entry),
     formMetadata: metadata,
   }
