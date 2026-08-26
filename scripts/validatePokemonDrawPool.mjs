@@ -44,8 +44,8 @@ if (Math.abs(rarityRateTotal - 1) > Number.EPSILON * 10) {
   failures.push(`등급별 확률 합계가 100%가 아님: ${rarityRateTotal}`)
 }
 
-if (RARITY_META.legend.rate !== 0.001) {
-  failures.push('전설·환상 EX 등급의 총 확률이 0.1%가 아님')
+if (RARITY_META.legend.rate !== 0.01) {
+  failures.push('전설·환상 EX 등급의 총 확률이 1%가 아님')
 }
 
 if (!(

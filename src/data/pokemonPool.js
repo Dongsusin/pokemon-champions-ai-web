@@ -10,7 +10,7 @@ import {
 } from './trainingData.js'
 
 export const BASE_SHINY_ODDS = 4096
-export const LEGENDARY_DRAW_RATE = 0.001
+export const LEGENDARY_DRAW_RATE = 0.01
 export const PICKUP_ROTATION_MS = 60 * 60 * 1000
 
 export const DRAW_BANNERS = {
@@ -43,7 +43,7 @@ export const RARITY_META = {
   common: { label: 'C · 루키', stars: '★', rate: 0.5, minBaseStatTotal: 0, maxBaseStatTotal: 449 },
   rare: { label: 'B · 레어', stars: '★★', rate: 0.32, minBaseStatTotal: 450, maxBaseStatTotal: 499 },
   elite: { label: 'A · 엘리트', stars: '★★★', rate: 0.14, minBaseStatTotal: 500, maxBaseStatTotal: 549 },
-  champion: { label: 'S · 챔피언', stars: '★★★★', rate: 0.039, minBaseStatTotal: 550, maxBaseStatTotal: Infinity },
+  champion: { label: 'S · 챔피언', stars: '★★★★', rate: 0.03, minBaseStatTotal: 550, maxBaseStatTotal: Infinity },
   legend: { label: 'EX · 전설·환상', stars: '★★★★★', rate: LEGENDARY_DRAW_RATE, minBaseStatTotal: 0, maxBaseStatTotal: Infinity },
 }
 
