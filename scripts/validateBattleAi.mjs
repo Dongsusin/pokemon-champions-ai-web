@@ -529,4 +529,21 @@ function playerMoveDamage(moveId, configure = () => {}) {
   assert.equal(action.targetIndex, 1)
 }
 
-process.stdout.write('Validated 34 predictive battle AI and damage decisions.\n')
+{
+  const state = makeBattle({ aiDifficulty: { id: 'hard', boostStage: 2 } })
+  state.player.team[0].moves = [
+    runtimeMove('haze'),
+    runtimeMove('hydropump'),
+    runtimeMove('protect'),
+    runtimeMove('recover'),
+  ]
+  state.player.team[0].stats.specialAttack = 40
+  state.player.team[0].stats.speed = 40
+  state.opponent.team[0].moves = [runtimeMove('swordsdance'), runtimeMove('tackle')]
+  state.opponent.team[0].stats.attack = 80
+  state.opponent.team[0].stats.speed = 180
+  const action = chooseAiAction(state, () => 0)
+  assert.equal(state.opponent.team[0].moves[action.moveIndex].id, 'tackle')
+}
+
+process.stdout.write('Validated 35 predictive battle AI and damage decisions.\n')

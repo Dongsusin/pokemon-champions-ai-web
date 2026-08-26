@@ -13,14 +13,22 @@ import {
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
 import { selectCounterTeamNumber } from '../src/data/aiTeamSelection.js'
-import { getTrainer, getTrainerTeam } from '../src/data/trainerTeams.js'
+import { getTrainer, getTrainerTeam, TRAINERS } from '../src/data/trainerTeams.js'
 
 const DEFAULT_BENCHMARK_TRAINERS = ['레드', '난천', '단델', '아이리스', '성호', '네모', '지우', 'N']
 const BENCHMARK_TRAINERS = (process.env.BATTLE_AI_BENCHMARK_TRAINERS ?? '')
   .split(',')
   .map((name) => name.trim())
   .filter(Boolean)
-const SELECTED_TRAINERS = BENCHMARK_TRAINERS.length > 0 ? BENCHMARK_TRAINERS : DEFAULT_BENCHMARK_TRAINERS
+const SELECTED_TRAINERS = process.env.BATTLE_AI_BENCHMARK_ALL_TRAINERS === '1'
+  ? TRAINERS.map((trainer) => trainer.name)
+  : (BENCHMARK_TRAINERS.length > 0 ? BENCHMARK_TRAINERS : DEFAULT_BENCHMARK_TRAINERS)
+const BENCHMARK_OPPONENTS = (process.env.BATTLE_AI_BENCHMARK_OPPONENTS ?? '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean)
+const SELECTED_OPPONENTS = BENCHMARK_OPPONENTS.length > 0 ? BENCHMARK_OPPONENTS : SELECTED_TRAINERS
+const USE_MATCHUP_MATRIX = process.env.BATTLE_AI_BENCHMARK_MATRIX === '1'
 const BENCHMARK_TEAMS = (process.env.BATTLE_AI_BENCHMARK_TEAMS ?? '1,2,3')
   .split(',')
   .map((value) => Number.parseInt(value.trim(), 10))
@@ -43,6 +51,15 @@ const FORCED_OPPONENT_TEAM_NUMBER = Number.parseInt(
 const MIN_WIN_RATE = Math.max(0, Math.min(
   1,
   Number.parseFloat(process.env.BATTLE_AI_MIN_WIN_RATE ?? '0.68') || 0,
+))
+const BENCHMARK_DIFFICULTY_ID = ['easy', 'normal', 'hard'].includes(
+  process.env.BATTLE_AI_BENCHMARK_DIFFICULTY,
+)
+  ? process.env.BATTLE_AI_BENCHMARK_DIFFICULTY
+  : 'normal'
+const BENCHMARK_HARD_BOOST_STAGE = Math.max(1, Math.min(
+  3,
+  Number.parseInt(process.env.BATTLE_AI_HARD_BOOST_STAGE ?? '1', 10) || 1,
 ))
 
 function incrementCount(counts, key) {
@@ -132,6 +149,10 @@ function battleRules() {
     format: { id: 'single', label: '싱글배틀', activeSlots: 1, actionSlots: 1 },
     teamRule: { id: 'full', label: '6대6', battleSize: 6 },
     disabledGimmickId: null,
+    aiDifficulty: {
+      id: BENCHMARK_DIFFICULTY_ID,
+      boostStage: BENCHMARK_DIFFICULTY_ID === 'hard' ? BENCHMARK_HARD_BOOST_STAGE : 0,
+    },
     gimmickRestriction: { id: null, label: '제한 없음' },
   }
 }
@@ -335,7 +356,7 @@ function runMatch(playerName, opponentName, advancedSide, teamNumber, seed) {
 function createLossAnalysis(results) {
   const matchupGroups = new Map()
   results.forEach((result) => {
-    const key = `${result.playerName} · 팀 ${result.teamNumber}`
+    const key = `${result.playerName} vs ${result.opponentName} · 팀 ${result.teamNumber}`
     const group = matchupGroups.get(key) ?? {
       matchup: key,
       matches: 0,
@@ -394,14 +415,23 @@ function createLossAnalysis(results) {
     .sort((first, second) => first.winRate - second.winRate || second.losses - first.losses)
 }
 
-const results = SELECTED_TRAINERS.flatMap((trainerName) => {
-  const trainerIndex = DEFAULT_BENCHMARK_TRAINERS.indexOf(trainerName)
+const benchmarkMatchups = USE_MATCHUP_MATRIX
+  ? SELECTED_TRAINERS.flatMap((playerName) => SELECTED_OPPONENTS.map((opponentName) => ({
+    playerName,
+    opponentName,
+  })))
+  : SELECTED_TRAINERS.map((playerName, index) => ({
+    playerName,
+    opponentName: SELECTED_OPPONENTS[index % SELECTED_OPPONENTS.length] ?? playerName,
+  }))
+
+const results = benchmarkMatchups.flatMap(({ playerName, opponentName }, matchupIndex) => {
   return BENCHMARK_TEAMS.flatMap((teamNumber) => {
     return Array.from({ length: BENCHMARK_REPEATS }, (_, repeatIndex) => {
-      const seed = trainerIndex * 1000 + teamNumber * 100 + repeatIndex * 10
+      const seed = matchupIndex * 1000 + teamNumber * 100 + repeatIndex * 10
       return BENCHMARK_SIDES.map((advancedSide) => runMatch(
-        trainerName,
-        trainerName,
+        playerName,
+        opponentName,
         advancedSide,
         teamNumber,
         seed + (advancedSide === 'player' ? 1 : 2),
@@ -454,6 +484,9 @@ const sideWinRates = Object.fromEntries(BENCHMARK_SIDES.map((sideId) => {
 }))
 const summary = {
   trainers: SELECTED_TRAINERS,
+  opponents: SELECTED_OPPONENTS,
+  matchupMatrix: USE_MATCHUP_MATRIX,
+  difficulty: BENCHMARK_DIFFICULTY_ID,
   teams: BENCHMARK_TEAMS,
   advancedSides: BENCHMARK_SIDES,
   counterTeams: USE_COUNTER_TEAMS,

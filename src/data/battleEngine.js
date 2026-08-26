@@ -9449,6 +9449,8 @@ const AI_NON_TARGETED_MOVE_TARGETS = new Set(['self', 'allySide', 'allyTeam', 'f
 const AI_NON_HOSTILE_STATUS_TARGETS = new Set(['self', 'allySide', 'allyTeam', 'all'])
 const AI_HAZARD_CLEAR_MOVE_IDS = new Set(['defog', 'rapidspin', 'mortalspin', 'tidyup'])
 const AI_SPREAD_MOVE_TARGETS = new Set(['allAdjacent', 'allAdjacentFoes'])
+const AI_STAT_RESET_MOVE_IDS = new Set(['haze', 'clearsmog', 'topsyturvy', 'spectralthief'])
+const AI_SCREEN_BREAK_MOVE_IDS = new Set(['defog', 'brickbreak', 'psychicfangs', 'ragingbull', 'courtchange'])
 
 function projectAiPokemonForMechanic(attacker, gimmick) {
   if (gimmick === 'tera' && attacker.teraType) {
@@ -10051,6 +10053,75 @@ function aiSecondaryUtility(state, attacker, defender, move) {
   }, 0)
 }
 
+function aiActsBeforeProbability(state, firstPokemon, firstMove, secondPokemon, secondMove) {
+  const firstPriority = environmentMovePriority(state, firstPokemon, firstMove)
+  const secondPriority = environmentMovePriority(state, secondPokemon, secondMove)
+  if (firstPriority !== secondPriority) return firstPriority > secondPriority ? 1 : 0
+  const firstSpeed = effectiveStat(state, firstPokemon, 'speed')
+  const secondSpeed = effectiveStat(state, secondPokemon, 'speed')
+  if (firstSpeed === secondSpeed) return 0.5
+  const firstIsFaster = firstSpeed > secondSpeed
+  if (state.environment?.trickRoomTurns > 0) return firstIsFaster ? 0 : 1
+  return firstIsFaster ? 1 : 0
+}
+
+function aiPositiveSetupStages(move) {
+  const changes = move.target === 'self' ? move.boosts : move.self?.boosts
+  return Object.values(normalizedStageChanges(changes ?? {})).reduce((total, amount) => (
+    total + Math.max(0, Number(amount) || 0)
+  ), 0)
+}
+
+function aiKnownCounterplayPenalty(state, attacker, move) {
+  const opposingSide = getOtherSide(state, getPokemonSide(state, attacker).id)
+  const opponents = getActivePokemonList(state, opposingSide.id)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  const setupStages = aiPositiveSetupStages(move)
+  const hazardRule = HAZARD_MOVE_RULES[move.id]
+  const sideConditionRule = SIDE_CONDITION_MOVE_RULES[move.id]
+  const weatherId = SHOWDOWN_WEATHER_IDS[String(move.weather ?? move.id).toLowerCase()]
+  const terrainId = SHOWDOWN_TERRAIN_IDS[String(move.terrain ?? move.id).toLowerCase()]
+
+  return opponents.reduce((highestPenalty, opponent) => {
+    return opponent.moves.reduce((highestAgainstOpponent, counterMove) => {
+      if (!counterMove || counterMove.currentPp <= 0) return highestAgainstOpponent
+      const counterActsAfter = aiActsBeforeProbability(state, attacker, move, opponent, counterMove)
+      if (counterActsAfter <= 0) return highestAgainstOpponent
+      let penalty = 0
+      if (setupStages > 0 && AI_STAT_RESET_MOVE_IDS.has(counterMove.id)) {
+        penalty = Math.max(penalty, (38 + setupStages * 22) * counterActsAfter)
+      }
+      if (hazardRule && AI_HAZARD_CLEAR_MOVE_IDS.has(counterMove.id)) {
+        const livingTargets = opposingSide.team.filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted).length
+        penalty = Math.max(penalty, (72 + livingTargets * 12) * counterActsAfter)
+      }
+      const sideConditionCanBeRemoved = sideConditionRule && (
+        counterMove.id === 'courtchange'
+        || (
+          ['reflect', 'lightscreen', 'auroraveil'].includes(move.id)
+          && AI_SCREEN_BREAK_MOVE_IDS.has(counterMove.id)
+        )
+        || (['safeguard', 'mist'].includes(move.id) && counterMove.id === 'defog')
+      )
+      if (sideConditionCanBeRemoved) {
+        penalty = Math.max(penalty, 48 * counterActsAfter)
+      }
+      const counterWeatherId = SHOWDOWN_WEATHER_IDS[String(counterMove.weather ?? counterMove.id).toLowerCase()]
+      if (weatherId && counterWeatherId && weatherId !== counterWeatherId) {
+        penalty = Math.max(penalty, 42 * counterActsAfter)
+      }
+      const counterTerrainId = SHOWDOWN_TERRAIN_IDS[String(counterMove.terrain ?? counterMove.id).toLowerCase()]
+      if (terrainId && counterTerrainId && terrainId !== counterTerrainId) {
+        penalty = Math.max(penalty, 42 * counterActsAfter)
+      }
+      if (move.id === 'trickroom' && counterMove.id === 'trickroom') {
+        penalty = Math.max(penalty, 54 * counterActsAfter)
+      }
+      return Math.max(highestAgainstOpponent, penalty)
+    }, highestPenalty)
+  }, 0)
+}
+
 function aiThreatMechanics(state, attacker) {
   const side = getPokemonSide(state, attacker)
   const teamIndex = side.team.indexOf(attacker)
@@ -10216,6 +10287,7 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
       resolvedMove,
     }
     score += aiMechanicUtility(state, attacker, defender, resolvedMove, gimmick, evaluation)
+    score -= aiKnownCounterplayPenalty(state, projectedAttacker, resolvedMove)
     if (context.targetReserved && targetsOpponent) score -= 60
     return { ...evaluation, score }
   }
@@ -10282,6 +10354,7 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   score += aiSecondaryUtility(state, projectedAttacker, defender, resolvedMove)
   score += aiHazardSetupUtility(state, projectedAttacker, defender, resolvedMove, true) ?? 0
   score += Math.max(0, aiHazardClearUtility(state, projectedAttacker, resolvedMove) ?? 0)
+  score -= aiKnownCounterplayPenalty(state, projectedAttacker, resolvedMove)
 
   const evaluation = {
     score,
@@ -10366,7 +10439,7 @@ const AI_CONTINUATION_WEIGHT = 0.38
 const AI_CONTINUATION_RESPONSE_COUNT = AI_MAX_RESPONSE_PLAN_COUNT
 const AI_MAX_SWITCH_CANDIDATES = 3
 const AI_HARD_MAX_PLAN_COUNT = 160
-const AI_HARD_MAX_RESPONSE_PLAN_COUNT = 18
+const AI_HARD_MAX_RESPONSE_PLAN_COUNT = 24
 const AI_HARD_CONTINUATION_RESPONSE_COUNT = 4
 const AI_HARD_CONTINUATION_PLAN_COUNT = 4
 const AI_HARD_ROBUST_ROOT_PLAN_COUNT = 4
@@ -10377,10 +10450,11 @@ function aiSearchSettings(state, sideId) {
   return {
     hard,
     ownDecisionLimit: multiBattle ? hard ? 6 : 5 : hard ? 10 : 8,
-    responseDecisionLimit: multiBattle ? hard ? 5 : 4 : hard ? 8 : 6,
+    responseDecisionLimit: multiBattle ? hard ? 9 : 6 : hard ? 14 : 10,
     maxPlanCount: hard ? AI_HARD_MAX_PLAN_COUNT : AI_MAX_PLAN_COUNT,
     maxResponsePlanCount: hard ? AI_HARD_MAX_RESPONSE_PLAN_COUNT : AI_MAX_RESPONSE_PLAN_COUNT,
     responseTemperature: hard ? 14 : AI_RESPONSE_TEMPERATURE,
+    responseUniformMix: hard ? 0.3 : 0.14,
     continuationWeight: hard ? 0.46 : AI_CONTINUATION_WEIGHT,
     continuationResponseCount: hard
       ? AI_HARD_CONTINUATION_RESPONSE_COUNT
@@ -10865,6 +10939,74 @@ function selectDiverseAiDecisions(candidates, limit) {
   return selected.sort((first, second) => second.score - first.score)
 }
 
+function selectPredictedResponseDecisions(candidates, limit) {
+  const eligible = candidates.filter((candidate) => (
+    Number.isFinite(candidate.score)
+    || AI_HAZARD_CLEAR_MOVE_IDS.has(candidate.resolvedMove?.id)
+  ))
+  const sorted = [...eligible].sort((first, second) => second.score - first.score)
+  const selected = []
+  const seen = new Set()
+  const add = (candidate) => {
+    if (!candidate || selected.length >= limit) return
+    const key = aiDecisionKey(candidate)
+    if (seen.has(key)) return
+    seen.add(key)
+    selected.push(candidate)
+  }
+  const addBest = (predicate) => add(sorted.find(predicate))
+  const addBestBy = (predicate, value) => add(
+    sorted
+      .filter(predicate)
+      .sort((first, second) => value(second) - value(first))[0],
+  )
+
+  add(sorted[0])
+  addBest((candidate) => candidate.knockout)
+  addBest((candidate) => candidate.knockout && Number(candidate.priority ?? 0) > 0)
+  addBestBy(
+    (candidate) => candidate.action.type === 'move',
+    (candidate) => Number(candidate.rawDamage ?? 0) * Number(candidate.accuracy ?? 1),
+  )
+
+  const baseMoveIndexes = [...new Set(sorted.flatMap((candidate) => (
+    candidate.action.type === 'move' && !candidate.action.gimmick
+      ? [candidate.action.moveIndex]
+      : []
+  )))]
+  baseMoveIndexes.forEach((moveIndex) => addBest((candidate) => (
+    candidate.action.type === 'move'
+    && candidate.action.moveIndex === moveIndex
+    && !candidate.action.gimmick
+  )))
+
+  const switchIndexes = [...new Set(sorted.flatMap((candidate) => (
+    candidate.action.type === 'switch' ? [candidate.action.targetIndex] : []
+  )))]
+  switchIndexes.forEach((targetIndex) => addBest((candidate) => (
+    candidate.action.type === 'switch' && candidate.action.targetIndex === targetIndex
+  )))
+
+  const gimmicks = [...new Set(sorted.flatMap((candidate) => (
+    candidate.action.gimmick ? [candidate.action.gimmick] : []
+  )))]
+  gimmicks.forEach((gimmick) => addBest((candidate) => candidate.action.gimmick === gimmick))
+
+  ;[
+    (candidate) => isHealingMove(candidate.resolvedMove),
+    (candidate) => PROTECT_MOVE_IDS.has(candidate.resolvedMove?.id),
+    (candidate) => HAZARD_MOVE_RULES[candidate.resolvedMove?.id],
+    (candidate) => AI_HAZARD_CLEAR_MOVE_IDS.has(candidate.resolvedMove?.id),
+    (candidate) => SIDE_CONDITION_MOVE_RULES[candidate.resolvedMove?.id],
+    (candidate) => FIELD_EFFECT_MOVE_RULES[candidate.resolvedMove?.id],
+    (candidate) => candidate.resolvedMove?.selfSwitch,
+    (candidate) => candidate.resolvedMove && isStatusMove(candidate.resolvedMove),
+  ].forEach(addBest)
+
+  sorted.forEach(add)
+  return selected.sort((first, second) => second.score - first.score)
+}
+
 function rankSideDecisions(
   state,
   sideId,
@@ -10956,7 +11098,9 @@ function rankSideDecisions(
   )
   candidates.push(...switchDecisions)
   candidates.sort((first, second) => second.score - first.score)
-  return selectDiverseAiDecisions(candidates, limit)
+  return prediction
+    ? selectPredictedResponseDecisions(candidates, limit)
+    : selectDiverseAiDecisions(candidates, limit)
 }
 
 function aiPlanningState(state, sideId) {
@@ -10990,9 +11134,33 @@ function aiPlanCoordinationScore(state, sideId, decisions) {
   return score
 }
 
-function buildAiActionPlans(state, sideId, candidateGroups, limit) {
+function selectPredictedResponsePlans(plans, requiredDecisions, limit) {
+  const selected = []
+  const seen = new Set()
+  const add = (plan) => {
+    if (!plan || selected.length >= limit) return
+    const key = plan.decisions.map(aiDecisionKey).join('|')
+    if (seen.has(key)) return
+    seen.add(key)
+    selected.push(plan)
+  }
+  requiredDecisions
+    .filter((decision, index, entries) => (
+      entries.findIndex((candidate) => aiDecisionKey(candidate) === aiDecisionKey(decision)) === index
+    ))
+    .sort((first, second) => second.score - first.score)
+    .forEach((decision) => add(plans.find((plan) => (
+      plan.decisions.some((candidate) => aiDecisionKey(candidate) === aiDecisionKey(decision))
+    ))))
+  plans.forEach(add)
+  return selected.sort((first, second) => second.score - first.score)
+}
+
+function buildAiActionPlans(state, sideId, candidateGroups, limit, prediction = false) {
   let plans = [{ decisions: [], score: 0, mechanics: new Set(), benchIndexes: new Set() }]
+  const requiredDecisions = []
   candidateGroups.forEach((candidates) => {
+    requiredDecisions.push(...candidates)
     const expanded = []
     plans.forEach((plan) => {
       candidates.forEach((decision) => {
@@ -11014,7 +11182,10 @@ function buildAiActionPlans(state, sideId, candidateGroups, limit) {
         })
       })
     })
-    plans = expanded.sort((first, second) => second.score - first.score).slice(0, limit)
+    const sorted = expanded.sort((first, second) => second.score - first.score)
+    plans = prediction
+      ? selectPredictedResponsePlans(sorted, requiredDecisions, limit)
+      : sorted.slice(0, limit)
   })
   return plans
 }
@@ -11138,14 +11309,18 @@ function simulateAiGreedyContinuation(state, sideId) {
   return simulateAiActionPlans(continuation, sideId, ownPlan.decisions, responsePlan.decisions)
 }
 
-function aiResponseWeights(responsePlans, temperature = AI_RESPONSE_TEMPERATURE) {
+function aiResponseWeights(responsePlans, temperature = AI_RESPONSE_TEMPERATURE, uniformMix = 0) {
   if (responsePlans.length === 0) return []
   const bestScore = responsePlans[0].score
   const rawWeights = responsePlans.map((plan) => Math.exp(
     Math.max(-8, (plan.score - bestScore) / temperature),
   ))
   const total = rawWeights.reduce((sum, weight) => sum + weight, 0)
-  return rawWeights.map((weight) => weight / Math.max(1, total))
+  const mix = Math.max(0, Math.min(1, Number(uniformMix) || 0))
+  const uniformWeight = 1 / responsePlans.length
+  return rawWeights.map((weight) => (
+    weight / Math.max(1, total) * (1 - mix) + uniformWeight * mix
+  ))
 }
 
 function aiPlanReliabilityPenalty(plan) {
@@ -11153,8 +11328,8 @@ function aiPlanReliabilityPenalty(plan) {
     if (decision.action.type !== 'move') return total
     const accuracy = Math.max(0, Math.min(1, Number(decision.accuracy ?? 1)))
     if (accuracy >= 1) return total
-    const impact = (decision.knockout ? 105 : 36)
-      + Math.min(80, Math.max(0, Number(decision.rawDamage ?? 0)) * 0.35)
+    const impact = (decision.knockout ? 145 : 52)
+      + Math.min(180, Math.max(0, Number(decision.rawDamage ?? 0)) * 1.25)
     return total + (1 - accuracy) * impact
   }, 0)
 }
@@ -11198,8 +11373,13 @@ function scoreAiRobustContinuation(state, sideId, searchSettings) {
     responseSideId,
     responseGroups,
     AI_HARD_CONTINUATION_PLAN_COUNT,
+    true,
   )
-  const responseWeights = aiResponseWeights(responsePlans, searchSettings.responseTemperature)
+  const responseWeights = aiResponseWeights(
+    responsePlans,
+    searchSettings.responseTemperature,
+    searchSettings.responseUniformMix,
+  )
   const baseAdvantage = aiBoardAdvantage(continuationState, sideId)
   return ownPlans.reduce((bestScore, ownPlan) => {
     const outcomes = responsePlans.map((responsePlan, index) => ({
@@ -11229,7 +11409,11 @@ function scorePredictiveAiPlan(
   robustContinuation,
 ) {
   const resolvedResponses = responsePlans.length > 0 ? responsePlans : [{ decisions: [], score: 0 }]
-  const responseWeights = aiResponseWeights(resolvedResponses, searchSettings.responseTemperature)
+  const responseWeights = aiResponseWeights(
+    resolvedResponses,
+    searchSettings.responseTemperature,
+    searchSettings.responseUniformMix,
+  )
   const outcomes = resolvedResponses.map((responsePlan, index) => {
     const simulation = simulateAiActionPlans(state, sideId, ownPlan.decisions, responsePlan.decisions)
     const immediateScore = aiBoardAdvantage(simulation, sideId) - baseAdvantage
@@ -11260,7 +11444,7 @@ function scorePredictiveAiPlan(
     + expectedScore * (searchSettings.hard ? 0.58 : 0.64)
     + worstScore * (searchSettings.hard ? 0.27 : 0.2)
     + tailScore * (searchSettings.hard ? 0.19 : 0.16)
-    - aiPlanReliabilityPenalty(ownPlan) * (searchSettings.hard ? 0.62 : 0.5)
+    - aiPlanReliabilityPenalty(ownPlan) * (searchSettings.hard ? 2 : 1.8)
 }
 
 function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
@@ -11285,7 +11469,13 @@ function choosePredictiveAiPlan(state, sideId, random, restrictedSlots = null) {
     true,
   )
   const responsePlans = responseGroups.length > 0
-    ? buildAiActionPlans(state, responseSideId, responseGroups, searchSettings.maxResponsePlanCount)
+    ? buildAiActionPlans(
+      state,
+      responseSideId,
+      responseGroups,
+      searchSettings.maxResponsePlanCount,
+      true,
+    )
     : []
   const baseAdvantage = aiBoardAdvantage(state, sideId)
   const sideNoise = sideId === 'opponent'

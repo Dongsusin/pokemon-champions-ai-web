@@ -54,6 +54,7 @@ const SPEED_CONTROL_MOVE_IDS = new Set([
   'stickyweb',
 ])
 const MATCHUP_POKEMON_CACHE = new WeakMap()
+const COUNTER_TEAM_RANKING_CACHE = new WeakMap()
 
 function resolveMoves(entry) {
   const movesById = (entry.moveIds ?? []).map((moveId) => getMoveById(moveId)).filter(Boolean)
@@ -159,6 +160,30 @@ function sharedWeaknessPenalty(candidateTeam, playerTeam) {
   }, 0)
 }
 
+function defensiveSwitchCoverageScore(candidateTeam, playerTeam) {
+  const threatTypes = [...new Set(playerTeam.flatMap((pokemon) => (
+    pokemon.moves
+      .filter((move) => move.categoryId !== 'status')
+      .map((move) => move.type)
+  )))]
+  if (threatTypes.length === 0) return 0
+  const safetyScore = (effectiveness) => {
+    if (effectiveness <= 0) return 30
+    if (effectiveness <= 0.25) return 24
+    if (effectiveness <= 0.5) return 17
+    if (effectiveness < 1) return 10
+    if (effectiveness === 1) return 0
+    if (effectiveness <= 2) return -12
+    return -24
+  }
+  return threatTypes.reduce((total, moveType) => {
+    const switchScores = candidateTeam
+      .map((pokemon) => safetyScore(matchupEffectiveness(moveType, pokemon)))
+      .sort((first, second) => second - first)
+    return total + (switchScores[0] ?? -30) + (switchScores[1] ?? switchScores[0] ?? -30) * 0.45
+  }, 0) / threatTypes.length
+}
+
 export function scoreTrainerTeamAgainstPlayer(team, playerTeam) {
   const candidatePokemon = (team?.pokemon ?? []).map(createMatchupPokemon)
   const playerPokemon = (playerTeam ?? []).map(createMatchupPokemon)
@@ -183,9 +208,31 @@ export function scoreTrainerTeamAgainstPlayer(team, playerTeam) {
   return counterCoverage
     + rosterUsefulness
     + teamSupportScore(candidatePokemon)
+    + defensiveSwitchCoverageScore(candidatePokemon, playerPokemon)
     + typeDiversity
     + mechanicScore
     - sharedWeaknessPenalty(candidatePokemon, playerPokemon)
+}
+
+export function rankTrainerTeamsAgainstPlayer(trainer, playerTeam) {
+  const teams = trainer?.teams ?? []
+  if (teams.length === 0 || !Array.isArray(playerTeam) || playerTeam.length === 0) return []
+  let trainerCache = COUNTER_TEAM_RANKING_CACHE.get(trainer)
+  if (!trainerCache) {
+    trainerCache = new WeakMap()
+    COUNTER_TEAM_RANKING_CACHE.set(trainer, trainerCache)
+  }
+  const cached = trainerCache.get(playerTeam)
+  if (cached) return cached
+
+  const ranking = teams
+    .map((team) => ({
+      number: team.number,
+      score: scoreTrainerTeamAgainstPlayer(team, playerTeam),
+    }))
+    .sort((first, second) => second.score - first.score || first.number - second.number)
+  trainerCache.set(playerTeam, ranking)
+  return ranking
 }
 
 export function selectCounterTeamNumber(trainer, playerTeam, random = Math.random) {
@@ -195,12 +242,7 @@ export function selectCounterTeamNumber(trainer, playerTeam, random = Math.rando
     return teams[Math.floor(random() * teams.length)]?.number ?? 1
   }
 
-  return teams
-    .map((team) => ({
-      number: team.number,
-      score: scoreTrainerTeamAgainstPlayer(team, playerTeam),
-    }))
-    .sort((first, second) => second.score - first.score || first.number - second.number)[0]?.number ?? 1
+  return rankTrainerTeamsAgainstPlayer(trainer, playerTeam)[0]?.number ?? 1
 }
 
 function buildCombinations(entries, count, startIndex = 0, selected = [], combinations = []) {
