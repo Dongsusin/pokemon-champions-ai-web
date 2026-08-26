@@ -425,8 +425,23 @@ const VIRTUAL_FORM_PROFILES = createVirtualPokemonFormProfiles(GENERATED_PROFILE
 const PROFILE_LIST_WITH_SPRITES = [...GENERATED_PROFILE_LIST, ...VIRTUAL_FORM_PROFILES].map(profile)
 const SOURCE_PROFILE_BY_ID = new Map(PROFILE_LIST_WITH_SPRITES.map((entry) => [Number(entry.id), entry]))
 const SOURCE_PROFILE_BY_SLUG = new Map(PROFILE_LIST_WITH_SPRITES.map((entry) => [entry.slug, entry]))
+
+function battleGimmickProfileName(entry) {
+  const sourceName = SOURCE_PROFILE_BY_ID.get(Number(entry.parentSpeciesId))?.name ?? entry.name
+  const megaVariant = entry.slug.match(/-mega(?:-?([xyz]))?$/)?.[1]?.toUpperCase() ?? ''
+
+  if (megaVariant || entry.slug.endsWith('-mega')) {
+    return entry.name.startsWith('메가') ? entry.name : `메가${sourceName}${megaVariant}`
+  }
+  if (entry.slug.endsWith('-gmax')) return `거다이맥스 ${sourceName}`
+  if (entry.slug.endsWith('-primal')) return `원시${sourceName}`
+  return entry.name
+}
+
 const PROFILE_LIST = PROFILE_LIST_WITH_SPRITES.map((entry) => {
-  if (getPokemonFormMetadata(entry).formKind !== 'gender') return entry
+  if (getPokemonFormMetadata(entry).formKind !== 'gender') {
+    return { ...entry, name: battleGimmickProfileName(entry) }
+  }
 
   const sourceProfile = entry.sourceSlug
     ? SOURCE_PROFILE_BY_SLUG.get(entry.sourceSlug)

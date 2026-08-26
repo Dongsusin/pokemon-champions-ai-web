@@ -229,6 +229,10 @@ assert(charizardBattleForms.has('charizard-mega-x'))
 assert(charizardBattleForms.has('charizard-mega-y'))
 assert(charizardBattleForms.has('charizard-gmax'))
 assert(!slugs(getPersistentFormOptions(6)).has('charizard-mega-x'))
+assert.equal(requireProfile('gyarados-mega').name, '메가갸라도스')
+assert.equal(requireProfile('charizard-mega-x').name, '메가리자몽X')
+assert.equal(requireProfile('charizard-gmax').name, '거다이맥스 리자몽')
+assert.equal(requireProfile('groudon-primal').name, '원시그란돈')
 for (const profile of profiles.filter((entry) => /(?:-mega(?:-x|-y|x|y)?|-gmax|-primal)$/.test(entry.slug))) {
   assert(!isSavablePokemonForm(profile), `Battle gimmick form became saveable: ${profile.slug}`)
 }

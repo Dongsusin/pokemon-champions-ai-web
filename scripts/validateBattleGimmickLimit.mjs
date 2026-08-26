@@ -72,6 +72,7 @@ const firstTurn = createBattleTurnTimeline(battle, [
 
 const megaCharizard = firstTurn.state.player.team[0]
 assert.equal(megaCharizard.usedBattleMechanicId, 'mega')
+assert.equal(megaCharizard.name, '메가리자몽X')
 assert.equal(getAvailableBattleMechanics(firstTurn.state, 'player', 0).length, 0)
 
 const venusaurMechanics = getAvailableBattleMechanics(firstTurn.state, 'player', 1)
@@ -96,5 +97,54 @@ assert(!secondTurn.timeline.some((step) => (
     && step.actorSlot === 0
     && step.mechanicId === 'dynamax'
 )))
+
+function createDynamaxNameBattle(slug, mode) {
+  return createBattle({
+    playerPokemon: [battlePokemon(slug, 'protect', { dynamaxMode: mode })],
+    opponent: { name: 'DYNAMAX NAME TEST' },
+    opponentTeam: {
+      pokemon: [battlePokemon('magikarp', 'splash', { captureId: `dynamax-name-target-${mode}` })],
+      battleGimmicks: [],
+      strategy: {},
+    },
+    rules: {
+      weather: { id: 'clear', label: '맑음' },
+      terrain: { id: 'neutral', label: '일반 필드' },
+      format: { id: 'single', label: '싱글배틀', activeSlots: 1, actionSlots: 1 },
+      teamRule: { id: 'full', label: '6대6', battleSize: 1 },
+      disabledGimmickId: null,
+      gimmickRestriction: { id: null, label: '제한 없음' },
+    },
+  })
+}
+
+const dynamaxTurn = createBattleTurnTimeline(
+  createDynamaxNameBattle('gyarados', 'dynamax'),
+  [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: 'dynamax' }],
+  () => 0.5,
+)
+assert.equal(dynamaxTurn.state.player.team[0].name, '다이맥스 갸라도스')
+assert(dynamaxTurn.timeline.some((step) => step.phase === 'gimmick' && step.actorName === '다이맥스 갸라도스'))
+
+const dynamaxSecondTurn = createBattleTurnTimeline(
+  dynamaxTurn.state,
+  [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+  () => 0.5,
+)
+const dynamaxFinalTurn = createBattleTurnTimeline(
+  dynamaxSecondTurn.state,
+  [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: null }],
+  () => 0.5,
+)
+assert.equal(dynamaxFinalTurn.state.player.team[0].dynamaxActive, false)
+assert.equal(dynamaxFinalTurn.state.player.team[0].name, '갸라도스')
+
+const gigantamaxTurn = createBattleTurnTimeline(
+  createDynamaxNameBattle('charizard', 'gigantamax'),
+  [{ type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, gimmick: 'dynamax' }],
+  () => 0.5,
+)
+assert.equal(gigantamaxTurn.state.player.team[0].name, '거다이맥스 리자몽')
+assert(gigantamaxTurn.timeline.some((step) => step.phase === 'gimmick' && step.actorName === '거다이맥스 리자몽'))
 
 console.log('Validated one battle gimmick per Pokemon while allowing different teammates to use other gimmicks.')

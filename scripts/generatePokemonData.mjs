@@ -150,6 +150,11 @@ function formatFallbackName(value) {
 function formDisplayName(species, varietyName) {
   if (FORM_NAME_OVERRIDES[varietyName]) return FORM_NAME_OVERRIDES[varietyName]
 
+  const megaVariant = varietyName.match(/-mega(?:-?([xyz]))?$/)?.[1]?.toUpperCase() ?? ''
+  if (megaVariant || varietyName.endsWith('-mega')) return `메가${species.koreanName}${megaVariant}`
+  if (varietyName.endsWith('-gmax')) return `거다이맥스 ${species.koreanName}`
+  if (varietyName.endsWith('-primal')) return `원시${species.koreanName}`
+
   const suffix = varietyName.startsWith(`${species.name}-`)
     ? varietyName.slice(species.name.length + 1)
     : varietyName

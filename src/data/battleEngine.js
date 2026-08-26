@@ -5527,7 +5527,7 @@ function transformGigantamax(pokemon) {
     : compatibleForm
   if (!form) return false
 
-  pokemon.dynamaxOriginalForm = {
+  pokemon.dynamaxOriginalForm ??= {
     speciesId: pokemon.speciesId,
     name: pokemon.name,
     spriteFront: pokemon.spriteFront,
@@ -5658,8 +5658,23 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
     activated = true
   } else if (mechanicId === 'dynamax') {
     const originalName = pokemon.name
+    pokemon.dynamaxOriginalForm = {
+      speciesId: pokemon.speciesId,
+      name: pokemon.name,
+      spriteFront: pokemon.spriteFront,
+      spriteBack: pokemon.spriteBack,
+      spriteFrontFallback: pokemon.spriteFrontFallback,
+      spriteBackFallback: pokemon.spriteBackFallback,
+    }
+    if (pokemon.dynamaxMode === 'gigantamax') {
+      if (!transformGigantamax(pokemon)) {
+        pokemon.dynamaxOriginalForm = null
+        return 1
+      }
+    } else {
+      pokemon.name = `다이맥스 ${originalName}`
+    }
     side.usedMechanics.dynamax = true
-    if (pokemon.dynamaxMode === 'gigantamax') transformGigantamax(pokemon)
     pokemon.dynamaxActive = true
     pokemon.dynamaxTurns = 3
     pokemon.hp += pokemon.maxHp
