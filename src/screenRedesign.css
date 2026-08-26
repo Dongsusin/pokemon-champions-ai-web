@@ -3663,16 +3663,6 @@
   white-space: nowrap;
 }
 
-.training-cost-breakdown > div > span.free {
-  border-color: rgba(52, 172, 190, 0.22);
-  color: #4c8190;
-  background: rgba(229, 250, 250, 0.9);
-}
-
-.training-cost-breakdown > div > span.free strong {
-  color: #23869d;
-}
-
 .training-cost-total {
   display: inline-flex;
   min-height: 27px;
@@ -3700,11 +3690,6 @@
 .training-cost-total.insufficient {
   border-color: rgba(226, 94, 118, 0.36);
   background: linear-gradient(135deg, #c65d79, #985073);
-}
-
-.training-cost-total.free {
-  border-color: rgba(67, 184, 201, 0.34);
-  background: linear-gradient(135deg, #42b7c7, #6463c7);
 }
 
 .training-editor-actions button:disabled {

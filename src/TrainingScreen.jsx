@@ -233,6 +233,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
     () => getTrainingCostBreakdown(savedPokemon, editablePokemon),
     [editablePokemon, savedPokemon],
   )
+  const displayedTrainingCostItems = trainingCost.items.filter((item) => !item.free)
   const trainingShortfall = Math.max(0, trainingCost.total - balance)
   const canAffordTraining = trainingShortfall === 0
   const canSave = hasChanges && !isPreviewForm && canAffordTraining
@@ -1048,34 +1049,30 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
 
               <div className="training-editor-actions">
                 <div className="training-save-summary">
-                  <span className={`training-save-state${hasChanges ? ' changed' : ''}${isPreviewForm ? ' preview-only' : ''}${hasChanges && !canAffordTraining ? ' insufficient' : ''}`}>
-                    {isPreviewForm
-                      ? '배틀 기믹 폼은 미리보기 전용이며 저장할 수 없습니다.'
-                      : hasChanges
-                        ? canAffordTraining
-                          ? trainingCost.total === 0
-                            ? '이로치 색상 전환은 무료입니다.'
-                            : '변경한 항목만 계산됩니다.'
-                          : `${trainingShortfall.toLocaleString()} VP가 부족합니다.`
-                        : '현재 저장된 설정입니다.'}
-                  </span>
-                  {hasChanges && !isPreviewForm && (
+                  {(isPreviewForm || !hasChanges || !canAffordTraining || trainingCost.total > 0) && (
+                    <span className={`training-save-state${hasChanges ? ' changed' : ''}${isPreviewForm ? ' preview-only' : ''}${hasChanges && !canAffordTraining ? ' insufficient' : ''}`}>
+                      {isPreviewForm
+                        ? '배틀 기믹 폼은 미리보기 전용이며 저장할 수 없습니다.'
+                        : hasChanges
+                          ? canAffordTraining
+                            ? '변경한 항목만 계산됩니다.'
+                            : `${trainingShortfall.toLocaleString()} VP가 부족합니다.`
+                          : '현재 저장된 설정입니다.'}
+                    </span>
+                  )}
+                  {hasChanges && !isPreviewForm && displayedTrainingCostItems.length > 0 && (
                     <div className="training-cost-breakdown" aria-label={`트레이닝 비용 ${trainingCost.total.toLocaleString()} VP`}>
                       <div>
-                        {trainingCost.items.map((item) => (
-                          <span className={item.free ? 'free' : ''} key={item.id}>
+                        {displayedTrainingCostItems.map((item) => (
+                          <span key={item.id}>
                             <small>{item.label} {item.units}{item.unitLabel}</small>
-                            <strong>{item.free ? '무료' : `${item.cost.toLocaleString()} VP`}</strong>
+                            <strong>{item.cost.toLocaleString()} VP</strong>
                           </span>
                         ))}
                       </div>
-                      <strong className={`training-cost-total${canAffordTraining ? '' : ' insufficient'}${trainingCost.total === 0 ? ' free' : ''}`}>
-                        {trainingCost.total === 0
-                          ? <Sparkles size={13} />
-                          : <Zap size={13} fill="currentColor" />}
-                        {trainingCost.total === 0
-                          ? '무료'
-                          : <>{trainingCost.total.toLocaleString()} <em>VP</em></>}
+                      <strong className={`training-cost-total${canAffordTraining ? '' : ' insufficient'}`}>
+                        <Zap size={13} fill="currentColor" />
+                        {trainingCost.total.toLocaleString()} <em>VP</em>
                       </strong>
                     </div>
                   )}
