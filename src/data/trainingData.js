@@ -422,7 +422,17 @@ const profile = (entry) => ({
 const GENERATED_PROFILE_LIST = [...pokemonData.species, ...pokemonData.forms]
   .map(decorateGeneratedPokemonProfile)
 const VIRTUAL_FORM_PROFILES = createVirtualPokemonFormProfiles(GENERATED_PROFILE_LIST)
-const PROFILE_LIST = [...GENERATED_PROFILE_LIST, ...VIRTUAL_FORM_PROFILES].map(profile)
+const PROFILE_LIST_WITH_SPRITES = [...GENERATED_PROFILE_LIST, ...VIRTUAL_FORM_PROFILES].map(profile)
+const SOURCE_PROFILE_BY_ID = new Map(PROFILE_LIST_WITH_SPRITES.map((entry) => [Number(entry.id), entry]))
+const SOURCE_PROFILE_BY_SLUG = new Map(PROFILE_LIST_WITH_SPRITES.map((entry) => [entry.slug, entry]))
+const PROFILE_LIST = PROFILE_LIST_WITH_SPRITES.map((entry) => {
+  if (getPokemonFormMetadata(entry).formKind !== 'gender') return entry
+
+  const sourceProfile = entry.sourceSlug
+    ? SOURCE_PROFILE_BY_SLUG.get(entry.sourceSlug)
+    : SOURCE_PROFILE_BY_ID.get(Number(entry.parentSpeciesId))
+  return sourceProfile ? { ...entry, name: sourceProfile.name } : entry
+})
 const PROFILE_BY_SLUG = new Map(PROFILE_LIST.map((entry) => [entry.slug, entry]))
 const RELATED_PROFILE_OPTIONS_BY_BASE_ID = new Map()
 
@@ -625,6 +635,7 @@ export function getPersistentFormOptions(speciesId) {
   return getRelatedFormOptions(speciesId)
     .filter((option) => (
       isSavableFormProfile(option)
+      && getPokemonFormMetadata(option).formKind !== 'gender'
       && !getPokemonFormMetadata(option).hiddenFromFormPicker
     ))
 }

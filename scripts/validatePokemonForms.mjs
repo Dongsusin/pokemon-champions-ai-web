@@ -9,6 +9,7 @@ import {
   getLearnableMoves,
   getPokemonGenderOptions,
   getPersistentFormOptions,
+  getRelatedFormOptions,
   getSpeciesProfile,
   isBattleFormCompatible,
   isSavablePokemonForm,
@@ -82,6 +83,8 @@ assert(slugs(getPersistentFormOptions(423)).has('gastrodon-east'))
 assert.equal(requireProfile('jellicent-f').gender, 'F')
 assert.equal(requireProfile('meowstic').gender, 'M')
 assert.equal(requireProfile('meowstic-female').gender, 'F')
+assert.equal(requireProfile('cacturne-f').name, requireProfile('cacturne').name)
+assert.equal(requireProfile('meowstic-female').name, requireProfile('meowstic').name)
 
 assert.deepEqual(getPokemonGenderOptions(requireProfile('bulbasaur')), ['M', 'F'])
 assert.deepEqual(getPokemonGenderOptions(requireProfile('magnemite')), [])
@@ -140,7 +143,7 @@ for (const profile of cosmeticGenderProfiles) {
 for (const slug of ['meowstic-female', 'indeedee-female', 'oinkologne-female', 'basculegion-female']) {
   const profile = requireProfile(slug)
   assert.equal(getFormMetadata(profile).hiddenFromFormPicker, false)
-  assert(slugs(getPersistentFormOptions(profile.parentSpeciesId)).has(slug))
+  assert(!slugs(getPersistentFormOptions(profile.parentSpeciesId)).has(slug))
 }
 
 const spikyPichu = requireProfile('pichu-spiky-eared')
@@ -235,8 +238,8 @@ for (const form of profiles.filter((profile) => (
   && !isSavablePokemonForm(profile)
   && !getFormMetadata(profile).hiddenFromFormPicker
 ))) {
-  const compatibleSources = getPersistentFormOptions(form.parentSpeciesId)
-    .filter((source) => isBattleFormCompatible(source, form))
+  const compatibleSources = getRelatedFormOptions(form.parentSpeciesId)
+    .filter((source) => isSavablePokemonForm(source) && isBattleFormCompatible(source, form))
   assert(compatibleSources.length > 0, `Battle form has no compatible source form: ${form.slug}`)
 }
 
