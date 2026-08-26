@@ -226,6 +226,31 @@ assert.equal(resolveMoveTriggeredFormSpeciesId(keldeoResolute.id, ['방어']), 6
 assert.equal(requireProfile('koraidon-limited-build').name, '코라이돈 제한형태')
 assert.equal(getFormMetadata(requireProfile('miraidon-drive-mode')).formKind, 'cosmetic')
 
+const rideOnlyFormSlugs = [
+  'koraidon-limited-build',
+  'koraidon-sprinting-build',
+  'koraidon-swimming-build',
+  'koraidon-gliding-build',
+  'miraidon-low-power-mode',
+  'miraidon-drive-mode',
+  'miraidon-aquatic-mode',
+  'miraidon-glide-mode',
+]
+
+for (const slug of rideOnlyFormSlugs) {
+  const profile = requireProfile(slug)
+  const metadata = getFormMetadata(profile)
+  const canonicalSlug = slug.startsWith('koraidon-') ? 'koraidon' : 'miraidon'
+
+  assert.equal(metadata.formKind, 'cosmetic')
+  assert.equal(metadata.saveable, false)
+  assert.equal(metadata.hiddenFromFormPicker, true)
+  assert.equal(metadata.canonicalFormSlug, canonicalSlug)
+  assert(!slugs(getPersistentFormOptions(profile.parentSpeciesId)).has(slug))
+  assert(!slugs(getBattleFormOptions(profile.parentSpeciesId)).has(slug))
+  assert.equal(normalizePokemon({ speciesId: profile.id }).speciesId, profile.parentSpeciesId)
+}
+
 const gastrodonEast = requireProfile('gastrodon-east')
 const normalizedGastrodon = normalizePokemon({
   captureId: 'form-validation-gastrodon',
