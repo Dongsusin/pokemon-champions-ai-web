@@ -14,7 +14,7 @@
   "icons": [
     {
       "src": "/assets/brand/champions-arena-emblem.png",
-      "sizes": "1254x1254",
+      "sizes": "320x320",
       "type": "image/png",
       "purpose": "any"
     }

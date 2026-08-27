@@ -53,7 +53,7 @@ button:focus-visible {
   min-height: 100dvh;
   overflow: clip;
   isolation: isolate;
-  background-image: url('/assets/champions-lobby-bg.png');
+  background-image: url('/assets/champions-lobby-bg.jpg');
   background-position: center;
   background-size: cover;
 }

@@ -29,7 +29,7 @@ function ResourceLoadingScreen({ state }) {
 
         <div className="resource-loading-heading">
           <span>{isError ? 'RESOURCE CHECK FAILED' : 'BATTLE SYSTEM INITIALIZING'}</span>
-          <h1>{isError ? '리소스 준비 오류' : '게임 리소스 준비 중'}</h1>
+          <h1>{isError ? '리소스 준비 오류' : '필수 리소스 준비 중'}</h1>
           <p>{isError ? state.error : state.currentGroupLabel}</p>
         </div>
 
@@ -47,7 +47,7 @@ function ResourceLoadingScreen({ state }) {
               <span><ShieldCheck size={15} /> 캐시 {state.cached.toLocaleString()}</span>
             </div>
             <small className="resource-loading-note">
-              첫 실행에서 배틀 이미지와 사운드를 저장합니다. 다음 접속부터 빠르게 시작됩니다.
+              로그인에 필요한 화면을 먼저 준비합니다. 배틀 리소스는 대전별로 필요한 항목만 준비됩니다.
             </small>
           </>
         ) : (

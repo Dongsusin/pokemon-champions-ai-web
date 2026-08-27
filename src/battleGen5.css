@@ -3835,23 +3835,23 @@
 }
 
 .app-shell.battle-view .terrain-neutral .battle-environment-backdrop {
-  background-image: url('/assets/battle-fields/neutral-stadium.png');
+  background-image: url('/assets/battle-fields/neutral-stadium.jpg');
 }
 
 .app-shell.battle-view .terrain-grassy .battle-environment-backdrop {
-  background-image: url('/assets/battle-fields/grassy-stadium.png');
+  background-image: url('/assets/battle-fields/grassy-stadium.jpg');
 }
 
 .app-shell.battle-view .terrain-electric .battle-environment-backdrop {
-  background-image: url('/assets/battle-fields/electric-stadium.png');
+  background-image: url('/assets/battle-fields/electric-stadium.jpg');
 }
 
 .app-shell.battle-view .terrain-psychic .battle-environment-backdrop {
-  background-image: url('/assets/battle-fields/psychic-stadium.png');
+  background-image: url('/assets/battle-fields/psychic-stadium.jpg');
 }
 
 .app-shell.battle-view .terrain-misty .battle-environment-backdrop {
-  background-image: url('/assets/battle-fields/misty-stadium.png');
+  background-image: url('/assets/battle-fields/misty-stadium.jpg');
 }
 
 .app-shell.battle-view .battle-terrain-aura {

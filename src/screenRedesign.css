@@ -5931,7 +5931,7 @@
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(5, 22, 38, 0.04), rgba(3, 18, 28, 0.12) 62%, rgba(3, 15, 25, 0.44)),
-    url('/assets/champions-lobby-bg.png') center 54% / cover;
+    url('/assets/champions-lobby-bg.jpg') center 54% / cover;
   transform: translateZ(0);
   transform-origin: center;
   will-change: transform, filter;
@@ -14377,7 +14377,7 @@
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(16, 22, 62, 0.06), rgba(9, 16, 51, 0.3)),
-    url('/assets/champions-lobby-bg.png') center 54% / cover;
+    url('/assets/champions-lobby-bg.jpg') center 54% / cover;
 }
 
 .battle-arena::before {

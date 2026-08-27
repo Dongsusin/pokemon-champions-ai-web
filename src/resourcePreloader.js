@@ -3,22 +3,11 @@ import { useEffect, useState } from 'react'
 const RESOURCE_MANIFEST_URL = '/resource-manifest.json'
 const RESOURCE_CACHE_NAME = 'champions-arena-resource-cache-v1'
 const RESOURCE_CACHE_MARKER_URL = '/__champions-arena-resource-cache-marker__'
-const REMOTE_CACHE_MARKER_KEY = 'champions-arena-remote-resource-cache-v1'
-const REMOTE_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
-const REMOTE_FAILURE_RETRY_AGE = 60 * 60 * 1000
 const RESOURCE_REQUEST_TIMEOUT = 15000
-const PRELOAD_CONCURRENCY = 18
+const PRELOAD_CONCURRENCY = 4
 
 const GROUP_LABELS = {
   interface: '인터페이스 준비',
-  'battle-field': '배틀 필드 준비',
-  audio: '배틀 사운드 준비',
-  'move-effect': '기술 연출 준비',
-  pokemon: '포켓몬 스프라이트 준비',
-  trainer: '트레이너 이미지 준비',
-  item: '배틀 아이템 준비',
-  draw: '뽑기 연출 준비',
-  cry: '포켓몬 울음소리 준비',
 }
 
 let preloadPromise = null
@@ -79,26 +68,6 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-function loadExternalImage(url) {
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    const timeoutId = window.setTimeout(() => {
-      image.src = ''
-      reject(new Error(`Timed out while loading ${url}`))
-    }, RESOURCE_REQUEST_TIMEOUT)
-    const finish = (callback) => {
-      window.clearTimeout(timeoutId)
-      image.onload = null
-      image.onerror = null
-      callback()
-    }
-    image.decoding = 'async'
-    image.onload = () => finish(resolve)
-    image.onerror = () => finish(() => reject(new Error(`Failed to load ${url}`)))
-    image.src = url
-  })
-}
-
 async function loadLocalResource(resource, cache) {
   const cacheRequest = new Request(resource.url, { credentials: 'same-origin' })
   if (cache) {
@@ -121,27 +90,11 @@ async function loadLocalResource(resource, cache) {
   return false
 }
 
-async function loadRemoteResource(resource) {
-  if (resource.kind === 'image') {
-    await loadExternalImage(resource.url)
-    return false
-  }
-
-  const response = await fetchWithTimeout(resource.url, { cache: 'force-cache', mode: 'cors' })
-  if (!response.ok) throw new Error(`Failed to load ${resource.url} (${response.status})`)
-  await response.arrayBuffer()
-  return false
-}
-
 async function loadResource(resource, cache) {
-  const loader = resource.source === 'local'
-    ? () => loadLocalResource(resource, cache)
-    : () => loadRemoteResource(resource)
-
   let lastError
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await loader()
+      return await loadLocalResource(resource, cache)
     } catch (error) {
       lastError = error
       if (attempt === 0) await sleep(180)
@@ -162,26 +115,6 @@ async function mapWithConcurrency(resources, task) {
   }))
 }
 
-async function findUnavailableRemoteOrigins(resources) {
-  const firstResourceByOrigin = new Map()
-  for (const resource of resources) {
-    try {
-      const origin = new URL(resource.url).origin
-      if (!firstResourceByOrigin.has(origin)) firstResourceByOrigin.set(origin, resource)
-    } catch {}
-  }
-
-  const unavailableOrigins = new Set()
-  await Promise.all([...firstResourceByOrigin.entries()].map(async ([origin, resource]) => {
-    try {
-      await loadResource(resource, null)
-    } catch {
-      unavailableOrigins.add(origin)
-    }
-  }))
-  return unavailableOrigins
-}
-
 async function readCacheMarker(cache) {
   if (!cache) return null
   try {
@@ -198,27 +131,6 @@ async function writeCacheMarker(cache, marker) {
     RESOURCE_CACHE_MARKER_URL,
     new Response(JSON.stringify(marker), { headers: { 'content-type': 'application/json' } }),
   ).catch(() => undefined)
-}
-
-function readRemoteCacheMarker(version) {
-  try {
-    const marker = JSON.parse(localStorage.getItem(REMOTE_CACHE_MARKER_KEY) || 'null')
-    if (marker?.version !== version) return false
-    const maxAge = Number(marker.failed) > 0 ? REMOTE_FAILURE_RETRY_AGE : REMOTE_CACHE_MAX_AGE
-    return Date.now() - Number(marker.completedAt) < maxAge
-  } catch {
-    return false
-  }
-}
-
-function writeRemoteCacheMarker(version, failed = 0) {
-  try {
-    localStorage.setItem(REMOTE_CACHE_MARKER_KEY, JSON.stringify({
-      version,
-      completedAt: Date.now(),
-      failed,
-    }))
-  } catch {}
 }
 
 async function openVersionedLocalCache(version) {
@@ -261,10 +173,7 @@ async function runResourcePreload() {
   })
   await ensureResourceWorker()
 
-  const localResources = resources.filter((resource) => resource.source === 'local')
-  const remoteResources = resources.filter((resource) => resource.source !== 'local')
   const { cache, complete: localCacheComplete } = await openVersionedLocalCache(manifest.version)
-  const remoteCacheComplete = readRemoteCacheMarker(manifest.version)
   let loaded = 0
   let loadedBytes = 0
   let cached = 0
@@ -288,12 +197,12 @@ async function runResourcePreload() {
   }
 
   if (localCacheComplete) {
-    loaded += localResources.length
-    loadedBytes += localResources.reduce((total, resource) => total + Number(resource.bytes || 0), 0)
-    cached += localResources.length
-    reportProgress(localResources.at(-1), true)
+    loaded += resources.length
+    loadedBytes += resources.reduce((total, resource) => total + Number(resource.bytes || 0), 0)
+    cached += resources.length
+    reportProgress(resources.at(-1), true)
   } else {
-    await mapWithConcurrency(localResources, async (resource) => {
+    await mapWithConcurrency(resources, async (resource) => {
       try {
         const wasCached = await loadResource(resource, cache)
         if (wasCached) cached += 1
@@ -309,30 +218,6 @@ async function runResourcePreload() {
     if (!requiredFailures.length) {
       await writeCacheMarker(cache, { version: manifest.version, complete: true })
     }
-  }
-
-  if (remoteCacheComplete) {
-    loaded += remoteResources.length
-    cached += remoteResources.length
-    reportProgress(remoteResources.at(-1), true)
-  } else {
-    let remoteFailures = 0
-    const unavailableOrigins = await findUnavailableRemoteOrigins(remoteResources)
-    await mapWithConcurrency(remoteResources, async (resource) => {
-      try {
-        if (unavailableOrigins.has(new URL(resource.url).origin)) {
-          throw new Error(`Unavailable resource origin: ${new URL(resource.url).origin}`)
-        }
-        await loadResource(resource, cache)
-      } catch {
-        failed += 1
-        remoteFailures += 1
-      } finally {
-        loaded += 1
-        reportProgress(resource)
-      }
-    })
-    writeRemoteCacheMarker(manifest.version, remoteFailures)
   }
 
   reportProgress(resources.at(-1), true)

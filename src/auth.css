@@ -11,7 +11,7 @@
   background:
     linear-gradient(90deg, rgba(4, 8, 27, 0.9), rgba(4, 8, 27, 0.28) 48%, rgba(4, 8, 27, 0.82)),
     linear-gradient(180deg, rgba(5, 9, 31, 0.5), rgba(4, 8, 27, 0.82)),
-    url('/assets/champions-lobby-bg.png') center / cover;
+    url('/assets/champions-lobby-bg.jpg') center / cover;
 }
 
 .auth-shell::after {
@@ -424,6 +424,11 @@
   padding: 28px;
 }
 
+.resource-loading-brand {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .resource-loading-card {
   position: relative;
   display: grid;
@@ -459,6 +464,7 @@
   width: 92px;
   height: 92px;
   place-items: center;
+  justify-self: center;
 }
 
 .resource-loading-logo img {
@@ -601,7 +607,6 @@
 
   .resource-loading-brand {
     top: 14px;
-    left: 22px;
   }
 
   .resource-loading-brand img {
@@ -611,14 +616,15 @@
 
   .resource-loading-card {
     width: min(620px, calc(100vw - 44px));
-    grid-template-columns: 78px minmax(0, 1fr);
-    gap: 10px 18px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
     padding: 22px 28px 20px;
     border-radius: 22px;
   }
 
   .resource-loading-logo {
-    grid-row: 1 / span 2;
+    grid-column: 1;
+    grid-row: auto;
     width: 74px;
     height: 74px;
   }
@@ -728,6 +734,11 @@
 
   .auth-brand span {
     display: none;
+  }
+
+  .resource-loading-brand {
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .auth-login-card {
