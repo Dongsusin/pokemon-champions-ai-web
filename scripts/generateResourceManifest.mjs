@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import battleItems from '../src/data/generatedBattleItems.js'
 import { POKEMON_POOL } from '../src/data/pokemonPool.js'
-import { getSpeciesProfile } from '../src/data/trainingData.js'
+import { getBattleFormOptions, getSpeciesProfile } from '../src/data/trainingData.js'
 import {
   TRAINER_SPRITE_SLUGS,
   getPlayerTrainerSpriteCandidates,
@@ -138,11 +138,14 @@ for (const speciesId of battleSpeciesIds) {
   const profile = getSpeciesProfile(speciesId)
   if (!profile) continue
 
-  appendSources(resources, profile.icon, 'pokemon')
-  appendSources(resources, profile.spriteFront, 'pokemon')
-  appendSources(resources, profile.spriteBack, 'pokemon')
-  appendSources(resources, profile.spriteFrontShiny, 'pokemon')
-  appendSources(resources, profile.spriteBackShiny, 'pokemon')
+  const battleProfiles = [profile, ...getBattleFormOptions(speciesId)]
+  for (const battleProfile of battleProfiles) {
+    appendSources(resources, battleProfile.icon, 'pokemon')
+    appendSources(resources, battleProfile.spriteFront, 'pokemon')
+    appendSources(resources, battleProfile.spriteBack, 'pokemon')
+    appendSources(resources, battleProfile.spriteFrontShiny, 'pokemon')
+    appendSources(resources, battleProfile.spriteBackShiny, 'pokemon')
+  }
 
   const crySpeciesId = Number(profile.parentSpeciesId ?? profile.id)
   if (Number.isInteger(crySpeciesId) && crySpeciesId > 0 && crySpeciesId <= 1025) {
