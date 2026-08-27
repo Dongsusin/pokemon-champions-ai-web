@@ -20015,36 +20015,6 @@
   place-items: end center;
 }
 
-.battle-trainer-dialogue-event {
-  position: absolute;
-  top: clamp(8px, 3vh, 34px);
-  left: 0;
-  z-index: 2;
-  display: grid;
-  min-width: 138px;
-  padding: 9px 13px 10px;
-  border: 1px solid color-mix(in srgb, var(--trainer-dialogue-accent) 64%, transparent);
-  border-left: 4px solid var(--trainer-dialogue-accent);
-  border-radius: 5px 14px 5px 14px;
-  color: #fff;
-  background: rgba(7, 16, 48, 0.82);
-  box-shadow: 0 12px 34px rgba(2, 6, 25, 0.34), inset 0 1px rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(10px);
-  animation: battle-trainer-dialogue-event-in 300ms 120ms ease-out both;
-}
-
-.battle-trainer-dialogue-event small {
-  color: var(--trainer-dialogue-accent);
-  font-size: 8px;
-  font-weight: 1000;
-  letter-spacing: 0.16em;
-}
-
-.battle-trainer-dialogue-event strong {
-  margin-top: 2px;
-  font-size: clamp(14px, 1.2vw, 19px);
-}
-
 .battle-trainer-dialogue-sprite {
   width: min(25vw, 390px);
   height: min(52vh, 500px);
@@ -20178,11 +20148,6 @@
   to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
-@keyframes battle-trainer-dialogue-event-in {
-  from { opacity: 0; transform: translateX(18px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
 @keyframes battle-trainer-dialogue-box-in {
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
@@ -20209,20 +20174,6 @@
   .battle-trainer-dialogue-sprite {
     width: min(22vw, 230px);
     height: min(39vh, 250px);
-  }
-
-  .battle-trainer-dialogue-event {
-    top: 4px;
-    min-width: 112px;
-    padding: 6px 9px 7px;
-  }
-
-  .battle-trainer-dialogue-event small {
-    font-size: 6px;
-  }
-
-  .battle-trainer-dialogue-event strong {
-    font-size: 12px;
   }
 
   .battle-trainer-dialogue-box {
@@ -20267,10 +20218,6 @@
     height: min(31vh, 150px);
   }
 
-  .battle-trainer-dialogue-event {
-    left: -16px;
-  }
-
   .battle-trainer-dialogue-box {
     min-height: 72px;
     padding-block: 8px;
@@ -20280,7 +20227,6 @@
 @media (prefers-reduced-motion: reduce) {
   .battle-trainer-dialogue-layer,
   .battle-trainer-dialogue-layer::before,
-  .battle-trainer-dialogue-event,
   .battle-trainer-dialogue-sprite,
   .battle-trainer-dialogue-box,
   .battle-trainer-dialogue-copy,

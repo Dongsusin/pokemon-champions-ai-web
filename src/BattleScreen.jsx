@@ -1727,10 +1727,6 @@ function TrainerDialogueScene({ trainer, dialogue, onContinue }) {
     >
       <div className="battle-trainer-dialogue-light" aria-hidden="true" />
       <div className="battle-trainer-dialogue-stage">
-        <span className="battle-trainer-dialogue-event">
-          <small>{dialogue.label}</small>
-          <strong>{dialogue.caption}</strong>
-        </span>
         <TrainerSprite trainer={trainer} className="battle-trainer-dialogue-sprite" />
       </div>
       <button className="battle-trainer-dialogue-box" type="button" autoFocus onClick={onContinue}>

@@ -9,13 +9,13 @@ export const TRAINER_DIALOGUE_EVENTS = Object.freeze({
 })
 
 const EVENT_META = Object.freeze({
-  start: { label: 'BATTLE START', caption: '승부 개시', tone: 'start' },
-  mid: { label: 'BATTLE FLOW', caption: '전황 분석', tone: 'mid' },
-  advantage: { label: 'PRESSURE', caption: '기세 장악', tone: 'advantage' },
-  crisis: { label: 'TURNING POINT', caption: '위기', tone: 'crisis' },
-  ace: { label: 'ACE POKÉMON', caption: '에이스 등장', tone: 'ace' },
-  victory: { label: 'VICTORY', caption: '승리', tone: 'victory' },
-  defeat: { label: 'DEFEAT', caption: '패배', tone: 'defeat' },
+  start: { tone: 'start' },
+  mid: { tone: 'mid' },
+  advantage: { tone: 'advantage' },
+  crisis: { tone: 'crisis' },
+  ace: { tone: 'ace' },
+  victory: { tone: 'victory' },
+  defeat: { tone: 'defeat' },
 })
 
 const CURATED_DIALOGUES = Object.freeze({
@@ -491,14 +491,8 @@ export function getTrainerDialogue(trainer, eventId, context = {}) {
   return {
     id: `${trainer?.id ?? trainer?.name ?? 'trainer'}-${event}-${context.turn ?? 0}`,
     eventId: event,
-    label: EVENT_META[event].label,
-    caption: EVENT_META[event].caption,
     tone: EVENT_META[event].tone,
     trainerName: trainer?.name ?? '트레이너',
     text: interpolateDialogue(template, trainer, context),
   }
-}
-
-export function getTrainerDialogueEventMeta(eventId) {
-  return EVENT_META[eventId] ?? EVENT_META.mid
 }
