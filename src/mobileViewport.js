@@ -58,9 +58,7 @@ function getLandscapeViewport() {
       : Math.min(stableLandscapeHeight, measuredHeight)
   }
 
-  const availableHeight = keyboardIsLikelyOpen
-    ? stableLandscapeHeight
-    : stableLandscapeHeight
+  const availableHeight = stableLandscapeHeight ?? measuredHeight
   const initialScale = Math.min(
     1,
     availableWidth / DESKTOP_LANDSCAPE_WIDTH,
