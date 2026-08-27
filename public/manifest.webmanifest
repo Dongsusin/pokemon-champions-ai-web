@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "Pokémon Champions Arena",
+  "short_name": "Champions Arena",
+  "description": "AI 트레이너와 대전하는 포켓몬 챔피언스 아레나",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#060b24",
+  "theme_color": "#0a1030",
+  "icons": [
+    {
+      "src": "/assets/brand/champions-arena-emblem.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

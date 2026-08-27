@@ -4,26 +4,43 @@ const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1.0, viewport-fit=co
 const viewportMeta = document.querySelector('meta[name="viewport"]')
 const touchPointerQuery = window.matchMedia('(hover: none) and (pointer: coarse)')
 const landscapeQuery = window.matchMedia('(orientation: landscape)')
+const standaloneQuery = window.matchMedia('(display-mode: standalone)')
+const MOBILE_USER_AGENT_PATTERN = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+
+let syncFrame = null
+let settleTimer = null
 
 function isCompactTouchDevice() {
   const screenWidth = window.screen?.width || window.innerWidth
   const screenHeight = window.screen?.height || window.innerHeight
   const shortSide = Math.min(screenWidth, screenHeight)
   const longSide = Math.max(screenWidth, screenHeight)
+  const hasTouchInput = touchPointerQuery.matches || navigator.maxTouchPoints > 0
+  const reportsMobileBrowser = MOBILE_USER_AGENT_PATTERN.test(navigator.userAgent)
 
-  return touchPointerQuery.matches && shortSide <= 1024 && longSide <= 1600
+  return (hasTouchInput || reportsMobileBrowser) && shortSide <= 1200 && longSide <= 2048
 }
 
 function getLandscapeViewport() {
   const visualWidth = window.visualViewport?.width || window.innerWidth
   const visualScale = window.visualViewport?.scale || 1
-  const availableWidth = Math.round(visualWidth * visualScale)
+  const projectedVisualWidth = visualWidth * visualScale
+  const screenLongSide = Math.max(
+    window.screen?.width || 0,
+    window.screen?.height || 0,
+  )
+  const dimensionsAreStillPortrait = window.innerWidth < window.innerHeight
+  const availableWidth = Math.round(
+    landscapeQuery.matches && dimensionsAreStillPortrait && screenLongSide > projectedVisualWidth
+      ? screenLongSide
+      : projectedVisualWidth,
+  )
   const initialScale = Math.min(1, availableWidth / DESKTOP_LANDSCAPE_WIDTH)
 
   return `width=${DESKTOP_LANDSCAPE_WIDTH}, initial-scale=${initialScale.toFixed(5)}, viewport-fit=cover`
 }
 
-function syncMobileViewport() {
+export function syncMobileViewport() {
   const isTouchDevice = isCompactTouchDevice()
   const layout = isTouchDevice
     ? (landscapeQuery.matches ? 'landscape' : 'portrait')
@@ -37,14 +54,55 @@ function syncMobileViewport() {
   }
 }
 
-if (isCompactTouchDevice() && landscapeQuery.matches) {
-  document.documentElement.dataset.mobileLayout = 'landscape'
-  window.requestAnimationFrame(() => window.requestAnimationFrame(syncMobileViewport))
-} else {
-  syncMobileViewport()
+function scheduleMobileViewportSync() {
+  if (syncFrame !== null) window.cancelAnimationFrame(syncFrame)
+  if (settleTimer !== null) window.clearTimeout(settleTimer)
+
+  syncFrame = window.requestAnimationFrame(() => {
+    syncFrame = window.requestAnimationFrame(() => {
+      syncFrame = null
+      syncMobileViewport()
+    })
+  })
+  settleTimer = window.setTimeout(() => {
+    settleTimer = null
+    syncMobileViewport()
+  }, 240)
 }
 
-window.addEventListener('orientationchange', syncMobileViewport)
-window.addEventListener('resize', syncMobileViewport, { passive: true })
-touchPointerQuery.addEventListener?.('change', syncMobileViewport)
-landscapeQuery.addEventListener?.('change', syncMobileViewport)
+export async function requestLandscapeMode() {
+  if (landscapeQuery.matches) {
+    scheduleMobileViewportSync()
+    return true
+  }
+
+  const orientation = window.screen?.orientation
+  if (typeof orientation?.lock !== 'function') return false
+
+  try {
+    if (!document.fullscreenElement && typeof document.documentElement.requestFullscreen === 'function') {
+      await document.documentElement.requestFullscreen()
+    }
+    await orientation.lock('landscape')
+    scheduleMobileViewportSync()
+    return true
+  } catch {
+    scheduleMobileViewportSync()
+    return landscapeQuery.matches
+  }
+}
+
+syncMobileViewport()
+scheduleMobileViewportSync()
+
+if (standaloneQuery.matches && typeof window.screen?.orientation?.lock === 'function') {
+  window.screen.orientation.lock('landscape').catch(() => {})
+}
+
+window.addEventListener('orientationchange', scheduleMobileViewportSync)
+window.addEventListener('resize', scheduleMobileViewportSync, { passive: true })
+window.addEventListener('pageshow', scheduleMobileViewportSync)
+window.visualViewport?.addEventListener('resize', scheduleMobileViewportSync, { passive: true })
+window.screen?.orientation?.addEventListener?.('change', scheduleMobileViewportSync)
+touchPointerQuery.addEventListener?.('change', scheduleMobileViewportSync)
+landscapeQuery.addEventListener?.('change', scheduleMobileViewportSync)

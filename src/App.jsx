@@ -72,6 +72,7 @@ import {
   selectPlayerBattlePokemon,
 } from './data/battleRules'
 import { selectCounterBattlePokemon } from './data/aiTeamSelection'
+import { requestLandscapeMode } from './mobileViewport'
 
 const BOX_STORAGE_KEY = 'champions-dex-v2'
 const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
@@ -1041,6 +1042,14 @@ function GameApp({
 }
 
 function LandscapeOrientationGate() {
+  const [requestState, setRequestState] = useState('idle')
+
+  const enterLandscapeMode = async () => {
+    setRequestState('requesting')
+    const changedOrientation = await requestLandscapeMode()
+    setRequestState(changedOrientation ? 'complete' : 'manual')
+  }
+
   return (
     <aside className="landscape-orientation-gate" role="alert" aria-labelledby="landscape-orientation-title">
       <div className="landscape-orientation-card">
@@ -1058,6 +1067,18 @@ function LandscapeOrientationGate() {
         <span>MOBILE LANDSCAPE MODE</span>
         <h1 id="landscape-orientation-title">기기를 가로로 돌려주세요</h1>
         <p>가로 모드에서 PC와 동일한 챔피언스 아레나 화면을 이용할 수 있습니다.</p>
+        <button
+          className="landscape-orientation-button"
+          type="button"
+          disabled={requestState === 'requesting'}
+          onClick={enterLandscapeMode}
+        >
+          <RotateCw size={18} />
+          {requestState === 'requesting' ? '가로 화면 전환 중' : '가로 화면으로 시작'}
+        </button>
+        {requestState === 'manual' && (
+          <small>이 브라우저는 자동 회전을 지원하지 않습니다. 기기의 자동 회전을 켠 뒤 가로로 돌려주세요.</small>
+        )}
       </div>
     </aside>
   )
