@@ -82,7 +82,8 @@ const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
 const DRAW_TUTORIAL_STORAGE_KEY = 'champions-draw-tutorial-v1'
-const INITIAL_VP_BALANCE = getDrawBanner('standard').price
+const INITIAL_VP_BALANCE = 10_000
+const STANDARD_DRAW_PRICE = getDrawBanner('standard').price
 
 function interactiveSoundKind(element) {
   const label = `${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`.toLowerCase()
@@ -195,7 +196,7 @@ function loadStoredItems() {
 function shouldStartDrawTutorial(collection, balance) {
   try {
     return collection.length === 0
-      && balance >= INITIAL_VP_BALANCE
+      && balance >= STANDARD_DRAW_PRICE
       && window.localStorage.getItem(DRAW_TUTORIAL_STORAGE_KEY) !== 'complete'
   } catch {
     return false
