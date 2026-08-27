@@ -33,7 +33,6 @@ import {
   normalizeGameSettings,
 } from './gameSettings'
 import {
-  createCompletePokemonCollection,
   createPokemonDraw,
   getDrawBanner,
   getPokemonEvolutionFamilyKey,
@@ -54,7 +53,6 @@ import { getTrainingCostBreakdown } from './data/trainingCosts'
 import {
   attemptItemEquip,
   attemptItemPurchase,
-  createCompleteBattleItemInventory,
   normalizeItemInventory,
 } from './data/shopData'
 import {
@@ -82,8 +80,8 @@ const TEAM_STORAGE_KEY = 'champions-team-v2'
 const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
-const TEST_VP_BALANCE = 99_999
-const TEST_UNLOCK_ALL_CONTENT = true
+const DRAW_TUTORIAL_STORAGE_KEY = 'champions-draw-tutorial-v1'
+const INITIAL_VP_BALANCE = getDrawBanner('standard').price
 
 function interactiveSoundKind(element) {
   const label = `${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`.toLowerCase()
@@ -107,9 +105,12 @@ function loadStoredBox() {
   const storedPokemon = hasCurrentCollection
     ? loadStoredArray(BOX_STORAGE_KEY)
     : loadStoredArray(LEGACY_BOX_STORAGE_KEY)
-  return TEST_UNLOCK_ALL_CONTENT
-    ? createCompletePokemonCollection(storedPokemon)
-    : migratePokemonCollection(storedPokemon)
+  const obtainedPokemon = storedPokemon.filter((pokemon) => (
+    pokemon?.directDrawCount === undefined
+    || Math.max(0, Number(pokemon.directDrawCount) || 0) > 0
+  ))
+
+  return migratePokemonCollection(obtainedPokemon)
 }
 
 function loadLegacyTeamIds(collection) {
@@ -174,18 +175,36 @@ function removeEvolutionFamilyDuplicates(teams, collection) {
 }
 
 function loadStoredVp() {
-  const storedVp = Math.floor(Number(window.localStorage.getItem(VP_STORAGE_KEY)) || 0)
-  return Math.max(TEST_VP_BALANCE, storedVp)
+  const storedValue = window.localStorage.getItem(VP_STORAGE_KEY)
+  if (storedValue === null) return INITIAL_VP_BALANCE
+
+  const storedVp = Math.floor(Number(storedValue))
+  return Number.isFinite(storedVp) && storedVp >= 0 ? storedVp : INITIAL_VP_BALANCE
 }
 
 function loadStoredItems() {
   try {
     const storedItems = window.localStorage.getItem(ITEM_STORAGE_KEY)
-    const inventory = normalizeItemInventory(storedItems ? JSON.parse(storedItems) : {})
-    return TEST_UNLOCK_ALL_CONTENT ? createCompleteBattleItemInventory(inventory) : inventory
+    return normalizeItemInventory(storedItems ? JSON.parse(storedItems) : {})
   } catch {
-    return TEST_UNLOCK_ALL_CONTENT ? createCompleteBattleItemInventory() : {}
+    return {}
   }
+}
+
+function shouldStartDrawTutorial(collection, balance) {
+  try {
+    return collection.length === 0
+      && balance >= INITIAL_VP_BALANCE
+      && window.localStorage.getItem(DRAW_TUTORIAL_STORAGE_KEY) !== 'complete'
+  } catch {
+    return false
+  }
+}
+
+function saveDrawTutorialCompletion() {
+  try {
+    window.localStorage.setItem(DRAW_TUTORIAL_STORAGE_KEY, 'complete')
+  } catch {}
 }
 
 const modes = [
@@ -243,11 +262,18 @@ function GameApp({
   if (vpBalance.current === null) vpBalance.current = loadStoredVp()
   const storedItemInventory = useRef(null)
   if (storedItemInventory.current === null) storedItemInventory.current = loadStoredItems()
+  const initialDrawTutorialStep = useRef(undefined)
+  if (initialDrawTutorialStep.current === undefined) {
+    initialDrawTutorialStep.current = shouldStartDrawTutorial(initialCollection.current, vpBalance.current)
+      ? 'draw'
+      : null
+  }
 
-  const [screen, setScreen] = useState('lobby')
-  const [selectedMode, setSelectedMode] = useState('start')
+  const [screen, setScreen] = useState(initialDrawTutorialStep.current ? 'hatch' : 'lobby')
+  const [selectedMode, setSelectedMode] = useState(initialDrawTutorialStep.current ? 'hatch' : 'start')
   const [boxReturnScreen, setBoxReturnScreen] = useState('lobby')
   const [drawResults, setDrawResults] = useState([])
+  const [drawTutorialStep, setDrawTutorialStep] = useState(initialDrawTutorialStep.current)
   const [boxPokemon, setBoxPokemon] = useState(initialCollection.current)
   const [teams, setTeams] = useState(initialTeamState.current.teams)
   const [activeTeamId, setActiveTeamId] = useState(initialTeamState.current.activeTeamId)
@@ -418,7 +444,9 @@ function GameApp({
 
     setDrawResults(nextResults)
     setBoxPokemon(mergedDraw.collection)
+    vpBalance.current = nextBalance
     setVp(nextBalance)
+    if (drawTutorialStep === 'draw' && banner.id === 'standard') setDrawTutorialStep('hatch')
     gameAudioRef.current?.playEvent(mergedDraw.shinyCount > 0 ? 'shiny' : 'draw')
     return true
   }
@@ -461,6 +489,22 @@ function GameApp({
 
   const returnToLobby = () => {
     setScreen('lobby')
+  }
+
+  const returnFromHatch = () => {
+    if (drawTutorialStep) {
+      saveDrawTutorialCompletion()
+      setDrawTutorialStep(null)
+    }
+    returnToLobby()
+  }
+
+  const completeDrawTutorial = (pokemon) => {
+    if (drawTutorialStep !== 'hatch') return
+    saveDrawTutorialCompletion()
+    setDrawTutorialStep(null)
+    gameAudioRef.current?.playEvent('reward')
+    showNotice(`${pokemon.name}과(와) 첫 파트너가 되었습니다.`)
   }
 
   const openBox = () => {
@@ -928,9 +972,11 @@ function GameApp({
         <HatchScreen
           balance={vp}
           results={drawResults}
-          onBack={returnToLobby}
+          tutorialStep={drawTutorialStep}
+          onBack={returnFromHatch}
           onDraw={createAndStoreDraw}
           onOpenBox={openBox}
+          onTutorialComplete={completeDrawTutorial}
         />
       ) : screen === 'training' ? (
         <TrainingScreen

@@ -109,7 +109,15 @@ function DrawBannerCard({ banner, pickupRemainingMs }) {
   )
 }
 
-function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
+function HatchScreen({
+  balance,
+  results,
+  tutorialStep = null,
+  onBack,
+  onDraw,
+  onOpenBox,
+  onTutorialComplete,
+}) {
   const initialBannerId = results[0]?.bannerId ?? DRAW_BANNER_ORDER[0]
   const [selectedBannerIndex, setSelectedBannerIndex] = useState(() => (
     Math.max(0, DRAW_BANNER_ORDER.indexOf(initialBannerId))
@@ -139,6 +147,8 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
     revealedSlotIds.has(result.slotId) && result.isShiny
   )).length
   const showingResults = view === 'results' && selectedResult
+  const isDrawTutorial = tutorialStep === 'draw'
+  const isHatchTutorial = tutorialStep === 'hatch'
   const canAfford = balance >= activeBanner.price
   const selectedStats = useMemo(
     () => (selectedResult ? calculateStats({ speciesId: selectedResult.id, nature: '노력' }) : []),
@@ -153,6 +163,10 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [view])
+
+  useEffect(() => {
+    if (isDrawTutorial) setSelectedBannerIndex(0)
+  }, [isDrawTutorial])
 
   useEffect(() => {
     if (!drawKey) {
@@ -198,13 +212,14 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
   }, [])
 
   const cycleBanner = (direction) => {
+    if (isDrawTutorial) return
     setSelectedBannerIndex((currentIndex) => (
       (currentIndex + direction + DRAW_BANNER_ORDER.length) % DRAW_BANNER_ORDER.length
     ))
   }
 
   const requestDraw = () => {
-    onDraw(activeBanner.id)
+    onDraw(isDrawTutorial ? DRAW_BANNER_ORDER[0] : activeBanner.id)
   }
 
   const hatchSelectedResult = () => {
@@ -221,6 +236,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
       })
       setHatchingSlotId(null)
       setRevealBurstSlotId(result.slotId)
+      if (isHatchTutorial) onTutorialComplete?.(result)
       burstTimerRef.current = window.setTimeout(() => {
         setRevealBurstSlotId(null)
       }, EGG_REVEAL_BURST_MS)
@@ -228,7 +244,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
   }
 
   return (
-    <main className={`draw-screen${showingResults ? ' showing-results' : ' showing-banner'}`}>
+    <main className={`draw-screen${showingResults ? ' showing-results' : ' showing-banner'}${tutorialStep ? ' tutorial-active' : ''}`}>
       <header className="draw-header">
         <button className="screen-back-button" type="button" aria-label="로비로 돌아가기" onClick={onBack}>
           <ArrowLeft size={19} />
@@ -259,7 +275,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
       {!showingResults ? (
         <section className="draw-banner-view" aria-label="뽑기 배너 선택">
           <div className="draw-banner-stage">
-            <button type="button" className="draw-banner-arrow previous" aria-label="이전 뽑기" onClick={() => cycleBanner(-1)}>
+            <button type="button" className="draw-banner-arrow previous" aria-label="이전 뽑기" disabled={isDrawTutorial} onClick={() => cycleBanner(-1)}>
               <ChevronLeft size={30} />
             </button>
             <DrawBannerCard
@@ -267,7 +283,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
               pickupRemainingMs={pickupRemainingMs}
               key={`${activeBanner.id}-${activeBanner.pickup?.id ?? 'all'}`}
             />
-            <button type="button" className="draw-banner-arrow next" aria-label="다음 뽑기" onClick={() => cycleBanner(1)}>
+            <button type="button" className="draw-banner-arrow next" aria-label="다음 뽑기" disabled={isDrawTutorial} onClick={() => cycleBanner(1)}>
               <ChevronRight size={30} />
             </button>
           </div>
@@ -282,24 +298,31 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
             ))}
           </div>
 
-          <footer className="draw-banner-purchase">
-            <div className="draw-banner-pagination" aria-label="뽑기 종류">
-              {DRAW_BANNER_ORDER.map((bannerId, index) => (
-                <button
-                  type="button"
-                  className={index === selectedBannerIndex ? 'active' : ''}
-                  aria-label={getDrawBanner(bannerId, now).title}
-                  aria-pressed={index === selectedBannerIndex}
-                  onClick={() => setSelectedBannerIndex(index)}
-                  key={bannerId}
-                />
-              ))}
-            </div>
+          <footer className={`draw-banner-purchase${isDrawTutorial ? ' is-tutorial' : ''}`}>
+            {isDrawTutorial ? (
+              <div className="draw-tutorial-message" role="status">
+                <small>STEP 1 / 2 · FIRST PARTNER</small>
+                <strong>일반 뽑기 10회를 진행하세요.</strong>
+              </div>
+            ) : (
+              <div className="draw-banner-pagination" aria-label="뽑기 종류">
+                {DRAW_BANNER_ORDER.map((bannerId, index) => (
+                  <button
+                    type="button"
+                    className={index === selectedBannerIndex ? 'active' : ''}
+                    aria-label={getDrawBanner(bannerId, now).title}
+                    aria-pressed={index === selectedBannerIndex}
+                    onClick={() => setSelectedBannerIndex(index)}
+                    key={bannerId}
+                  />
+                ))}
+              </div>
+            )}
             <div className="draw-banner-price">
               <span>10회 스카우트</span>
               <strong><Zap size={15} fill="currentColor" /> {activeBanner.price.toLocaleString()} VP</strong>
             </div>
-            <button type="button" className="draw-purchase-button" disabled={!canAfford} onClick={requestDraw}>
+            <button type="button" className={`draw-purchase-button${isDrawTutorial ? ' tutorial-target' : ''}`} disabled={!canAfford} onClick={requestDraw}>
               <Ticket size={19} />
               <span>{canAfford ? '10회 뽑기' : 'VP 부족'}</span>
               <ChevronRight size={18} />
@@ -362,7 +385,7 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
               <div
                 className={`draw-revealed-pokemon rarity-${selectedResult.rarity}${selectedResult.isShiny ? ' is-shiny' : ''}${selectedIsRevealed ? ' is-visible' : ' is-preloaded'}${selectedHasRevealBurst ? ' is-newly-hatched' : ''}`}
                 aria-hidden={!selectedIsRevealed}
-                key={selectedResult.slotId}
+                key={`${selectedResult.slotId}-pokemon`}
               >
                 {selectedResult.isShiny && <span className="draw-shiny-aura" aria-hidden="true" />}
                 <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
@@ -381,12 +404,12 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
               </div>
               {!selectedIsRevealed && (
                 <button
-                  className={`draw-egg-reveal rarity-${selectedResult.rarity}${selectedIsHatching ? ' is-hatching' : ''}`}
+                  className={`draw-egg-reveal rarity-${selectedResult.rarity}${selectedIsHatching ? ' is-hatching' : ''}${isHatchTutorial ? ' tutorial-target' : ''}`}
                   type="button"
                   disabled={selectedIsHatching}
                   aria-label={`${selectedRarity.label} 알 열기`}
                   onClick={hatchSelectedResult}
-                  key={selectedResult.slotId}
+                  key={`${selectedResult.slotId}-egg`}
                 >
                   <span className="draw-egg-aura" aria-hidden="true" />
                   <span className="draw-rarity">{selectedRarity.stars} {selectedRarity.label}</span>
@@ -435,9 +458,16 @@ function HatchScreen({ balance, results, onBack, onDraw, onOpenBox }) {
 
           <footer className="draw-dock">
             <div className="draw-dock-toolbar">
-              <div className="draw-guide">
+              <div className={`draw-guide${isHatchTutorial ? ' tutorial-guide' : ''}`}>
                 <Sparkles size={16} />
-                <span>{selectedIsRevealed ? `${selectedRarity.label} · ${activeBanner.title}` : `${selectedRarity.label} 알 · 중앙 알을 클릭해 부화`}</span>
+                <span>
+                  {isHatchTutorial && <b>STEP 2 / 2</b>}
+                  {isHatchTutorial
+                    ? '중앙 알을 클릭해 첫 파트너를 만나세요.'
+                    : selectedIsRevealed
+                      ? `${selectedRarity.label} · ${activeBanner.title}`
+                      : `${selectedRarity.label} 알 · 중앙 알을 클릭해 부화`}
+                </span>
               </div>
               <div className="draw-actions">
                 <button type="button" onClick={() => setView('banner')}><Sparkles size={16} /> 배너 선택</button>

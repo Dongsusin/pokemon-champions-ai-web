@@ -19202,6 +19202,13 @@
   transform: scale(1.06);
 }
 
+.draw-banner-arrow:disabled {
+  opacity: 0.22;
+  cursor: default;
+  filter: grayscale(0.7);
+  transform: none;
+}
+
 .draw-banner-rate-board {
   display: grid;
   width: min(1080px, calc(100% - 136px));
@@ -19295,6 +19302,27 @@
   box-shadow: 0 0 14px rgba(98, 231, 255, 0.5);
 }
 
+.draw-tutorial-message {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.draw-tutorial-message > small {
+  color: #80efff;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.draw-tutorial-message > strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .draw-banner-price {
   display: grid;
   justify-items: end;
@@ -19339,6 +19367,10 @@
 .draw-purchase-button:hover:not(:disabled) {
   filter: brightness(1.06);
   transform: translateY(-2px);
+}
+
+.draw-purchase-button.tutorial-target {
+  animation: drawTutorialButtonPulse 1.45s ease-in-out infinite;
 }
 
 .draw-purchase-button:disabled,
@@ -19436,6 +19468,11 @@
 .draw-egg-reveal.rarity-elite { --egg-glow: #ca79ff; }
 .draw-egg-reveal.rarity-champion { --egg-glow: #ffd454; }
 .draw-egg-reveal.rarity-legend { --egg-glow: #ff6ed8; }
+
+.draw-egg-reveal.tutorial-target .draw-egg-shell {
+  filter: drop-shadow(0 0 22px rgba(224, 255, 82, 0.82));
+  animation: drawTutorialEggPulse 1.35s ease-in-out infinite;
+}
 
 .draw-egg-reveal:disabled {
   opacity: 1;
@@ -19627,6 +19664,37 @@
 
 .draw-slot.sealed .draw-slot-number {
   color: rgba(207, 232, 255, 0.74);
+}
+
+.draw-guide.tutorial-guide {
+  color: #fff;
+  font-weight: 850;
+}
+
+.draw-guide.tutorial-guide > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draw-guide.tutorial-guide b {
+  padding: 4px 7px;
+  border: 1px solid rgba(224, 255, 97, 0.62);
+  border-radius: 99px;
+  color: #24335d;
+  font-size: 7px;
+  background: #dcff61;
+  box-shadow: 0 0 14px rgba(215, 255, 74, 0.25);
+}
+
+@keyframes drawTutorialButtonPulse {
+  0%, 100% { box-shadow: inset 0 1px #fff, 0 8px 22px rgba(130, 238, 69, 0.25), 0 0 0 0 rgba(225, 255, 88, 0.46); }
+  50% { box-shadow: inset 0 1px #fff, 0 10px 28px rgba(130, 238, 69, 0.42), 0 0 0 8px rgba(225, 255, 88, 0); }
+}
+
+@keyframes drawTutorialEggPulse {
+  0%, 100% { transform: translateY(0) scale(0.98); }
+  50% { transform: translateY(-7px) scale(1.04); }
 }
 
 @keyframes drawEggAuraPulse {
@@ -19847,7 +19915,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .draw-banner-card,
-  .draw-banner-pokemon-frame > img {
+  .draw-banner-pokemon-frame > img,
+  .draw-purchase-button.tutorial-target,
+  .draw-egg-reveal.tutorial-target .draw-egg-shell {
     animation: none;
   }
 }
