@@ -1,4 +1,6 @@
 import {
+  DUPLICATE_DRAW_REFUND_VP,
+  INITIAL_VP_BALANCE,
   POKEMON_POOL,
   createCompletePokemonCollection,
   mergePokemonDraws,
@@ -16,6 +18,14 @@ const partialCollection = mergePokemonDraws([], [{
   ...directlyDrawnPokemon,
   isShiny: true,
 }]).collection
+const sameBatchDuplicate = mergePokemonDraws([], [
+  { ...directlyDrawnPokemon, isShiny: false },
+  { ...directlyDrawnPokemon, isShiny: false },
+])
+const ownedPokemonDuplicates = mergePokemonDraws(partialCollection, [
+  { ...directlyDrawnPokemon, isShiny: false },
+  { ...directlyDrawnPokemon, isShiny: false },
+])
 const originalPokemon = partialCollection.find((pokemon) => pokemon.dexSpeciesId === directlyDrawnPokemon.id)
 const completeCollection = createCompletePokemonCollection(partialCollection)
 const completeDexIds = new Set(completeCollection.map((pokemon) => pokemon.dexSpeciesId))
@@ -27,6 +37,32 @@ const redrawnNormalColor = mergePokemonDraws([normalColorPreference], [{
   ...directlyDrawnPokemon,
   isShiny: false,
 }]).collection.find((pokemon) => pokemon.dexSpeciesId === directlyDrawnPokemon.id)
+
+if (INITIAL_VP_BALANCE !== 30_000) {
+  failures.push(`Initial VP mismatch: ${INITIAL_VP_BALANCE}/30000`)
+}
+
+if (DUPLICATE_DRAW_REFUND_VP !== 50) {
+  failures.push(`Duplicate refund mismatch: ${DUPLICATE_DRAW_REFUND_VP}/50`)
+}
+
+if (
+  sameBatchDuplicate.duplicateCount !== 1
+  || sameBatchDuplicate.duplicateRefundVp !== 50
+  || sameBatchDuplicate.results[0]?.isDuplicate
+  || !sameBatchDuplicate.results[1]?.isDuplicate
+  || sameBatchDuplicate.results[1]?.duplicateRefundVp !== 50
+) {
+  failures.push('A repeated Pokemon in the same draw did not refund exactly 50 VP.')
+}
+
+if (
+  ownedPokemonDuplicates.duplicateCount !== 2
+  || ownedPokemonDuplicates.duplicateRefundVp !== 100
+  || ownedPokemonDuplicates.results.some((result) => !result.isDuplicate)
+) {
+  failures.push('Already-owned Pokemon did not refund 50 VP for every repeated draw.')
+}
 
 if (!originalPokemon?.shinyObtained || !originalPokemon.isShiny) {
   failures.push('첫 이로치 획득 시 이로치 색상이 자동으로 활성화되지 않음')

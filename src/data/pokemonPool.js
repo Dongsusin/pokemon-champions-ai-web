@@ -12,6 +12,8 @@ import {
 export const BASE_SHINY_ODDS = 4096
 export const LEGENDARY_DRAW_RATE = 0.01
 export const PICKUP_ROTATION_MS = 60 * 60 * 1000
+export const INITIAL_VP_BALANCE = 30_000
+export const DUPLICATE_DRAW_REFUND_VP = 50
 
 export const DRAW_BANNERS = {
   standard: {
@@ -393,11 +395,18 @@ export function mergePokemonDraws(collection, results) {
   const collectionMap = new Map(currentCollection.map((pokemon) => [pokemon.dexSpeciesId, pokemon]))
   const previouslyUnlocked = new Set(collectionMap.keys())
   const directlySeenThisDraw = new Set(previouslyUnlocked)
+  const resolvedResults = []
   let duplicateCount = 0
 
   for (const result of results) {
-    if (directlySeenThisDraw.has(result.id)) duplicateCount += 1
+    const isDuplicate = directlySeenThisDraw.has(result.id)
+    if (isDuplicate) duplicateCount += 1
     directlySeenThisDraw.add(result.id)
+    resolvedResults.push({
+      ...result,
+      isDuplicate,
+      duplicateRefundVp: isDuplicate ? DUPLICATE_DRAW_REFUND_VP : 0,
+    })
     const obtainedAt = new Date().toISOString()
     ensureEvolutionRoute(collectionMap, result.id, obtainedAt)
     const currentPokemon = collectionMap.get(result.id) ?? createCollectionPokemon(result.id)
@@ -424,8 +433,10 @@ export function mergePokemonDraws(collection, results) {
 
   return {
     collection: nextCollection,
+    results: resolvedResults,
     newlyUnlockedCount,
     duplicateCount,
+    duplicateRefundVp: duplicateCount * DUPLICATE_DRAW_REFUND_VP,
     shinyCount: results.filter((result) => result.isShiny).length,
   }
 }

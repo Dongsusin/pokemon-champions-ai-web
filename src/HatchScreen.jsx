@@ -146,6 +146,10 @@ function HatchScreen({
   const revealedShinyCount = results.filter((result) => (
     revealedSlotIds.has(result.slotId) && result.isShiny
   )).length
+  const revealedRefundVp = results.reduce((total, result) => (
+    revealedSlotIds.has(result.slotId) ? total + (Number(result.duplicateRefundVp) || 0) : total
+  ), 0)
+  const selectedDuplicateRefundVp = Number(selectedResult?.duplicateRefundVp) || 0
   const showingResults = view === 'results' && selectedResult
   const isDrawTutorial = tutorialStep === 'draw'
   const isHatchTutorial = tutorialStep === 'hatch'
@@ -268,6 +272,9 @@ function HatchScreen({
           </strong>
           {showingResults && revealedShinyCount > 0 && (
             <i className="draw-shiny-count"><Star size={10} fill="currentColor" /> {revealedShinyCount}</i>
+          )}
+          {showingResults && revealedRefundVp > 0 && (
+            <i className="draw-refund-count"><Zap size={10} fill="currentColor" /> +{revealedRefundVp.toLocaleString()} VP</i>
           )}
         </div>
       </header>
@@ -401,6 +408,11 @@ function HatchScreen({
                   draggable="false"
                 />
                 <strong>{selectedResult.name}</strong>
+                {selectedDuplicateRefundVp > 0 && (
+                  <small className="draw-duplicate-refund">
+                    <Zap size={12} fill="currentColor" /> 중복 보상 +{selectedDuplicateRefundVp.toLocaleString()} VP
+                  </small>
+                )}
               </div>
               {!selectedIsRevealed && (
                 <button
@@ -487,7 +499,7 @@ function HatchScreen({
 
                 return (
                   <button
-                    className={`draw-slot ${isRevealed ? 'revealed' : 'sealed'} rarity-${result.rarity}${isRevealed && result.isShiny ? ' is-shiny' : ''}${isHatching ? ' cracking' : ''}${isSelected ? ' selected' : ''}`}
+                    className={`draw-slot ${isRevealed ? 'revealed' : 'sealed'} rarity-${result.rarity}${isRevealed && result.isShiny ? ' is-shiny' : ''}${isRevealed && result.isDuplicate ? ' is-duplicate' : ''}${isHatching ? ' cracking' : ''}${isSelected ? ' selected' : ''}`}
                     key={result.slotId}
                     type="button"
                     style={{ '--draw-index': index }}
@@ -497,6 +509,9 @@ function HatchScreen({
                     onClick={() => setSelectedIndex(index)}
                   >
                     <span className="draw-slot-number">{String(index + 1).padStart(2, '0')}</span>
+                    {isRevealed && result.duplicateRefundVp > 0 && (
+                      <span className="draw-slot-refund">+{result.duplicateRefundVp} VP</span>
+                    )}
                     {isRevealed ? (
                       <>
                         {result.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}

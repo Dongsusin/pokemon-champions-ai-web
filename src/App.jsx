@@ -33,6 +33,7 @@ import {
   normalizeGameSettings,
 } from './gameSettings'
 import {
+  INITIAL_VP_BALANCE,
   createPokemonDraw,
   getDrawBanner,
   getPokemonEvolutionFamilyKey,
@@ -82,7 +83,6 @@ const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
 const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
 const DRAW_TUTORIAL_STORAGE_KEY = 'champions-draw-tutorial-v1'
-const INITIAL_VP_BALANCE = 10_000
 const STANDARD_DRAW_PRICE = getDrawBanner('standard').price
 
 function interactiveSoundKind(element) {
@@ -442,9 +442,9 @@ function GameApp({
       now: drawTimestamp,
     })
     const mergedDraw = mergePokemonDraws(boxPokemon, nextResults)
-    const nextBalance = vp - banner.price
+    const nextBalance = vp - banner.price + mergedDraw.duplicateRefundVp
 
-    setDrawResults(nextResults)
+    setDrawResults(mergedDraw.results)
     setBoxPokemon(mergedDraw.collection)
     vpBalance.current = nextBalance
     setVp(nextBalance)
