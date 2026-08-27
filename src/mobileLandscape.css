@@ -296,6 +296,71 @@ html[data-mobile-layout="landscape"] :is(
 }
 
 @media (max-height: 900px) {
+  html[data-mobile-layout="landscape"] .draw-screen.showing-banner {
+    gap: 4px;
+    padding-top: 4px;
+    padding-bottom: 8px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-screen.showing-banner .draw-header {
+    min-height: 54px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-view {
+    padding-top: 0;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    gap: 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-stage {
+    height: 100%;
+    min-height: 0;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-card {
+    height: 100%;
+    min-height: 0;
+    border-radius: 20px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-copy {
+    top: 12%;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-copy h2 {
+    font-size: clamp(30px, 4.2vw, 54px);
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-footer {
+    min-height: 40px;
+    padding-inline: 18px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-rate-board,
+  html[data-mobile-layout="landscape"] .draw-banner-purchase {
+    position: relative;
+    z-index: 4;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-rate-board {
+    gap: 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-rate-chip {
+    min-height: 40px;
+    padding: 5px 8px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-banner-purchase {
+    min-height: 54px;
+    padding: 5px 8px 5px 12px;
+    gap: 10px;
+  }
+
+  html[data-mobile-layout="landscape"] .draw-purchase-button {
+    min-height: 42px;
+  }
+
   html[data-mobile-layout="landscape"] .battle-select-screen {
     padding: 6px clamp(14px, 2vw, 28px) 10px;
     overflow: hidden;
