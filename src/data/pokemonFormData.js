@@ -411,14 +411,15 @@ const FORM_METADATA_BY_SLUG = Object.freeze({
   'terapagos-terastal': { formKind: 'ability', saveable: false, requirement: '특성 · 등장 시' },
   'terapagos-stellar': { formKind: 'gimmick', saveable: false, requirement: '테라스탈' },
   'wishiwashi-school': { formKind: 'ability', saveable: false, requirement: '특성 · 레벨 20 이상, HP 25% 초과' },
-  zygarde: { additionalAbilities: ['스웜체인지'] },
+  zygarde: { abilities: ['오라브레이크', '스웜체인지'] },
   'zygarde-10-power-construct': {
     formKind: 'ability',
     saveable: false,
     hiddenFromFormPicker: true,
     canonicalFormSlug: 'zygarde-10',
-    requirement: '10%폼 · 특성 스웜체인지',
-    name: '지가르데 10%폼 · 스웜체인지',
+    requirement: '구형 저장 데이터 · 10%폼',
+    name: '지가르데 10%폼',
+    abilities: ['오라브레이크'],
   },
   'zygarde-50-power-construct': {
     formKind: 'ability',
@@ -432,7 +433,7 @@ const FORM_METADATA_BY_SLUG = Object.freeze({
     formKind: 'standard',
     saveable: true,
     requirement: '10%폼',
-    additionalAbilities: ['스웜체인지'],
+    abilities: ['오라브레이크'],
   },
   'zygarde-complete': { formKind: 'ability', saveable: false, requirement: '스웜체인지 · HP 절반 이하' },
   'floette-eternal': {
@@ -601,10 +602,12 @@ export function defaultGenderForProfile(profile) {
 export function decorateGeneratedPokemonProfile(entry) {
   const metadata = getPokemonFormMetadata(entry)
   const explicit = FORM_METADATA_BY_SLUG[entry.slug] ?? {}
+  const abilities = explicit.abilities
+    ?? [...(entry.abilities ?? []), ...(explicit.additionalAbilities ?? [])]
   return {
     ...entry,
     name: explicit.name ?? entry.name,
-    abilities: [...new Set([...(entry.abilities ?? []), ...(explicit.additionalAbilities ?? [])])],
+    abilities: [...new Set(abilities)],
     gender: explicit.gender ?? defaultGenderForProfile(entry),
     formMetadata: metadata,
   }

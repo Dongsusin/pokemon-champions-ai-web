@@ -291,9 +291,9 @@ for (const [sourceSlug, expectedGmaxSlug] of [
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('wishiwashi').id)
 }
 
-for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
+{
   let state = battle(
-    [pokemon(zygardeSlug, ['protect'], { ability: '스웜체인지' })],
+    [pokemon('zygarde', ['protect'], { ability: '스웜체인지' })],
     [pokemon('snorlax')],
   )
   const oldMaxHp = state.player.team[0].maxHp
@@ -302,6 +302,18 @@ for (const zygardeSlug of ['zygarde', 'zygarde-10']) {
   assert.equal(state.player.team[0].speciesId, profileBySlug.get('zygarde-complete').id)
   assert(state.player.team[0].maxHp > oldMaxHp)
   assert.equal(state.player.team[0].maxHp - state.player.team[0].hp, oldMaxHp - Math.floor(oldMaxHp / 2))
+}
+
+{
+  let state = battle(
+    [pokemon('zygarde-10', ['protect'], { ability: '스웜체인지' })],
+    [pokemon('snorlax')],
+  )
+  assert.equal(state.player.team[0].ability, '오라브레이크')
+  state.player.team[0].ability = '스웜체인지'
+  state.player.team[0].hp = Math.floor(state.player.team[0].maxHp / 2)
+  state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[0].speciesId, profileBySlug.get('zygarde-10').id)
 }
 
 {

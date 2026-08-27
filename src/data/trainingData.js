@@ -472,7 +472,7 @@ const BATTLE_FORM_SOURCE_SLUGS = Object.freeze({
   'toxtricity-low-key-gmax': ['toxtricity-low-key'],
   'urshifu-single-strike-gmax': ['urshifu'],
   'urshifu-rapid-strike-gmax': ['urshifu-rapid-strike'],
-  'zygarde-complete': ['zygarde', 'zygarde-10'],
+  'zygarde-complete': ['zygarde'],
 })
 
 PROFILE_LIST.forEach((option) => {

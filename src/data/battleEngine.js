@@ -5248,7 +5248,7 @@ function refreshHpFormAbility(state, pokemon, trigger = 'residual') {
     trigger === 'residual'
     && pokemon.ability === '스웜체인지'
     && hpRatio <= 0.5
-    && slug !== 'zygarde-complete'
+    && slug === 'zygarde'
   ) {
     return changeBattleForm(state, pokemon, 'zygarde-complete', pokemon.ability, { hpMode: 'damage' })
   }

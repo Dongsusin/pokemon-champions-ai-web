@@ -50,16 +50,20 @@ for (const profile of profiles) {
 const zygardePersistent = slugs(getPersistentFormOptions(718))
 assert.deepEqual(zygardePersistent, new Set(['zygarde', 'zygarde-10']))
 assert.deepEqual(slugs(getBattleFormOptions(718)), new Set(['zygarde-complete']))
-for (const slug of ['zygarde', 'zygarde-10']) {
-  assert.deepEqual(new Set(requireProfile(slug).abilities), new Set(['오라브레이크', '스웜체인지']))
-}
+assert.deepEqual(slugs(getBattleFormOptions(requireProfile('zygarde-10').id)), new Set())
+assert.deepEqual(new Set(requireProfile('zygarde').abilities), new Set(['오라브레이크', '스웜체인지']))
+assert.deepEqual(requireProfile('zygarde-10').abilities, ['오라브레이크'])
 
 const zygarde10PowerConstruct = requireProfile('zygarde-10-power-construct')
 const zygarde50PowerConstruct = requireProfile('zygarde-50-power-construct')
 assert.equal(getFormMetadata(zygarde10PowerConstruct).canonicalFormSlug, 'zygarde-10')
 assert.equal(getFormMetadata(zygarde50PowerConstruct).canonicalFormSlug, 'zygarde')
 assert.equal(normalizePokemon({ speciesId: zygarde10PowerConstruct.id }).speciesId, requireProfile('zygarde-10').id)
-assert.equal(normalizePokemon({ speciesId: zygarde10PowerConstruct.id }).ability, '스웜체인지')
+assert.equal(normalizePokemon({ speciesId: zygarde10PowerConstruct.id }).ability, '오라브레이크')
+assert.equal(
+  normalizePokemon({ speciesId: requireProfile('zygarde-10').id, ability: '스웜체인지' }).ability,
+  '오라브레이크',
+)
 assert.equal(normalizePokemon({ speciesId: zygarde50PowerConstruct.id }).speciesId, requireProfile('zygarde').id)
 assert.equal(normalizePokemon({ speciesId: zygarde50PowerConstruct.id }).ability, '스웜체인지')
 
@@ -70,7 +74,7 @@ const migratedZygarde = migratePokemonCollection([{
   directDrawCount: 1,
 }]).find((pokemon) => pokemon.dexSpeciesId === 718)
 assert.equal(migratedZygarde?.speciesId, requireProfile('zygarde-10').id)
-assert.equal(migratedZygarde?.ability, '스웜체인지')
+assert.equal(migratedZygarde?.ability, '오라브레이크')
 
 const floettePersistent = slugs(getPersistentFormOptions(670))
 for (const slug of ['floette', 'floette-blue', 'floette-orange', 'floette-white', 'floette-yellow', 'floette-eternal']) {
