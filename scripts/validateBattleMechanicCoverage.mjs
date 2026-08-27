@@ -5,6 +5,7 @@ import generatedBattleMoves from '../src/data/generatedBattleMoves.json' with { 
 import battleItems from '../src/data/generatedBattleItems.js'
 import {
   createBattle,
+  getForcedBattleAction,
   getBattleMovePreview,
   getEffectiveBattleStat,
   playBattleTurnWithActions,
@@ -159,6 +160,73 @@ function preventOpponent(state, slot = 0) {
     [pokemon('snorlax', ['splash'])],
   )
   assert.equal(getBattleMovePreview(state, 'player', 0).type, '악')
+}
+
+{
+  let state = battle(
+    [pokemon('charizard', ['dig', 'tackle'])],
+    [pokemon('snorlax', ['splash'])],
+  )
+  const targetHp = state.opponent.team[0].hp
+  const digPp = state.player.team[0].moves[0].currentPp
+  const tacklePp = state.player.team[0].moves[1].currentPp
+  preventOpponent(state)
+  state = turn(state, [move(0)], [move()])
+  assert.equal(state.opponent.team[0].hp, targetHp)
+  assert.equal(state.player.team[0].chargingMove?.moveId, 'dig')
+  assert.deepEqual(getForcedBattleAction(state, 'player', 0), {
+    type: 'move',
+    moveIndex: 0,
+    targetSlot: 0,
+    gimmick: null,
+    forcedReason: 'charge',
+  })
+  assert.equal(state.player.team[0].moves[0].currentPp, digPp - 1)
+
+  preventOpponent(state)
+  state = turn(state, [move(1)], [move()])
+  assert(state.opponent.team[0].hp < targetHp)
+  assert.equal(state.player.team[0].chargingMove, null)
+  assert.equal(state.player.team[0].moves[0].currentPp, digPp - 1)
+  assert.equal(state.player.team[0].moves[1].currentPp, tacklePp)
+}
+
+{
+  let state = battle(
+    [
+      pokemon('charizard', ['dig', 'tackle']),
+      pokemon('pikachu', ['tackle']),
+    ],
+    [
+      pokemon('snorlax', ['splash']),
+      pokemon('blissey', ['splash']),
+    ],
+    2,
+  )
+  state.player.team[0].stats.speed = 999
+  state.player.team[1].stats.speed = 998
+  preventOpponent(state, 0)
+  preventOpponent(state, 1)
+  state = turn(
+    state,
+    [move(0, 0, 0), move(0, 1, 1)],
+    [move(0, 0, 0), move(0, 1, 1)],
+  )
+  const firstTargetHp = state.opponent.team[0].hp
+  const secondTargetHp = state.opponent.team[1].hp
+  const tacklePp = state.player.team[0].moves[1].currentPp
+
+  preventOpponent(state, 0)
+  preventOpponent(state, 1)
+  state = turn(
+    state,
+    [move(1, 0, 1), move(0, 1, 1)],
+    [move(0, 0, 0), move(0, 1, 1)],
+  )
+  assert(state.opponent.team[0].hp < firstTargetHp)
+  assert(state.opponent.team[1].hp < secondTargetHp)
+  assert.equal(state.player.team[0].moves[1].currentPp, tacklePp)
+  assert.equal(state.player.team[0].chargingMove, null)
 }
 
 {

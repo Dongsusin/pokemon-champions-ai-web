@@ -2032,9 +2032,28 @@ function BattleScreen({
     }
   }
 
-  const forcedPlayerAction = getForcedBattleAction(battle, 'player')
-  const forcedReason = forcedPlayerAction?.forcedReason ?? null
-  const forcedMoveIndex = forcedPlayerAction?.moveIndex ?? null
+  const livingPlayerActionSlots = playerActivePokemon
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  const livingOpponentTargetSlots = opponentActivePokemon
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .filter((slot) => slot >= 0)
+  const requiredPlayerActionSlots = battle.rules?.format?.rotation
+    ? [battle.player.rotationSlot ?? livingPlayerActionSlots[0] ?? 0]
+      .filter((slot) => livingPlayerActionSlots.includes(slot))
+    : livingPlayerActionSlots
+  const forcedPlayerActions = requiredPlayerActionSlots
+    .map((actorSlot) => {
+      const forcedAction = getForcedBattleAction(battle, 'player', actorSlot)
+      return forcedAction ? { ...forcedAction, actorSlot } : null
+    })
+    .filter(Boolean)
+  const forcedPlayerActionSlots = new Set(forcedPlayerActions.map((action) => action.actorSlot))
+  const selectablePlayerActionSlots = requiredPlayerActionSlots
+    .filter((slot) => !forcedPlayerActionSlots.has(slot))
+  const forcedPlayerActionKey = forcedPlayerActions
+    .map((action) => [action.actorSlot, action.forcedReason, action.moveIndex, action.targetSlot ?? ''].join(':'))
+    .join('|')
 
   useEffect(() => {
     if (
@@ -2043,36 +2062,25 @@ function BattleScreen({
       || activeTrainerDialogue
       || battle.winner
       || battle.awaitingPlayerSwitch
-      || (battle.rules?.format?.actionSlots ?? 1) > 1
-      || !forcedReason
+      || forcedPlayerActions.length === 0
+      || selectablePlayerActionSlots.length > 0
     ) return undefined
 
     const timerId = window.setTimeout(() => {
-      startAnimatedTurn({
-        type: 'move',
-        moveIndex: forcedMoveIndex ?? 0,
-        gimmick: null,
-        forcedReason,
-      })
+      startAnimatedTurn(forcedPlayerActions)
     }, 320)
     return () => window.clearTimeout(timerId)
   }, [
     battle.awaitingPlayerSwitch,
     battle.turn,
     battle.winner,
-    forcedMoveIndex,
-    forcedReason,
+    forcedPlayerActionKey,
+    forcedPlayerActions.length,
+    selectablePlayerActionSlots.length,
     activeTrainerDialogue,
     introVisible,
     isTurnAnimating,
   ])
-
-  const livingPlayerActionSlots = playerActivePokemon
-    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
-    .filter((slot) => slot >= 0)
-  const livingOpponentTargetSlots = opponentActivePokemon
-    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
-    .filter((slot) => slot >= 0)
   const reservedMechanicIds = useMemo(() => new Set(
     queuedActions
       .filter((action) => action.actorSlot !== commandSlot && action.gimmick)
@@ -2096,8 +2104,16 @@ function BattleScreen({
       return
     }
 
-    const nextActions = [...queuedActions.filter((queued) => queued.actorSlot !== commandSlot), nextAction]
-    const nextSlot = livingPlayerActionSlots.find((slot) => !nextActions.some((queued) => queued.actorSlot === slot))
+    const nextActions = [
+      ...forcedPlayerActions,
+      ...queuedActions.filter((queued) => (
+        queued.actorSlot !== commandSlot
+        && !forcedPlayerActionSlots.has(queued.actorSlot)
+      )),
+      nextAction,
+    ].sort((left, right) => left.actorSlot - right.actorSlot)
+    const nextSlot = selectablePlayerActionSlots
+      .find((slot) => !nextActions.some((queued) => queued.actorSlot === slot))
     if (nextSlot == null) {
       startAnimatedTurn(nextActions)
       return
@@ -2212,8 +2228,13 @@ function BattleScreen({
   const openBattleMenu = (nextMenu) => {
     battleAudioRef.current?.playMenu('select')
     const firstLivingSlot = livingPlayerActionSlots[0] ?? 0
-    setQueuedActions([])
-    setCommandSlot(battle.rules?.format?.rotation ? battle.player.rotationSlot ?? firstLivingSlot : firstLivingSlot)
+    const firstSelectableSlot = selectablePlayerActionSlots[0] ?? firstLivingSlot
+    setQueuedActions(forcedPlayerActions)
+    setCommandSlot(
+      battle.rules?.format?.rotation
+        ? battle.player.rotationSlot ?? firstLivingSlot
+        : firstSelectableSlot,
+    )
     setTargetSlot(livingOpponentTargetSlots[0] ?? 0)
     setPendingMoveIndex(null)
     setMenu(nextMenu)
