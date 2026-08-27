@@ -254,6 +254,7 @@ function GameApp({
   autoLogin,
   onAutoLoginChange,
   onConnectGoogle,
+  onDeleteAccount,
   onSignOut,
 }) {
   const initialCollection = useRef(null)
@@ -1027,6 +1028,7 @@ function GameApp({
           autoLogin={autoLogin}
           onAutoLoginChange={onAutoLoginChange}
           onConnectGoogle={onConnectGoogle}
+          onDeleteAccount={onDeleteAccount}
           onChange={updateSetting}
           onClose={() => setSettingsOpen(false)}
           onReset={resetSettings}
@@ -1100,6 +1102,7 @@ function App() {
     connectGuestToGoogle,
     signInAsGuest,
     signOut,
+    deleteAccount,
   } = useAuth()
 
   if (!ready) {
@@ -1139,6 +1142,7 @@ function App() {
         autoLogin={autoLogin}
         onAutoLoginChange={setAutoLogin}
         onConnectGoogle={connectGuestToGoogle}
+        onDeleteAccount={deleteAccount}
         onSignOut={signOut}
       />
     </>

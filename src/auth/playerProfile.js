@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { firebaseDb } from './firebaseClient'
 
 export async function ensurePlayerProfile(user) {
@@ -17,4 +17,9 @@ export async function ensurePlayerProfile(user) {
     lastSeenAt: serverTimestamp(),
     ...(!profileSnapshot.exists() ? { createdAt: serverTimestamp() } : {}),
   }, { merge: true })
+}
+
+export async function deletePlayerProfile(user) {
+  if (!firebaseDb || !user) return
+  await deleteDoc(doc(firebaseDb, 'players', user.uid))
 }

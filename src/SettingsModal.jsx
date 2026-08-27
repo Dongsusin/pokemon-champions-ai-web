@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Swords,
+  Trash2,
   UserRound,
   Volume2,
   VolumeX,
@@ -107,8 +108,10 @@ function AccountPanel({
   autoLogin,
   onAutoLoginChange,
   onConnectGoogle,
+  onDeleteAccount,
   onSignOut,
 }) {
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false)
   const isGuest = Boolean(user?.isLocalGuest)
   const accountName = user?.displayName?.trim()
     || user?.email?.split('@')[0]
@@ -175,6 +178,54 @@ function AccountPanel({
           {authBusy ? '계정 전환 중' : '로그아웃하고 계정 전환'}
         </button>
       </div>
+
+      <div className={`settings-account-danger-zone${deleteConfirmationOpen ? ' confirming' : ''}`}>
+        <div className="settings-account-danger-copy">
+          <span><Trash2 size={18} /></span>
+          <span>
+            <strong>계정 삭제</strong>
+            <small>계정과 이 기기에 저장된 모든 게임 진행 데이터를 영구 삭제합니다.</small>
+          </span>
+        </div>
+
+        {deleteConfirmationOpen ? (
+          <div className="settings-account-delete-confirmation" role="alert">
+            <p>
+              {isGuest
+                ? '게스트 계정, 포켓몬, 팀, 아이템과 VP가 모두 삭제되며 복구할 수 없습니다.'
+                : 'Google 인증 계정, 서버 프로필, 포켓몬, 팀, 아이템과 VP가 모두 삭제되며 복구할 수 없습니다.'}
+            </p>
+            <div>
+              <button
+                className="settings-account-delete-cancel"
+                type="button"
+                disabled={authBusy}
+                onClick={() => setDeleteConfirmationOpen(false)}
+              >
+                취소
+              </button>
+              <button
+                className="settings-account-delete-confirm"
+                type="button"
+                disabled={authBusy}
+                onClick={onDeleteAccount}
+              >
+                <Trash2 size={17} />
+                {authBusy ? '삭제 처리 중' : '영구 삭제'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="settings-delete-account-button"
+            type="button"
+            disabled={authBusy}
+            onClick={() => setDeleteConfirmationOpen(true)}
+          >
+            계정 삭제
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -187,6 +238,7 @@ function SettingsModal({
   autoLogin,
   onAutoLoginChange,
   onConnectGoogle,
+  onDeleteAccount,
   onChange,
   onClose,
   onReset,
@@ -351,6 +403,7 @@ function SettingsModal({
               autoLogin={autoLogin}
               onAutoLoginChange={onAutoLoginChange}
               onConnectGoogle={onConnectGoogle}
+              onDeleteAccount={onDeleteAccount}
               onSignOut={onSignOut}
             />
           )}

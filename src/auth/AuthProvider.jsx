@@ -11,7 +11,9 @@ import {
   GoogleAuthProvider,
   browserLocalPersistence,
   browserSessionPersistence,
+  deleteUser,
   onAuthStateChanged,
+  reauthenticateWithPopup,
   setPersistence,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -21,7 +23,8 @@ import {
   isFirebaseConfigured,
   missingFirebaseEnvironmentVariables,
 } from './firebaseClient'
-import { ensurePlayerProfile } from './playerProfile'
+import { clearLocalPlayerData } from './accountStorage'
+import { deletePlayerProfile, ensurePlayerProfile } from './playerProfile'
 
 const AuthContext = createContext(null)
 
@@ -116,6 +119,19 @@ function createLocalGuest() {
 
 function authErrorMessage(error) {
   return AUTH_ERROR_MESSAGES[error?.code] ?? 'Google 로그인 중 오류가 발생했습니다.'
+}
+
+function accountDeletionErrorMessage(error) {
+  if (error?.code === 'auth/user-mismatch') {
+    return '현재 로그인된 Google 계정으로 다시 인증해주세요.'
+  }
+  if (error?.code === 'auth/requires-recent-login') {
+    return '보안을 위해 Google 계정 인증이 다시 필요합니다.'
+  }
+  if (error?.code === 'permission-denied') {
+    return '서버 프로필을 삭제할 권한이 없습니다. 잠시 후 다시 시도해주세요.'
+  }
+  return AUTH_ERROR_MESSAGES[error?.code] ?? '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.'
 }
 
 export function AuthProvider({ children }) {
@@ -265,6 +281,46 @@ export function AuthProvider({ children }) {
     }
   }, [setCurrentUser])
 
+  const deleteAccount = useCallback(async () => {
+    const currentUser = userRef.current
+    if (!currentUser) return false
+
+    setBusy(true)
+    setError('')
+    setProfileSyncError('')
+
+    try {
+      if (currentUser.isLocalGuest) {
+        clearLocalPlayerData()
+        clearLocalGuest()
+        setCurrentUser(null)
+        return true
+      }
+
+      const firebaseUser = firebaseAuth?.currentUser
+      if (!firebaseUser) throw new Error('Firebase user is not available.')
+
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({
+        prompt: 'select_account',
+        ...(firebaseUser.email ? { login_hint: firebaseUser.email } : {}),
+      })
+      await reauthenticateWithPopup(firebaseUser, provider)
+      await deletePlayerProfile(firebaseUser)
+      await deleteUser(firebaseUser)
+
+      clearLocalPlayerData()
+      clearLocalGuest()
+      setCurrentUser(null)
+      return true
+    } catch (accountError) {
+      setError(accountDeletionErrorMessage(accountError))
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }, [setCurrentUser])
+
   const value = useMemo(() => ({
     user,
     ready,
@@ -279,10 +335,12 @@ export function AuthProvider({ children }) {
     connectGuestToGoogle,
     signInAsGuest,
     signOut,
+    deleteAccount,
   }), [
     autoLogin,
     busy,
     connectGuestToGoogle,
+    deleteAccount,
     error,
     profileSyncError,
     ready,
