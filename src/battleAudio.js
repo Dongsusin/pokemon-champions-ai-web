@@ -165,7 +165,8 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     if (cryLoadPromises.has(normalizedId)) return cryLoadPromises.get(normalizedId)
 
     const loadPromise = (async () => {
-      for (const collection of ['legacy', 'latest']) {
+      const collections = normalizedId <= 649 ? ['legacy', 'latest'] : ['latest', 'legacy']
+      for (const collection of collections) {
         try {
           const response = await fetch(`${POKEMON_CRY_ROOT}/${collection}/${normalizedId}.ogg`, { cache: 'force-cache' })
           if (!response.ok) continue

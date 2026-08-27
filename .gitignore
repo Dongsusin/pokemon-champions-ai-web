@@ -7,3 +7,4 @@ dist
 .env.*
 !.env.example
 scripts/.cache
+public/resource-manifest.json

@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run generate:resource-manifest",
     "dev": "vite",
+    "prebuild": "npm run generate:resource-manifest",
     "build": "vite build",
     "preview": "vite preview",
     "generate:battle-items": "node scripts/generateBattleItemData.mjs",
@@ -35,7 +37,8 @@
     "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",
     "generate:sprite-manifest": "node scripts/generateGen5SpriteManifest.mjs",
     "generate:trainer-teams": "node scripts/generateTrainerTeams.mjs && node scripts/generateTrainerLoadouts.mjs",
-    "generate:trainer-loadouts": "node scripts/generateTrainerLoadouts.mjs"
+    "generate:trainer-loadouts": "node scripts/generateTrainerLoadouts.mjs",
+    "generate:resource-manifest": "node scripts/generateResourceManifest.mjs"
   },
   "dependencies": {
     "firebase": "^12.18.0",
