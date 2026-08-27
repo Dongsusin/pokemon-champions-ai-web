@@ -1,0 +1,202 @@
+.landscape-orientation-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: none;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  place-items: center;
+  overflow: hidden;
+  color: #f7fbff;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(94, 110, 255, 0.28), transparent 38%),
+    linear-gradient(145deg, #060b24 0%, #101943 54%, #20154b 100%);
+}
+
+.landscape-orientation-gate::before,
+.landscape-orientation-gate::after {
+  position: absolute;
+  pointer-events: none;
+  content: "";
+}
+
+.landscape-orientation-gate::before {
+  inset: 0;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(108, 224, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 224, 255, 0.12) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, transparent, #000 25%, #000 74%, transparent);
+}
+
+.landscape-orientation-gate::after {
+  width: min(86vw, 520px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(100, 230, 255, 0.2);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 34px rgba(102, 110, 255, 0.06),
+    0 0 0 78px rgba(157, 89, 255, 0.035);
+  animation: landscape-gate-orbit 8s linear infinite;
+}
+
+.landscape-orientation-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(100%, 430px);
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 24px 26px;
+  border: 1px solid rgba(164, 221, 255, 0.28);
+  border-radius: 26px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(20, 31, 82, 0.96), rgba(25, 22, 70, 0.94));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.15),
+    0 30px 80px rgba(0, 0, 0, 0.48),
+    0 0 45px rgba(68, 197, 255, 0.1);
+  backdrop-filter: blur(22px);
+}
+
+.landscape-orientation-brand {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(67, 226, 255, 0.5));
+}
+
+.landscape-orientation-visual {
+  position: relative;
+  display: grid;
+  width: 112px;
+  height: 88px;
+  margin: 3px 0 1px;
+  place-items: center;
+  color: #eefcff;
+}
+
+.landscape-orientation-phone {
+  position: absolute;
+  transform: rotate(90deg);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+  animation: landscape-gate-phone 2.4s ease-in-out infinite;
+}
+
+.landscape-orientation-rotate {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  color: #6beaff;
+  filter: drop-shadow(0 0 10px rgba(59, 220, 255, 0.55));
+  animation: landscape-gate-rotate 2.4s ease-in-out infinite;
+}
+
+.landscape-orientation-card > span {
+  color: #6feaff;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.2em;
+}
+
+.landscape-orientation-card h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(24px, 7vw, 32px);
+  font-weight: 950;
+  letter-spacing: -0.055em;
+}
+
+.landscape-orientation-card p {
+  max-width: 330px;
+  margin: 0;
+  color: #b9c9e5;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+html[data-mobile-layout="landscape"],
+html[data-mobile-layout="landscape"] body,
+html[data-mobile-layout="landscape"] #root {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html[data-mobile-layout="landscape"] body {
+  position: fixed;
+  inset: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html[data-mobile-layout="landscape"] :is(button, [role="button"], input, select) {
+  touch-action: manipulation;
+}
+
+html[data-mobile-layout="landscape"] :is(.app-shell, .auth-shell) {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  padding-right: env(safe-area-inset-right);
+  padding-left: env(safe-area-inset-left);
+}
+
+html[data-mobile-layout="landscape"] .settings-modal-backdrop {
+  padding-right: max(clamp(18px, 4vw, 56px), env(safe-area-inset-right));
+  padding-bottom: max(clamp(18px, 4vw, 56px), env(safe-area-inset-bottom));
+  padding-left: max(clamp(18px, 4vw, 56px), env(safe-area-inset-left));
+}
+
+@media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .landscape-orientation-gate {
+    display: grid;
+  }
+}
+
+@keyframes landscape-gate-phone {
+  0%,
+  100% { transform: rotate(0deg) scale(0.92); }
+  44%,
+  72% { transform: rotate(90deg) scale(1); }
+}
+
+@keyframes landscape-gate-rotate {
+  0%,
+  18% { opacity: 0.35; transform: rotate(-32deg) scale(0.86); }
+  54%,
+  82% { opacity: 1; transform: rotate(42deg) scale(1); }
+  100% { opacity: 0.35; transform: rotate(54deg) scale(0.86); }
+}
+
+@keyframes landscape-gate-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landscape-orientation-gate::after,
+  .landscape-orientation-phone,
+  .landscape-orientation-rotate {
+    animation: none;
+  }
+
+  .landscape-orientation-phone {
+    transform: rotate(90deg);
+  }
+}

@@ -4,8 +4,10 @@ import {
   ChevronRight,
   Dumbbell,
   PawPrint,
+  RotateCw,
   Settings,
   ShoppingBag,
+  Smartphone,
   Sparkles,
   Swords,
   Volume2,
@@ -992,6 +994,29 @@ function GameApp({
   )
 }
 
+function LandscapeOrientationGate() {
+  return (
+    <aside className="landscape-orientation-gate" role="alert" aria-labelledby="landscape-orientation-title">
+      <div className="landscape-orientation-card">
+        <img
+          className="landscape-orientation-brand"
+          src="/assets/brand/champions-arena-emblem.png"
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+        />
+        <div className="landscape-orientation-visual" aria-hidden="true">
+          <Smartphone className="landscape-orientation-phone" size={66} strokeWidth={1.7} />
+          <RotateCw className="landscape-orientation-rotate" size={34} strokeWidth={2.2} />
+        </div>
+        <span>MOBILE LANDSCAPE MODE</span>
+        <h1 id="landscape-orientation-title">기기를 가로로 돌려주세요</h1>
+        <p>가로 모드에서 PC와 동일한 챔피언스 아레나 화면을 이용할 수 있습니다.</p>
+      </div>
+    </aside>
+  )
+}
+
 function App() {
   const {
     user,
@@ -1009,33 +1034,46 @@ function App() {
     signOut,
   } = useAuth()
 
-  if (!ready) return <AuthLoadingScreen />
+  if (!ready) {
+    return (
+      <>
+        <LandscapeOrientationGate />
+        <AuthLoadingScreen />
+      </>
+    )
+  }
 
   if (!user) {
     return (
-      <LoginScreen
-        configured={configured}
-        busy={busy}
-        error={error}
-        missingConfiguration={missingConfiguration}
-        autoLogin={autoLogin}
-        onAutoLoginChange={setAutoLogin}
-        onGoogleSignIn={signInWithGoogle}
-        onGuestSignIn={signInAsGuest}
-      />
+      <>
+        <LandscapeOrientationGate />
+        <LoginScreen
+          configured={configured}
+          busy={busy}
+          error={error}
+          missingConfiguration={missingConfiguration}
+          autoLogin={autoLogin}
+          onAutoLoginChange={setAutoLogin}
+          onGoogleSignIn={signInWithGoogle}
+          onGuestSignIn={signInAsGuest}
+        />
+      </>
     )
   }
 
   return (
-    <GameApp
-      user={user}
-      accountError={profileSyncError || error}
-      authBusy={busy}
-      autoLogin={autoLogin}
-      onAutoLoginChange={setAutoLogin}
-      onConnectGoogle={connectGuestToGoogle}
-      onSignOut={signOut}
-    />
+    <>
+      <LandscapeOrientationGate />
+      <GameApp
+        user={user}
+        accountError={profileSyncError || error}
+        authBusy={busy}
+        autoLogin={autoLogin}
+        onAutoLoginChange={setAutoLogin}
+        onConnectGoogle={connectGuestToGoogle}
+        onSignOut={signOut}
+      />
+    </>
   )
 }
 

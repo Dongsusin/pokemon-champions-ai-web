@@ -1,3 +1,4 @@
+import './mobileViewport'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
@@ -10,6 +11,7 @@ import './battleGimmicks.css'
 import './moveAnimationDirector.css'
 import './settings.css'
 import './auth.css'
+import './mobileLandscape.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
