@@ -600,8 +600,15 @@ function GameApp({
       showNotice(`배틀 승리 보상으로 ${reward} VP를 획득했습니다.`)
     }
 
-    setCompetition(nextCompetition)
     setBattleMatch(null)
+
+    if (nextCompetition.status !== 'active') {
+      setCompetition(null)
+      setScreen('lobby')
+      return
+    }
+
+    setCompetition(nextCompetition)
     setScreen('competition')
   }
 
@@ -953,7 +960,6 @@ function GameApp({
           competition={competition}
           playerGender={settings.game.playerGender}
           onBack={leaveCompetition}
-          onRestart={leaveCompetition}
           onStartBattle={startCompetitionBattle}
         />
       ) : screen === 'battle' && competition && battleMatch ? (

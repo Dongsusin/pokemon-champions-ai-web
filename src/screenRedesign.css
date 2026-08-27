@@ -13325,8 +13325,7 @@
 .competition-roster-panel,
 .competition-league-participants,
 .competition-standings-panel,
-.competition-fixtures-panel,
-.competition-result-panel {
+.competition-fixtures-panel {
   min-width: 0;
   border: 1px solid rgba(176, 210, 255, 0.25);
   border-radius: 22px;
@@ -13512,8 +13511,7 @@
   font-size: 12px;
 }
 
-.competition-current-match-panel > footer > button,
-.competition-result-panel > button {
+.competition-current-match-panel > footer > button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14296,46 +14294,6 @@
 .competition-fixtures-panel article b {
   color: #79e7ff;
   font-size: 10px;
-}
-
-.competition-result-panel {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 146px;
-  padding: 18px 22px;
-  background:
-    radial-gradient(circle at 8% 50%, rgba(213, 255, 89, 0.2), transparent 20%),
-    linear-gradient(145deg, rgba(21, 32, 77, 0.96), rgba(63, 44, 121, 0.9));
-}
-
-.competition-result-crown {
-  display: grid;
-  width: 64px;
-  height: 64px;
-  place-items: center;
-  border-radius: 20px;
-  color: #233045;
-  background: linear-gradient(145deg, #eaff7e, #8be452);
-  box-shadow: 0 0 30px rgba(199, 255, 89, 0.3);
-}
-
-.competition-result-panel small {
-  color: #86e9ff;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-}
-
-.competition-result-panel h2 {
-  margin: 3px 0;
-  font-size: 27px;
-}
-
-.competition-result-panel p {
-  margin: 0;
-  color: #aebfdc;
-  font-size: 12px;
 }
 
 .app-shell.battle-view {
@@ -18477,15 +18435,6 @@
   .competition-league-participants > div {
     grid-template-columns: 1fr 1fr;
     height: auto;
-  }
-
-  .competition-result-panel {
-    grid-template-columns: 58px minmax(0, 1fr);
-  }
-
-  .competition-result-panel > button {
-    grid-column: 1 / -1;
-    margin-top: 10px;
   }
 
   .battle-game-screen {

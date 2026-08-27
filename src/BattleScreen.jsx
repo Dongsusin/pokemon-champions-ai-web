@@ -2416,7 +2416,7 @@ function BattleScreen({
             <p>{summary.turns}턴 · 아군 {summary.playerRemaining}마리 · 상대 {summary.opponentRemaining}마리</p>
           </div>
           <button type="button" onClick={() => completeBattle()}>
-            대회 결과로 <ChevronRight size={18} />
+            배틀 마치기 <ChevronRight size={18} />
           </button>
         </section>
       )}

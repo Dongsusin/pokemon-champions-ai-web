@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ChevronRight,
-  Crown,
   Medal,
   MoveHorizontal,
   Shield,
@@ -474,7 +473,7 @@ function LeagueOverview({ competition, currentMatch, playerGender = 'male' }) {
   )
 }
 
-function CompetitionScreen({ competition, playerGender = 'male', onBack, onStartBattle, onRestart }) {
+function CompetitionScreen({ competition, playerGender = 'male', onBack, onStartBattle }) {
   const currentMatch = getCurrentCompetitionMatch(competition)
   const player = getCompetitionParticipant(competition, PLAYER_PARTICIPANT_ID)
   const opponent = currentMatch?.opponent
@@ -492,12 +491,6 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   const isTournament = competition.mode === 'tournament'
   const ModeIcon = isTournament ? Trophy : UsersRound
   const roundLabel = getCompetitionRoundLabel(competition)
-  const standings = competition.mode === 'league' ? getSortedLeagueStandings(competition) : []
-  const playerRank = standings.findIndex((standing) => standing.participantId === PLAYER_PARTICIPANT_ID) + 1
-  const champion = competition.championId
-    ? getCompetitionParticipant(competition, competition.championId)
-    : null
-  const isFinished = competition.status !== 'active'
   const matchRules = currentMatch?.rules
   const requiredPokemonCount = getPlayerBattleSelectionCount(matchRules, competition.playerTeam.length)
   const requiresPokemonSelection = Boolean(matchRules && requiredPokemonCount > 0)
@@ -607,13 +600,13 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
             </button>
           )}
           <div className="competition-round-chip">
-            <small>{isFinished ? 'COMPETITION RESULT' : 'CURRENT ROUND'}</small>
-            <strong>{isFinished ? '대회 종료' : roundLabel}</strong>
+            <small>CURRENT ROUND</small>
+            <strong>{roundLabel}</strong>
           </div>
         </div>
       </header>
 
-      {!isFinished && currentMatch && (
+      {currentMatch && (
         <section className="competition-current-match-panel">
           <div className="competition-match-kicker">
             <span><Swords size={15} /> NEXT PLAYER BATTLE</span>
@@ -665,7 +658,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
         </section>
       )}
 
-      {!isFinished && currentMatch && opponentPreviewPokemon.map((pokemon, index) => {
+      {currentMatch && opponentPreviewPokemon.map((pokemon, index) => {
         const pokemonKey = `opponent-${index}`
         const visible = inspectedPokemonKey === pokemonKey
         return (
@@ -681,7 +674,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
           />
         )
       })}
-      {!isFinished && currentMatch && playerPreviewPokemon.map((pokemon, index) => {
+      {currentMatch && playerPreviewPokemon.map((pokemon, index) => {
         const pokemonKey = `player-${index}`
         const visible = inspectedPokemonKey === pokemonKey
         return (
@@ -697,32 +690,6 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
           />
         )
       })}
-
-      {isFinished && (
-        <section className={`competition-result-panel result-${competition.status}`}>
-          <span className="competition-result-crown">
-            {competition.status === 'complete' && competition.championId === PLAYER_PARTICIPANT_ID
-              ? <Crown size={42} />
-              : <Trophy size={42} />}
-          </span>
-          <div>
-            <small>{competition.status === 'eliminated' ? 'CHALLENGE OVER' : 'COMPETITION COMPLETE'}</small>
-            <h2>
-              {competition.status === 'eliminated'
-                ? `${competition.roundHistory.at(-1)?.label ?? '토너먼트'}에서 탈락했습니다`
-                : champion?.id === PLAYER_PARTICIPANT_ID
-                  ? 'PLAYER_01 우승!'
-                  : `${champion?.name ?? 'AI 트레이너'} 우승`}
-            </h2>
-            <p>
-              {competition.mode === 'league'
-                ? `최종 순위 ${playerRank || '-'}위 · ${standings.find((entry) => entry.participantId === PLAYER_PARTICIPANT_ID)?.wins ?? 0}승`
-                : `총 ${competition.roundHistory.length}라운드에 참가했습니다.`}
-            </p>
-          </div>
-          <button type="button" onClick={onRestart}>다른 대회 선택</button>
-        </section>
-      )}
 
       {isTournament && isBracketOpen && (
         <div
