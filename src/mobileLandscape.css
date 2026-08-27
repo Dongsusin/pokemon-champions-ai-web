@@ -295,6 +295,204 @@ html[data-mobile-layout="landscape"] :is(
   height: calc(100dvh - var(--mobile-topbar-height));
 }
 
+@media (max-height: 900px) {
+  html[data-mobile-layout="landscape"] .battle-select-screen {
+    padding: 6px clamp(14px, 2vw, 28px) 10px;
+    overflow: hidden;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-select-header {
+    min-height: 58px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-select-title h1 {
+    font-size: 27px;
+  }
+
+  html[data-mobile-layout="landscape"] :is(
+    .battle-select-title p,
+    .battle-mode-select-heading p
+  ) {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ready-badge {
+    min-height: 42px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-select-workspace {
+    gap: 10px;
+  }
+
+  html[data-mobile-layout="landscape"] :is(
+    .battle-party-preview-panel,
+    .battle-mode-select-panel
+  ) {
+    padding: 9px;
+    border-radius: 16px;
+  }
+
+  html[data-mobile-layout="landscape"] :is(
+    .battle-party-preview-heading,
+    .battle-mode-select-heading
+  ) {
+    min-height: 38px;
+    padding-bottom: 5px;
+  }
+
+  html[data-mobile-layout="landscape"] :is(
+    .battle-party-preview-heading h2,
+    .battle-mode-select-heading h2
+  ) {
+    font-size: 17px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-team-switcher {
+    gap: 4px;
+    margin-bottom: 6px;
+    padding: 3px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-team-switcher button {
+    min-height: 34px;
+    padding-block: 3px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-party-preview-list {
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-party-preview-card {
+    grid-template-columns: 50px minmax(0, 1fr);
+    min-height: 0;
+    padding-block: 3px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-party-icon-frame {
+    width: 48px;
+    height: 48px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-party-preview-footer {
+    min-height: 38px;
+    padding-top: 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-party-preview-footer button {
+    min-height: 32px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-select-panel {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 7px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-count {
+    min-height: 28px;
+    padding-inline: 8px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-card {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 0;
+    height: 100%;
+    padding: 8px;
+    border-left-width: 4px;
+    border-radius: 13px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-art {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-art svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-art small {
+    right: 5px;
+    bottom: 3px;
+    font-size: 9px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-copy {
+    gap: 2px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-copy > strong {
+    font-size: 17px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-meta-row {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-selection-state {
+    min-height: 28px;
+    padding-inline: 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty {
+    min-height: 52px;
+    grid-template-columns: minmax(150px, 0.62fr) minmax(300px, 1.38fr);
+    gap: 7px;
+    padding: 5px 7px;
+    border-radius: 11px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty > header em {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-controls {
+    grid-template-columns: minmax(190px, 1fr) minmax(118px, 0.58fr);
+    gap: 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button {
+    min-height: 34px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-hard-boost-selector button {
+    min-height: 25px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar {
+    min-height: 48px;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 5px 7px;
+    border-radius: 11px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar em {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar > button {
+    min-width: 142px;
+    min-height: 36px;
+    padding-inline: 12px;
+  }
+}
+
 html[data-mobile-layout="landscape"] .settings-modal-backdrop {
   padding-right: max(clamp(18px, 4vw, 56px), env(safe-area-inset-right));
   padding-bottom: max(clamp(18px, 4vw, 56px), env(safe-area-inset-bottom));
