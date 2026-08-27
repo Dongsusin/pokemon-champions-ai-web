@@ -19938,3 +19938,353 @@
     animation: none;
   }
 }
+
+/* In-battle AI trainer dialogue scenes */
+.battle-trainer-dialogue-layer {
+  --trainer-dialogue-accent: #74eaff;
+  position: absolute;
+  inset: 64px 0 0;
+  z-index: 86;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 30vw);
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px 20px;
+  padding: clamp(18px, 3vw, 48px) clamp(22px, 4vw, 72px) clamp(20px, 3vw, 42px);
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 78% 32%, color-mix(in srgb, var(--trainer-dialogue-accent) 24%, transparent), transparent 29%),
+    linear-gradient(102deg, rgba(3, 9, 31, 0.88) 0 37%, rgba(8, 15, 47, 0.48) 63%, rgba(5, 10, 35, 0.82));
+  backdrop-filter: blur(2px) saturate(0.84);
+  animation: battle-trainer-dialogue-layer-in 220ms ease-out both;
+}
+
+.battle-trainer-dialogue-layer::before,
+.battle-trainer-dialogue-layer::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+}
+
+.battle-trainer-dialogue-layer::before {
+  opacity: 0.27;
+  background:
+    repeating-linear-gradient(168deg, transparent 0 26px, rgba(168, 226, 255, 0.13) 27px, transparent 29px),
+    linear-gradient(90deg, transparent 0 54%, color-mix(in srgb, var(--trainer-dialogue-accent) 18%, transparent) 54.2%, transparent 77%);
+  transform: scale(1.08);
+  animation: battle-trainer-dialogue-lines 8s linear infinite;
+}
+
+.battle-trainer-dialogue-layer::after {
+  opacity: 0.15;
+  background: repeating-linear-gradient(180deg, transparent 0 3px, rgba(205, 235, 255, 0.15) 4px);
+}
+
+.battle-trainer-dialogue-layer.tone-mid { --trainer-dialogue-accent: #7bc8ff; }
+.battle-trainer-dialogue-layer.tone-advantage { --trainer-dialogue-accent: #ffd45e; }
+.battle-trainer-dialogue-layer.tone-crisis { --trainer-dialogue-accent: #ff6c86; }
+.battle-trainer-dialogue-layer.tone-ace { --trainer-dialogue-accent: #dc79ff; }
+.battle-trainer-dialogue-layer.tone-victory { --trainer-dialogue-accent: #94f168; }
+.battle-trainer-dialogue-layer.tone-defeat { --trainer-dialogue-accent: #94a8cb; }
+
+.battle-trainer-dialogue-light {
+  position: absolute;
+  right: -8%;
+  bottom: 9%;
+  z-index: -1;
+  width: min(56vw, 880px);
+  aspect-ratio: 1.35;
+  border-radius: 50%;
+  opacity: 0.25;
+  background: var(--trainer-dialogue-accent);
+  filter: blur(110px);
+  transform: rotate(-12deg);
+}
+
+.battle-trainer-dialogue-stage {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: end center;
+}
+
+.battle-trainer-dialogue-event {
+  position: absolute;
+  top: clamp(8px, 3vh, 34px);
+  left: 0;
+  z-index: 2;
+  display: grid;
+  min-width: 138px;
+  padding: 9px 13px 10px;
+  border: 1px solid color-mix(in srgb, var(--trainer-dialogue-accent) 64%, transparent);
+  border-left: 4px solid var(--trainer-dialogue-accent);
+  border-radius: 5px 14px 5px 14px;
+  color: #fff;
+  background: rgba(7, 16, 48, 0.82);
+  box-shadow: 0 12px 34px rgba(2, 6, 25, 0.34), inset 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  animation: battle-trainer-dialogue-event-in 300ms 120ms ease-out both;
+}
+
+.battle-trainer-dialogue-event small {
+  color: var(--trainer-dialogue-accent);
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.16em;
+}
+
+.battle-trainer-dialogue-event strong {
+  margin-top: 2px;
+  font-size: clamp(14px, 1.2vw, 19px);
+}
+
+.battle-trainer-dialogue-sprite {
+  width: min(25vw, 390px);
+  height: min(52vh, 500px);
+  overflow: visible;
+  filter:
+    drop-shadow(0 0 2px rgba(235, 249, 255, 0.82))
+    drop-shadow(0 22px 28px rgba(0, 0, 0, 0.48))
+    drop-shadow(0 0 34px color-mix(in srgb, var(--trainer-dialogue-accent) 36%, transparent));
+  transform-origin: center bottom;
+  animation: battle-trainer-dialogue-trainer-in 430ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.battle-trainer-dialogue-sprite img {
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.battle-trainer-dialogue-box {
+  position: relative;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: clamp(122px, 13vw, 188px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(14px, 2vw, 30px);
+  width: min(1220px, 100%);
+  min-height: 126px;
+  margin: 0 auto;
+  padding: 19px 24px;
+  overflow: hidden;
+  appearance: none;
+  border: 3px solid #edf5ed;
+  outline: 3px solid rgba(15, 34, 60, 0.96);
+  border-radius: 5px 20px 5px 20px;
+  color: #f9fcff;
+  text-align: left;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--trainer-dialogue-accent) 17%, transparent), transparent 34%),
+    linear-gradient(145deg, rgba(9, 24, 52, 0.98), rgba(18, 27, 66, 0.98));
+  box-shadow:
+    0 22px 65px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 2px rgba(87, 130, 161, 0.72),
+    inset 0 1px rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  animation: battle-trainer-dialogue-box-in 300ms 90ms ease-out both;
+}
+
+.battle-trainer-dialogue-box::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  content: "";
+  background: var(--trainer-dialogue-accent);
+  box-shadow: 0 0 22px var(--trainer-dialogue-accent);
+}
+
+.battle-trainer-dialogue-box:hover {
+  filter: brightness(1.06);
+}
+
+.battle-trainer-dialogue-box:focus-visible {
+  outline-color: var(--trainer-dialogue-accent);
+  box-shadow:
+    0 22px 65px rgba(0, 0, 0, 0.5),
+    0 0 0 6px color-mix(in srgb, var(--trainer-dialogue-accent) 28%, transparent),
+    inset 0 0 0 2px rgba(87, 130, 161, 0.72);
+}
+
+.battle-trainer-dialogue-nameplate {
+  display: grid;
+  align-content: center;
+  align-self: stretch;
+  padding-right: clamp(12px, 1.5vw, 22px);
+  border-right: 1px solid rgba(189, 220, 247, 0.25);
+}
+
+.battle-trainer-dialogue-nameplate small {
+  color: var(--trainer-dialogue-accent);
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.15em;
+}
+
+.battle-trainer-dialogue-nameplate strong {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: clamp(20px, 2vw, 31px);
+  letter-spacing: -0.05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-trainer-dialogue-copy {
+  color: #fffdec;
+  font-size: clamp(17px, 1.55vw, 25px);
+  font-weight: 850;
+  line-height: 1.5;
+  letter-spacing: -0.025em;
+  text-shadow: 0 2px 7px rgba(0, 0, 0, 0.4);
+  animation: battle-trainer-dialogue-copy-in 360ms 180ms steps(7, end) both;
+}
+
+.battle-trainer-dialogue-prompt {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--trainer-dialogue-accent);
+  font-size: 10px;
+  font-weight: 1000;
+  white-space: nowrap;
+  animation: battle-trainer-dialogue-prompt 820ms steps(2, end) infinite;
+}
+
+.battle-game-screen.has-trainer-dialogue .battle-arena,
+.battle-game-screen.has-trainer-dialogue .battle-command-deck {
+  filter: saturate(0.72) brightness(0.78);
+}
+
+@keyframes battle-trainer-dialogue-layer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes battle-trainer-dialogue-lines {
+  from { transform: translateX(-2%) scale(1.08); }
+  to { transform: translateX(2%) scale(1.08); }
+}
+
+@keyframes battle-trainer-dialogue-trainer-in {
+  from { opacity: 0; transform: translateX(34%) scale(0.94); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes battle-trainer-dialogue-event-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes battle-trainer-dialogue-box-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes battle-trainer-dialogue-copy-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes battle-trainer-dialogue-prompt {
+  0%, 45% { transform: translateX(0); opacity: 0.65; }
+  50%, 100% { transform: translateX(4px); opacity: 1; }
+}
+
+@media (max-width: 1000px), (max-height: 720px) {
+  .battle-trainer-dialogue-layer {
+    top: 52px;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 27vw);
+    gap: 5px 12px;
+    padding: 10px clamp(14px, 3vw, 30px) 14px;
+  }
+
+  .battle-trainer-dialogue-sprite {
+    width: min(22vw, 230px);
+    height: min(39vh, 250px);
+  }
+
+  .battle-trainer-dialogue-event {
+    top: 4px;
+    min-width: 112px;
+    padding: 6px 9px 7px;
+  }
+
+  .battle-trainer-dialogue-event small {
+    font-size: 6px;
+  }
+
+  .battle-trainer-dialogue-event strong {
+    font-size: 12px;
+  }
+
+  .battle-trainer-dialogue-box {
+    grid-template-columns: 105px minmax(0, 1fr) auto;
+    gap: 12px;
+    min-height: 88px;
+    padding: 12px 15px;
+    border-width: 2px;
+    outline-width: 2px;
+  }
+
+  .battle-trainer-dialogue-nameplate {
+    padding-right: 10px;
+  }
+
+  .battle-trainer-dialogue-nameplate small {
+    font-size: 6px;
+  }
+
+  .battle-trainer-dialogue-nameplate strong {
+    font-size: 17px;
+  }
+
+  .battle-trainer-dialogue-copy {
+    font-size: clamp(13px, 1.8vw, 18px);
+    line-height: 1.4;
+  }
+
+  .battle-trainer-dialogue-prompt {
+    font-size: 0;
+  }
+}
+
+@media (max-height: 520px) {
+  .battle-trainer-dialogue-layer {
+    padding-top: 6px;
+    padding-bottom: 10px;
+  }
+
+  .battle-trainer-dialogue-sprite {
+    width: min(18vw, 160px);
+    height: min(31vh, 150px);
+  }
+
+  .battle-trainer-dialogue-event {
+    left: -16px;
+  }
+
+  .battle-trainer-dialogue-box {
+    min-height: 72px;
+    padding-block: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-trainer-dialogue-layer,
+  .battle-trainer-dialogue-layer::before,
+  .battle-trainer-dialogue-event,
+  .battle-trainer-dialogue-sprite,
+  .battle-trainer-dialogue-box,
+  .battle-trainer-dialogue-copy,
+  .battle-trainer-dialogue-prompt {
+    animation: none;
+  }
+}

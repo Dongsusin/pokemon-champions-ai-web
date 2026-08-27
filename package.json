@@ -26,6 +26,7 @@
     "validate:battle-gimmicks": "node scripts/validateBattleGimmickLimit.mjs",
     "validate:battle-abilities": "node scripts/validateBattleAbilityForms.mjs",
     "validate:battle-ability-effects": "node scripts/validateBattleAbilityEffects.mjs",
+    "validate:trainer-dialogues": "node scripts/validateTrainerDialogues.mjs",
     "validate:battle-content": "npm run validate:battle-move-conditions && npm run validate:battle-move-effects && npm run validate:battle-mechanics && npm run validate:battle-abilities && npm run validate:battle-ability-effects",
     "validate:signature-z-moves": "node scripts/validateSignatureZMoves.mjs",
     "generate:pokemon-data": "node scripts/generatePokemonData.mjs",

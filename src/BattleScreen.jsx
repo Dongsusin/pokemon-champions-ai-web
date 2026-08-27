@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   ArrowLeftRight,
@@ -57,6 +57,8 @@ import {
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
 import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/battleRules'
+import { getTrainer } from './data/trainerTeams'
+import { getTrainerDialogue, TRAINER_DIALOGUE_EVENTS } from './data/trainerDialogues'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
 function animationClassToken(value = '') {
@@ -150,6 +152,38 @@ function hpTone(pokemon) {
   if (ratio <= 0.2) return 'critical'
   if (ratio <= 0.5) return 'warning'
   return 'healthy'
+}
+
+function isBattlePokemonAvailable(pokemon) {
+  return Boolean(pokemon && pokemon.hp > 0 && !pokemon.fainted)
+}
+
+function teamHealthRatio(team = []) {
+  const maximum = team.reduce((total, pokemon) => total + Math.max(1, Number(pokemon.maxHp) || 1), 0)
+  const remaining = team.reduce((total, pokemon) => total + Math.max(0, Number(pokemon.hp) || 0), 0)
+  return maximum > 0 ? remaining / maximum : 0
+}
+
+function pokemonMatchesTrainerAce(pokemon, ace) {
+  if (!pokemon || !ace) return false
+  const aceSpeciesIds = new Set([
+    Number(ace.dexSpeciesId),
+    Number(ace.speciesId),
+  ].filter(Number.isFinite))
+  const pokemonSpeciesIds = [
+    pokemon.dexSpeciesId,
+    pokemon.speciesId,
+    pokemon.originalSpeciesId,
+    pokemon.battleBaseSpeciesId,
+  ].map(Number).filter(Number.isFinite)
+  if (pokemonSpeciesIds.some((speciesId) => aceSpeciesIds.has(speciesId))) return true
+
+  const normalizedAceName = String(ace.name ?? '').replace(/\s+/g, '')
+  const normalizedPokemonName = String(pokemon.name ?? '').replace(/\s+/g, '')
+  return normalizedAceName.length > 0 && (
+    normalizedPokemonName === normalizedAceName
+    || normalizedPokemonName.includes(normalizedAceName)
+  )
 }
 
 function effectivenessPresentation(multiplier) {
@@ -1680,6 +1714,41 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
   )
 }
 
+function TrainerDialogueScene({ trainer, dialogue, onContinue }) {
+  if (!dialogue) return null
+
+  return (
+    <section
+      className={`battle-trainer-dialogue-layer tone-${dialogue.tone}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="battle-trainer-dialogue-speaker"
+      aria-describedby="battle-trainer-dialogue-message"
+    >
+      <div className="battle-trainer-dialogue-light" aria-hidden="true" />
+      <div className="battle-trainer-dialogue-stage">
+        <span className="battle-trainer-dialogue-event">
+          <small>{dialogue.label}</small>
+          <strong>{dialogue.caption}</strong>
+        </span>
+        <TrainerSprite trainer={trainer} className="battle-trainer-dialogue-sprite" />
+      </div>
+      <button className="battle-trainer-dialogue-box" type="button" autoFocus onClick={onContinue}>
+        <span className="battle-trainer-dialogue-nameplate">
+          <small>AI TRAINER</small>
+          <strong id="battle-trainer-dialogue-speaker">{dialogue.trainerName}</strong>
+        </span>
+        <span className="battle-trainer-dialogue-copy" id="battle-trainer-dialogue-message" aria-live="assertive">
+          {dialogue.text}
+        </span>
+        <span className="battle-trainer-dialogue-prompt">
+          계속 <ChevronRight size={18} />
+        </span>
+      </button>
+    </section>
+  )
+}
+
 function BattleScreen({
   competitionLabel,
   playerPokemon,
@@ -1704,6 +1773,7 @@ function BattleScreen({
   const [pendingMoveIndex, setPendingMoveIndex] = useState(null)
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
+  const [trainerDialogueQueue, setTrainerDialogueQueue] = useState([])
   const [moveAssetsReady, setMoveAssetsReady] = useState(false)
   const [hoveredPokemonSide, setHoveredPokemonSide] = useState(null)
   const [focusedPokemonSide, setFocusedPokemonSide] = useState(null)
@@ -1712,12 +1782,19 @@ function BattleScreen({
   const playbackTimerRef = useRef(null)
   const playbackTokenRef = useRef(0)
   const turnLockedRef = useRef(false)
+  const seenTrainerDialogueEventsRef = useRef(new Set())
+  const lastContextualDialogueTurnRef = useRef(0)
   const battleAudioRef = useRef(null)
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
+  const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
+  const activeTrainerDialogue = trainerDialogueQueue[0] ?? null
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
   const playerActivePokemon = getActivePokemonList(battle, 'player')
   const opponentActivePokemon = getActivePokemonList(battle, 'opponent')
+  const initialOpponentActiveBattleIdsRef = useRef(new Set(
+    opponentActivePokemon.map((pokemon) => pokemon.battleId),
+  ))
   const inspectedPokemonSide = hoveredPokemonSide ?? focusedPokemonSide ?? pinnedPokemonSide
   const summary = useMemo(() => getBattleSummary(battle), [battle])
   const currentLogEntry = battle.log.at(-1)
@@ -1726,13 +1803,25 @@ function BattleScreen({
   const battleLogHistory = battle.log
     .filter((entry) => entry.id !== currentLogEntry?.id || turnCue)
     .slice(-12)
-  const commandLocked = isTurnAnimating || Boolean(battle.winner)
+  const commandLocked = isTurnAnimating || Boolean(battle.winner) || Boolean(activeTrainerDialogue)
   const attackAnimationMode = gameSettings.attackAnimation ?? 'normal'
   const showDamageNumbers = gameSettings.showDamageNumbers !== false
   const hpBarDuration = HP_BAR_DURATIONS[gameSettings.hpBarSpeed] ?? HP_BAR_DURATIONS.normal
   const visualTurnCue = attackAnimationMode === 'skip' && ATTACK_ANIMATION_PHASES.has(turnCue?.phase)
     ? null
     : turnCue
+
+  const enqueueTrainerDialogue = useCallback((eventId, context = {}, options = {}) => {
+    if (seenTrainerDialogueEventsRef.current.has(eventId)) return false
+    const dialogue = getTrainerDialogue(opponentTrainer, eventId, context)
+    if (!dialogue?.text) return false
+
+    seenTrainerDialogueEventsRef.current.add(eventId)
+    setTrainerDialogueQueue((currentQueue) => (
+      options.replace ? [dialogue] : [...currentQueue, dialogue]
+    ))
+    return true
+  }, [opponentTrainer])
 
   useEffect(() => {
     let active = true
@@ -1799,6 +1888,17 @@ function BattleScreen({
   }, [audioSettings])
 
   useEffect(() => {
+    if (!introVisible && activeTrainerDialogue) {
+      battleAudioRef.current?.playMenu(
+        activeTrainerDialogue.eventId === TRAINER_DIALOGUE_EVENTS.VICTORY
+          || activeTrainerDialogue.eventId === TRAINER_DIALOGUE_EVENTS.DEFEAT
+          ? 'confirm'
+          : 'cursor',
+      )
+    }
+  }, [activeTrainerDialogue?.id, introVisible])
+
+  useEffect(() => {
     setHoveredPokemonSide(null)
     setFocusedPokemonSide(null)
     setPinnedPokemonSide(null)
@@ -1815,8 +1915,86 @@ function BattleScreen({
     if (!introVisible && turnCue && !skipAttackCue) battleAudioRef.current?.playCue(turnCue)
   }, [attackAnimationMode, introVisible, turnCue])
 
+  useEffect(() => {
+    if (introVisible || isTurnAnimating || activeTrainerDialogue) return
+
+    const context = {
+      turn: battle.turn,
+      aceName: opponentTrainer.ace?.name,
+      activeName: opponentActivePokemon.find(isBattlePokemonAvailable)?.name ?? opponentTrainer.ace?.name,
+      specialty: opponentTrainer.specialties?.[0],
+    }
+
+    if (battle.winner) {
+      enqueueTrainerDialogue(
+        battle.winner === 'player'
+          ? TRAINER_DIALOGUE_EVENTS.DEFEAT
+          : TRAINER_DIALOGUE_EVENTS.VICTORY,
+        context,
+        { replace: true },
+      )
+      return
+    }
+
+    const currentTurn = Math.max(1, Number(battle.turn) || 1)
+    if (currentTurn < 2 || currentTurn - lastContextualDialogueTurnRef.current < 2) return
+
+    const playerLivingCount = battle.player.team.filter(isBattlePokemonAvailable).length
+    const opponentLivingCount = battle.opponent.team.filter(isBattlePokemonAvailable).length
+    const opponentHealth = teamHealthRatio(battle.opponent.team)
+    const aceOnField = opponentActivePokemon.find((pokemon) => (
+      isBattlePokemonAvailable(pokemon)
+      && pokemonMatchesTrainerAce(pokemon, opponentTrainer.ace)
+    ))
+    const opponentTeamSize = battle.opponent.team.length
+    const openingAceStillLeading = aceOnField
+      && initialOpponentActiveBattleIdsRef.current.has(aceOnField.battleId)
+      && opponentLivingCount > 1
+    let eventId = null
+
+    if (
+      aceOnField
+      && !openingAceStillLeading
+      && !seenTrainerDialogueEventsRef.current.has(TRAINER_DIALOGUE_EVENTS.ACE)
+    ) {
+      eventId = TRAINER_DIALOGUE_EVENTS.ACE
+      context.activeName = aceOnField.name
+    } else if (
+      !seenTrainerDialogueEventsRef.current.has(TRAINER_DIALOGUE_EVENTS.CRISIS)
+      && (
+        opponentHealth <= 0.35
+        || (opponentTeamSize > 1 && opponentLivingCount <= Math.floor(opponentTeamSize / 2))
+      )
+    ) {
+      eventId = TRAINER_DIALOGUE_EVENTS.CRISIS
+    } else if (
+      !seenTrainerDialogueEventsRef.current.has(TRAINER_DIALOGUE_EVENTS.ADVANTAGE)
+      && opponentLivingCount > playerLivingCount
+    ) {
+      eventId = TRAINER_DIALOGUE_EVENTS.ADVANTAGE
+    } else if (
+      currentTurn >= 3
+      && !seenTrainerDialogueEventsRef.current.has(TRAINER_DIALOGUE_EVENTS.MID)
+    ) {
+      eventId = TRAINER_DIALOGUE_EVENTS.MID
+    }
+
+    if (eventId) {
+      lastContextualDialogueTurnRef.current = currentTurn
+      enqueueTrainerDialogue(eventId, context)
+    }
+  }, [
+    activeTrainerDialogue,
+    battle,
+    enqueueTrainerDialogue,
+    introVisible,
+    isTurnAnimating,
+    opponentActivePokemon,
+    opponentTrainer,
+  ])
+
   const startAnimatedTurn = (playerAction) => {
-    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch) return
+    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
     turnLockedRef.current = true
     const playbackToken = playbackTokenRef.current + 1
     playbackTokenRef.current = playbackToken
@@ -1866,6 +2044,7 @@ function BattleScreen({
     if (
       introVisible
       || isTurnAnimating
+      || activeTrainerDialogue
       || battle.winner
       || battle.awaitingPlayerSwitch
       || (battle.rules?.format?.actionSlots ?? 1) > 1
@@ -1887,6 +2066,7 @@ function BattleScreen({
     battle.winner,
     forcedMoveIndex,
     forcedReason,
+    activeTrainerDialogue,
     introVisible,
     isTurnAnimating,
   ])
@@ -1982,7 +2162,7 @@ function BattleScreen({
   }
 
   const chooseSwitch = (targetIndex) => {
-    if (turnLockedRef.current) return
+    if (turnLockedRef.current || activeTrainerDialogue) return
     battleAudioRef.current?.playMenu('select')
     if (battle.awaitingPlayerSwitch) {
       const activeSlot = battle.awaitingPlayerSwitchSlots?.[0] ?? 0
@@ -2026,6 +2206,11 @@ function BattleScreen({
       winner: forcedWinner ?? summary.winner,
       playerRemaining: forcedWinner === 'opponent' ? 0 : summary.playerRemaining,
     })
+  }
+
+  const dismissTrainerDialogue = () => {
+    battleAudioRef.current?.playMenu('select')
+    setTrainerDialogueQueue((currentQueue) => currentQueue.slice(1))
   }
 
   const openBattleMenu = (nextMenu) => {
@@ -2123,7 +2308,7 @@ function BattleScreen({
 
   return (
     <main
-      className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
+      className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${activeTrainerDialogue ? ' has-trainer-dialogue' : ''}`}
       style={{ '--battle-hp-duration': `${hpBarDuration}ms` }}
     >
       <header className="battle-game-header">
@@ -2391,6 +2576,14 @@ function BattleScreen({
         </div>
       </section>
 
+      {activeTrainerDialogue && !introVisible && (
+        <TrainerDialogueScene
+          trainer={opponentTrainer}
+          dialogue={activeTrainerDialogue}
+          onContinue={dismissTrainerDialogue}
+        />
+      )}
+
       {introVisible && (
         <BattleIntro
           opponent={opponent}
@@ -2402,12 +2595,26 @@ function BattleScreen({
           onPreview={previewBattleMenu}
           onStart={() => {
             battleAudioRef.current?.start({ player: playerActive, opponent: opponentActive })
+            enqueueTrainerDialogue(TRAINER_DIALOGUE_EVENTS.START, {
+              turn: battle.turn,
+              aceName: opponentTrainer.ace?.name,
+              activeName: opponentActive.name,
+              specialty: opponentTrainer.specialties?.[0],
+            })
             setIntroVisible(false)
           }}
         />
       )}
 
-      {battle.winner && !introVisible && !isTurnAnimating && (
+      {battle.winner
+        && !introVisible
+        && !isTurnAnimating
+        && !activeTrainerDialogue
+        && seenTrainerDialogueEventsRef.current.has(
+          battle.winner === 'player'
+            ? TRAINER_DIALOGUE_EVENTS.DEFEAT
+            : TRAINER_DIALOGUE_EVENTS.VICTORY,
+        ) && (
         <section className={`battle-result-overlay result-${battle.winner}`}>
           <span>{battle.winner === 'player' ? <Trophy size={42} /> : <Shield size={42} />}</span>
           <div>
