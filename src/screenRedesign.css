@@ -19983,13 +19983,6 @@
   background: repeating-linear-gradient(180deg, transparent 0 3px, rgba(205, 235, 255, 0.15) 4px);
 }
 
-.battle-trainer-dialogue-layer.tone-mid { --trainer-dialogue-accent: #7bc8ff; }
-.battle-trainer-dialogue-layer.tone-advantage { --trainer-dialogue-accent: #ffd45e; }
-.battle-trainer-dialogue-layer.tone-crisis { --trainer-dialogue-accent: #ff6c86; }
-.battle-trainer-dialogue-layer.tone-ace { --trainer-dialogue-accent: #dc79ff; }
-.battle-trainer-dialogue-layer.tone-victory { --trainer-dialogue-accent: #94f168; }
-.battle-trainer-dialogue-layer.tone-defeat { --trainer-dialogue-accent: #94a8cb; }
-
 .battle-trainer-dialogue-light {
   position: absolute;
   right: -8%;
