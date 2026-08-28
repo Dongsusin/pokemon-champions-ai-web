@@ -295,6 +295,73 @@ html[data-mobile-layout="landscape"] :is(
   height: calc(100dvh - var(--mobile-topbar-height));
 }
 
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-arena,
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-field-camera,
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-field-effects,
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-weather-layer {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-arena,
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-field-camera {
+  contain: paint;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-field-camera {
+  will-change: auto;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-environment-backdrop {
+  background-position: center 54% !important;
+  filter: none !important;
+  backface-visibility: hidden;
+  animation: mobile-battle-backdrop-drift 30s ease-in-out infinite alternate !important;
+  will-change: transform;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view :is(
+  .battle-terrain-aura,
+  .battle-field-ambient,
+  .battle-field-energy,
+  .battle-weather-loop,
+  .battle-weather-celestial,
+  .battle-weather-cloud,
+  .battle-weather-gust
+) {
+  animation: none !important;
+  will-change: auto;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view :is(
+  .battle-field-transition,
+  .battle-weather-transition,
+  .battle-cinematic-flash
+) {
+  display: none !important;
+  animation: none !important;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-field-particles > i:nth-child(even),
+html[data-mobile-layout="landscape"] .app-shell.battle-view .weather-layer-back .battle-weather-particles > i:nth-child(even),
+html[data-mobile-layout="landscape"] .app-shell.battle-view .weather-layer-front .battle-weather-particles > i:nth-child(3n) {
+  display: none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-weather-ground > i:nth-child(n + 7) {
+  display: none;
+}
+
+@keyframes mobile-battle-backdrop-drift {
+  from {
+    transform: translate3d(-0.15%, 0.05%, 0) scale(1.035);
+  }
+
+  to {
+    transform: translate3d(0.15%, -0.05%, 0) scale(1.045);
+  }
+}
+
 @media (max-height: 900px) {
   html[data-mobile-layout="landscape"] .draw-screen.showing-banner {
     gap: 4px;
