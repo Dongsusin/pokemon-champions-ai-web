@@ -577,6 +577,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
   const matchingGimmick = teamGimmicks.find((gimmick) => (
     gimmick.pokemonSlug === entry.slug
       || gimmick.pokemonName === normalized.name
+      || gimmick.pokemonName === normalized.formName
       || Number(gimmick.pokemonSpeciesId) === Number(normalized.dexSpeciesId)
   ))
 
@@ -752,7 +753,9 @@ export function createBattlePreviewPokemon(entry, index = 0, teamGimmicks = []) 
 
 function reorderForLead(entries, leadName) {
   if (!leadName) return entries
-  const leadIndex = entries.findIndex((entry) => entry.name === leadName)
+  const leadIndex = entries.findIndex((entry) => (
+    entry.name === leadName || entry.formName === leadName
+  ))
   if (leadIndex <= 0) return entries
   return [entries[leadIndex], ...entries.slice(0, leadIndex), ...entries.slice(leadIndex + 1)]
 }
@@ -5063,6 +5066,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.dexSpeciesId = transformed.dexSpeciesId
   pokemon.slug = form.slug
   pokemon.name = form.name
+  pokemon.formName = form.formName ?? form.name
   pokemon.originalTypes = [...form.types]
   pokemon.types = pokemon.teraActive ? [pokemon.teraType] : [...form.types]
   pokemon.ability = preservedAbility
@@ -5530,6 +5534,7 @@ function transformGigantamax(pokemon) {
   pokemon.dynamaxOriginalForm ??= {
     speciesId: pokemon.speciesId,
     name: pokemon.name,
+    formName: pokemon.formName,
     spriteFront: pokemon.spriteFront,
     spriteBack: pokemon.spriteBack,
     spriteFrontFallback: pokemon.spriteFrontFallback,
@@ -5537,6 +5542,7 @@ function transformGigantamax(pokemon) {
   }
   pokemon.speciesId = form.id
   pokemon.name = form.name
+  pokemon.formName = form.formName ?? form.name
   pokemon.spriteFront = form.spriteFront
   pokemon.spriteBack = form.spriteBack
   pokemon.spriteFrontFallback = form.spriteFrontFallback
@@ -5661,6 +5667,7 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
     pokemon.dynamaxOriginalForm = {
       speciesId: pokemon.speciesId,
       name: pokemon.name,
+      formName: pokemon.formName,
       spriteFront: pokemon.spriteFront,
       spriteBack: pokemon.spriteBack,
       spriteFrontFallback: pokemon.spriteFrontFallback,
@@ -8229,6 +8236,7 @@ function endDynamax(state, pokemon) {
   if (pokemon.dynamaxOriginalForm) {
     pokemon.speciesId = pokemon.dynamaxOriginalForm.speciesId
     pokemon.name = pokemon.dynamaxOriginalForm.name
+    pokemon.formName = pokemon.dynamaxOriginalForm.formName ?? pokemon.dynamaxOriginalForm.name
     pokemon.spriteFront = pokemon.dynamaxOriginalForm.spriteFront
     pokemon.spriteBack = pokemon.dynamaxOriginalForm.spriteBack
     pokemon.spriteFrontFallback = pokemon.dynamaxOriginalForm.spriteFrontFallback
@@ -10705,7 +10713,8 @@ function aiLeadUtility(pokemon, preferredLeadName = '') {
     && ['focus-sash', 'mental-herb', 'light-clay'].includes(pokemon.heldItemId)
     ? 10
     : 0
-  return roleUtility + moveUtility + itemUtility + (pokemon.name === preferredLeadName ? 52 : 0)
+  const preferredLeadBonus = [pokemon.name, pokemon.formName].includes(preferredLeadName) ? 52 : 0
+  return roleUtility + moveUtility + itemUtility + preferredLeadBonus
 }
 
 function aiLeadCandidateScore(state, sideId, pokemon, targetSlots, preferredLeadName) {

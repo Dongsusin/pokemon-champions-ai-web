@@ -438,16 +438,25 @@ function battleGimmickProfileName(entry) {
   return entry.name
 }
 
-const PROFILE_LIST = PROFILE_LIST_WITH_SPRITES.map((entry) => {
-  if (getPokemonFormMetadata(entry).formKind !== 'gender') {
-    return { ...entry, name: battleGimmickProfileName(entry) }
+function pokemonProfileDisplayName(entry) {
+  if (getPokemonFormMetadata(entry).formKind === 'gimmick') {
+    return battleGimmickProfileName(entry)
   }
+
+  const baseProfile = SOURCE_PROFILE_BY_ID.get(Number(entry.parentSpeciesId))
+  if (baseProfile) return baseProfile.name
 
   const sourceProfile = entry.sourceSlug
     ? SOURCE_PROFILE_BY_SLUG.get(entry.sourceSlug)
-    : SOURCE_PROFILE_BY_ID.get(Number(entry.parentSpeciesId))
-  return sourceProfile ? { ...entry, name: sourceProfile.name } : entry
-})
+    : null
+  return sourceProfile?.name ?? entry.name
+}
+
+const PROFILE_LIST = PROFILE_LIST_WITH_SPRITES.map((entry) => ({
+  ...entry,
+  formName: entry.name,
+  name: pokemonProfileDisplayName(entry),
+}))
 const PROFILE_BY_SLUG = new Map(PROFILE_LIST.map((entry) => [entry.slug, entry]))
 const RELATED_PROFILE_OPTIONS_BY_BASE_ID = new Map()
 
@@ -893,7 +902,9 @@ export function normalizePokemon(pokemon) {
     ...pokemon,
     speciesId: species.id,
     dexSpeciesId: Number(pokemon.dexSpeciesId ?? species.parentSpeciesId ?? species.id),
+    slug: species.slug,
     name: species.name,
+    formName: species.formName ?? species.name,
     isShiny,
     shinyObtained,
     directDrawCount: Math.max(0, Number(pokemon.directDrawCount ?? 0)),

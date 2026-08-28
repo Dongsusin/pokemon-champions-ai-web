@@ -89,6 +89,14 @@ assert.equal(requireProfile('meowstic').gender, 'M')
 assert.equal(requireProfile('meowstic-female').gender, 'F')
 assert.equal(requireProfile('cacturne-f').name, requireProfile('cacturne').name)
 assert.equal(requireProfile('meowstic-female').name, requireProfile('meowstic').name)
+assert.equal(requireProfile('ninetales-alola').name, requireProfile('ninetales').name)
+assert.equal(requireProfile('ninetales-alola').formName, '나인테일 알로라의 모습')
+assert.equal(requireProfile('rotom-wash').name, requireProfile('rotom').name)
+assert.equal(requireProfile('aegislash-blade').name, requireProfile('aegislash').name)
+
+const normalizedAlolanNinetales = normalizePokemon({ speciesId: requireProfile('ninetales-alola').id })
+assert.equal(normalizedAlolanNinetales.name, '나인테일')
+assert.equal(normalizedAlolanNinetales.formName, '나인테일 알로라의 모습')
 
 assert.deepEqual(getPokemonGenderOptions(requireProfile('bulbasaur')), ['M', 'F'])
 assert.deepEqual(getPokemonGenderOptions(requireProfile('magnemite')), [])
@@ -278,7 +286,8 @@ assert(normalizePokemon({ speciesId: keldeoResolute.id, moves: ['방어'] }).mov
 assert.equal(resolveMoveTriggeredFormSpeciesId(647, ['신비의칼']), keldeoResolute.id)
 assert.equal(resolveMoveTriggeredFormSpeciesId(keldeoResolute.id, ['방어']), 647)
 
-assert.equal(requireProfile('koraidon-limited-build').name, '코라이돈 제한형태')
+assert.equal(requireProfile('koraidon-limited-build').name, '코라이돈')
+assert.equal(requireProfile('koraidon-limited-build').formName, '코라이돈 제한형태')
 assert.equal(getFormMetadata(requireProfile('miraidon-drive-mode')).formKind, 'cosmetic')
 
 const rideOnlyFormSlugs = [
