@@ -23,7 +23,11 @@ import {
   isFirebaseConfigured,
   missingFirebaseEnvironmentVariables,
 } from './firebaseClient'
-import { clearLocalPlayerData } from './accountStorage'
+import {
+  clearLocalPlayerData,
+  clearPendingGoogleMigration,
+  markPendingGoogleMigration,
+} from './accountStorage'
 import { deletePlayerProfile, ensurePlayerProfile } from './playerProfile'
 
 const AuthContext = createContext(null)
@@ -224,7 +228,7 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = useCallback(async () => {
     if (!firebaseAuth) {
       setError('Firebase 연결 설정이 필요합니다.')
-      return
+      return false
     }
 
     setBusy(true)
@@ -234,16 +238,22 @@ export function AuthProvider({ children }) {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
       await signInWithPopup(firebaseAuth, provider)
+      return true
     } catch (authError) {
       setError(authErrorMessage(authError))
+      return false
     } finally {
       setBusy(false)
     }
   }, [])
 
   const connectGuestToGoogle = useCallback(async () => {
-    if (!userRef.current?.isLocalGuest) return
-    await signInWithGoogle()
+    const currentGuest = userRef.current
+    if (!currentGuest?.isLocalGuest) return false
+    markPendingGoogleMigration(currentGuest.uid)
+    const connected = await signInWithGoogle()
+    if (!connected) clearPendingGoogleMigration()
+    return connected
   }, [signInWithGoogle])
 
   const signInAsGuest = useCallback(async () => {

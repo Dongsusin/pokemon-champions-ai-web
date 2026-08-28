@@ -36,6 +36,7 @@
     "validate:training-moves": "node scripts/validateTrainingMoves.mjs",
     "validate:draw-pool": "node scripts/validatePokemonDrawPool.mjs",
     "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",
+    "validate:account-sync": "node scripts/validateAccountGameData.mjs",
     "generate:sprite-manifest": "node scripts/generateGen5SpriteManifest.mjs",
     "generate:trainer-teams": "node scripts/generateTrainerTeams.mjs && node scripts/generateTrainerLoadouts.mjs",
     "generate:trainer-loadouts": "node scripts/generateTrainerLoadouts.mjs",

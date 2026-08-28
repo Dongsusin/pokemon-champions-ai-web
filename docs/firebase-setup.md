@@ -37,4 +37,6 @@ npx firebase-tools login
 npx firebase-tools deploy --only firestore:rules
 ```
 
-로그인에 성공하면 `players/{uid}` 프로필 문서가 자동으로 생성되거나 갱신됩니다. 게스트 데이터와 기존 로컬 게임 데이터의 Firestore 이전은 별도의 데이터 동기화 단계에서 진행합니다.
+로그인에 성공하면 `players/{uid}` 프로필 문서가 자동으로 생성되거나 갱신됩니다. 포켓몬 도감·트레이닝 설정은 `players/{uid}/gameData/collection`, VP·팀·아이템·게임 설정은 `players/{uid}/gameData/progress` 문서에 자동 저장됩니다.
+
+기존 버전에서 브라우저에만 저장했던 데이터는 해당 기기에서 Google 계정으로 처음 접속할 때 자동으로 Firestore에 이전됩니다. 게스트 설정 화면에서 Google 계정 연결을 선택한 경우에도 현재 게스트 진행 상황을 연결된 계정으로 이전합니다. 이후 다른 PC나 모바일에서 같은 Google 계정으로 로그인하면 서버 데이터를 먼저 불러온 뒤 게임을 시작합니다.

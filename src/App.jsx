@@ -25,6 +25,7 @@ import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
 import LoginScreen, { AuthLoadingScreen } from './LoginScreen'
 import { useAuth } from './auth/AuthProvider'
+import { useAccountGameData } from './auth/useAccountGameData'
 import { createGameAudio } from './gameAudio'
 import {
   SETTINGS_STORAGE_KEY,
@@ -255,6 +256,7 @@ function GameApp({
   onAutoLoginChange,
   onConnectGoogle,
   onDeleteAccount,
+  onPlayerDataChanged,
   onSignOut,
 }) {
   const initialCollection = useRef(null)
@@ -386,6 +388,19 @@ function GameApp({
       window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
     } catch {}
   }, [settings])
+
+  useEffect(() => {
+    onPlayerDataChanged?.()
+  }, [
+    activeTeamId,
+    boxPokemon,
+    drawTutorialStep,
+    itemInventory,
+    onPlayerDataChanged,
+    settings,
+    teams,
+    vp,
+  ])
 
   useEffect(() => {
     const availableCaptureIds = boxPokemon.map((pokemon) => pokemon.captureId)
@@ -1141,7 +1156,8 @@ function App() {
   return (
     <>
       <LandscapeOrientationGate />
-      <GameApp
+      <AccountGameApp
+        key={user.uid}
         user={user}
         accountError={profileSyncError || error}
         authBusy={busy}
@@ -1152,6 +1168,31 @@ function App() {
         onSignOut={signOut}
       />
     </>
+  )
+}
+
+function AccountGameApp({ user, accountError, ...props }) {
+  const {
+    ready: gameDataReady,
+    syncError,
+    flush,
+    scheduleSave,
+  } = useAccountGameData(user)
+
+  if (!gameDataReady) return <AuthLoadingScreen />
+
+  return (
+    <GameApp
+      key={user.uid}
+      {...props}
+      user={user}
+      accountError={syncError || accountError}
+      onPlayerDataChanged={scheduleSave}
+      onSignOut={async () => {
+        await flush()
+        await props.onSignOut?.()
+      }}
+    />
   )
 }
 

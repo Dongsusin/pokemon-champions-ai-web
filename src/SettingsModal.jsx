@@ -134,7 +134,10 @@ function AccountPanel({
           <strong>{accountName}</strong>
           <span>{isGuest ? '이 PC 브라우저에만 저장' : user?.email}</span>
         </span>
-        <span className="settings-account-badge"><ShieldCheck size={15} /> 연결됨</span>
+        <span className="settings-account-badge">
+          <ShieldCheck size={15} />
+          {isGuest ? '로컬 저장' : '클라우드 동기화'}
+        </span>
       </div>
 
       <div className="settings-account-persistence">

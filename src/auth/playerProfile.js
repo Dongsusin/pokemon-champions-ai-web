@@ -1,5 +1,6 @@
 import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { firebaseDb } from './firebaseClient'
+import { deletePlayerGameData } from './playerGameData'
 
 export async function ensurePlayerProfile(user) {
   if (!firebaseDb || !user) return
@@ -21,5 +22,6 @@ export async function ensurePlayerProfile(user) {
 
 export async function deletePlayerProfile(user) {
   if (!firebaseDb || !user) return
+  await deletePlayerGameData(user.uid)
   await deleteDoc(doc(firebaseDb, 'players', user.uid))
 }
