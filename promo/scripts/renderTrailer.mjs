@@ -17,6 +17,8 @@ try { ({ chromium } = require('playwright')) } catch { ({ chromium } = require(p
 const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
 const shots = JSON.parse(await fs.readFile('promo/timeline.json', 'utf8'))
 const totalDuration = shots.reduce((seconds, shot) => seconds + shot.duration, 0)
+const transitionDuration = .4
+const deterministicKinds = new Set(['title', 'cinematic', 'wall'])
 if (!Number.isFinite(totalDuration) || totalDuration < 60 || totalDuration > 180 || shots.some(shot => !Number.isFinite(shot.duration) || shot.duration <= 0)) throw new Error('Trailer must have valid clips and last 60–180 seconds')
 const reuseClips = process.argv.includes('--reuse-clips')
 const audioOnly = process.argv.includes('--audio-only')
@@ -25,6 +27,7 @@ if (audioOnly && onlyClips) throw new Error('--audio-only cannot be combined wit
 if (onlyClips?.some(id => !shots.some(shot => shot.id === id))) throw new Error('Unknown clip in --only-clips')
 const renderShots = audioOnly ? [] : onlyClips ? shots.filter(shot => onlyClips.includes(shot.id)) : shots
 const rendererSource = await fs.readFile(fileURLToPath(import.meta.url))
+const editFingerprint = crypto.createHash('sha256').update(rendererSource).update(JSON.stringify(shots)).digest('hex')
 await fs.mkdir('promo/generated', { recursive: true })
 await fs.mkdir('promo/output', { recursive: true })
 
@@ -84,15 +87,23 @@ const motions = {
   description: { at: .34, duration: .34, dx: 0, dy: 20 },
   tag: { at: .43, duration: .30, dx: 32, dy: 0 },
 }
-async function encode({ id, source = id, start, length, overlay, audio = false, audioSource = source, audioOffset = 0, fade = true, output = id }) {
+async function encode({ id, source = id, start, length, overlay, audio = false, audioSource = source, audioOffset = 0, output = id, smoothSource = null }) {
+  if (smoothSource) {
+    const args = ['-i', smoothSource]
+    if (audio) args.push('-ss',String(audioOffset),'-i',`promo/raw/${audioSource}-audio.webm`)
+    else args.push('-f','lavfi','-i','anullsrc=r=48000:cl=stereo')
+    args.push('-map','0:v:0','-map','1:a:0','-c:v','copy','-af',`asetpts=PTS-STARTPTS,apad,atrim=duration=${length}`,
+      '-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-t',String(length),'-movflags','+faststart',`promo/generated/${output}.mp4`)
+    await run(args)
+    return
+  }
   const args = ['-ss',String(start),'-i',`promo/raw/${source}.webm`]
   const layers = overlay ? JSON.parse(await fs.readFile(`promo/generated/${overlay}-overlay.json`, 'utf8')) : []
   for (const layer of layers) args.push('-framerate','30','-loop','1','-i',layer.file)
   const ai = 1 + layers.length
   if (audio) args.push('-ss',String(audioOffset),'-i',`promo/raw/${audioSource}-audio.webm`)
   else args.push('-f','lavfi','-i','anullsrc=r=48000:cl=stereo')
-  const fadeFilters = fade ? `,fade=t=in:st=0:d=0.10,fade=t=out:st=${length-.12}:d=0.12` : ''
-  let filters = '[0:v]setpts=PTS-STARTPTS,fps=30,setsar=1,eq=contrast=1.015:saturation=1.06[scene];'
+  let filters = `[0:v]setpts=PTS-STARTPTS,fps=30,setsar=1,tpad=stop_mode=clone:stop_duration=${transitionDuration},eq=contrast=1.015:saturation=1.06[scene];`
   let previous = 'scene'
   for (const [index, layer] of layers.entries()) {
     let x = String(layer.x), y = String(layer.y), alpha = ''
@@ -113,7 +124,7 @@ async function encode({ id, source = id, start, length, overlay, audio = false, 
     filters += `[${index+1}:v]setpts=PTS-STARTPTS,format=rgba${alpha}[caption${index}];[${previous}][caption${index}]overlay=x='${x}':y='${y}':eval=frame:shortest=1[composite${index}];`
     previous = `composite${index}`
   }
-  filters += `[${previous}]null${fadeFilters}[v]`
+  filters += `[${previous}]null[v]`
   filters += `;[${ai}:a]asetpts=PTS-STARTPTS,atrim=duration=${length},apad,afade=t=out:st=${length-.09}:d=0.09[a]`
   args.push('-filter_complex',filters,'-map','[v]','-map','[a]','-t',String(length),...encoding,`promo/generated/${output}.mp4`)
   await run(args)
@@ -126,6 +137,13 @@ for (const shot of renderShots) {
   const stamp = stat => stat ? [stat.size, stat.mtimeMs] : null
   const fingerprintHash = crypto.createHash('sha256').update(rendererSource)
     .update(JSON.stringify({ shot, capture, rawVideo: stamp(rawVideo), rawAudio: stamp(rawAudio) }))
+  const length = shot.duration + (shot === shots.at(-1) ? 0 : transitionDuration)
+  const smoothSource = deterministicKinds.has(shot.kind) ? `promo/generated/smooth/${shot.id}.mp4` : null
+  if (smoothSource) {
+    const smoothReport = await fs.readFile(`promo/generated/smooth/${shot.id}.json`, 'utf8').then(JSON.parse)
+    if (smoothReport.fps !== 30 || smoothReport.frames !== Math.round(length * 30) || smoothReport.errors.length) throw new Error(`Render deterministic frames for ${shot.id} first`)
+    fingerprintHash.update(JSON.stringify(smoothReport)).update(JSON.stringify(stamp(await fs.stat(smoothSource))))
+  }
   if (shot.overlay) {
     const manifest = await fs.readFile(`promo/generated/${shot.id}-overlay.json`)
     fingerprintHash.update(manifest)
@@ -138,15 +156,46 @@ for (const shot of renderShots) {
     if (exists && previous?.fingerprint === fingerprint) continue
   }
   const offset = shot.sourceOffset ?? 0
-  await encode({ id:shot.id, start:await sourceStart(shot.id)+offset, length:shot.duration, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle'||Boolean(shot.audioSource),audioSource:shot.audioSource||shot.id,audioOffset:offset })
+  await encode({ id:shot.id, start:smoothSource ? 0 : await sourceStart(shot.id)+offset, length, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle'||Boolean(shot.audioSource),audioSource:shot.audioSource||shot.id,audioOffset:offset,smoothSource })
   await fs.writeFile(`promo/generated/${shot.id}.render.json`, JSON.stringify({ fingerprint }))
   console.log(`Rendered ${shot.id}: ${shot.duration}s`)
 }
 if (onlyClips) process.exit(0)
+const pictureSourceFiles = shots.flatMap(shot => [
+  `promo/generated/${shot.id}.mp4`, `promo/generated/${shot.id}.render.json`,
+  `promo/raw/${shot.id}.webm`, `promo/raw/${shot.id}.json`,
+  ...(deterministicKinds.has(shot.kind) ? [`promo/generated/smooth/${shot.id}.mp4`,`promo/generated/smooth/${shot.id}.json`] : []),
+  ...(shot.kind === 'battle' || shot.audioSource ? [`promo/raw/${shot.audioSource || shot.id}-audio.webm`] : []),
+])
+const pictureSourceHashes = Object.fromEntries(await Promise.all(pictureSourceFiles.map(async file => [file,crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex')])))
 if (!audioOnly) {
-  await fs.writeFile('promo/generated/concat.txt', shots.map(s=>`file '${s.id}.mp4'`).join('\n'))
-  await run(['-f','concat','-safe','0','-i','promo/generated/concat.txt','-c','copy','promo/generated/picture-lock.mp4'])
+  // Outgoing shots carry a 12-frame handle. Crossfades start at the existing
+  // chapter boundary, so every action, subtitle and the 110-second BGM stay aligned.
+  const args = shots.flatMap(shot => ['-threads','2','-i',`promo/generated/${shot.id}.mp4`])
+  const filters = []
+  for (const [index,shot] of shots.entries()) {
+    const length = shot.duration + (index === shots.length - 1 ? 0 : transitionDuration)
+    filters.push(`[${index}:v]settb=AVTB,setpts=PTS-STARTPTS,setsar=1[v${index}]`)
+    filters.push(`[${index}:a]asetpts=PTS-STARTPTS,apad,atrim=duration=${length}[a${index}]`)
+  }
+  let boundary = 0, video = 'v0', audio = 'a0'
+  for (let index=1;index<shots.length;index++) {
+    boundary += shots[index-1].duration
+    filters.push(`[${video}][v${index}]xfade=transition=fade:duration=${transitionDuration}:offset=${boundary}[blend${index}]`)
+    filters.push(`[${audio}][a${index}]acrossfade=d=${transitionDuration}:c1=tri:c2=tri[sound${index}]`)
+    video = `blend${index}`; audio = `sound${index}`
+  }
+  filters.push(`[${video}]fade=t=in:st=0:d=0.18,fade=t=out:st=${totalDuration-.65}:d=0.65,format=yuv420p[picture]`)
+  console.log(`Compositing ${shots.length-1} continuous ${transitionDuration}s transitions…`)
+  await run([...args,'-filter_complex_threads','1','-filter_complex',filters.join(';'),'-map','[picture]','-map',`[${audio}]`,'-t',String(totalDuration),...encoding,'promo/generated/picture-lock.mp4'])
+  await fs.writeFile('promo/generated/picture-lock.render.json',JSON.stringify({
+    editFingerprint, sourceHashes:pictureSourceHashes, transitionDuration, transitions: shots.length-1, duration: totalDuration,
+    method: 'overlapping video dissolve and audio crossfade with outgoing handles',
+  },null,2))
 } else {
+  const pictureEdit = await fs.readFile('promo/generated/picture-lock.render.json','utf8').then(JSON.parse,()=>null)
+  if (pictureEdit?.editFingerprint !== editFingerprint) throw new Error('Picture renderer or timeline changed; run a full render before --audio-only')
+  if (JSON.stringify(pictureEdit.sourceHashes) !== JSON.stringify(pictureSourceHashes)) throw new Error('Picture sources changed; run a full render before --audio-only')
   const previous = JSON.parse(await fs.readFile('promo/output/validation.json', 'utf8'))
   if (previous.timelineDurationSeconds !== totalDuration || JSON.stringify(previous.shots.map(({id, kind, duration}) => ({id, kind, duration}))) !== JSON.stringify(shots.map(({id, kind, duration}) => ({id, kind, duration})))) throw new Error('Picture edit changed; run a full render before --audio-only')
   if (Math.abs(await duration('promo/generated/picture-lock.mp4') - totalDuration) > .1) throw new Error('Picture-lock duration differs from the timeline; run a full render')

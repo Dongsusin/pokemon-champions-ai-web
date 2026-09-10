@@ -78,10 +78,14 @@ node promo/scripts/validateGimmickFixtures.mjs
 node promo/scripts/captureTrailer.mjs --variants
 # 전장 크롭 및 자막용 manifest 생성
 node promo/scripts/prepareGimmickClips.mjs
-# 각 12초의 확장 화면 녹화
+# 각 12초 확장 화면의 로딩·실시간 동작 검증용 녹화
 node promo/scripts/captureTrailer.mjs mega zmove dynamax tera
+# 최종 화면은 각 시점을 정확히 30fps로 렌더링
+node promo/scripts/renderSceneFrames.mjs --workers=2 --reuse
 # 준비한 전체 타임라인과 음악을 최종 영상으로 편집
 node promo/scripts/renderTrailer.mjs --reuse-clips
+node promo/scripts/validateSmoothness.mjs
+node promo/scripts/validateTrailer.mjs
 ```
 
 한 매치만 다시 촬영하려면 `node promo/scripts/captureTrailer.mjs --variants take-mega-blastoise`처럼 `take-` 접두사가 있는 촬영 ID를 지정한다. 크롭 단계는 원본·메타데이터·스크립트의 변경을 확인하여 필요한 클립을 갱신한다. `promo/generated/gimmick-clips.json`은 화면 모음이 읽는 생성 파일이다. `window.promoWall.ready`, `play()`, `stop()`, `setTime(seconds)`, `status()`로 준비·재생·지정 시점과 9개 영상의 로드·재생 상태를 확인할 수 있다.

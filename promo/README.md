@@ -43,6 +43,10 @@
 
 ## 재제작
 
+장면 사이 11개 경계는 검정 화면을 거치지 않는 0.4초 크로스페이드로 연결한다. 앞 장면에 12프레임의 여유 구간을 추가해, 기존 챕터 시각·자막·BGM과 전체 110초 길이는 유지한다. 효과음도 같은 구간에서 교차 페이드한다. 검정 페이드는 영상의 처음과 끝에만 적용한다.
+
+포켓몬·트레이너·아이템 몽타주, 타이틀, 9분할 기믹 화면은 `renderSceneFrames.mjs`에서 각 시점의 화면을 정확히 1/30초 간격으로 렌더링한다. 특히 기믹 화면은 9개 영상을 해당 시각으로 이동시키고 화면 준비를 기다린 다음 한 프레임씩 저장한다. 컴퓨터의 실시간 녹화 부하로 카메라 움직임이 누락되는 것을 방지한다.
+
 저장소의 기본 의존성 설치 후, 영상 도구는 별도 디렉터리에 설치한다. 게임의 프로덕션 의존성이나 진입점은 바뀌지 않는다.
 
 ```powershell
@@ -59,7 +63,9 @@ node promo/scripts/validateGimmickFixtures.mjs
 node promo/scripts/captureTrailer.mjs --variants
 node promo/scripts/prepareGimmickClips.mjs
 node promo/scripts/captureTrailer.mjs
+node promo/scripts/renderSceneFrames.mjs --reuse
 node promo/scripts/renderTrailer.mjs
+node promo/scripts/validateSmoothness.mjs
 node promo/scripts/validateTrailer.mjs
 ```
 
@@ -68,6 +74,7 @@ node promo/scripts/validateTrailer.mjs
 ```powershell
 node promo/scripts/prepareWebSoundtrack.mjs
 node promo/scripts/renderTrailer.mjs --audio-only
+node promo/scripts/validateSmoothness.mjs
 node promo/scripts/validateTrailer.mjs
 ```
 
@@ -77,7 +84,7 @@ node promo/scripts/validateTrailer.mjs
 node promo/scripts/generateSoundtrack.mjs --out=promo/generated/original-soundtrack.wav
 ```
 
-촬영 서버는 `http://127.0.0.1:5184`를 사용하며 HMR을 꺼서 파일 저장 중 장면이 초기화되지 않게 한다. 원본 영상은 브라우저의 25fps 녹화이며 최종 편집에서 30fps로 변환한다. 원본과 중간 파일은 `raw/`, `generated/`에 저장하고 Git에서 제외한다. 완성 MP4·표지·자막과 소스는 저장소에 포함한다.
+촬영 서버는 `http://127.0.0.1:5184`를 사용하며 HMR을 꺼서 파일 저장 중 장면이 초기화되지 않게 한다. 실제 배틀 원본은 브라우저의 25fps 녹화이며, 광고용 카메라·텍스트·화면 구성은 정확한 30fps로 별도 렌더링한다. 원본과 중간 파일은 `raw/`, `generated/`에 저장하고 Git에서 제외한다. 완성 MP4·표지·자막과 소스는 저장소에 포함한다.
 
 배틀 촬영은 액션 직전의 단색 동기화 프레임을 자동 검출하여 영상과 Web Audio 녹음의 시작점을 맞춘다. 이 프레임은 최종 영상에 포함되지 않는다. `raw/*.json`에 검출한 시작 시각과 브라우저 오류·장면 상태가 남는다. 최종 검수용 음량 분석은 `generated/final-audio-analysis.txt`에 기록한다. 검증 스크립트는 전체 영상·오디오 디코딩, 실제 프레임 수, 동기화 프레임 누출, 음량, 파일 해시와 트레이너 이미지 로딩을 점검하고 `output/validation.json`을 갱신한다.
 

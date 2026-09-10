@@ -168,6 +168,37 @@ const score = await readJson('promo/generated/soundtrack.json')
 assert(score.durationSeconds === timelineDuration, `Soundtrack ${score.durationSeconds}s differs from the ${timelineDuration}s timeline`)
 assert(score.kind === 'web-battle-bgm' && score.sourcePath === 'public/assets/audio/battle/battle-theme.ogg', 'Trailer must use the actual web battle music')
 const hashFile = async name => crypto.createHash('sha256').update(await fs.readFile(name)).digest('hex')
+const frameRenders = []
+const verifiedSources = new Map()
+for (const shot of shots.filter(shot => ['title','cinematic','wall'].includes(shot.kind))) {
+  const frameRender = await readJson(`promo/generated/smooth/${shot.id}.json`)
+  const expectedDuration = shot.duration + (shot === shots.at(-1) ? 0 : .4)
+  assert(frameRender.shotId === shot.id && frameRender.sample === false && frameRender.start === 0, `Invalid deterministic render: ${shot.id}`)
+  assert(frameRender.fps === 30 && frameRender.frames === Math.round(expectedDuration * 30) && frameRender.durationSeconds === expectedDuration, `Incomplete deterministic frames: ${shot.id}`)
+  assert(frameRender.errors.length === 0 && !frameRender.status?.errors?.length && !frameRender.status?.failedAssets?.length, `Deterministic scene errors: ${shot.id}`)
+  assert(frameRender.sha256 === await hashFile(frameRender.output), `Deterministic movie differs from its report: ${shot.id}`)
+  for (const [source,sha256] of Object.entries(frameRender.sourceHashes)) {
+    if (!verifiedSources.has(source)) verifiedSources.set(source, await hashFile(source))
+    assert(verifiedSources.get(source) === sha256, `Scene source changed after rendering: ${source}`)
+  }
+  const status = frameRender.status
+  if (shot.id === 'pokemon') {
+    for (const field of ['totalPokemonCount','loadedPokemonCount','shownPokemonCount','peakVisiblePokemonCount']) assert(status[field] === NATIONAL_DEX.length, `Rendered Pokémon roster is incomplete: ${field}`)
+  }
+  if (shot.id === 'trainers') {
+    const expected = trainerRoster.find(roster => roster.shotId === shot.id).expectedCount
+    for (const field of ['totalTrainerCount','loadedTrainerCount','shownTrainerCount','peakVisibleTrainerCount']) assert(status[field] === expected, `Rendered trainer roster is incomplete: ${field}`)
+  }
+  if (shot.id === 'intro') assert(JSON.stringify(status.visibleText) === JSON.stringify(['POKÉMON','CHAMPIONS ARENA']) && status.logoLoaded, 'Rendered opening must contain only the loaded logo and title')
+  if (shot.kind === 'wall') {
+    assert(frameRender.initialStatus.visibleCount === 1 && status.visibleCount === 9 && status.peakVisibleCount === 9, `Rendered ${shot.id} must reveal one battle to nine`)
+    assert(status.videos.every(video => video.readyState >= 2 && video.currentTime > 1), `Rendered ${shot.id} contains an undecoded battle frame`)
+  }
+  frameRenders.push({ shotId:shot.id, frames:frameRender.frames, fps:frameRender.fps, duration:frameRender.durationSeconds, timingMethod:frameRender.timingMethod, sha256:frameRender.sha256,
+    openingVisibleCount:frameRender.initialStatus?.visibleCount, finalVisibleCount:status?.visibleCount,
+    peakVisiblePokemonCount:status?.peakVisiblePokemonCount, peakVisibleTrainerCount:status?.peakVisibleTrainerCount,
+    errors:frameRender.errors })
+}
 const fixtureCheck = await readJson('promo/generated/gimmick-fixtures-validation.json')
 assert(fixtureCheck.passed === true && fixtureCheck.failures.length === 0 && fixtureCheck.checks.length === 36 && fixtureCheck.checks.every(check => check.passed), 'The 36 gimmick battles have not passed engine verification')
 for (const [file, sha256] of Object.entries(fixtureCheck.sourceHashes)) assert(sha256 === await hashFile(file), `Gimmick fixture changed after validation: ${file}`)
@@ -177,21 +208,30 @@ assert(probe.stderr.includes(score.title) && probe.stderr.includes(score.artist)
 audio.soundtrack = score
 
 const bytes = await fs.readFile(file)
+const sha256 = crypto.createHash('sha256').update(bytes).digest('hex')
+const smoothness = await readJson('promo/generated/smoothness-validation.json')
+assert(smoothness.mode === 'validation' && smoothness.passed && smoothness.failures.length === 0 && smoothness.videoSha256 === sha256, 'Run validateSmoothness.mjs on this final movie; transition/camera validation is missing or failed')
+assert(smoothness.boundaries.length === shots.length - 1 && smoothness.cameras.length === 5 && smoothness.cadence.expectedFrames === expectedFrames, 'Smoothness report does not cover all transitions and camera reveals')
+const pictureEdit = await readJson('promo/generated/picture-lock.render.json')
+const editFingerprint = crypto.createHash('sha256').update(await fs.readFile('promo/scripts/renderTrailer.mjs')).update(JSON.stringify(shots)).digest('hex')
+assert(pictureEdit.editFingerprint === editFingerprint && pictureEdit.transitionDuration === .4 && pictureEdit.transitions === shots.length-1 && pictureEdit.duration === timelineDuration, 'Final picture composition is stale or lacks all transitions')
+assert(Object.keys(pictureEdit.sourceHashes || {}).length >= shots.length * 4, 'Picture composition is missing its source hashes')
+for (const [source, expectedHash] of Object.entries(pictureEdit.sourceHashes)) assert(expectedHash === await hashFile(source), `Picture source changed after composition: ${source}`)
 const compositionSeconds = shots.reduce((totals, shot) => {
   totals[shot.kind] = (totals[shot.kind] || 0) + shot.duration
   return totals
 }, {})
 const report = {
-  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 6,
+  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 7,
   title: probe.stderr.match(/^\s*title\s*:\s*(.+)$/m)?.[1].trim() || path.basename(file),
   durationSeconds, timelineDurationSeconds: timelineDuration, video, audio,
-  bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+  bytes: bytes.length, sha256,
   compositionSeconds,
   shots: shots.map((shot, index) => ({ id: shot.id, kind: shot.kind, duration: shot.duration, captureStatus: captures[index].status })),
   verification: {
     fullAudioVideoDecode: true, expectedVideoFrames: expectedFrames, visibleSyncMarkerFrames: greenFrames,
     capturePageErrors: 0, capturesWithSyncMarkers: captures.filter(c => Number.isFinite(c.syncStartSeconds)).length,
-    trainerRoster, pokemonRoster, titles, gimmickWalls,
+    trainerRoster, pokemonRoster, titles, gimmickWalls, frameRenders, smoothness,
     gimmickEngine: { passed: fixtureCheck.passed, variants: fixtureCheck.checks.length, sourceHashes: fixtureCheck.sourceHashes, groups: fixtureCheck.groups },
   },
 }
