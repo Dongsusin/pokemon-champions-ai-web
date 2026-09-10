@@ -15,8 +15,14 @@
 - `pokemon-champions-arena-2026.firebaseapp.com`
 - `pokemon-champions-arena-2026.web.app`
 - `pokemon-champions-ai-web.vercel.app`
+- `pokemon-champions-area-web.co.kr`
+- `www.pokemon-champions-area-web.co.kr`
 
 Vercel 미리보기 주소에서 Google 로그인을 테스트하려면 해당 미리보기 도메인도 별도로 승인해야 합니다.
+
+대표 게임 주소는 `https://pokemon-champions-area-web.co.kr`입니다. Firebase의 `authDomain`은 `pokemon-champions-arena-2026.firebaseapp.com`을 유지하며 Google 팝업 로그인을 사용합니다. 게임 접속 주소만 바꿀 때에는 승인 도메인에 새 주소를 추가하면 되고, 기존 Google OAuth 콜백 주소는 그대로 사용합니다.
+
+도메인이 바뀌면 브라우저의 게스트 저장소와 로그인 상태는 공유되지 않습니다. 기존 주소의 게스트 기록을 옮길 때에는 먼저 기존 주소에서 Google 계정에 연결해 동기화한 뒤, 기존 게임 창을 닫고 새 주소에서 같은 계정으로 로그인합니다.
 
 ## 2. 로컬 환경 변수
 
