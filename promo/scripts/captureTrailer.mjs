@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import os from 'node:os'
 import { resolveChromiumExecutable } from './browserRuntime.mjs'
+import { PROMO_GIMMICK_GROUPS } from '../fixtures.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const require = createRequire(import.meta.url)
@@ -15,8 +16,11 @@ try { ({ chromium } = require('playwright')) } catch { ({ chromium } = require(p
 const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
 const raw = path.join(root, 'promo/raw')
 await fs.mkdir(raw, { recursive: true })
-const shots = JSON.parse(await fs.readFile(path.join(root, 'promo/timeline.json'), 'utf8'))
-const only = process.argv.slice(2)
+const variants = process.argv.includes('--variants')
+const shots = variants
+  ? PROMO_GIMMICK_GROUPS.flatMap(group => group.variants.map(variant => ({ id: `take-${variant.sceneId}`, kind: 'battle', url: variant.url, duration: group.captureDuration })))
+  : JSON.parse(await fs.readFile(path.join(root, 'promo/timeline.json'), 'utf8'))
+const only = process.argv.slice(2).filter(arg => !arg.startsWith('--'))
 const browser = await chromium.launch({
   executablePath: await resolveChromiumExecutable(chromium),
   headless: true,
@@ -24,7 +28,7 @@ const browser = await chromium.launch({
 })
 
 try {
-  for (const shot of shots.filter(s => !only.length || only.includes(s.id))) {
+  const captureShot = async shot => {
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, reducedMotion: 'no-preference', recordVideo: { dir: raw, size: { width: 1920, height: 1080 } } })
     await context.addInitScript(() => {
       // Capture the game's actual Web Audio output without altering its synthesis.
@@ -61,7 +65,7 @@ try {
     const page = await context.newPage()
     const errors = []
     page.on('pageerror', e => errors.push(e.message))
-    await page.goto(base + shot.url, { waitUntil: 'networkidle', timeout: 90000 })
+    await page.goto(base + shot.url, { waitUntil: 'domcontentloaded', timeout: 90000 })
     await page.evaluate(() => document.fonts.ready)
     if (shot.kind === 'battle') {
       await page.evaluate(() => window.promo.ready)
@@ -69,9 +73,10 @@ try {
     }
     if (shot.kind === 'showcase') await page.evaluate(() => window.promoShowcase?.ready)
     if (shot.kind === 'cinematic') await page.evaluate(() => window.promoCinematic.ready)
+    if (shot.kind === 'wall') await page.evaluate(() => window.promoWall.ready)
     if (shot.kind === 'title') await page.evaluate(() => window.titleReady)
     await page.waitForTimeout(1600)
-    await page.screenshot({ path: path.join(raw, `${shot.id}-before.png`) })
+    await page.screenshot({ path: path.join(raw, `${shot.id}-before.png`), timeout: 90000 })
     // A removed solid-color marker gives the video an exact audio sync origin.
     // Browser recording may stop before page.close returns, so wall-clock tail
     // subtraction alone is not precise enough for move impact sound effects.
@@ -82,12 +87,13 @@ try {
     })
     await page.waitForTimeout(650)
     const start = Date.now()
-    const audio = await page.evaluate(kind => {
+    const audio = await page.evaluate(async kind => {
       document.getElementById('promo-sync-marker').remove()
       const recording = window.promoAudio.start()
       if (kind === 'battle') window.promo.play()
       if (kind === 'showcase') window.promoShowcase?.play?.()
       if (kind === 'cinematic') window.promoCinematic.play()
+      if (kind === 'wall') await window.promoWall.play()
       if (kind === 'title') document.getAnimations().forEach(a => { a.currentTime = 0; a.play() })
       return recording
     }, shot.kind)
@@ -95,22 +101,37 @@ try {
     await page.waitForTimeout((captureDuration + .25) * 1000)
     const audioData = await page.evaluate(() => window.promoAudio.stop())
     if (audioData) await fs.writeFile(path.join(raw, `${shot.id}-audio.webm`), Buffer.from(audioData, 'base64'))
-    await page.screenshot({ path: path.join(raw, `${shot.id}-after.png`) })
-    const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || window.promoCinematic?.status?.() || window.promoTitle?.status?.() || null)
+    await page.screenshot({ path: path.join(raw, `${shot.id}-after.png`), timeout: 90000 })
+    const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || window.promoCinematic?.status?.() || window.promoWall?.status?.() || window.promoTitle?.status?.() || null)
+    const events = await page.evaluate(() => {
+      const events = window.promo?.events || []
+      const origin = events.find(event => event.event === 'play')?.time
+      return Number.isFinite(origin) ? events.filter(event => event.time >= origin).map(({time,...event}) => ({...event,seconds:(time-origin)/1000})) : []
+    })
     const video = page.video()
     const videoTailSeconds = (Date.now()-start)/1000
     await page.close()
     await context.close()
     await video.saveAs(path.join(raw, `${shot.id}.webm`))
     await video.delete()
-    const pixels = spawnSync(ffmpeg, ['-hide_banner','-loglevel','error','-i',path.join(raw,`${shot.id}.webm`),'-vf','fps=25,scale=1:1:flags=neighbor,format=rgb24','-f','rawvideo','pipe:1'], { windowsHide:true, maxBuffer:1024*1024 })
+    const pixels = spawnSync(ffmpeg, ['-hide_banner','-loglevel','error','-i',path.join(raw,`${shot.id}.webm`),'-vf','fps=25,scale=4:4:flags=neighbor,format=rgb24','-f','rawvideo','pipe:1'], { windowsHide:true, maxBuffer:1024*1024 })
     if (pixels.status !== 0) throw new Error(pixels.stderr.toString())
     let markerEnd = -1
-    for (let i=0;i<pixels.stdout.length;i+=3) if(pixels.stdout[i]<30 && pixels.stdout[i+1]>220 && pixels.stdout[i+2]<30) markerEnd=i/3
+    const frameBytes = 4 * 4 * 3
+    for (let frame=0;frame<pixels.stdout.length;frame+=frameBytes) {
+      let greenPixels = 0
+      for (let i=frame;i<frame+frameBytes;i+=3) if(pixels.stdout[i]<30 && pixels.stdout[i+1]>220 && pixels.stdout[i+2]<30) greenPixels++
+      if (greenPixels >= 15) markerEnd=frame/frameBytes
+    }
     if (markerEnd < 0) throw new Error(`Missing video/audio sync marker in ${shot.id}`)
     const syncStartSeconds = (markerEnd+1)/25
-    const metadata = { id: shot.id, duration: shot.duration, captureDuration, syncStartSeconds, videoTailSeconds, recordedActionMs: Date.now()-start, audio, status, errors }
+    const metadata = { id: shot.id, duration: shot.duration, captureDuration, syncStartSeconds, videoTailSeconds, recordedActionMs: Date.now()-start, audio, status, events, errors }
     await fs.writeFile(path.join(raw, `${shot.id}.json`), JSON.stringify(metadata, null, 2))
     console.log(JSON.stringify(metadata))
   }
+  const selected = shots.filter(s => !only.length || only.includes(s.id))
+  if (only.some(id => !shots.some(shot => shot.id === id))) throw new Error('Unknown capture ID')
+  let next = 0
+  const worker = async () => { while (next < selected.length) await captureShot(selected[next++]) }
+  await Promise.all(Array.from({ length: variants && !process.argv.includes('--serial') ? 2 : 1 }, worker))
 } finally { await browser.close() }

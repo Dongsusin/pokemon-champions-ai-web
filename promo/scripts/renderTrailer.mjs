@@ -84,12 +84,12 @@ const motions = {
   description: { at: .34, duration: .34, dx: 0, dy: 20 },
   tag: { at: .43, duration: .30, dx: 32, dy: 0 },
 }
-async function encode({ id, source = id, start, length, overlay, audio = false, audioOffset = 0, fade = true, output = id }) {
+async function encode({ id, source = id, start, length, overlay, audio = false, audioSource = source, audioOffset = 0, fade = true, output = id }) {
   const args = ['-ss',String(start),'-i',`promo/raw/${source}.webm`]
   const layers = overlay ? JSON.parse(await fs.readFile(`promo/generated/${overlay}-overlay.json`, 'utf8')) : []
   for (const layer of layers) args.push('-framerate','30','-loop','1','-i',layer.file)
   const ai = 1 + layers.length
-  if (audio) args.push('-ss',String(audioOffset),'-i',`promo/raw/${source}-audio.webm`)
+  if (audio) args.push('-ss',String(audioOffset),'-i',`promo/raw/${audioSource}-audio.webm`)
   else args.push('-f','lavfi','-i','anullsrc=r=48000:cl=stereo')
   const fadeFilters = fade ? `,fade=t=in:st=0:d=0.10,fade=t=out:st=${length-.12}:d=0.12` : ''
   let filters = '[0:v]setpts=PTS-STARTPTS,fps=30,setsar=1,eq=contrast=1.015:saturation=1.06[scene];'
@@ -122,7 +122,7 @@ async function encode({ id, source = id, start, length, overlay, audio = false, 
 for (const shot of renderShots) {
   const capture = JSON.parse(await fs.readFile(`promo/raw/${shot.id}.json`, 'utf8'))
   const rawVideo = await fs.stat(`promo/raw/${shot.id}.webm`)
-  const rawAudio = shot.kind === 'battle' ? await fs.stat(`promo/raw/${shot.id}-audio.webm`) : null
+  const rawAudio = shot.kind === 'battle' || shot.audioSource ? await fs.stat(`promo/raw/${shot.audioSource || shot.id}-audio.webm`) : null
   const stamp = stat => stat ? [stat.size, stat.mtimeMs] : null
   const fingerprintHash = crypto.createHash('sha256').update(rendererSource)
     .update(JSON.stringify({ shot, capture, rawVideo: stamp(rawVideo), rawAudio: stamp(rawAudio) }))
@@ -138,7 +138,7 @@ for (const shot of renderShots) {
     if (exists && previous?.fingerprint === fingerprint) continue
   }
   const offset = shot.sourceOffset ?? 0
-  await encode({ id:shot.id, start:await sourceStart(shot.id)+offset, length:shot.duration, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle',audioOffset:offset })
+  await encode({ id:shot.id, start:await sourceStart(shot.id)+offset, length:shot.duration, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle'||Boolean(shot.audioSource),audioSource:shot.audioSource||shot.id,audioOffset:offset })
   await fs.writeFile(`promo/generated/${shot.id}.render.json`, JSON.stringify({ fingerprint }))
   console.log(`Rendered ${shot.id}: ${shot.duration}s`)
 }

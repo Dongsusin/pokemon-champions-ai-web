@@ -4,9 +4,9 @@ import { getTrainerSpriteCandidates } from '../src/data/trainerSprites.js'
 import { NATIONAL_DEX } from '../src/data/trainingData.js'
 
 const SCENES = {
-  pokemon: {duration:8,accent:'#a6f6da',copy:[
-    {eyebrow:'세대를 넘나드는 다양한 포켓몬',title:'만남은 다양하게. <em>팀은 나답게.</em>',description:'익숙한 파트너부터 새로운 에이스까지, 당신의 선택을 기다린다.'},
-    {eyebrow:'당신만의 여섯 마리',title:'당신의 파트너. <em>무한한 가능성.</em>',description:'각자의 타입과 특성을 조합해, 나만의 배틀 팀을 완성하라.'},
+  pokemon: {duration:12,accent:'#a6f6da',copy:[
+    {eyebrow:'하나의 만남에서 시작되는 모험',title:'당신의 파트너. <em>가능성은 끝없이.</em>',description:'세대를 넘어, 타입을 넘어. 더 넓어지는 선택의 세계.'},
+    {eyebrow:'1세대부터 9세대까지 · 전국도감 전체',title:`<em>${NATIONAL_DEX.length.toLocaleString('ko-KR')}종</em>의 포켓몬. 나만의 드림팀.`,description:'수많은 만남 속에서, 당신만의 여섯 마리를 찾아라.'},
   ]},
   trainers: {duration:14,accent:'#b2e9ff',copy:[
     {eyebrow:'모든 트레이너, 각자의 배틀',title:`<em>${TRAINERS.length}명</em>의 AI 트레이너.`,description:'익숙한 라이벌부터 챔피언까지, 끝없이 이어지는 도전.'},
@@ -161,34 +161,46 @@ async function loadTrainerRoster() {
   await Promise.all(Array.from({length:6},worker))
 }
 
-// These are supported national-dex profiles and the same animated sprites used
-// by the actual game. The opening selection wall is followed by two larger teams.
-const POKEMON_NAMES = [
-  '리자몽','루카리오','개굴닌자','가디안','피카츄','한카리아스',
-  '이상해꽃','거북왕','팬텀','망나뇽','마기라스','메타그로스',
-  '나인테일','윈디','갸라도스','잠만보','핫삼','번치코',
-  '보만다','밀로틱','초염몽','엘레이드','따라큐','드래펄트',
-]
-const POKEMON_TEAMS = [POKEMON_NAMES.slice(0,6),POKEMON_NAMES.slice(6,12)]
+// Compose every supported species once as a static sprite atlas. One canvas
+// camera then pulls back, avoiding the cost of 1,025 simultaneously playing GIFs.
+const POKEMON_HERO_IDS = [6,448,658,282,25,445]
 const pokemonRoster = document.querySelector('.pokemon-roster')
 const pokemonRosterImages = []
 const pokemonGroups = []
 const pokemonLoadQueue = []
 const shownPokemonIds = new Set()
+const visiblePokemonIds = new Set()
+const pokemonPositions = []
+const pokemonAtlas = document.createElement('canvas')
+const pokemonView = document.querySelector('.pokemon-wall')
+const pokemonContext = pokemonView.getContext('2d')
+const POKEMON_COLUMNS = 50
+const POKEMON_CELL = {width:96,height:86}
+const POKEMON_FRAME = {left:48,top:80,width:1824,height:654}
+const POKEMON_CAMERA = {x:960,y:407}
 let pokemonLoadRetries = 0
 let peakVisiblePokemonCount = 0
+let pokemonCameraScale = 1
+let pokemonAtlasReady = false
+pokemonView.width = 1920;pokemonView.height = 1080
 function pokemonArtwork(pokemon) {
-  const sources = [...new Set([pokemon.spriteFront,pokemon.spriteFrontFallback].flat().filter(Boolean))]
-  if (!sources.length) throw new Error(`Missing Pokémon sprite: ${pokemon.name}`)
+  // Real PokeAPI front PNGs allow transparent padding to be trimmed via CORS,
+  // maximizing sprite size even in the final complete national-dex wall.
+  const sources = [...new Set([
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png`,
+    pokemon.spriteFrontFallback,
+  ].flat().filter(Boolean))]
   const img = document.createElement('img')
   img.alt = pokemon.name
   img.dataset.pokemonId = String(pokemon.id)
   img.decoding = 'sync'
   img.loading = 'eager'
   pokemonLoadQueue.push(async () => {
-    for (const source of sources) {
+    for (const [sourceIndex,source] of sources.entries()) {
+      if(sourceIndex===0)img.crossOrigin='anonymous'
+      else img.removeAttribute('crossorigin')
       for (let attempt=0;attempt<3;attempt++) {
-        if (attempt) {pokemonLoadRetries++;await new Promise(resolve=>setTimeout(resolve,attempt*650))}
+        if (attempt) {pokemonLoadRetries++;await new Promise(resolve=>setTimeout(resolve,attempt*450))}
         const url = new URL(source,location.href)
         if (attempt) url.searchParams.set('promoRetry',String(attempt))
         try {await loadImageSource(img,url.href);return} catch {img.removeAttribute('src')}
@@ -199,43 +211,81 @@ function pokemonArtwork(pokemon) {
   })
   return img
 }
+function spriteContentBounds(img) {
+  const scratch=document.createElement('canvas')
+  scratch.width=img.naturalWidth;scratch.height=img.naturalHeight
+  const context=scratch.getContext('2d',{willReadFrequently:true})
+  context.drawImage(img,0,0)
+  try {
+    const {data}=context.getImageData(0,0,scratch.width,scratch.height)
+    let left=scratch.width,top=scratch.height,right=0,bottom=0
+    for(let y=0;y<scratch.height;y++)for(let x=0;x<scratch.width;x++) {
+      if(data[(y*scratch.width+x)*4+3]>24){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y)}
+    }
+    if(right>=left&&bottom>=top)return {x:left,y:top,width:right-left+1,height:bottom-top+1}
+  }catch{/* A non-CORS fallback keeps its original transparent frame. */}
+  return {x:0,y:0,width:img.naturalWidth,height:img.naturalHeight}
+}
+function preparePokemonAtlas() {
+  const rows=Math.ceil(pokemonRosterImages.length/POKEMON_COLUMNS)
+  pokemonAtlas.width=POKEMON_COLUMNS*POKEMON_CELL.width
+  pokemonAtlas.height=rows*POKEMON_CELL.height
+  const atlas=pokemonAtlas.getContext('2d')
+  atlas.imageSmoothingEnabled=false
+  pokemonRosterImages.forEach((img,index)=>{
+    const column=index%POKEMON_COLUMNS,row=Math.floor(index/POKEMON_COLUMNS)
+    const rowLength=Math.min(POKEMON_COLUMNS,pokemonRosterImages.length-row*POKEMON_COLUMNS)
+    const centerX=(column+.5+(POKEMON_COLUMNS-rowLength)/2)*POKEMON_CELL.width
+    const centerY=(row+.5)*POKEMON_CELL.height
+    const bounds=spriteContentBounds(img)
+    const fit=Math.min(86/bounds.width,76/bounds.height)
+    const width=bounds.width*fit,height=bounds.height*fit
+    atlas.drawImage(img,bounds.x,bounds.y,bounds.width,bounds.height,centerX-width/2,centerY-height/2,width,height)
+    pokemonPositions.push({id:img.dataset.pokemonId,loaded:img.complete&&img.naturalWidth>0,
+      x:POKEMON_FRAME.left+centerX/pokemonAtlas.width*POKEMON_FRAME.width,
+      y:POKEMON_FRAME.top+centerY/pokemonAtlas.height*POKEMON_FRAME.height,
+      width:width/pokemonAtlas.width*POKEMON_FRAME.width,
+      height:height/pokemonAtlas.height*POKEMON_FRAME.height})
+  })
+  pokemonAtlasReady=true
+}
 async function loadPokemonRoster() {
   let next=0
   const worker=async()=>{while(next<pokemonLoadQueue.length)await pokemonLoadQueue[next++]()}
-  await Promise.all(Array.from({length:6},worker))
+  await Promise.all(Array.from({length:12},worker))
+  preparePokemonAtlas()
 }
 if (sceneId === 'pokemon') {
-  const selectedPokemon = POKEMON_NAMES.map(name=>{
-    const profile = NATIONAL_DEX.find(entry=>entry.name===name)
-    if (!profile) throw new Error(`Missing supported Pokémon profile: ${name}`)
-    return profile
+  // Familiar partners from all nine generations surround the opening camera.
+  // Every remaining species receives exactly one place in the full wall.
+  const centralIds=[6,9,3,25,149,150,157,160,154,248,249,250,257,260,254,282,376,384,
+    392,395,389,445,448,487,497,500,503,571,635,644,658,655,652,700,716,717,
+    724,727,730,778,791,792,812,815,818,887,888,889,908,911,914,937,1007,1008]
+  const selectedPokemon=Array(NATIONAL_DEX.length)
+  const centralSet=new Set(centralIds)
+  centralIds.forEach((id,index)=>{
+    const row=6+Math.floor(index/9),column=20+index%9
+    selectedPokemon[row*POKEMON_COLUMNS+column]=NATIONAL_DEX.find(pokemon=>pokemon.id===id)
   })
-  selectedPokemon.forEach((pokemon,index)=>{
+  const remaining=NATIONAL_DEX.filter(pokemon=>!centralSet.has(pokemon.id))
+  let remainingIndex=0
+  for(let i=0;i<selectedPokemon.length;i++)if(!selectedPokemon[i])selectedPokemon[i]=remaining[remainingIndex++]
+  selectedPokemon.forEach(pokemon=>pokemonRosterImages.push(pokemonArtwork(pokemon)))
+  const group=document.createElement('div')
+  group.className='pokemon-group'
+  POKEMON_HERO_IDS.forEach((id,index)=>{
+    const pokemon=NATIONAL_DEX.find(entry=>entry.id===id)
     const figure=document.createElement('figure')
-    figure.className='roster-pokemon'
+    figure.className='pokemon-object'
     figure.style.setProperty('--index',index)
     const img=pokemonArtwork(pokemon)
-    const name=document.createElement('figcaption');name.textContent=pokemon.name
-    figure.append(img,name);pokemonRoster.append(figure);pokemonRosterImages.push(img)
+    const caption=document.createElement('figcaption')
+    const types=document.createElement('small');types.textContent=pokemon.types.join(' · ')
+    const label=document.createElement('strong');label.textContent=pokemon.name
+    caption.append(types,label);figure.append(img,caption);group.append(figure)
   })
-  POKEMON_TEAMS.forEach((names,groupIndex)=>{
-    const group=document.createElement('div')
-    group.className='pokemon-group'
-    group.dataset.group=groupIndex
-    names.forEach((name,index)=>{
-      const pokemon=selectedPokemon.find(entry=>entry.name===name)
-      const figure=document.createElement('figure')
-      figure.className='pokemon-object'
-      figure.style.setProperty('--index',index)
-      const img=pokemonArtwork(pokemon)
-      const caption=document.createElement('figcaption')
-      const types=document.createElement('small');types.textContent=pokemon.types.join(' · ')
-      const label=document.createElement('strong');label.textContent=pokemon.name
-      caption.append(types,label);figure.append(img,caption);group.append(figure)
-    })
-    document.querySelector('.pokemon-spotlight').append(group)
-    pokemonGroups.push(group)
-  })
+  document.querySelector('.pokemon-spotlight').append(group)
+  pokemonGroups.push(group)
 }
 if (sceneId === 'trainers') {
   TRAINERS.forEach((trainer,index) => {
@@ -299,27 +349,49 @@ function trainerMotion(time) {
   })
 }
 function pokemonMotion(time) {
-  const reveal = smooth((time-.02)/.5)
-  const spotlight = smooth((time-2.25)/.45)
-  pokemonRoster.style.opacity=String(reveal*(1-spotlight*.94))
-  pokemonRoster.style.transform=`scale(${1+smooth(time/8)*.035}) translateY(${-spotlight*8}px)`
-  if(Number(pokemonRoster.style.opacity)>.5) {
-    pokemonRosterImages.forEach(img=>{
-      const rect=img.getBoundingClientRect()
-      if(img.complete&&img.naturalWidth>0&&rect.left>=0&&rect.top>=0&&rect.right<=innerWidth&&rect.bottom<=innerHeight)shownPokemonIds.add(img.dataset.pokemonId)
-    })
-    peakVisiblePokemonCount=Math.max(peakVisiblePokemonCount,shownPokemonIds.size)
+  visiblePokemonIds.clear()
+  const reveal=smooth((time-.02)/.48)
+  const transition=smooth((time-1.8)/.6)
+  const group=pokemonGroups[0]
+  if(group) {
+    const opacity=reveal*(1-transition)
+    group.style.opacity=String(opacity)
+    group.style.visibility=opacity>0?'visible':'hidden'
+    group.style.transform=`translateY(${(1-reveal)*25-transition*20}px) scale(${.94+reveal*.06-transition*.04})`
+    for(const [i,figure]of[...group.children].entries()) {
+      figure.style.transform=`translateY(${Math.sin(time*1.2+i*.9)*6}px)`
+      const img=figure.querySelector('img'),rect=img.getBoundingClientRect()
+      if(opacity>.5&&img.complete&&img.naturalWidth>0&&rect.left>=0&&rect.right<=innerWidth&&rect.top>=0&&rect.bottom<=innerHeight)visiblePokemonIds.add(img.dataset.pokemonId)
+    }
   }
-  pokemonGroups.forEach((group,index)=>{
-    const start=index?5.1:2.35
-    const end=index?8.5:4.95
-    const enter=smooth((time-start)/.45)
-    const leave=smooth((time-(end-.3))/.3)
-    group.style.opacity=String(enter*(1-leave))
-    group.style.visibility=enter>0&&leave<1?'visible':'hidden'
-    group.style.transform=`translateY(${(1-enter)*24-leave*18}px) scale(${.94+enter*.06+leave*.018})`
-    for(const [i,figure]of[...group.children].entries())figure.style.transform=`translateY(${Math.sin(time*1.35+i*.9)*7}px)`
-  })
+  // Logarithmic pullback reveals more partners continuously. The complete
+  // 1,025-species wall is fully inside the frame from eight seconds onward.
+  const pullback=smooth((time-2.25)/5.5)
+  pokemonCameraScale=Math.exp(Math.log(6.3)*(1-pullback))
+  pokemonContext.clearRect(0,0,1920,1080)
+  if(pokemonAtlasReady&&transition>0) {
+    pokemonContext.save()
+    pokemonContext.beginPath();pokemonContext.rect(36,74,1848,670);pokemonContext.clip()
+    pokemonContext.globalAlpha=transition
+    pokemonContext.imageSmoothingEnabled=false
+    pokemonContext.translate(POKEMON_CAMERA.x,POKEMON_CAMERA.y)
+    pokemonContext.scale(pokemonCameraScale,pokemonCameraScale)
+    pokemonContext.translate(-POKEMON_CAMERA.x,-POKEMON_CAMERA.y)
+    pokemonContext.drawImage(pokemonAtlas,POKEMON_FRAME.left,POKEMON_FRAME.top,POKEMON_FRAME.width,POKEMON_FRAME.height)
+    pokemonContext.restore()
+    if(transition>.5)for(const position of pokemonPositions) {
+      const x=POKEMON_CAMERA.x+(position.x-POKEMON_CAMERA.x)*pokemonCameraScale
+      const y=POKEMON_CAMERA.y+(position.y-POKEMON_CAMERA.y)*pokemonCameraScale
+      const halfWidth=position.width*pokemonCameraScale/2,halfHeight=position.height*pokemonCameraScale/2
+      if(position.loaded&&x-halfWidth>=36&&x+halfWidth<=1884&&y-halfHeight>=74&&y+halfHeight<=744)visiblePokemonIds.add(position.id)
+    }
+  }
+  visiblePokemonIds.forEach(id=>shownPokemonIds.add(id))
+  peakVisiblePokemonCount=Math.max(peakVisiblePokemonCount,visiblePokemonIds.size)
+  pokemonRoster.style.opacity=String(transition)
+  const label=document.querySelector('.pokemon-scale-label')
+  label.style.opacity=String(smooth((time-2.45)/.6))
+  label.querySelector('strong').textContent=visiblePokemonIds.size.toLocaleString('ko-KR')
 }
 
 // Original light, rings and particles surround actual in-game pixel assets.
@@ -391,9 +463,12 @@ window.promoCinematic={
       pokemonLoadRetries,
       shownPokemonCount:shownPokemonIds.size,
       peakVisiblePokemonCount,
-      visiblePokemonCount:Number(pokemonRoster.style.opacity)>.1?pokemonRosterImages.length:activePokemonGroups.reduce((count,group)=>count+group.children.length,0),
+      visiblePokemonCount:visiblePokemonIds.size,
+      visibleSpeciesIds:[...visiblePokemonIds].map(Number),
+      pokemonCameraScale,
+      pokemonAtlasReady,
       featuredPokemonNames:activePokemonGroups.flatMap(group=>[...group.querySelectorAll('strong')].map(label=>label.textContent)),
-      failedAssets:[...document.images].filter(img=>img.dataset.loadFailed==='true').map(img=>img.alt),
+      failedAssets:[...document.images,...pokemonRosterImages].filter(img=>img.dataset.loadFailed==='true').map(img=>img.alt),
     }
   },
 }

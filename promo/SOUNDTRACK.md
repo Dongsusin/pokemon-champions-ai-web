@@ -1,6 +1,6 @@
 # Trailer soundtrack
 
-The current 84-second trailer uses the same battle music as the live web game: **“Face The Champion!” by Spring Spring**. The existing local file is `public/assets/audio/battle/battle-theme.ogg`, referenced by `src/battleAudio.js`. This track replaces the original instrumental used in the previous trailer. The visual edit and chapter timing are unchanged.
+The current 110-second trailer uses the same battle music as the live web game: **“Face The Champion!” by Spring Spring**. The existing local file is `public/assets/audio/battle/battle-theme.ogg`, referenced by `src/battleAudio.js`. This track replaces the original instrumental used in the previous trailer. The expanded visual edit introduces the complete Pokédex and four walls of nine actual gimmick battles.
 
 ## Source and attribution
 
@@ -15,11 +15,11 @@ The creator's source page offers CC BY 3.0. The trailer uses that license and cr
 
 The preview page and `output/champions-arena-promo-credits.txt` carry the distribution credit. Include the text file's credit in the video description or alongside the video when sharing the MP4.
 
-> Music: “Face The Champion!” by Spring Spring. Licensed under CC BY 3.0. Source: https://opengameart.org/content/face-the-champion — License: https://creativecommons.org/licenses/by/3.0/ . Edited for this trailer: first 84 seconds excerpted, fades, resampling, loudness adjustment, and ducking/mixing with game effects.
+> Music: “Face The Champion!” by Spring Spring. Licensed under CC BY 3.0. Source: https://opengameart.org/content/face-the-champion — License: https://creativecommons.org/licenses/by/3.0/ . Edited for this trailer: first 110 seconds excerpted, fades, resampling, loudness adjustment, and ducking/mixing with game effects.
 
 ## Edit and mix
 
-The soundtrack preparation script reads the repository's existing music file without downloading another recording. It extracts **0–84 seconds**, applies a **0.25-second fade-in** and a **1.75-second fade-out** at the end, and writes **48,000 Hz stereo PCM**. The music is normalized in two passes toward **−18 LUFS integrated** before effects are mixed.
+The soundtrack preparation script reads the repository's existing music file without downloading another recording. It extracts **0–110 seconds**, applies a **0.25-second fade-in** and a **1.75-second fade-out** at the end, and writes **48,000 Hz stereo PCM**. The music is normalized in two passes toward **−18 LUFS integrated** before effects are mixed.
 
 Gameplay effects and Pokemon cries remain from the captured Web Audio output. The capture entry point sets game music to zero so the continuous soundtrack is not layered over another audible battle track. During final mixing, gameplay effects trigger music ducking, and the complete mix targets **−16 LUFS integrated**. The resulting output is measured separately; actual loudness and true peak are recorded in `output/validation.json` and `generated/final-audio-analysis.txt`.
 

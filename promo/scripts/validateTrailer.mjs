@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { NATIONAL_DEX } from '../../src/data/trainingData.js'
+import { PROMO_GIMMICK_GROUPS } from '../fixtures.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 process.chdir(root)
@@ -38,6 +39,7 @@ const captures = await Promise.all(shots.map(shot => readJson(`promo/raw/${shot.
 const trainerRoster = []
 const pokemonRoster = []
 const titles = []
+const gimmickWalls = []
 for (const [index, capture] of captures.entries()) {
   const shot = shots[index]
   assert(capture.id === shot.id, `Capture ID mismatch for ${shot.id}`)
@@ -61,13 +63,32 @@ for (const [index, capture] of captures.entries()) {
   if (shot.kind === 'cinematic' && sceneParams.get('scene') === 'pokemon') {
     const status = capture.status ?? {}
     const ids = status.selectedSpeciesIds
-    assert(Array.isArray(ids) && ids.length >= 12 && new Set(ids).size === ids.length, 'Pokémon montage must have a diverse, unique selection')
+    assert(Array.isArray(ids) && ids.length === NATIONAL_DEX.length && new Set(ids).size === ids.length, 'Pokémon montage must contain the complete national Pokédex')
     assert(ids.every(id => NATIONAL_DEX.some(entry => entry.id === id)), 'Pokémon montage contains an unsupported species')
     for (const key of ['totalPokemonCount', 'selectedPokemonCount', 'loadedPokemonCount', 'shownPokemonCount', 'peakVisiblePokemonCount']) {
       assert(status[key] === ids.length, `Pokémon capture ${shot.id}: ${key}=${status[key]}, expected ${ids.length}`)
     }
     assert(Array.isArray(status.failedAssets) && status.failedAssets.length === 0, 'Pokémon montage has unverified or failed image loads')
     pokemonRoster.push({ shotId: shot.id, selectedSpeciesIds: ids, selectedCount: ids.length, loadedCount: status.loadedPokemonCount, shownCount: status.shownPokemonCount, peakVisibleCount: status.peakVisiblePokemonCount })
+  }
+  if (shot.kind === 'wall') {
+    const group = PROMO_GIMMICK_GROUPS.find(group => group.id === sceneParams.get('scene'))
+    const status = capture.status ?? {}
+    assert(group && group.variants.length === 9, `Missing nine-battle fixture group for ${shot.id}`)
+    for (const field of ['totalCount', 'loadedCount', 'playedCount', 'shownCount', 'peakVisibleCount']) assert(status[field] === 9, `${shot.id}: ${field}=${status[field]}, expected 9`)
+    assert(status.openingVisibleCount === 1, `${shot.id} must open with one battle`)
+    assert(Array.isArray(status.errors) && status.errors.length === 0, `${shot.id} has video wall errors`)
+    assert(new Set(status.pokemonNames).size === 9 && new Set(status.types).size === 9, `${shot.id} must show nine different species and types`)
+    assert(JSON.stringify(status.clipIds) === JSON.stringify(group.variants.map(v => v.sceneId)), `${shot.id} uses unexpected battle videos`)
+    for (const variant of group.variants) {
+      const take = await readJson(`promo/raw/take-${variant.sceneId}.json`)
+      assert(take.audio === true && take.errors.length === 0 && take.status?.sceneId === variant.sceneId && take.status?.playing === true, `Failed source battle capture: ${variant.sceneId}`)
+      assert(take.captureDuration >= group.captureDuration && Number.isFinite(take.syncStartSeconds), `Incomplete source capture: ${variant.sceneId}`)
+    }
+    assert(status.videos.every(video => video.started && video.currentTime > 1 && video.readyState >= 2), `${shot.id} includes a video that did not advance`)
+    const hero = await readJson(`promo/raw/${shot.audioSource}.json`)
+    assert(hero.audio === true, `${shot.id} is missing recorded hero battle audio`)
+    gimmickWalls.push({ shotId: shot.id, openingVisibleCount: status.openingVisibleCount, peakVisibleCount: status.peakVisibleCount, clipIds: status.clipIds, pokemonNames: status.pokemonNames, moveNames: status.moveNames, types: status.types })
   }
   const requiresTrainerRoster = shot.kind === 'cinematic' && new URL(shot.url, 'http://localhost').searchParams.get('scene') === 'trainers'
   if (requiresTrainerRoster || capture.status?.totalTrainerCount > 0) {
@@ -88,11 +109,12 @@ const [probe, decode, pixels, analysis] = await Promise.all([
   run(['-i', file], [1]),
   run(['-v', 'error', '-i', file, '-map', '0:v:0', '-map', '0:a:0', '-f', 'null', sink]),
   // Do not add an fps filter: it can duplicate the last frame to cover AAC padding.
-  run(['-v', 'error', '-i', file, '-map', '0:v:0', '-vf', 'scale=1:1:flags=neighbor,format=rgb24', '-fps_mode', 'passthrough', '-f', 'rawvideo', 'pipe:1']),
+  run(['-v', 'error', '-i', file, '-map', '0:v:0', '-vf', 'scale=4:4:flags=neighbor,format=rgb24', '-fps_mode', 'passthrough', '-f', 'rawvideo', 'pipe:1']),
   run(['-i', file, '-map', '0:a:0', '-vn', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json', '-f', 'null', sink]),
 ])
 assert(!decode.stderr.trim(), `Full audio/video decode reported errors: ${decode.stderr}`)
-assert(!pixels.stderr.trim() && pixels.stdout.length % 3 === 0, `Frame scan failed: ${pixels.stderr}`)
+const pixelBytesPerFrame = 4 * 4 * 3
+assert(!pixels.stderr.trim() && pixels.stdout.length % pixelBytesPerFrame === 0, `Frame scan failed: ${pixels.stderr}`)
 
 const videoLine = probe.stderr.split(/\r?\n/).find(line => /Stream #0:.*Video:/.test(line)) || ''
 const audioLine = probe.stderr.split(/\r?\n/).find(line => /Stream #0:.*Audio:/.test(line)) || ''
@@ -101,7 +123,7 @@ const dimensions = videoLine.match(/,\s*(\d+)x(\d+)(?:\s|,)/)
 const video = {
   width: Number(dimensions?.[1]), height: Number(dimensions?.[2]),
   fps: Number(videoLine.match(/,\s*(\d+(?:\.\d+)?) fps(?:,|$)/)?.[1]),
-  frames: pixels.stdout.length / 3,
+  frames: pixels.stdout.length / pixelBytesPerFrame,
   codec: videoLine.match(/Video:\s*([^\s,(]+)/)?.[1],
   pixelFormat: videoLine.match(/,\s*((?:yuv|yuva|rgb|bgr|gbr|gray|pal|nv|p0)[a-zA-Z0-9]+)(?:\(|\s|,)/)?.[1],
 }
@@ -113,8 +135,14 @@ assert(video.codec === 'h264' && video.pixelFormat === 'yuv420p', `Unexpected vi
 const expectedFrames = Math.round(timelineDuration * video.fps)
 assert(video.frames === expectedFrames, `Expected ${expectedFrames} actual frames; decoded ${video.frames}`)
 let greenFrames = 0
-for (let i = 0; i < pixels.stdout.length; i += 3) {
-  if (pixels.stdout[i] < 30 && pixels.stdout[i + 1] > 220 && pixels.stdout[i + 2] < 30) greenFrames++
+for (let frame = 0; frame < pixels.stdout.length; frame += pixelBytesPerFrame) {
+  let greenPixels = 0
+  for (let i = frame; i < frame + pixelBytesPerFrame; i += 3) {
+    if (pixels.stdout[i] < 30 && pixels.stdout[i + 1] > 220 && pixels.stdout[i + 2] < 30) greenPixels++
+  }
+  // A grass-type attack may contain one green pixel; the sync marker fills
+  // the entire image and is detected across all sixteen sample positions.
+  if (greenPixels >= 15) greenFrames++
 }
 assert(greenFrames === 0, `${greenFrames} frames contain the green capture synchronization marker`)
 
@@ -140,6 +168,9 @@ const score = await readJson('promo/generated/soundtrack.json')
 assert(score.durationSeconds === timelineDuration, `Soundtrack ${score.durationSeconds}s differs from the ${timelineDuration}s timeline`)
 assert(score.kind === 'web-battle-bgm' && score.sourcePath === 'public/assets/audio/battle/battle-theme.ogg', 'Trailer must use the actual web battle music')
 const hashFile = async name => crypto.createHash('sha256').update(await fs.readFile(name)).digest('hex')
+const fixtureCheck = await readJson('promo/generated/gimmick-fixtures-validation.json')
+assert(fixtureCheck.passed === true && fixtureCheck.failures.length === 0 && fixtureCheck.checks.length === 36 && fixtureCheck.checks.every(check => check.passed), 'The 36 gimmick battles have not passed engine verification')
+for (const [file, sha256] of Object.entries(fixtureCheck.sourceHashes)) assert(sha256 === await hashFile(file), `Gimmick fixture changed after validation: ${file}`)
 assert(score.sourceSha256 === await hashFile(score.sourcePath), 'Soundtrack source no longer matches the web game BGM')
 assert(score.outputSha256 === await hashFile('promo/generated/soundtrack.wav'), 'Prepared soundtrack differs from its report')
 assert(probe.stderr.includes(score.title) && probe.stderr.includes(score.artist) && probe.stderr.includes(score.licenseUrl), 'Final MP4 is missing the music attribution')
@@ -151,7 +182,7 @@ const compositionSeconds = shots.reduce((totals, shot) => {
   return totals
 }, {})
 const report = {
-  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 5,
+  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 6,
   title: probe.stderr.match(/^\s*title\s*:\s*(.+)$/m)?.[1].trim() || path.basename(file),
   durationSeconds, timelineDurationSeconds: timelineDuration, video, audio,
   bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
@@ -160,7 +191,8 @@ const report = {
   verification: {
     fullAudioVideoDecode: true, expectedVideoFrames: expectedFrames, visibleSyncMarkerFrames: greenFrames,
     capturePageErrors: 0, capturesWithSyncMarkers: captures.filter(c => Number.isFinite(c.syncStartSeconds)).length,
-    trainerRoster, pokemonRoster, titles,
+    trainerRoster, pokemonRoster, titles, gimmickWalls,
+    gimmickEngine: { passed: fixtureCheck.passed, variants: fixtureCheck.checks.length, sourceHashes: fixtureCheck.sourceHashes, groups: fixtureCheck.groups },
   },
 }
 await fs.writeFile('promo/generated/final-audio-analysis.txt', analysis.stderr)

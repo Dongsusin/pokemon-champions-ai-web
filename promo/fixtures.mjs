@@ -4,6 +4,9 @@ import pokemonData from '../src/data/generatedPokemonData.json' with { type: 'js
 import { getLearnableMoves, getMoveById, normalizePokemon } from '../src/data/trainingData.js'
 import { getTrainer, getTrainerTeam } from '../src/data/trainerTeams.js'
 import { BATTLE_FORMATS, BATTLE_TERRAINS, BATTLE_WEATHERS } from '../src/data/battleRules.js'
+import { resolveZMove } from '../src/data/zMoveData.js'
+import { resolveMaxMove } from '../src/data/maxMoveData.js'
+import { PROMO_GIMMICK_DEFINITIONS } from './gimmickVariants.mjs'
 
 const profiles = new Map([...pokemonData.species, ...pokemonData.forms].map((profile) => [profile.slug, profile]))
 
@@ -55,6 +58,75 @@ export const PROMO_SCENES = {
     ],
   },
 }
+
+// Keep the established hero shots above and add eight independent battles for
+// each pullback. Secondary moves are also taken from the real learnset.
+for (const group of PROMO_GIMMICK_DEFINITIONS) {
+  for (const [slug, moveId, heldItemId, trainer, opponentSlug, requestedTeraType] of group.variants) {
+    const profile = profiles.get(slug)
+    const firstMove = getMoveById(moveId)
+    if (!profile || !firstMove) throw new Error(`Incomplete promo variant: ${group.id}/${slug}`)
+    const alternatives = getLearnableMoves(profile.id)
+      .filter((move) => move.id !== moveId && move.category !== '변화' && Number(move.power) > 0)
+      .slice(0, 3)
+      .map((move) => move.id)
+    const physical = firstMove.category === '물리'
+    PROMO_SCENES[`${group.id}-${slug}`] = {
+      title: group.label,
+      mechanic: group.id,
+      trainer,
+      opponentSlugs: [opponentSlug],
+      roster: [[slug, [moveId, ...alternatives], {
+        heldItemId,
+        teraType: requestedTeraType ?? firstMove.type,
+        ...(group.id === 'dynamax' ? { dynamaxMode: 'gigantamax' } : {}),
+        ...(physical ? {
+          nature: '명랑',
+          trainingPoints: { hp: 2, attack: 32, defense: 0, specialAttack: 0, specialDefense: 0, speed: 32 },
+        } : {}),
+      }]],
+    }
+  }
+}
+
+// Shared by capture, composition and validation so labels always describe the
+// actual Pokémon and selected move visible in each recorded panel.
+export const PROMO_GIMMICK_GROUPS = PROMO_GIMMICK_DEFINITIONS.map((group) => ({
+  id: group.id,
+  mechanic: group.id,
+  label: group.label,
+  captureDuration: 10,
+  variants: [group.id, ...group.variants.map(([slug]) => `${group.id}-${slug}`)].map((sceneId) => {
+    const scene = PROMO_SCENES[sceneId]
+    const [slug, moveIds, overrides] = scene.roster[0]
+    const profile = profiles.get(slug)
+    const move = getMoveById(moveIds[0])
+    const resolvedMove = group.id === 'zmove'
+      ? resolveZMove(move, { heldItemId: overrides.heldItemId, speciesSlug: slug })
+      : group.id === 'dynamax'
+        ? resolveMaxMove(move, { gigantamax: true, speciesSlug: slug })
+        : move
+    if (!resolvedMove) throw new Error(`First move cannot activate ${sceneId}`)
+    return {
+      id: sceneId,
+      sceneId,
+      url: `/promo/capture.html?scene=${sceneId}`,
+      duration: 10,
+      captureDuration: 10,
+      pokemonSlug: slug,
+      pokemonName: profile.name,
+      speciesId: profile.id,
+      moveId: move.id,
+      moveName: move.name,
+      type: move.type,
+      resolvedMoveId: resolvedMove.id,
+      resolvedMoveName: resolvedMove.name,
+      resolvedMoveType: resolvedMove.type,
+      teraType: overrides.teraType,
+      mechanicLabel: group.label,
+    }
+  }),
+}))
 
 export function createPromoFixture(sceneId = 'mega') {
   const scene = PROMO_SCENES[sceneId]

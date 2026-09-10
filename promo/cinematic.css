@@ -21,15 +21,17 @@ html,body {margin:0;width:100%;height:100%;overflow:hidden;}
 .brand {position:absolute;right:53px;top:39px;z-index:7;font:700 17px Arial,sans-serif;letter-spacing:4px;opacity:.8;text-shadow:0 2px 12px #000;}
 .footage-note {position:absolute;left:47px;bottom:26px;z-index:8;font-size:17px;letter-spacing:1px;font-weight:600;color:#d9e5f0ba;text-shadow:0 2px 9px #000;}
 .bottom-streak {position:absolute;bottom:0;left:0;width:72%;height:3px;z-index:7;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.85;transform-origin:left;animation:bottom-streak 8s ease-in-out both;}
-.item-orbit,.item-hero,.trainer-roster,.trainer-spotlight,.pokemon-roster,.pokemon-spotlight {display:none;}
+.item-orbit,.item-hero,.trainer-roster,.trainer-spotlight,.pokemon-roster,.pokemon-spotlight,.pokemon-scale-label {display:none;}
 
-/* A real sprite selection wall resolves into two teams of six. */
-.scene-pokemon {background:radial-gradient(ellipse at 50% 40%,#194846,#0c2032 46%,#030916 78%);}
-.scene-pokemon .shade {background:linear-gradient(180deg,#03091600 0 52%,#03091645 66%,#030916e0 78%,#030916fc);}
-.scene-pokemon .pokemon-roster {display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(3,198px);position:absolute;left:70px;right:70px;top:87px;gap:6px 10px;z-index:3;transform-origin:center 50%;}
-.roster-pokemon {margin:0;display:flex;align-items:center;justify-content:center;flex-direction:column;min-width:0;}
-.roster-pokemon img {display:block;width:154px;height:152px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 3px 8px #0008);}
-.roster-pokemon figcaption {font-size:23px;font-weight:800;letter-spacing:-.5px;color:#e2fff7;text-shadow:0 2px 10px #000;line-height:1.5;}
+/* One composed static atlas pulls back to reveal the complete national dex. */
+.scene-pokemon {background:radial-gradient(ellipse at 50% 36%,#194846,#0c2032 46%,#030916 78%);}
+.scene-pokemon .shade {background:linear-gradient(180deg,transparent 0 66%,#03091645 70%,#030916e0 77%,#030916fc);}
+.scene-pokemon .pokemon-roster {display:block;position:absolute;inset:0;z-index:3;}
+.pokemon-wall {display:block;width:100%;height:100%;}
+.scene-pokemon .pokemon-scale-label {display:flex;align-items:baseline;gap:13px;position:absolute;left:53px;top:32px;z-index:7;color:#caffec;opacity:0;text-shadow:0 2px 12px #000;}
+.pokemon-scale-label span {font-size:18px;letter-spacing:2px;font-weight:700;}
+.pokemon-scale-label strong {font-size:28px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:1px;}
+.pokemon-scale-label small {font:700 13px Arial,sans-serif;letter-spacing:3px;}
 .scene-pokemon .pokemon-spotlight {display:block;position:absolute;inset:0;z-index:5;}
 .pokemon-group {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;position:absolute;left:65px;right:65px;top:202px;height:455px;opacity:0;visibility:hidden;transform-origin:center 70%;}
 .pokemon-object {position:relative;margin:0;display:flex;align-items:center;flex-direction:column;justify-content:flex-start;min-width:0;isolation:isolate;}
@@ -40,6 +42,9 @@ html,body {margin:0;width:100%;height:100%;overflow:hidden;}
 .pokemon-object small {display:block;font-size:19px;font-weight:700;letter-spacing:2px;color:#9fddd5;margin-bottom:8px;text-shadow:0 2px 12px #000;}
 .pokemon-object strong {display:block;font-size:40px;font-weight:900;letter-spacing:-1px;text-shadow:0 3px 18px #000;}
 .scene-pokemon .copy {bottom:99px;}
+.scene-pokemon .copy-one {animation:pokemon-copy-first 12s cubic-bezier(.2,.7,.2,1) both;}
+.scene-pokemon .copy-two {animation:pokemon-copy-second 12s cubic-bezier(.2,.7,.2,1) both;--copy-start:6.1s;}
+.scene-pokemon .bottom-streak {animation-duration:12s;}
 .scene-pokemon .copy h1,.scene-pokemon .copy h2 {font-size:87px;}
 
 /* Every roster entry is present in the opening wall; no card or web UI. */
@@ -79,6 +84,8 @@ html,body {margin:0;width:100%;height:100%;overflow:hidden;}
 .sheet-icon {display:block;image-rendering:pixelated;background-repeat:no-repeat;}
 .cinematic:not(.is-playing) *, .cinematic:not(.is-playing) *::before {animation-play-state:paused!important;}
 
+@keyframes pokemon-copy-first {0%,1%{opacity:0;transform:translateY(8px);filter:blur(0)}4%,44%{opacity:1;transform:translateY(0);filter:blur(0)}49%,100%{opacity:0;transform:translateX(26px) translateY(-20px) skewX(-4deg);filter:blur(3px)}}
+@keyframes pokemon-copy-second {0%,48%{opacity:0;transform:translateY(8px)}51%,100%{opacity:1;transform:translateY(0)}}
 @keyframes copy-first {0%,2%{opacity:0;transform:translateY(8px);filter:blur(0)}5%,40%{opacity:1;transform:translateY(0);filter:blur(0)}47%,100%{opacity:0;transform:translateX(26px) translateY(-20px) skewX(-4deg);filter:blur(3px)}}
 @keyframes copy-second {0%,47%{opacity:0;transform:translateY(8px)}50%,97%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(0)}}
 @keyframes trainer-copy-first {0%,1%{opacity:0;transform:translateY(8px);filter:blur(0)}3%,52%{opacity:1;transform:translateY(0);filter:blur(0)}58%,100%{opacity:0;transform:translateX(26px) translateY(-20px) skewX(-4deg);filter:blur(3px)}}

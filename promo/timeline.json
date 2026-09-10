@@ -13,10 +13,10 @@
     "id": "pokemon",
     "kind": "cinematic",
     "url": "/promo/cinematic.html?scene=pokemon",
-    "duration": 8,
+    "duration": 12,
     "caption": {
-      "title": "다양한 포켓몬. 나만의 드림팀.",
-      "description": "좋아하는 파트너와 함께, 당신만의 승리를 완성하세요."
+      "title": "1,025종의 포켓몬. 나만의 드림팀.",
+      "description": "수많은 만남 속에서, 당신만의 여섯 마리를 찾아라."
     }
   },
   {
@@ -55,62 +55,46 @@
   },
   {
     "id": "mega",
-    "kind": "battle",
-    "url": "/promo/capture.html?scene=mega",
-    "duration": 7,
-    "overlay": {
-      "battle": true,
-      "counter": "04 / CHANGE THE BATTLE",
-      "eyebrow": "MEGA EVOLUTION",
-      "title": "한계를 넘어, 메가진화.",
-      "description": "익숙한 파트너가 새로운 모습과 힘으로 깨어납니다.",
-      "tag": "MEGA",
-      "accent": "#f4a0ff"
+    "kind": "wall",
+    "url": "/promo/gimmickWall.html?scene=mega",
+    "duration": 12,
+    "audioSource": "take-mega",
+    "caption": {
+      "title": "메가진화. 잠재력을 깨워라.",
+      "description": "9마리의 포켓몬 · 9가지 기술 · 9가지 타입. 같은 기믹, 서로 다른 승부."
     }
   },
   {
     "id": "zmove",
-    "kind": "battle",
-    "url": "/promo/capture.html?scene=zmove",
-    "duration": 6,
-    "overlay": {
-      "battle": true,
-      "counter": "04 / CHANGE THE BATTLE",
-      "eyebrow": "Z-MOVE",
-      "title": "결정적인 순간, Z기술.",
-      "description": "온 힘을 담은 한 방으로 배틀의 흐름을 바꾸세요.",
-      "tag": "Z-MOVE",
-      "accent": "#ffe179"
+    "kind": "wall",
+    "url": "/promo/gimmickWall.html?scene=zmove",
+    "duration": 12,
+    "audioSource": "take-zmove",
+    "caption": {
+      "title": "Z기술. 한 방에 뒤집어라.",
+      "description": "9마리의 포켓몬 · 9가지 기술 · 9가지 타입. 같은 기믹, 서로 다른 승부."
     }
   },
   {
     "id": "dynamax",
-    "kind": "battle",
-    "url": "/promo/capture.html?scene=dynamax",
-    "duration": 7,
-    "overlay": {
-      "battle": true,
-      "counter": "04 / CHANGE THE BATTLE",
-      "eyebrow": "GIGANTAMAX",
-      "title": "전장을 압도하는 존재감.",
-      "description": "거다이맥스 포켓몬과 전용 기술로 승부를 압도하세요.",
-      "tag": "GIGANTAMAX",
-      "accent": "#ff8aad"
+    "kind": "wall",
+    "url": "/promo/gimmickWall.html?scene=dynamax",
+    "duration": 12,
+    "audioSource": "take-dynamax",
+    "caption": {
+      "title": "거다이맥스. 전장을 압도하라.",
+      "description": "9마리의 포켓몬 · 9가지 기술 · 9가지 타입. 같은 기믹, 서로 다른 승부."
     }
   },
   {
     "id": "tera",
-    "kind": "battle",
-    "url": "/promo/capture.html?scene=tera",
-    "duration": 6,
-    "overlay": {
-      "battle": true,
-      "counter": "04 / CHANGE THE BATTLE",
-      "eyebrow": "TERASTALLIZATION",
-      "title": "타입이 바뀌면, 전략도 바뀐다.",
-      "description": "테라스탈로 숨겨둔 승리의 수를 꺼내세요.",
-      "tag": "TERA",
-      "accent": "#94ecff"
+    "kind": "wall",
+    "url": "/promo/gimmickWall.html?scene=tera",
+    "duration": 12,
+    "audioSource": "take-tera",
+    "caption": {
+      "title": "테라스탈. 상성을 뒤집어라.",
+      "description": "9마리의 포켓몬 · 9가지 기술 · 9가지 타입. 같은 기믹, 서로 다른 승부."
     }
   },
   {
