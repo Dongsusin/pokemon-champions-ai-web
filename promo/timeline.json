@@ -1,9 +1,23 @@
 [
   {
     "id": "intro",
-    "kind": "title",
-    "url": "/promo/title.html",
-    "duration": 8
+    "kind": "cinematic",
+    "url": "/promo/cinematic.html?scene=clash",
+    "duration": 8,
+    "caption": {
+      "title": "단 한 번의 선택. 지금, 한계를 넘어.",
+      "description": "포켓몬 챔피언스 아레나"
+    }
+  },
+  {
+    "id": "partners-art",
+    "kind": "cinematic",
+    "url": "/promo/cinematic.html?scene=partners",
+    "duration": 8,
+    "caption": {
+      "title": "수많은 만남. 가능성은 당신의 조합 속에.",
+      "description": "좋아하는 포켓몬과 승리의 팀을 완성하세요."
+    }
   },
   {
     "id": "pokemon",
@@ -20,24 +34,20 @@
     }
   },
   {
-    "id": "pokemon-detail",
-    "kind": "showcase",
-    "url": "/promo/showcase.html?scene=pokemon&variant=detail",
+    "id": "rivals-art",
+    "kind": "cinematic",
+    "url": "/promo/cinematic.html?scene=rivals",
     "duration": 8,
-    "overlay": {
-      "counter": "01 / BUILD YOUR TEAM",
-      "eyebrow": "BUILD. TRAIN. CHALLENGE.",
-      "title": "좋아하는 포켓몬이, 승리의 주역으로.",
-      "description": "타입과 특성, 기술의 조합에서 시작되는 나만의 전략.",
-      "tag": "TEAM BUILDING",
-      "accent": "#87edff"
+    "caption": {
+      "title": "다음 상대는 누구인가. 238명의 AI 트레이너.",
+      "description": "각자의 파트너와 전략을 가진 도전자들."
     }
   },
   {
     "id": "trainers",
     "kind": "showcase",
     "url": "/promo/showcase.html?scene=trainers",
-    "duration": 7,
+    "duration": 6,
     "overlay": {
       "counter": "02 / FACE THE CHALLENGE",
       "eyebrow": "238 AI TRAINERS",
@@ -49,17 +59,13 @@
     }
   },
   {
-    "id": "competition",
-    "kind": "showcase",
-    "url": "/promo/showcase.html?scene=competition",
-    "duration": 7,
-    "overlay": {
-      "counter": "02 / FACE THE CHALLENGE",
-      "eyebrow": "EVERY MATCH IS A NEW CHALLENGE",
-      "title": "상대를 읽고, 한 수 앞서라.",
-      "description": "상대의 포켓몬과 배틀 스타일에 맞춰 전략을 바꿔보세요.",
-      "tag": "BATTLE STRATEGY",
-      "accent": "#f8cb76"
+    "id": "items-art",
+    "kind": "cinematic",
+    "url": "/promo/cinematic.html?scene=items",
+    "duration": 6,
+    "caption": {
+      "title": "하나의 도구. 무한한 변수.",
+      "description": "344종의 배틀 아이템으로 완성하는 전략."
     }
   },
   {
@@ -77,24 +83,20 @@
     }
   },
   {
-    "id": "items-detail",
-    "kind": "showcase",
-    "url": "/promo/showcase.html?scene=items&variant=detail",
-    "duration": 6,
-    "overlay": {
-      "counter": "03 / FIND YOUR ADVANTAGE",
-      "eyebrow": "MAKE EVERY CHOICE COUNT",
-      "title": "포켓몬 × 기술 × 아이템",
-      "description": "팀에 맞는 도구를 선택해, 당신만의 전술을 완성하세요.",
-      "tag": "YOUR LOADOUT",
-      "accent": "#a9ef8c"
+    "id": "power-art",
+    "kind": "cinematic",
+    "url": "/promo/cinematic.html?scene=power",
+    "duration": 4,
+    "caption": {
+      "title": "잠재력을 깨워라.",
+      "description": "메가진화 · Z기술 · 거다이맥스 · 테라스탈"
     }
   },
   {
     "id": "mega",
     "kind": "battle",
     "url": "/promo/capture.html?scene=mega",
-    "duration": 8,
+    "duration": 7,
     "overlay": {
       "battle": true,
       "counter": "04 / CHANGE THE BATTLE",
@@ -109,7 +111,7 @@
     "id": "zmove",
     "kind": "battle",
     "url": "/promo/capture.html?scene=zmove",
-    "duration": 8,
+    "duration": 6,
     "overlay": {
       "battle": true,
       "counter": "04 / CHANGE THE BATTLE",
@@ -124,7 +126,7 @@
     "id": "dynamax",
     "kind": "battle",
     "url": "/promo/capture.html?scene=dynamax",
-    "duration": 8,
+    "duration": 7,
     "overlay": {
       "battle": true,
       "counter": "04 / CHANGE THE BATTLE",
@@ -163,7 +165,9 @@
       "description": "싱글부터 더블 배틀까지, 매 순간을 직접 선택하세요.",
       "tag": "DOUBLE BATTLE",
       "accent": "#b6a6ff"
-    }
+    },
+    "captureDuration": 10,
+    "sourceOffset": 2.4
   },
   {
     "id": "battle",

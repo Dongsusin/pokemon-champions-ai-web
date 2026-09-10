@@ -68,6 +68,7 @@ try {
       await page.evaluate(() => window.promo.start())
     }
     if (shot.kind === 'showcase') await page.evaluate(() => window.promoShowcase?.ready)
+    if (shot.kind === 'cinematic') await page.evaluate(() => window.promoCinematic.ready)
     await page.waitForTimeout(1600)
     await page.screenshot({ path: path.join(raw, `${shot.id}-before.png`) })
     // A removed solid-color marker gives the video an exact audio sync origin.
@@ -85,14 +86,16 @@ try {
       const recording = window.promoAudio.start()
       if (kind === 'battle') window.promo.play()
       if (kind === 'showcase') window.promoShowcase?.play?.()
+      if (kind === 'cinematic') window.promoCinematic.play()
       if (kind === 'title') document.getAnimations().forEach(a => { a.currentTime = 0; a.play() })
       return recording
     }, shot.kind)
-    await page.waitForTimeout((shot.duration + .25) * 1000)
+    const captureDuration = shot.captureDuration ?? shot.duration
+    await page.waitForTimeout((captureDuration + .25) * 1000)
     const audioData = await page.evaluate(() => window.promoAudio.stop())
     if (audioData) await fs.writeFile(path.join(raw, `${shot.id}-audio.webm`), Buffer.from(audioData, 'base64'))
     await page.screenshot({ path: path.join(raw, `${shot.id}-after.png`) })
-    const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || null)
+    const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || window.promoCinematic?.status?.() || null)
     const video = page.video()
     const videoTailSeconds = (Date.now()-start)/1000
     await page.close()
@@ -105,7 +108,7 @@ try {
     for (let i=0;i<pixels.stdout.length;i+=3) if(pixels.stdout[i]<30 && pixels.stdout[i+1]>220 && pixels.stdout[i+2]<30) markerEnd=i/3
     if (markerEnd < 0) throw new Error(`Missing video/audio sync marker in ${shot.id}`)
     const syncStartSeconds = (markerEnd+1)/25
-    const metadata = { id: shot.id, duration: shot.duration, syncStartSeconds, videoTailSeconds, recordedActionMs: Date.now()-start, audio, status, errors }
+    const metadata = { id: shot.id, duration: shot.duration, captureDuration, syncStartSeconds, videoTailSeconds, recordedActionMs: Date.now()-start, audio, status, errors }
     await fs.writeFile(path.join(raw, `${shot.id}.json`), JSON.stringify(metadata, null, 2))
     console.log(JSON.stringify(metadata))
   }

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
+import crypto from 'node:crypto'
 import { resolveChromiumExecutable } from './browserRuntime.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -16,6 +17,7 @@ try { ({ chromium } = require('playwright')) } catch { ({ chromium } = require(p
 const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
 const shots = JSON.parse(await fs.readFile('promo/timeline.json', 'utf8'))
 const reuseClips = process.argv.includes('--reuse-clips')
+const rendererSource = await fs.readFile(fileURLToPath(import.meta.url))
 await fs.mkdir('promo/generated', { recursive: true })
 await fs.mkdir('promo/output', { recursive: true })
 
@@ -49,18 +51,14 @@ try {
     await page.evaluate(() => window.overlayReady)
     await page.screenshot({ path: `promo/generated/${shot.id}-overlay.png`, omitBackground: true })
   }
-  const teaser = { battle: true, counter: 'YOUR TEAM. YOUR STRATEGY.', eyebrow: 'CHOOSE YOUR MOMENT', title: '승부를 바꿀 준비, 됐나요?', description: '지금, 챔피언스 아레나에서.', tag: 'BATTLE START', accent: '#87edff' }
-  await page.goto(`${base}/promo/overlay.html?data=${encodeURIComponent(JSON.stringify(teaser))}`)
-  await page.evaluate(() => window.overlayReady)
-  await page.screenshot({ path: 'promo/generated/teaser-overlay.png', omitBackground: true })
 } finally { await browser.close() }
 
 const encoding = ['-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv420p','-r','30','-video_track_timescale','15360','-threads','4','-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-movflags','+faststart']
-async function encode({ id, source = id, start, length, overlay, audio = false, fade = true, output = id }) {
+async function encode({ id, source = id, start, length, overlay, audio = false, audioOffset = 0, fade = true, output = id }) {
   const args = ['-ss',String(start),'-i',`promo/raw/${source}.webm`]
   if (overlay) args.push('-loop','1','-i',`promo/generated/${overlay}-overlay.png`)
   const ai = overlay ? 2 : 1
-  if (audio) args.push('-i',`promo/raw/${source}-audio.webm`)
+  if (audio) args.push('-ss',String(audioOffset),'-i',`promo/raw/${source}-audio.webm`)
   else args.push('-f','lavfi','-i','anullsrc=r=48000:cl=stereo')
   const fadeFilters = fade ? `,fade=t=in:st=0:d=0.10,fade=t=out:st=${length-.12}:d=0.12` : ''
   let filters = '[0:v]setpts=PTS-STARTPTS,fps=30,setsar=1,eq=contrast=1.015:saturation=1.06[scene];'
@@ -71,33 +69,34 @@ async function encode({ id, source = id, start, length, overlay, audio = false, 
   await run(args)
 }
 
-// Three genuine battle highlights hook the viewer before the five-second logo.
-for (const [index, source, offset] of [[0,'mega',4.35],[1,'zmove',3.65],[2,'dynamax',4.65]]) {
-  await encode({ id: `teaser-${index}`, source, start: await sourceStart(source)+offset, length: 1, overlay: 'teaser', fade: false })
-}
-await encode({ id:'intro-title', source:'intro', start:await sourceStart('intro')+.3, length:5, fade:false })
-await fs.writeFile('promo/generated/intro-concat.txt', ['teaser-0','teaser-1','teaser-2','intro-title'].map(s=>`file '${s}.mp4'`).join('\n'))
-await run(['-f','concat','-safe','0','-i','promo/generated/intro-concat.txt','-c','copy','promo/generated/intro.mp4'])
-console.log('Rendered intro: 3-second battle hook + 5-second title')
-
-for (const shot of shots.filter(s => s.id !== 'intro')) {
+for (const shot of shots) {
+  const capture = JSON.parse(await fs.readFile(`promo/raw/${shot.id}.json`, 'utf8'))
+  const rawVideo = await fs.stat(`promo/raw/${shot.id}.webm`)
+  const rawAudio = shot.kind === 'battle' ? await fs.stat(`promo/raw/${shot.id}-audio.webm`) : null
+  const stamp = stat => stat ? [stat.size, stat.mtimeMs] : null
+  const fingerprintHash = crypto.createHash('sha256').update(rendererSource)
+    .update(JSON.stringify({ shot, capture, rawVideo: stamp(rawVideo), rawAudio: stamp(rawAudio) }))
+  if (shot.overlay) fingerprintHash.update(await fs.readFile(`promo/generated/${shot.id}-overlay.png`))
+  const fingerprint = fingerprintHash.digest('hex')
   if (reuseClips) {
-    const outputTime = await fs.stat(`promo/generated/${shot.id}.mp4`).then(s => s.mtimeMs, () => 0)
-    const captureTime = (await fs.stat(`promo/raw/${shot.id}.json`)).mtimeMs
-    if (outputTime > captureTime) continue
+    const previous = await fs.readFile(`promo/generated/${shot.id}.render.json`, 'utf8').then(JSON.parse, () => null)
+    const exists = await fs.access(`promo/generated/${shot.id}.mp4`).then(() => true, () => false)
+    if (exists && previous?.fingerprint === fingerprint) continue
   }
-  await encode({ id:shot.id, start:await sourceStart(shot.id), length:shot.duration, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle' })
+  const offset = shot.sourceOffset ?? 0
+  await encode({ id:shot.id, start:await sourceStart(shot.id)+offset, length:shot.duration, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle',audioOffset:offset })
+  await fs.writeFile(`promo/generated/${shot.id}.render.json`, JSON.stringify({ fingerprint }))
   console.log(`Rendered ${shot.id}: ${shot.duration}s`)
 }
 await fs.writeFile('promo/generated/concat.txt', shots.map(s=>`file '${s.id}.mp4'`).join('\n'))
 await run(['-f','concat','-safe','0','-i','promo/generated/concat.txt','-c','copy','promo/generated/picture-lock.mp4'])
 let at = 0
 const stamp = seconds => `${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}:${String(Math.floor(seconds)%60).padStart(2,'0')},000`
-const captions = shots.map((s,i)=>{ const start=at; at+=s.duration; const copy=s.overlay ? `${s.overlay.title}\n${s.overlay.description}` : s.id==='intro' ? 'Pokémon Champions Arena\n승부를 바꾸는, 당신의 한 수.' : '다음 챔피언은, 당신.\n당신의 팀으로 도전하세요.'; return `${i+1}\n${stamp(start)} --> ${stamp(at)}\n${copy}\n` }).join('\n')
+const captions = shots.map((s,i)=>{ const start=at; at+=s.duration; const wording=s.caption || s.overlay; const copy=wording ? `${wording.title}\n${wording.description}` : '다음 챔피언은, 당신.\n당신의 팀으로 도전하세요.'; return `${i+1}\n${stamp(start)} --> ${stamp(at)}\n${copy}\n` }).join('\n')
 await fs.writeFile('promo/output/champions-arena-promo-ko.srt',captions)
 if (at !== 96) throw new Error(`Unexpected timeline duration ${at}`)
-const mix = '[0:a]volume=1.05,asplit=2[sfx][key];[1:a]volume=0.72[music];[music][key]sidechaincompress=threshold=0.025:ratio=3:attack=8:release=180:makeup=1[bed];[bed][sfx]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.92,loudnorm=I=-16:TP=-1.5:LRA=11[a]'
-await run(['-i','promo/generated/picture-lock.mp4','-i','promo/generated/soundtrack.wav','-i','promo/output/champions-arena-promo-ko.srt','-filter_complex',mix,'-map','0:v','-map','[a]','-map','2:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-c:s','mov_text','-metadata:s:s:0','language=kor','-disposition:s:0','0','-metadata','title=Pokémon Champions Arena — Choose Your Moment','-metadata','comment=Unofficial fan game. Actual gameplay and original promotional soundtrack.','-t','96','-movflags','+faststart','promo/output/champions-arena-promo-1080p.mp4'])
+const mix = '[0:a]volume=1.05,asplit=2[sfx][key];[1:a]volume=0.92[music];[music][key]sidechaincompress=threshold=0.035:ratio=2.4:attack=8:release=140:makeup=1[bed];[bed][sfx]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.92,loudnorm=I=-16:TP=-1.5:LRA=11[a]'
+await run(['-i','promo/generated/picture-lock.mp4','-i','promo/generated/soundtrack.wav','-i','promo/output/champions-arena-promo-ko.srt','-filter_complex',mix,'-map','0:v','-map','[a]','-map','2:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-c:s','mov_text','-metadata:s:s:0','language=kor','-disposition:s:0','0','-metadata','title=Pokémon Champions Arena — Break the Limit','-metadata','comment=Unofficial fan game. Promotional animated key art, actual gameplay and original battle soundtrack.','-t','96','-movflags','+faststart','promo/output/champions-arena-promo-1080p.mp4'])
 await run(['-ss','6','-i','promo/output/champions-arena-promo-1080p.mp4','-frames:v','1','-q:v','2','promo/output/champions-arena-promo-poster.jpg'])
 const probe = await run(['-i','promo/output/champions-arena-promo-1080p.mp4','-af','loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json','-f','null','NUL'])
 await fs.writeFile('promo/generated/final-audio-analysis.txt',probe)

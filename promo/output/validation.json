@@ -1,6 +1,8 @@
 {
   "date": "2026-09-10",
-  "durationSeconds": 96.021355,
+  "revision": 2,
+  "title": "Break the Limit",
+  "durationSeconds": 96.021029,
   "video": {
     "width": 1920,
     "height": 1080,
@@ -13,23 +15,32 @@
     "codec": "AAC",
     "sampleRate": 48000,
     "channels": 2,
-    "integratedLUFS": -15.31,
-    "truePeakDbTP": -1.49
+    "integratedLUFS": -15.54,
+    "truePeakDbTP": -1.31,
+    "soundtrackBPM": 160
   },
-  "bytes": 40023706,
-  "sha256": "1aca11c0b2312e828c7cf179ddc236d506f9310fe637d9969362256240e41863",
+  "bytes": 46495979,
+  "sha256": "fe83c4cb1f50e5014a4c844c21fd9b9fa70f655d13ce4cda356c1838810c280a",
+  "compositionSeconds": {
+    "cinematic": 34,
+    "title": 6,
+    "actualBattle": 36,
+    "gameUIAndTrainerMontage": 20
+  },
   "verification": {
     "fullAudioVideoDecode": true,
     "visibleSyncMarkerFrames": 0,
+    "capturePageErrors": 0,
+    "capturesWithSyncMarkers": 11,
+    "battleClipsVisuallyReviewed": 6,
     "browserPlayback": {
       "readyState": 4,
       "error": null,
       "videoWidth": 1920,
-      "videoHeight": 1080
+      "videoHeight": 1080,
+      "observedPlaying": true,
+      "observedCurrentTime": 63.361293
     },
-    "battleCaptureSyncMarkers": 6,
-    "capturePageErrors": 0,
-    "productionBuild": "passed",
-    "buildNote": "Existing Vite chunk-size warning remains."
+    "productionCodeChanged": false
   }
 }
