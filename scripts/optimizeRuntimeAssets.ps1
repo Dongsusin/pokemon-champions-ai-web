@@ -129,13 +129,8 @@ if (Test-Path -LiteralPath $unusedSpriteDirectory) {
 }
 
 $unusedMegaStoneImages = @(
-  'absolite-z.png',
-  'baxcalibrite.png',
   'darkranite.png',
-  'garchompite-z.png',
-  'golisopite.png',
   'heatranite.png',
-  'lucarionite-z.png',
   'magearnite.png',
   'tatsugirinite.png',
   'zeraorite.png',

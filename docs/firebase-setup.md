@@ -40,3 +40,36 @@ npx firebase-tools deploy --only firestore:rules
 로그인에 성공하면 `players/{uid}` 프로필 문서가 자동으로 생성되거나 갱신됩니다. 포켓몬 도감·트레이닝 설정은 `players/{uid}/gameData/collection`, VP·팀·아이템·게임 설정은 `players/{uid}/gameData/progress` 문서에 자동 저장됩니다.
 
 기존 버전에서 브라우저에만 저장했던 데이터는 해당 기기에서 Google 계정으로 처음 접속할 때 자동으로 Firestore에 이전됩니다. 게스트 설정 화면에서 Google 계정 연결을 선택한 경우에도 현재 게스트 진행 상황을 연결된 계정으로 이전합니다. 이후 다른 PC나 모바일에서 같은 Google 계정으로 로그인하면 서버 데이터를 먼저 불러온 뒤 게임을 시작합니다.
+
+## 4. 동시 로그인 방지
+
+Google 로그인 인증과 게임 접속 권한을 분리합니다. 게임 화면이나 계정 데이터 동기화를 시작하기 전에 `accountSessions/{uid}`의 접속 권한을 확보합니다. 다른 창이나 기기에서 같은 계정으로 접속 중이면 기존 접속을 유지하고 새 창에 안내를 표시합니다. 안내를 받은 창에서는 사용 중인 창을 닫은 뒤 Google 로그인 버튼을 다시 누르면 됩니다. 자동 로그인에도 같은 검사가 적용됩니다.
+
+- 접속 권한은 Firestore REST의 `currentDocument.updateTime` 조건으로 원자적으로 갱신합니다. 창마다 새 소유자 ID를 만들며, 복제된 탭의 `sessionStorage`를 접속 권한으로 사용하지 않습니다.
+- 접속 중에는 20초마다 서버 시간으로 갱신하고, 마지막 갱신 후 90초가 지나면 다른 창에서 접속할 수 있습니다. 정상적인 창 닫기와 로그아웃은 즉시 해제 요청을 보냅니다. 브라우저 강제 종료나 네트워크 단절로 종료 요청이 전달되지 않으면 마지막 갱신으로부터 최대 90초의 복구 시간이 필요할 수 있습니다.
+- 일반적인 탭 전환이나 창 최소화는 접속을 해제하지 않습니다. 장시간 브라우저가 실행을 중단해 권한이 만료되거나 연결 확인에 실패하면 게임을 중단하고 다시 로그인을 요구합니다. 뒤로 가기로 캐시된 페이지에 복귀할 때도 권한을 다시 확보합니다.
+- 창 종료 요청에는 문서 버전 조건을 붙여 지연된 요청이 새 창의 접속 권한을 삭제하지 못하게 합니다. 게임 저장 요청의 `sessionOwnerId`도 서버에서 검사해 만료된 창의 지연 저장을 거부합니다.
+- Firebase 인증 정보는 자동 로그인을 위해 다른 탭과 공유될 수 있습니다. 접속을 거부한 탭에서 Firebase 로그아웃을 호출하거나 인증 저장 방식을 변경하지 않습니다.
+- 같은 브라우저의 게임 데이터는 공통 로컬 저장소를 사용하므로 Web Locks로 Google/게스트를 포함해 하나의 게임 창만 허용합니다. 게스트는 기기 내부 계정이며, 다른 기기에서 이어서 사용하려면 Google 계정을 연결해야 합니다. 게스트 접속에는 Web Locks를 지원하는 HTTPS 환경 또는 localhost가 필요합니다.
+
+이 변경은 웹 앱과 `firestore.rules`를 함께 반영해야 합니다. 기존 규칙은 `accountSessions` 접근을 허용하지 않으며, 새 규칙은 `sessionOwnerId`가 없는 구버전 웹 앱의 저장을 거부합니다. 서비스 반영 시 두 변경을 함께 배포하고 열려 있는 구버전 창은 새로고침해야 합니다. 규칙 배포 명령은 위의 `npx firebase-tools deploy --only firestore:rules`입니다. 추가 Firebase 서비스나 환경 변수는 필요하지 않습니다.
+
+검증:
+
+```powershell
+npm run validate:account-session
+npm run validate:account-sync
+npm run build
+```
+
+`validate:account-session`은 실제 접속 클라이언트에 원자적 Firestore 모형과 브라우저 이벤트/타이머를 주입해 동시 획득, 정상 종료, 만료, 지연 응답, 네트워크 오류 및 게스트 잠금을 검증합니다. 실제 Google 팝업 및 서로 다른 기기의 전체 로그인 흐름은 배포 환경에서 별도로 확인해야 합니다.
+
+React 로그인 상태와 지연된 동기화 응답도 검증하려면 앱과 같은 버전의 테스트 렌더러를 임시 폴더에 설치합니다. 앱의 운영 의존성은 변경하지 않습니다.
+
+```powershell
+npm install --prefix "$env:TEMP/champions-auth-provider-validation" --no-package-lock --no-audit --no-fund react@19.2.8 react-test-renderer@19.2.8
+node scripts/validateAuthProvider.mjs
+node scripts/validateAccountSessionSync.mjs
+```
+
+관련 Firebase 문서: [인증 정보의 탭 간 공유](https://firebase.google.com/docs/auth/web/auth-state-persistence), [Firestore REST API](https://firebase.google.com/docs/firestore/use-rest-api), [Firestore의 접속 상태 처리 제약](https://firebase.google.com/docs/firestore/solutions/presence).

@@ -5,6 +5,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { firebaseDb } from './firebaseClient'
+import { getActiveAccountSessionOwnerId } from './accountSession'
 
 const GAME_DATA_SCHEMA_VERSION = 1
 const COLLECTION_STORAGE_KEYS = new Set([
@@ -79,12 +80,15 @@ export async function loadPlayerGameData(userId) {
 
 export async function savePlayerGameData(userId, payload) {
   if (!firebaseDb || !userId) throw new Error('Firebase game data storage is unavailable.')
+  const sessionOwnerId = getActiveAccountSessionOwnerId(userId)
+  if (!sessionOwnerId) throw new Error('An active account session is required to save game data.')
 
   const revision = createRevision()
   const split = splitPayload(payload)
   const batch = writeBatch(firebaseDb)
   const sharedMetadata = {
     uid: userId,
+    sessionOwnerId,
     schemaVersion: GAME_DATA_SCHEMA_VERSION,
     revision,
     updatedAt: serverTimestamp(),

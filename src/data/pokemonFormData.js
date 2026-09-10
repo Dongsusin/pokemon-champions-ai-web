@@ -534,7 +534,7 @@ const GENDER_FORM_SLUG_PATTERN = /(?:-female|-f)$/
 const FEMALE_FORM_SLUG_PATTERN = /(?:^|-)(?:female|f)(?:-|$)/
 const MALE_FORM_SLUG_PATTERN = /(?:^|-)(?:male|m)(?:-|$)/
 const REGIONAL_FORM_SLUG_PATTERN = /-(?:alola|galar|hisui|paldea)(?:-|$)/
-const GIMMICK_FORM_SLUG_PATTERN = /(?:-mega(?:-x|-y|x|y)?|-gmax|-primal)$/
+const GIMMICK_FORM_SLUG_PATTERN = /(?:-mega(?:-?[xyz])?|-gmax|-primal)$/
 const DEFAULT_MALE_FORM_SPECIES = new Set(['basculegion', 'indeedee', 'meowstic', 'oinkologne'])
 
 export function getPokemonFormMetadata(profile) {

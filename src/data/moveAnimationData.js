@@ -856,7 +856,9 @@ export function getMovePixelAnimationPlan(profile) {
 
 export function getMoveAnimationProfile(move = {}) {
   const moveId = normalizeMoveId(move.moveId ?? move.id ?? move.englishName ?? move.moveName ?? 'unknown')
-  const category = move.moveCategory ?? move.categoryId ?? (move.category === '변화' ? 'status' : move.category === '물리' ? 'physical' : 'special')
+  const healsAlly = moveId === 'pollenpuff' && (move.healsTarget || move.animationBranch === 'HEAL_RESULT'
+    || (move.sideId && move.sideId === move.targetSideId && (move.actorSlot ?? 0) !== (move.targetSlot ?? 0)))
+  const category = healsAlly ? 'status' : move.moveCategory ?? move.categoryId ?? (move.category === '변화' ? 'status' : move.category === '물리' ? 'physical' : 'special')
   const rawType = move.animationType ?? move.moveType ?? move.type ?? '노말'
   const type = rawType === '다크' ? '악' : rawType
   const flags = new Set(move.moveFlags ?? move.flags ?? [])
@@ -866,7 +868,8 @@ export function getMoveAnimationProfile(move = {}) {
     || !['STANDARD_MOVE', 'STANDARD_WITH_HEAL_BRANCH'].includes(reference?.variant)
   const seed = hashMoveId(isSpecialReference ? `${moveId}:${reference?.recordNo ?? 'unmapped'}:${move.animationVariantKey ?? ''}` : moveId)
   const inferred = inferArchetype(moveId, category, type, flags, text)
-  const referenceStyle = getReferenceAnimationStyle(reference, category, type, move, inferred)
+  const referenceStyle = getReferenceAnimationStyle(reference, category, type,
+    healsAlly ? { ...move, animationBranch: 'HEAL_RESULT' } : move, inferred)
   const archetype = referenceStyle.archetype ?? inferred.archetype
   const motif = referenceStyle.motif ?? inferred.motif
   const screen = referenceStyle.screen ?? inferred.screen ?? 'none'
@@ -882,8 +885,12 @@ export function getMoveAnimationProfile(move = {}) {
     : Math.round(clamp(780, baseDuration + (seed % 101) - 50, 1450))
   const duration = Math.round(clamp(760, unscaledDuration * (referenceStyle.durationScale ?? 1), 1720))
   const moveTarget = move.moveTarget ?? move.target
-  const targetSelf = ['self', 'allySide', 'allyTeam', 'allies', 'adjacentAllyOrSelf'].includes(moveTarget)
-    || ['barrier', 'boost', 'dance', 'restore', 'sleep'].includes(archetype)
+  const hasActualTarget = Boolean(move.sideId && move.targetSideId)
+  const targetsActor = hasActualTarget && move.sideId === move.targetSideId
+    && (move.actorSlot ?? 0) === (move.targetSlot ?? 0)
+  const targetSelf = ['self', 'allySide', 'allyTeam', 'allies'].includes(moveTarget)
+    || (moveTarget === 'adjacentAllyOrSelf' && targetsActor)
+    || (!moveTarget && (hasActualTarget ? targetsActor : ['barrier', 'boost', 'dance', 'restore'].includes(archetype)))
   const targetField = ['all', 'allAdjacent'].includes(moveTarget)
     || ['terrain', 'weather'].includes(archetype)
   const targetSpread = ['allAdjacentFoes', 'foeSide'].includes(moveTarget)

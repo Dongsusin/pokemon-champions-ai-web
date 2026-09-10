@@ -190,6 +190,13 @@ export const ABILITY_BYPASS_NAMES = new Set([
   '테라볼티지',
 ])
 
+// Showdown's cantsuppress flags differ from Trace and Skill Swap restrictions.
+export const ABILITY_SUPPRESSION_IMMUNE_NAMES = new Set([
+  'AR시스템', '그대로꿀꺽미사일', '달마모드', '리밋실드', '마이티체인지',
+  '멀티타입', '배틀스위치', '스웜체인지', '아이스페이스', '어군',
+  '유대변화', '절대안깸', '테라체인지', '탈', '혼연일체',
+])
+
 export const MOVE_TYPE_CHANGE_ABILITY_RULES = Object.freeze({
   노말스킨: { targetType: '노말', multiplier: 1.2, allTypes: true },
   드래곤스킨: { sourceType: '노말', targetType: '드래곤', multiplier: 1.2 },
@@ -215,6 +222,10 @@ export const MOVE_POWER_ABILITY_RULES = Object.freeze({
   트랜지스터: { type: '전기', multiplier: 1.3 },
   펑크록: { flag: 'sound', multiplier: 1.3 },
   이판사판: { recoil: true, multiplier: 1.2 },
+})
+
+export const MOVE_DAMAGE_REDUCTION_ABILITY_RULES = Object.freeze({
+  파동의방호: { flag: 'contact', multiplier: 0.5 },
 })
 
 export const TYPE_IMMUNITY_ABILITY_RULES = Object.freeze({
@@ -268,7 +279,7 @@ export const SUPER_EFFECTIVE_DAMAGE_REDUCTION_ABILITIES = new Set([
 export const DAMAGING_HIT_ABILITY_RULES = Object.freeze({
   꾸덕꾸덕굳기: { type: '물', boosts: { defense: 2 } },
   깨어진갑옷: { category: 'physical', boosts: { defense: -1, speed: 2 } },
-  열교환: { type: '불꽃', boosts: { attack: 1 } },
+  열교환: { type: '불꽃', boosts: { attack: 1 }, breakable: true },
   주눅: { types: ['악', '벌레', '고스트'], boosts: { speed: 1 } },
   정의의마음: { type: '악', boosts: { attack: 1 } },
   증기기관: { types: ['물', '불꽃'], boosts: { speed: 6 } },

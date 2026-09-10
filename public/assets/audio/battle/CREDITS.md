@@ -1,5 +1,7 @@
 # Battle Audio Credits
 
+- `retro/*.wav`: 29 original project-generated effects, synthesized deterministically from chip voices and filtered noise by `scripts/generateBattleSoundAssets.mjs`. The set contains 19 type motifs and ten battle lifecycle/status effects. No external recordings, commercial game samples, or sound fonts are used in this set.
+
 - `battle-theme.ogg`: "Face The Champion!" by Spring Spring, licensed under CC BY 3.0. Source: https://opengameart.org/content/face-the-champion
 - `ui-select.ogg`: "8bit Menu Select" by Fupi, CC0. Source: https://opengameart.org/content/8bit-menu-select
 - `ui-cursor.ogg`: "8bit Menu Highlight" by Fupi, CC0. Source: https://opengameart.org/content/8bit-menu-highlight

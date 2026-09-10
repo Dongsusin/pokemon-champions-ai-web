@@ -100,7 +100,7 @@ function LoginScreen({
             <Clock3 size={18} aria-hidden="true" />
             <span>
               <strong>자동 로그인</strong>
-              <small>다음 방문에도 현재 계정을 유지합니다.</small>
+              <small>다른 창에서 접속 중이 아닐 때 자동 로그인합니다.</small>
             </span>
           </span>
           <button
@@ -124,9 +124,11 @@ function LoginScreen({
               <small>{missingConfiguration.join(', ')}</small>
             </span>
           </div>
-        ) : error ? (
-          <div className="auth-error-message" role="alert">{error}</div>
         ) : null}
+
+        {error ? <div className="auth-error-message" role="alert">{error}</div> : null}
+
+        <p className="auth-session-notice">계정당 한 창에서 접속할 수 있습니다. 사용 중인 창을 닫으면 다른 창이나 기기에서 로그인할 수 있습니다.</p>
 
         <footer className="auth-login-footer">
           <ShieldCheck size={16} aria-hidden="true" />

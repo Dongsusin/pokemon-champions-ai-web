@@ -155,19 +155,34 @@ async function verifyFallbackProfiles(profiles) {
 
 async function main() {
   const pokemonData = JSON.parse(await readFile(DATA_PATH, 'utf8'))
+  const formSelection = process.argv.find((argument) => argument.startsWith('--forms='))
+  const selectedFormSlugs = formSelection
+    ? new Set(formSelection.slice('--forms='.length).split(',').map((slug) => slug.trim()).filter(Boolean))
+    : null
+  const previous = selectedFormSlugs ? JSON.parse(await readFile(OUTPUT_PATH, 'utf8')) : null
+  if (selectedFormSlugs) {
+    for (const slug of selectedFormSlugs) {
+      if (!pokemonData.forms.some((profile) => profile.slug === slug)) throw new Error(`Unknown form: ${slug}`)
+    }
+  }
   const directoryEntries = await Promise.all(
     Object.entries(DIRECTORIES).map(async ([key, directory]) => [key, await fetchDirectory(directory)]),
   )
   const spriteNames = Object.fromEntries(directoryEntries)
   const staticFrontIndex = normalizedIndex(spriteNames.staticFront)
   const profiles = [...pokemonData.species, ...pokemonData.forms]
-  const profileManifest = {}
-  const fallbackProfiles = []
+  const profilesToRefresh = selectedFormSlugs ? profiles.filter((profile) => selectedFormSlugs.has(profile.slug)) : profiles
+  const refreshedIds = new Set(profilesToRefresh.map((profile) => profile.id))
+  const profileManifest = { ...previous?.profiles }
+  const fallbackProfiles = (previous?.fallbackProfiles ?? []).filter((profile) => !refreshedIds.has(profile.id))
+  const fallbacksToVerify = []
 
-  for (const profile of profiles) {
+  for (const profile of profilesToRefresh) {
+    delete profileManifest[profile.id]
     const spriteKey = resolveSpriteKey(profile, spriteNames.staticFront, staticFrontIndex)
     if (!spriteKey) {
       fallbackProfiles.push({ id: profile.id, slug: profile.slug })
+      fallbacksToVerify.push({ id: profile.id, slug: profile.slug })
       continue
     }
 
@@ -189,7 +204,7 @@ async function main() {
     throw new Error(`National Pokédex coverage is incomplete: ${speciesCoverage}/${pokemonData.species.length}`)
   }
 
-  await verifyFallbackProfiles(fallbackProfiles)
+  await verifyFallbackProfiles(fallbacksToVerify)
 
   const output = {
     generatedAt: new Date().toISOString(),

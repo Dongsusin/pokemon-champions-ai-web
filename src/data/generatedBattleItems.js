@@ -3,7 +3,7 @@
 // Pokémon Legends: Z-A Mega Stones use locally stored game sprites.
 
 export const GENERATED_BATTLE_ITEM_META = {
-  "count": 339,
+  "count": 344,
   "source": [
     "https://pokeapi.co/api/v2",
     "https://play.pokemonshowdown.com/data/items.js",
@@ -4366,6 +4366,23 @@ export default [
     "sprite": "https://play.pokemonshowdown.com/sprites/itemicons-sheet.png?v1"
   },
   {
+    "id": "golisopite",
+    "name": "갑주무사나이트",
+    "englishName": "Golisopite",
+    "category": "gimmick",
+    "sourceCategory": "mega-stones",
+    "price": 590,
+    "description": "갑주무사에게 지니게 하면 배틀 중 메가갑주무사로 메가진화할 수 있다.",
+    "effect": "메가진화",
+    "grade": "기믹",
+    "generation": 9,
+    "sprite": "/assets/items/za-mega-stones/golisopite.png",
+    "compatiblePokemon": "갑주무사",
+    "targetFormSlugs": [
+      "golisopod-mega"
+    ]
+  },
+  {
     "id": "greninjite",
     "name": "개굴닌자나이트",
     "englishName": "Greninjite",
@@ -4486,6 +4503,23 @@ export default [
     ]
   },
   {
+    "id": "baxcalibrite",
+    "name": "드닐레이브나이트",
+    "englishName": "Baxcalibrite",
+    "category": "gimmick",
+    "sourceCategory": "mega-stones",
+    "price": 620,
+    "description": "드닐레이브에게 지니게 하면 배틀 중 메가드닐레이브로 메가진화할 수 있다.",
+    "effect": "메가진화",
+    "grade": "기믹",
+    "generation": 9,
+    "sprite": "/assets/items/za-mega-stones/baxcalibrite.png",
+    "compatiblePokemon": "드닐레이브",
+    "targetFormSlugs": [
+      "baxcalibur-mega"
+    ]
+  },
+  {
     "id": "dragalgite",
     "name": "드래캄나이트",
     "englishName": "Dragalgite",
@@ -4551,6 +4585,23 @@ export default [
     "compatiblePokemon": "루차불",
     "targetFormSlugs": [
       "hawlucha-mega"
+    ]
+  },
+  {
+    "id": "lucarionite-z",
+    "name": "루카리오나이트Z",
+    "englishName": "Lucarionite Z",
+    "category": "gimmick",
+    "sourceCategory": "mega-stones",
+    "price": 580,
+    "description": "루카리오에게 지니게 하면 배틀 중 메가루카리오Z로 메가진화할 수 있다.",
+    "effect": "메가진화",
+    "grade": "기믹",
+    "generation": 9,
+    "sprite": "/assets/items/za-mega-stones/lucarionite-z.png",
+    "compatiblePokemon": "루카리오",
+    "targetFormSlugs": [
+      "lucario-mega-z"
     ]
   },
   {
@@ -4721,6 +4772,23 @@ export default [
     "compatiblePokemon": "아쿠스타",
     "targetFormSlugs": [
       "starmie-mega"
+    ]
+  },
+  {
+    "id": "absolite-z",
+    "name": "앱솔나이트Z",
+    "englishName": "Absolite Z",
+    "category": "gimmick",
+    "sourceCategory": "mega-stones",
+    "price": 560,
+    "description": "앱솔에게 지니게 하면 배틀 중 메가앱솔Z로 메가진화할 수 있다.",
+    "effect": "메가진화",
+    "grade": "기믹",
+    "generation": 9,
+    "sprite": "/assets/items/za-mega-stones/absolite-z.png",
+    "compatiblePokemon": "앱솔",
+    "targetFormSlugs": [
+      "absol-mega-z"
     ]
   },
   {
@@ -4938,6 +5006,23 @@ export default [
     "compatiblePokemon": "픽시",
     "targetFormSlugs": [
       "clefable-mega"
+    ]
+  },
+  {
+    "id": "garchompite-z",
+    "name": "한카리아스나이트Z",
+    "englishName": "Garchompite Z",
+    "category": "gimmick",
+    "sourceCategory": "mega-stones",
+    "price": 580,
+    "description": "한카리아스에게 지니게 하면 배틀 중 메가한카리아스Z로 메가진화할 수 있다.",
+    "effect": "메가진화",
+    "grade": "기믹",
+    "generation": 9,
+    "sprite": "/assets/items/za-mega-stones/garchompite-z.png",
+    "compatiblePokemon": "한카리아스",
+    "targetFormSlugs": [
+      "garchomp-mega-z"
     ]
   },
   {

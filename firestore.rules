@@ -6,14 +6,34 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    function holdsAccountSession(userId) {
+      let session = get(/databases/$(database)/documents/accountSessions/$(userId)).data;
+      return request.resource.data.sessionOwnerId == session.ownerId
+        && session.heartbeatAt + duration.value(90, 's') > request.time;
+    }
+
+    match /accountSessions/{userId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['ownerId', 'heartbeatAt'])
+        && request.resource.data.ownerId is string
+        && request.resource.data.ownerId.size() > 0
+        && request.resource.data.ownerId.size() <= 200
+        && request.resource.data.heartbeatAt == request.time
+        && (!exists(/databases/$(database)/documents/accountSessions/$(userId))
+          || request.resource.data.ownerId == resource.data.ownerId
+          || resource.data.heartbeatAt + duration.value(90, 's') <= request.time);
+    }
+
     match /players/{userId} {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId)
         && request.resource.data.uid == userId;
       allow delete: if isOwner(userId);
 
-      match /{document=**} {
-        allow read, write: if isOwner(userId);
+      match /gameData/{documentId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && holdsAccountSession(userId);
       }
     }
   }

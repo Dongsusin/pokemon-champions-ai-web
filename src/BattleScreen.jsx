@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { createBattleAudio } from './battleAudio'
 import BattlePokemonStatusTooltip, { battleStatStageEntries } from './BattlePokemonStatusTooltip'
+import MoveChoreographyCanvas from './MoveChoreographyCanvas.jsx'
 import PokemonSprite from './PokemonSprite'
 import TrainerSprite from './TrainerSprite'
 import {
@@ -46,6 +47,7 @@ import {
   getActivePokemonList,
   getAvailableBattleMechanics,
   getBattleMovePreview,
+  getBattleMoveTargets,
   getBattleTypeEffectiveness,
   getBattleSummary,
   getConditionalBattleFormAssets,
@@ -56,6 +58,7 @@ import {
   getMoveAnimationProfile,
   getMovePixelAnimationPlan,
 } from './data/moveAnimationData'
+import { getMoveChoreography } from './data/moveChoreographyData'
 import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/battleRules'
 import { getTrainer } from './data/trainerTeams'
 import { getTrainerDialogue, TRAINER_DIALOGUE_EVENTS } from './data/trainerDialogues'
@@ -176,7 +179,6 @@ function effectivenessPresentation(multiplier) {
   return { value: 'X1', label: '보통 효과', tone: 'neutral' }
 }
 
-const MANUAL_OPPONENT_TARGETS = new Set(['normal', 'adjacentFoe', 'any'])
 
 function moveDealsDirectDamage(move) {
   return move?.category !== '변화'
@@ -187,10 +189,6 @@ function moveDealsDirectDamage(move) {
       || move?.currentHpFraction
       || move?.id === 'finalgambit'
     )
-}
-
-function needsOpponentTargetSelection(move, availableTargetCount) {
-  return availableTargetCount > 1 && MANUAL_OPPONENT_TARGETS.has(move?.moveTarget ?? move?.target)
 }
 
 const TURN_STEP_DURATIONS = {
@@ -273,13 +271,22 @@ function battleStageAnchor(camera, sideId, activeSlot) {
   const stage = camera.querySelector(`.battle-pokemon-stage.${sideId}.slot-${activeSlot ?? 0}`)
   if (!stage) return null
 
-  const cameraBounds = camera.getBoundingClientRect()
-  const stageBounds = stage.getBoundingClientRect()
+  // Stage layout stays fixed while attack/recoil transforms animate its sprite.
+  // Measuring the transformed rectangle makes projectiles chase a moving endpoint.
+  let left = 0
+  let top = 0
+  let node = stage
+  while (node && node !== camera) {
+    left += node.offsetLeft
+    top += node.offsetTop
+    node = node.offsetParent
+  }
+  if (node !== camera) return null
   return {
-    x: stageBounds.left - cameraBounds.left + stageBounds.width * 0.5,
-    y: stageBounds.top - cameraBounds.top + stageBounds.height * 0.45,
-    width: stageBounds.width,
-    height: stageBounds.height,
+    x: left + stage.offsetWidth * 0.5,
+    y: top + stage.offsetHeight * 0.45,
+    width: stage.offsetWidth,
+    height: stage.offsetHeight,
   }
 }
 
@@ -300,7 +307,8 @@ function battleSideAnchor(camera, sideId) {
   }
 }
 
-function useMoveAnimationAnchors(animationRef, cue, profile) {
+function useMoveAnimationAnchors(animationRef, cue, profile, phase = 'attack') {
+  const choreographyTarget = getMoveChoreography(profile, cue).target
   useLayoutEffect(() => {
     const animationRoot = animationRef.current
     const camera = animationRoot?.closest('.battle-field-camera')
@@ -314,21 +322,29 @@ function useMoveAnimationAnchors(animationRef, cue, profile) {
       '--actor-recoil-y',
       '--actor-cast-x',
       '--actor-cast-y',
+      '--target-recoil-x',
+      '--target-recoil-y',
     ]
 
     const updateAnchors = () => {
-      const cameraBounds = camera.getBoundingClientRect()
+      const cameraBounds = { width: camera.clientWidth, height: camera.clientHeight }
       const sourceStage = battleStageAnchor(camera, cue.sideId, cue.actorSlot)
       if (!sourceStage || cameraBounds.width <= 0 || cameraBounds.height <= 0) return
 
-      const useSpreadAnchor = profile.targetSpread && !format?.rotation
-      const targetStage = profile.targetSelf
+      const useExactTarget = phase === 'impact' && Boolean(cue.targetSideId)
+      const targetSelf = !useExactTarget && choreographyTarget === 'self'
+      const targetField = !useExactTarget && choreographyTarget === 'field'
+      const useSpreadAnchor = !useExactTarget && ['ally-side', 'foe-side'].includes(choreographyTarget) && !format?.rotation
+      const targetSideId = choreographyTarget === 'ally-side' ? cue.sideId : cue.targetSideId
+      const targetStage = useExactTarget
+        ? battleStageAnchor(camera, cue.targetSideId, cue.targetSlot)
+        : targetSelf
         ? sourceStage
-        : profile.targetField
+        : targetField
           ? { x: cameraBounds.width * 0.5, y: cameraBounds.height * 0.61 }
           : useSpreadAnchor
-            ? battleSideAnchor(camera, cue.targetSideId)
-            : battleStageAnchor(camera, cue.targetSideId, cue.targetSlot)
+            ? battleSideAnchor(camera, targetSideId)
+            : battleStageAnchor(camera, targetSideId, cue.targetSlot)
       if (!targetStage) return
 
       const stageTravelX = targetStage.x - sourceStage.x
@@ -336,7 +352,7 @@ function useMoveAnimationAnchors(animationRef, cue, profile) {
       const stageDistance = Math.max(1, Math.hypot(stageTravelX, stageTravelY))
       const unitX = stageTravelX / stageDistance
       const unitY = stageTravelY / stageDistance
-      const canInsetAnchors = !profile.targetSelf && !profile.targetField && !useSpreadAnchor
+      const canInsetAnchors = !targetSelf && !targetField && !useSpreadAnchor
       const sourceInset = canInsetAnchors
         ? Math.min(sourceStage.width ?? 0, sourceStage.height ?? 0) * (profile.motion === 'dash' || profile.motion === 'lunge' ? 0.14 : 0.23)
         : 0
@@ -374,29 +390,37 @@ function useMoveAnimationAnchors(animationRef, cue, profile) {
       animationRoot.style.setProperty('--trajectory-distance', `${Math.hypot(travelX, travelY)}px`)
       animationRoot.style.setProperty('--trajectory-angle', `${Math.atan2(travelY, travelX) * 180 / Math.PI}deg`)
       animationRoot.classList.add('is-slot-anchored')
+      if (phase === 'scene') return
       camera.style.setProperty('--actor-lunge-x', `${lungeX}px`)
       camera.style.setProperty('--actor-lunge-y', `${lungeY}px`)
       camera.style.setProperty('--actor-recoil-x', `${-unitX * 18}px`)
       camera.style.setProperty('--actor-recoil-y', `${-unitY * 18}px`)
       camera.style.setProperty('--actor-cast-x', `${unitX * 22}px`)
       camera.style.setProperty('--actor-cast-y', `${unitY * 22}px`)
+      camera.style.setProperty('--target-recoil-x', `${unitX * 9}px`)
+      camera.style.setProperty('--target-recoil-y', `${unitY * 9}px`)
     }
 
     let frameId = null
-    const syncAnchors = () => {
-      updateAnchors()
-      frameId = requestAnimationFrame(syncAnchors)
+    const scheduleAnchors = () => {
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => {
+        frameId = null
+        updateAnchors()
+      })
     }
 
-    syncAnchors()
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateAnchors)
+    updateAnchors()
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleAnchors)
     resizeObserver?.observe(camera)
+    window.addEventListener('resize', scheduleAnchors)
     return () => {
       if (frameId !== null) cancelAnimationFrame(frameId)
       resizeObserver?.disconnect()
-      cameraProperties.forEach((property) => camera.style.removeProperty(property))
+      window.removeEventListener('resize', scheduleAnchors)
+      if (phase !== 'scene') cameraProperties.forEach((property) => camera.style.removeProperty(property))
     }
-  }, [cue.id, cue.actorSlot, cue.sideId, cue.targetSideId, cue.targetSlot, cue.state?.rules?.format?.id, profile.motion, profile.targetField, profile.targetSelf, profile.targetSpread])
+  }, [cue.id, cue.actorSlot, cue.sideId, cue.targetSideId, cue.targetSlot, cue.state?.rules?.format?.id, profile.motion, choreographyTarget, phase])
 }
 
 function moveAnimationStyle(profile, plan, duration = profile.duration, impactDuration = plan.impactDuration) {
@@ -413,8 +437,13 @@ function moveAnimationStyle(profile, plan, duration = profile.duration, impactDu
 }
 
 function moveAnimationClassName(cue, profile, plan, phase) {
-  const targetSelf = profile.targetSelf || cue.targetSideId === cue.sideId
-  return `battle-pixel-${phase}-animation timeline-frame-0 side-${cue.sideId} actor-slot-${cue.actorSlot ?? 0} target-slot-${cue.targetSlot ?? 0} mode-${plan.mode} tempo-${plan.tempo} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${profile.targetField ? ' target-field' : ''}${profile.targetSpread ? ' target-spread' : ''}`
+  const choreography = getMoveChoreography(profile, cue)
+  const targetSelf = phase === 'impact'
+    ? cue.targetSideId === cue.sideId && (cue.targetSlot ?? 0) === (cue.actorSlot ?? 0)
+    : choreography.target === 'self'
+  const targetField = phase !== 'impact' && choreography.target === 'field'
+  const targetSpread = phase !== 'impact' && ['ally-side', 'foe-side'].includes(choreography.target)
+  return `battle-pixel-${phase}-animation has-choreography timeline-frame-0 side-${cue.sideId} actor-slot-${cue.actorSlot ?? 0} target-slot-${cue.targetSlot ?? 0} mode-${plan.mode} choreography-${choreography.family} tempo-${plan.tempo} fx-${profile.archetype} motif-${profile.motif} screen-${profile.screen} variant-${profile.variant} intensity-${profile.intensity} reference-${animationClassToken(profile.recordVariant)} coverage-${animationClassToken(profile.runtimeCoverage)}${profile.manualPriority ? ` manual-${animationClassToken(profile.manualPriority)}` : ''}${targetSelf ? ' target-self' : ''}${targetField ? ' target-field' : ''}${targetSpread ? ' target-spread' : ''}${choreography.supportive ? ' is-supportive' : ''}`
 }
 
 function sceneAssetForSide(plan, sideId) {
@@ -476,14 +505,16 @@ function useFxSheetPlayback(animationRef, duration, cueId) {
 function MoveAnimation({ cue, animationMode }) {
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
+  const choreography = getMoveChoreography(profile, cue)
   const animationRef = useRef(null)
   const duration = turnStepDuration(cue, animationMode)
   const animationRate = attackAnimationRate(animationMode)
   const impactDuration = Math.max(90, Math.round(plan.impactDuration / animationRate))
-  const sprites = Array.from({ length: plan.trajectoryAssets.length ? plan.copies : 0 }, (_, spriteIndex) => ({
+  const textureLimit = ['stream', 'rain', 'drain', 'wave'].includes(plan.mode) ? 3 : 1
+  const sprites = Array.from({ length: plan.trajectoryAssets.length ? Math.min(plan.copies, textureLimit) : 0 }, (_, spriteIndex) => ({
     index: spriteIndex,
     asset: plan.trajectoryAssets[spriteIndex % plan.trajectoryAssets.length],
-    delay: spriteIndex * plan.stagger,
+    delay: duration * choreography.timing.release + Math.min(duration * 0.12, spriteIndex * plan.stagger / animationRate),
     lane: ((profile.seed >>> (spriteIndex % 12)) + spriteIndex * 17) % 5,
     spin: ['projectile', 'stream', 'wave', 'drain', 'dash', 'melee'].includes(plan.mode)
       ? ((((profile.seed >>> (spriteIndex % 9)) + spriteIndex * 7) % 17) - 8)
@@ -509,15 +540,16 @@ function MoveAnimation({ cue, animationMode }) {
       data-logical-canvas={`${profile.logicalCanvas.width}x${profile.logicalCanvas.height}`}
       aria-hidden="true"
     >
+      <MoveChoreographyCanvas cue={cue} profile={profile} plan={plan} phase="attack" duration={duration} anchorRef={animationRef} />
       {plan.sourceAssets.length > 0 && (
         <span className="pixel-move-source">
-          {plan.sourceAssets.map((asset, assetIndex) => (
+          {plan.sourceAssets.slice(0, 1).map((asset, assetIndex) => (
             <MoveFxAsset
               key={`${asset.src}-${assetIndex}`}
               asset={asset}
               frameOffset={assetIndex}
               role="source"
-              timelineEnd={0.46}
+              timelineEnd={0.38}
             />
           ))}
           <i />
@@ -531,11 +563,11 @@ function MoveAnimation({ cue, animationMode }) {
             asset={sprite.asset}
             frameOffset={sprite.index}
             role="trajectory"
-            timelineStart={0.18}
-            timelineEnd={0.96}
+            timelineStart={sprite.delay / duration}
+            timelineEnd={1}
             style={{
               '--sprite-index': sprite.index,
-              '--sprite-delay': `${Math.round(sprite.delay / animationRate)}ms`,
+              '--sprite-delay': `${Math.round(sprite.delay)}ms`,
               '--sprite-lane': sprite.lane,
               '--sprite-spin': `${sprite.spin}deg`,
             }}
@@ -544,19 +576,19 @@ function MoveAnimation({ cue, animationMode }) {
       </span>
 
       <span className="pixel-move-beam">
-        {plan.beamAsset && <MoveFxAsset asset={plan.beamAsset} role="beam" timelineStart={0.24} timelineEnd={0.92} />}
+        {plan.beamAsset && <MoveFxAsset asset={plan.beamAsset} role="beam" timelineStart={0.24} timelineEnd={1} />}
         <i /><b />
       </span>
-      {plan.inlineImpact && (
+      {plan.inlineImpact && (profile.category === 'status' || profile.targetSelf) && (
         <span className="pixel-move-impact inline-impact">
-          {plan.impactAssets.map((asset, assetIndex) => (
+          {plan.impactAssets.slice(0, 1).map((asset, assetIndex) => (
             <MoveFxAsset
               key={`${asset.src}-${assetIndex}`}
               asset={asset}
               frameOffset={assetIndex}
               role="impact"
               timelineStart={0.38}
-              timelineEnd={0.94}
+              timelineEnd={1}
               style={{ '--impact-index': assetIndex }}
             />
           ))}
@@ -574,7 +606,7 @@ function MoveSceneAnimation({ cue, animationMode }) {
   const duration = turnStepDuration(cue, animationMode)
   const impactDuration = Math.max(90, Math.round(plan.impactDuration / attackAnimationRate(animationMode)))
 
-  useMoveAnimationAnchors(animationRef, cue, profile)
+  useMoveAnimationAnchors(animationRef, cue, profile, 'scene')
   useFxSheetPlayback(animationRef, duration, cue.id)
 
   return (
@@ -594,28 +626,41 @@ function MoveImpactAnimation({ cue, presentation, animationMode, showDamageNumbe
   const profile = getMoveAnimationProfile(cue)
   const plan = getMovePixelAnimationPlan(profile)
   const animationRef = useRef(null)
-  const hitCount = Math.max(1, Math.min(5, Number(cue.hitCount) || 1))
-  const feedbackLabel = cue.critical ? '급소에 맞았다!' : presentation?.label ?? '명중'
+  const choreography = getMoveChoreography(profile, cue)
+  const outcome = cue.effectiveness === 0 ? 'immune'
+    : ['blocked', 'miss', 'failed', 'immune'].includes(cue.result) ? cue.result
+      : choreography.family === 'heal' ? 'heal'
+        : choreography.supportive || profile.category === 'status' ? 'status' : 'hit'
+  const feedback = {
+    blocked: ['BLOCK', '공격을 막았다!'],
+    miss: ['MISS', '공격을 피했다!'],
+    failed: ['FAIL', '기술이 실패했다!'],
+    immune: ['IMMUNE', '효과가 없다!'],
+    heal: ['HEAL', '체력을 회복했다!'],
+    status: ['효과', '기술의 효과가 발동했다!'],
+  }[outcome]
+  const feedbackLabel = feedback?.[1] ?? (cue.critical ? '급소에 맞았다!' : presentation?.label ?? '명중')
   const duration = turnStepDuration(cue, animationMode)
-  const damageLabel = cue.result === 'blocked'
-    ? 'BLOCK'
+  const damageLabel = feedback?.[0]
+    ? feedback[0]
     : showDamageNumbers && cue.damage > 0
       ? `-${cue.damage}`
       : presentation?.value ?? 'HIT'
 
-  useMoveAnimationAnchors(animationRef, cue, profile)
+  useMoveAnimationAnchors(animationRef, cue, profile, 'impact')
   useFxSheetPlayback(animationRef, duration, cue.id)
 
   return (
     <div
       ref={animationRef}
-      className={`${moveAnimationClassName(cue, profile, plan, 'impact')} result-${cue.result ?? 'hit'}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
+      className={`${moveAnimationClassName(cue, profile, plan, 'impact')} result-${outcome}${presentation ? ` effectiveness-${presentation.tone}` : ''}${cue.critical ? ' is-critical' : ''}`}
       style={moveAnimationStyle(profile, plan, duration, duration)}
       aria-hidden="true"
     >
+      <MoveChoreographyCanvas cue={cue} profile={profile} plan={plan} phase="impact" duration={duration} anchorRef={animationRef} />
       <span className="pixel-impact-wash" />
-      <span className="pixel-move-impact phase-impact">
-        {plan.impactAssets.map((asset, assetIndex) => (
+      {outcome === 'hit' && <span className="pixel-move-impact phase-impact">
+        {plan.impactAssets.slice(0, profile.runtimeCoverage === 'dedicated-ebdx' ? 2 : 1).map((asset, assetIndex) => (
           <MoveFxAsset
             key={`${asset.src}-${assetIndex}`}
             asset={asset}
@@ -625,15 +670,10 @@ function MoveImpactAnimation({ cue, presentation, animationMode, showDamageNumbe
             style={{ '--impact-index': assetIndex }}
           />
         ))}
-        <i className="pixel-impact-core" />
-        <b className="pixel-impact-ring" />
-        {Array.from({ length: hitCount }, (_, echoIndex) => (
-          <em className="pixel-impact-echo" key={echoIndex} style={{ '--echo-index': echoIndex }} />
-        ))}
-      </span>
+      </span>}
       <span className="director-impact-feedback">
         <strong>{damageLabel}</strong>
-        <small>{cue.result === 'blocked' ? '공격을 막았다!' : feedbackLabel}</small>
+        <small>{feedbackLabel}</small>
       </span>
     </div>
   )
@@ -1070,7 +1110,8 @@ function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers =
     : effectivenessPresentation(cue.effectiveness)
   const attackAnimationsVisible = animationMode !== 'skip'
   const showMoveEffect = attackAnimationsVisible && cue.phase === 'attack' && cue.moveName
-  const showImpact = attackAnimationsVisible && (cue.phase === 'impact' || (cue.phase === 'resolve' && cue.result === 'blocked'))
+  const showImpact = attackAnimationsVisible && (cue.phase === 'impact'
+    || (cue.phase === 'resolve' && ['blocked', 'miss', 'failed', 'immune'].includes(cue.result)))
   const showSwitch = cue.phase === 'switch-out' || cue.phase === 'switch'
   const showFaint = cue.phase === 'faint'
 
@@ -1087,7 +1128,7 @@ function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers =
         </>
       )}
 
-      {showImpact && cue.result !== 'miss' && (
+      {showImpact && (
         <MoveImpactAnimation
           cue={cue}
           presentation={presentation}
@@ -1143,8 +1184,8 @@ function battleStageClassName(sideId, pokemon, cue, activeSlot = 0) {
   if (isActor && cue.phase === 'switch-out') classes.push('is-switching-out')
   if (isActor && cue.phase === 'switch') classes.push('is-switching-in')
   if (isTarget && cue.phase === 'attack' && cue.sideId !== sideId) classes.push('is-anticipating-hit')
-  if (isTarget && cue.phase === 'impact') classes.push('is-hit')
-  if (isTarget && cue.phase === 'resolve' && cue.result !== 'miss') classes.push('is-guarding')
+  if (isTarget && cue.phase === 'impact' && cue.damage > 0) classes.push('is-hit')
+  if (isTarget && cue.phase === 'resolve' && cue.result === 'blocked') classes.push('is-guarding')
   if (isTarget && cue.phase === 'status') classes.push('is-status-pulse')
   if (isTarget && cue.phase === 'residual') classes.push('is-residual-hit')
   if (isTarget && cue.phase === 'faint') classes.push('is-fainting')
@@ -1163,7 +1204,7 @@ function battleCameraClassName(cue) {
 
 function battleStageStyle(cue, animationMode = 'normal') {
   if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue, animationMode)}ms` }
-  if (cue?.phase === 'impact') return { '--impact-duration': `${turnStepDuration(cue, animationMode)}ms` }
+  if (cue?.phase === 'impact' || cue?.phase === 'resolve') return { '--impact-duration': `${turnStepDuration(cue, animationMode)}ms` }
   if (cue?.phase === 'gimmick' || cue?.phase === 'form') {
     return { '--gimmick-duration': `${turnStepDuration(cue)}ms` }
   }
@@ -1192,7 +1233,7 @@ function statusAnchorClassName(sideId, pokemon, cue, activeSlot = 0) {
   const isTarget = cue.targetSideId === sideId && (cue.targetSlot == null || cue.targetSlot === activeSlot)
   if (isActor) classes.push('is-acting')
   if (isTarget) classes.push('is-targeted')
-  if (isTarget && cue.phase === 'impact') classes.push('is-taking-damage')
+  if (isTarget && cue.phase === 'impact' && cue.damage > 0) classes.push('is-taking-damage')
   if (isTarget && cue.phase === 'faint') classes.push('is-fainting')
   return classes.join(' ')
 }
@@ -1470,9 +1511,7 @@ function MoveTargetMenu({
 }) {
   const pokemon = getActivePokemon(battle, 'player', activeSlot)
   const move = pokemon?.moves?.[moveIndex]
-  const targets = getActivePokemonList(battle, 'opponent')
-    .map((target, slot) => ({ target, slot }))
-    .filter(({ target }) => target.hp > 0 && !target.fainted)
+  const targets = getBattleMoveTargets(battle, 'player', moveIndex, activeSlot, pendingGimmick)
   const selectedMechanic = getAvailableBattleMechanics(battle, 'player', activeSlot)
     .find((mechanic) => mechanic.id === pendingGimmick)
   const displayMove = getBattleMovePreview(
@@ -1482,6 +1521,7 @@ function MoveTargetMenu({
     activeSlot,
     targets[0]?.slot ?? 0,
     pendingGimmick,
+    targets[0]?.sideId ?? 'opponent',
   ) ?? move
 
   if (!pokemon || !move) return null
@@ -1494,7 +1534,7 @@ function MoveTargetMenu({
         </button>
         <div className="battle-target-title">
           <small>SELECT TARGET</small>
-          <strong>공격 대상 선택</strong>
+          <strong>기술 대상 선택</strong>
         </div>
         <div className="battle-target-move-summary">
           <span className={`type-${typeClassName(displayMove.type)}`}>{displayMove.type}</span>
@@ -1504,9 +1544,9 @@ function MoveTargetMenu({
       </header>
       <div
         className="battle-target-grid"
-        style={{ '--battle-target-columns': Math.max(1, targets.length) }}
+        style={{ '--battle-target-columns': Math.max(1, Math.min(3, targets.length)) }}
       >
-        {targets.map(({ target, slot }) => {
+        {targets.map(({ target, slot, sideId: targetSideId }) => {
           const targetMove = getBattleMovePreview(
             battle,
             'player',
@@ -1514,22 +1554,24 @@ function MoveTargetMenu({
             activeSlot,
             slot,
             pendingGimmick,
+            targetSideId,
           ) ?? move
           const multiplier = moveDealsDirectDamage(targetMove)
             ? getBattleTypeEffectiveness(battle, targetMove.type, target.types)
             : null
           const presentation = effectivenessPresentation(multiplier)
+          const healsTarget = targetMove.healsTarget || ['healpulse', 'floralhealing'].includes(targetMove.id)
 
           return (
             <button
               className={`battle-target-card effectiveness-${presentation.tone}`}
               type="button"
-              aria-label={`${target.name}을 공격 대상으로 선택`}
+              aria-label={`${targetSideId === 'player' ? '아군' : '상대'} ${target.name}을 기술 대상으로 선택`}
               key={target.battleId}
               onPointerEnter={onPreview}
-              onClick={() => onSelect(slot)}
+              onClick={() => onSelect(slot, targetSideId)}
             >
-              <span className="battle-target-number">TARGET {String(slot + 1).padStart(2, '0')}</span>
+              <span className="battle-target-number">{targetSideId === 'player' ? '아군' : '상대'} {String(slot + 1).padStart(2, '0')}</span>
               <span className="battle-target-icon">
                 <img
                   src={target.icon}
@@ -1547,9 +1589,9 @@ function MoveTargetMenu({
                 <em>HP {Math.round(hpRatio(target))}%</em>
               </span>
               <span className={`battle-target-effectiveness effectiveness-${presentation.tone}`}>
-                <small>상성</small>
-                <strong>{presentation.value}</strong>
-                <em>{presentation.label}</em>
+                <small>{healsTarget ? '효과' : '상성'}</small>
+                <strong>{healsTarget ? '회복' : presentation.value}</strong>
+                <em>{healsTarget ? 'HP 회복' : presentation.label}</em>
               </span>
             </button>
           )
@@ -1843,6 +1885,15 @@ function BattleScreen({
   }, [audioSettings])
 
   useEffect(() => {
+    const unlockAudio = () => battleAudioRef.current?.unlock()
+    const gestureEvents = ['pointerdown', 'keydown', 'touchend']
+    gestureEvents.forEach((eventName) => window.addEventListener(eventName, unlockAudio, true))
+    return () => {
+      gestureEvents.forEach((eventName) => window.removeEventListener(eventName, unlockAudio, true))
+    }
+  }, [])
+
+  useEffect(() => {
     if (!introVisible && activeTrainerDialogue) {
       battleAudioRef.current?.playMenu('cursor')
     }
@@ -1860,10 +1911,14 @@ function BattleScreen({
     )
   }, [battle.winner, introVisible, playerActive.hp, playerActive.maxHp])
 
-  useEffect(() => {
-    const skipAttackCue = attackAnimationMode === 'skip' && ATTACK_ANIMATION_PHASES.has(turnCue?.phase)
-    if (!introVisible && turnCue && !skipAttackCue) battleAudioRef.current?.playCue(turnCue)
-  }, [attackAnimationMode, introVisible, turnCue])
+  const playBattleCue = (cue) => {
+    // Skipping the animation still keeps the attack and its result audible.
+    if (attackAnimationMode === 'skip' && cue.phase === 'announce') return
+    battleAudioRef.current?.playCue(cue, {
+      durationMs: turnStepDuration(cue, attackAnimationMode),
+      animationMode: attackAnimationMode,
+    })
+  }
 
   const startAnimatedTurn = (playerAction) => {
     if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
@@ -1892,6 +1947,7 @@ function BattleScreen({
       const step = steps[stepIndex]
       if (step.phase !== 'attack' || stepIndex === 0) setBattle(step.state)
       setTurnCue(step)
+      playBattleCue(step)
       playbackTimerRef.current = setTimeout(
         () => playStep(stepIndex + 1),
         turnPlaybackDelay(steps, stepIndex, attackAnimationMode),
@@ -2015,7 +2071,8 @@ function BattleScreen({
       pendingGimmick,
     ) ?? pokemon?.moves?.[moveIndex]
     if (pendingGimmick === 'zmove' && move?.zMoveCompatible === false) return
-    if (needsOpponentTargetSelection(move, livingOpponentTargetSlots.length)) {
+    const targets = getBattleMoveTargets(battle, 'player', moveIndex, commandSlot, pendingGimmick)
+    if (targets.length > 1) {
       setPendingMoveIndex(moveIndex)
       setTargetSlot((currentSlot) => (
         livingOpponentTargetSlots.includes(currentSlot)
@@ -2030,13 +2087,16 @@ function BattleScreen({
       type: 'move',
       moveIndex,
       gimmick: pendingGimmick,
+      ...(targets[0] ? { targetSideId: targets[0].sideId, targetSlot: targets[0].slot } : {}),
     })
     setPendingMoveIndex(null)
     setPendingGimmick(null)
   }
 
-  const chooseMoveTarget = (selectedTargetSlot) => {
-    if (pendingMoveIndex == null || !livingOpponentTargetSlots.includes(selectedTargetSlot)) return
+  const chooseMoveTarget = (selectedTargetSlot, selectedTargetSideId = 'opponent') => {
+    if (pendingMoveIndex == null) return
+    const targets = getBattleMoveTargets(battle, 'player', pendingMoveIndex, commandSlot, pendingGimmick)
+    if (!targets.some((target) => target.slot === selectedTargetSlot && target.sideId === selectedTargetSideId)) return
     battleAudioRef.current?.playMenu('select')
     setTargetSlot(selectedTargetSlot)
     submitPlayerAction({
@@ -2044,6 +2104,7 @@ function BattleScreen({
       moveIndex: pendingMoveIndex,
       gimmick: pendingGimmick,
       targetSlot: selectedTargetSlot,
+      targetSideId: selectedTargetSideId,
     })
     setPendingMoveIndex(null)
     setPendingGimmick(null)
@@ -2057,8 +2118,10 @@ function BattleScreen({
       const nextBattle = forcePlayerSwitch(battle, targetIndex)
       if (nextBattle === battle) return
       const target = nextBattle.player.team[targetIndex]
+      const playbackToken = playbackTokenRef.current + 1
+      playbackTokenRef.current = playbackToken
       const forcedSwitchCue = {
-        id: `${battle.turn}-forced-switch-${target.battleId}`,
+        id: `${battle.turn}-forced-switch-${playbackToken}-${target.battleId}`,
         phase: 'switch',
         sideId: 'player',
         targetSideId: 'player',
@@ -2068,13 +2131,16 @@ function BattleScreen({
         actorSpeciesId: target.speciesId,
         actorOriginalSpeciesId: target.originalSpeciesId,
         message: `${target.name}! 부탁해!`,
+        state: nextBattle,
       }
 
       turnLockedRef.current = true
       setBattle(nextBattle)
       setTurnCue(forcedSwitchCue)
       setIsTurnAnimating(true)
+      playBattleCue(forcedSwitchCue)
       playbackTimerRef.current = setTimeout(() => {
+        if (playbackTokenRef.current !== playbackToken) return
         setTurnCue(null)
         setIsTurnAnimating(false)
         turnLockedRef.current = false
@@ -2487,7 +2553,12 @@ function BattleScreen({
           effectsReady={moveAssetsReady}
           onPreview={previewBattleMenu}
           onStart={() => {
-            battleAudioRef.current?.start({ player: playerActive, opponent: opponentActive })
+            battleAudioRef.current?.start({
+              player: playerActive,
+              opponent: opponentActive,
+              playerPokemon: playerActivePokemon,
+              opponentPokemon: opponentActivePokemon,
+            })
             showOpeningTrainerDialogue({
               turn: battle.turn,
               aceName: opponentTrainer.ace?.name,

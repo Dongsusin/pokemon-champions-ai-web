@@ -178,6 +178,7 @@ function preventOpponent(state, slot = 0) {
     type: 'move',
     moveIndex: 0,
     targetSlot: 0,
+    targetSideId: 'opponent',
     gimmick: null,
     forcedReason: 'charge',
   })

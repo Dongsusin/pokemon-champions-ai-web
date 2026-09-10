@@ -5,9 +5,11 @@
   --actor-recoil-y: 6px;
   --actor-cast-x: 18px;
   --actor-cast-y: -7px;
+  --target-recoil-x: 8px;
+  --target-recoil-y: -2px;
 }
 
-.app-shell.battle-view .battle-field-camera:is(.phase-announce, .phase-attack, .phase-impact) {
+.app-shell.battle-view .battle-field-camera:is(.phase-announce, .phase-attack, .phase-impact, .phase-resolve) {
   animation: none !important;
   transform: none !important;
 }
@@ -46,51 +48,62 @@
 }
 
 .app-shell.battle-view .battle-pokemon-stage.is-hit {
-  animation: director-target-recoil var(--impact-duration, 500ms) cubic-bezier(0.2, 0.72, 0.24, 1) both !important;
+  animation: director-target-recoil var(--impact-duration, 500ms) steps(5, end) both !important;
+}
+
+.app-shell.battle-view .battle-pokemon-stage.is-guarding {
+  animation: director-target-guard var(--impact-duration, 440ms) ease-out both !important;
 }
 
 @keyframes director-actor-lunge {
   0%, 100% { translate: 0 0; scale: 1; }
   16% { translate: var(--actor-recoil-x) var(--actor-recoil-y); scale: 0.97; }
-  46%, 58% { translate: var(--actor-lunge-x) var(--actor-lunge-y); scale: 1.035; }
-  76% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1; }
+  42% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1; }
+  64%, 78% { translate: var(--actor-lunge-x) var(--actor-lunge-y); scale: 1.025; }
+  93% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1; }
 }
 
 @keyframes director-actor-cast {
   0%, 100% { translate: 0 0; scale: 1; }
   16% { translate: var(--actor-recoil-x) var(--actor-recoil-y); scale: 0.98; }
-  34%, 58% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1.045; }
-  76% { translate: 0 0; scale: 1.01; }
+  34%, 72% { translate: var(--actor-cast-x) var(--actor-cast-y); scale: 1.025; }
+  90% { translate: 0 0; scale: 1.01; }
 }
 
 @keyframes director-actor-leap {
   0%, 100% { translate: 0 0; scale: 1; }
   18% { translate: var(--actor-recoil-x) 8px; scale: 0.96; }
-  44% { translate: var(--actor-cast-x) calc(var(--actor-cast-y) - 66px); scale: 1.03; }
-  66% { translate: var(--actor-lunge-x) var(--actor-lunge-y); scale: 1.04; }
-  82% { translate: var(--actor-cast-x) 0; scale: 0.99; }
+  44% { translate: var(--actor-cast-x) calc(var(--actor-cast-y) - 42px); scale: 1.02; }
+  72% { translate: var(--actor-lunge-x) var(--actor-lunge-y); scale: 1.03; }
+  90% { translate: var(--actor-cast-x) 0; scale: 0.99; }
 }
 
 @keyframes director-actor-spin {
   0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
   18% { translate: var(--actor-recoil-x) var(--actor-recoil-y); rotate: -16deg; scale: 0.96; }
-  54% { translate: var(--actor-lunge-x) var(--actor-lunge-y); rotate: 360deg; scale: 1.04; }
-  78% { translate: var(--actor-cast-x) var(--actor-cast-y); rotate: 390deg; scale: 1; }
+  68% { translate: var(--actor-lunge-x) var(--actor-lunge-y); rotate: 360deg; scale: 1.025; }
+  90% { translate: var(--actor-cast-x) var(--actor-cast-y); rotate: 360deg; scale: 1; }
 }
 
 @keyframes director-actor-ritual {
   0%, 100% { translate: 0 0; scale: 1; }
   18% { translate: 0 5px; scale: 0.97; }
-  42%, 68% { translate: 0 -10px; scale: 1.045; }
+  42%, 68% { translate: 0 -6px; scale: 1.025; }
   82% { translate: 0 -3px; scale: 1.01; }
 }
 
 @keyframes director-target-recoil {
   0%, 100% { translate: 0 0; filter: brightness(1); }
-  14% { translate: -6px 1px; filter: brightness(2.25) saturate(0.4); }
-  32% { translate: 5px -1px; filter: brightness(0.72); }
-  52% { translate: -3px 0; filter: brightness(1.55); }
-  74% { translate: 2px 0; filter: brightness(0.92); }
+  10% { translate: var(--target-recoil-x) var(--target-recoil-y); filter: brightness(1.65) saturate(0.65); }
+  26% { translate: calc(var(--target-recoil-x) * -0.38) calc(var(--target-recoil-y) * -0.38); filter: brightness(0.86); }
+  44% { translate: calc(var(--target-recoil-x) * 0.3) calc(var(--target-recoil-y) * 0.3); filter: brightness(1.18); }
+  68% { translate: 0 0; filter: brightness(1); }
+}
+
+@keyframes director-target-guard {
+  0%, 100% { scale: 1; filter: brightness(1); }
+  18% { scale: 0.97; filter: brightness(1.2) saturate(0.8); }
+  50% { scale: 1; filter: brightness(1.08); }
 }
 
 .app-shell.battle-view .battle-pixel-scene-animation,
@@ -124,6 +137,48 @@
 
 .app-shell.battle-view .battle-pixel-impact-animation {
   z-index: 36;
+}
+
+.app-shell.battle-view .battle-move-choreography-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* Authored sprite textures sit over the pixel choreography; avoid stacking
+   a second set of generic glow rings and gradients over the same gesture. */
+.app-shell.battle-view .has-choreography .pixel-move-source > i,
+.app-shell.battle-view .has-choreography .pixel-move-beam > i,
+.app-shell.battle-view .has-choreography .pixel-move-beam > b {
+  display: none;
+}
+
+.app-shell.battle-view .has-choreography .pixel-move-source,
+.app-shell.battle-view .has-choreography .pixel-move-beam {
+  opacity: 0.72;
+}
+
+.app-shell.battle-view .has-choreography.coverage-fallback-ebdx .pixel-move-trajectory,
+.app-shell.battle-view .has-choreography.coverage-fallback-ebdx .inline-impact,
+.app-shell.battle-view .has-choreography.coverage-fallback-ebdx .phase-impact {
+  opacity: 0.55;
+}
+
+.app-shell.battle-view .has-choreography:is(.result-blocked, .result-miss, .result-failed, .result-immune, .result-heal, .result-status) .pixel-impact-wash {
+  display: none;
+}
+
+.app-shell.battle-view .has-choreography:is(.result-blocked, .result-miss, .result-failed, .result-immune) .director-impact-feedback strong {
+  color: #d7e9f5;
+}
+
+.app-shell.battle-view .has-choreography:is(.result-heal, .result-status) .director-impact-feedback strong {
+  color: #b8ffce;
 }
 
 .app-shell.battle-view .battle-pixel-scene-animation.side-opponent,
@@ -207,7 +262,7 @@
   width: 92%;
   height: 92%;
   opacity: 0;
-  filter: drop-shadow(0 0 5px var(--move-primary)) drop-shadow(0 0 9px var(--move-secondary));
+  filter: drop-shadow(0 0 2px var(--move-primary));
   transform: translate(-50%, -50%);
   animation: director-source-charge var(--move-duration) cubic-bezier(0.2, 0.75, 0.22, 1) both;
 }
@@ -243,8 +298,8 @@
   width: clamp(48px, 5.4vw, 88px);
   height: clamp(48px, 5.4vw, 88px);
   opacity: 0;
-  filter: drop-shadow(0 0 8px var(--move-primary));
-  animation: director-projectile-flight calc(var(--move-duration) - var(--sprite-delay)) cubic-bezier(0.16, 0.72, 0.18, 1) var(--sprite-delay) both;
+  filter: drop-shadow(0 0 2px var(--move-primary));
+  animation: director-projectile-flight calc(var(--move-duration) - var(--sprite-delay)) linear var(--sprite-delay) both;
 }
 
 .app-shell.battle-view .battle-pixel-move-animation.mode-stream .pixel-move-trajectory > .fx-role-trajectory {
@@ -269,8 +324,8 @@
 .app-shell.battle-view .battle-pixel-move-animation.mode-rain .pixel-move-trajectory > .fx-role-trajectory,
 .app-shell.battle-view .battle-pixel-move-animation.mode-ground .pixel-move-trajectory > .fx-role-trajectory,
 .app-shell.battle-view .battle-pixel-move-animation.mode-eruption .pixel-move-trajectory > .fx-role-trajectory {
-  top: -16%;
-  left: calc(var(--target-x) + (var(--sprite-lane) * 4%) - 8%);
+  top: calc(var(--target-y) - 160px);
+  left: calc(var(--target-x) + var(--lane-offset));
   width: clamp(46px, 5vw, 82px);
   height: clamp(46px, 5vw, 82px);
   animation-name: director-falling-effect;
@@ -297,7 +352,7 @@
   inset: 6% 0;
   overflow: hidden;
   opacity: 0;
-  filter: drop-shadow(0 0 8px var(--move-primary));
+  filter: drop-shadow(0 0 3px var(--move-primary));
   transform-origin: left center;
   animation: director-beam-asset var(--move-duration) ease-out both;
 }
@@ -335,8 +390,8 @@
 }
 
 .app-shell.battle-view .battle-pixel-move-animation.mode-self .inline-impact {
-  top: var(--source-y);
-  left: var(--source-x);
+  top: var(--target-y);
+  left: var(--target-x);
   width: clamp(132px, 14vw, 222px);
   height: clamp(132px, 14vw, 222px);
 }
@@ -356,7 +411,7 @@
   width: 100%;
   height: 100%;
   opacity: 0;
-  filter: drop-shadow(0 0 7px var(--move-highlight)) drop-shadow(0 0 16px var(--move-primary));
+  filter: drop-shadow(0 0 3px var(--move-primary));
   transform: translate(-50%, -50%);
   animation: director-inline-impact var(--move-duration) ease-out both;
   animation-delay: calc(var(--impact-index) * 38ms);
@@ -427,7 +482,7 @@
   width: 100%;
   height: 100%;
   opacity: 0;
-  filter: drop-shadow(0 0 7px var(--move-highlight)) drop-shadow(0 0 17px var(--move-primary));
+  filter: drop-shadow(0 0 3px var(--move-primary));
   transform: translate(-50%, -50%);
   animation: director-impact-asset var(--impact-duration) cubic-bezier(0.16, 0.76, 0.2, 1) both;
   animation-delay: calc(var(--impact-index) * 30ms);
@@ -534,7 +589,7 @@
 .app-shell.battle-view .director-impact-feedback small {
   margin-top: 4px;
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: 3px;
   color: #f7fbff;
   font-size: clamp(10px, 0.78vw, 13px);
   font-weight: 900;
@@ -575,16 +630,16 @@
 
 @keyframes director-screen-focus {
   0%, 100% { opacity: 0; }
-  18% { opacity: 0.18; }
-  36%, 72% { opacity: 0.38; }
+  18% { opacity: 0.1; }
+  36%, 72% { opacity: 0.22; }
   90% { opacity: 0.08; }
 }
 
 @keyframes director-scene-cue {
   0%, 100% { opacity: 0; transform: scale(1.025); }
   14% { opacity: 0.18; }
-  28%, 78% { opacity: 0.9; transform: scale(1); }
-  92% { opacity: 0.18; }
+  28%, 78% { opacity: 0.46; transform: scale(1); }
+  92% { opacity: 0.12; }
 }
 
 @keyframes director-source-charge {
@@ -633,23 +688,24 @@
 
 @keyframes director-contact-trail {
   0%, 14% { opacity: 0; transform: translate(-50%, -50%) scale(0.28); }
-  30% { opacity: 0.74; }
-  58% { opacity: 0.9; transform: translate(calc(-50% + var(--travel-x) * 0.45), calc(-50% + var(--travel-y) * 0.45 + var(--lane-offset))) rotate(calc(var(--sprite-spin) + 120deg)) scale(0.92); }
-  78%, 100% { opacity: 0; transform: translate(calc(-50% + var(--travel-x) * 0.76), calc(-50% + var(--travel-y) * 0.76)) rotate(calc(var(--sprite-spin) + 210deg)) scale(0.38); }
+  30% { opacity: 0.6; }
+  62% { opacity: 0.8; transform: translate(calc(-50% + var(--travel-x) * 0.72), calc(-50% + var(--travel-y) * 0.72 + var(--lane-offset))) rotate(calc(var(--sprite-spin) + 18deg)) scale(0.92); }
+  86% { opacity: 0.78; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) rotate(calc(var(--sprite-spin) + 24deg)) scale(0.88); }
+  100% { opacity: 0.15; transform: translate(calc(-50% + var(--travel-x)), calc(-50% + var(--travel-y))) rotate(calc(var(--sprite-spin) + 24deg)) scale(0.58); }
 }
 
 @keyframes director-falling-effect {
   0% { opacity: 0; transform: translate(-50%, -20%) rotate(var(--sprite-spin)) scale(0.46); }
   12% { opacity: 0.9; }
-  82% { opacity: 1; transform: translate(-50%, 52vh) rotate(calc(var(--sprite-spin) + 320deg)) scale(var(--move-scale)); }
-  100% { opacity: 0; transform: translate(-50%, 60vh) rotate(calc(var(--sprite-spin) + 420deg)) scale(1.16); }
+  86% { opacity: 1; transform: translate(-50%, calc(-50% + 160px)) rotate(calc(var(--sprite-spin) + 100deg)) scale(var(--move-scale)); }
+  100% { opacity: 0.12; transform: translate(-50%, calc(-50% + 160px)) rotate(calc(var(--sprite-spin) + 115deg)) scale(0.8); }
 }
 
 @keyframes director-beam-asset {
-  0%, 20%, 100% { opacity: 0; clip-path: inset(0 100% 0 0); transform: scaleY(0.35); }
+  0%, 20% { opacity: 0; clip-path: inset(0 100% 0 0); transform: scaleY(0.35); }
   32% { opacity: 0.9; clip-path: inset(0 72% 0 0); transform: scaleY(0.75); }
-  48%, 82% { opacity: 0.95; clip-path: inset(0 0 0 0); transform: scaleY(1); }
-  94% { opacity: 0; clip-path: inset(0 0 0 0); transform: scaleY(0.6); }
+  48%, 88% { opacity: 0.95; clip-path: inset(0 0 0 0); transform: scaleY(1); }
+  100% { opacity: 0.28; clip-path: inset(0 0 0 0); transform: scaleY(0.6); }
 }
 
 @keyframes director-beam-fire {
@@ -660,10 +716,10 @@
 }
 
 @keyframes director-inline-impact {
-  0%, 34%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(0.24); }
+  0%, 34% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(0.24); }
   48% { opacity: 0.92; transform: translate(-50%, -50%) rotate(0deg) scale(calc(var(--move-impact-scale) * 0.76)); }
   68%, 84% { opacity: 1; transform: translate(-50%, -50%) rotate(12deg) scale(var(--move-impact-scale)); }
-  96% { opacity: 0; transform: translate(-50%, -50%) rotate(20deg) scale(calc(var(--move-impact-scale) * 1.22)); }
+  100% { opacity: 0.16; transform: translate(-50%, -50%) rotate(16deg) scale(calc(var(--move-impact-scale) * 1.12)); }
 }
 
 @keyframes director-drain-return {
@@ -675,9 +731,9 @@
 
 @keyframes director-impact-wash {
   0%, 100% { opacity: 0; }
-  10% { opacity: 0.82; }
-  36% { opacity: 0.46; }
-  72% { opacity: 0.12; }
+  10% { opacity: 0.3; }
+  36% { opacity: 0.16; }
+  72% { opacity: 0; }
 }
 
 @keyframes director-impact-asset {
@@ -727,8 +783,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .app-shell.battle-view .battle-pokemon-stage.is-attacking,
-  .app-shell.battle-view .battle-pokemon-stage.is-hit {
+  .app-shell.battle-view .battle-pokemon-stage.is-hit,
+  .app-shell.battle-view .battle-pokemon-stage.is-guarding {
     animation-duration: 1ms !important;
+  }
+
+  .app-shell.battle-view .has-choreography .pixel-move-source,
+  .app-shell.battle-view .has-choreography .pixel-move-trajectory,
+  .app-shell.battle-view .has-choreography .pixel-move-beam,
+  .app-shell.battle-view .has-choreography .inline-impact {
+    display: none;
   }
 
   .app-shell.battle-view .battle-pixel-move-animation *,
@@ -750,16 +814,16 @@
   }
 
   .app-shell.battle-view .battle-pixel-scene-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8, .timeline-frame-9) .pixel-move-screen {
-    opacity: 0.36 !important;
+    opacity: 0.12 !important;
   }
 
   .app-shell.battle-view .battle-pixel-scene-animation:is(.timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8, .timeline-frame-9) .pixel-move-field {
-    opacity: 0.82 !important;
+    opacity: 0.3 !important;
     transform: scale(1) !important;
   }
 
   .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7) .pixel-impact-wash {
-    opacity: 0.42 !important;
+    opacity: 0.12 !important;
   }
 
   .app-shell.battle-view .battle-pixel-impact-animation:is(.timeline-frame-1, .timeline-frame-2, .timeline-frame-3, .timeline-frame-4, .timeline-frame-5, .timeline-frame-6, .timeline-frame-7, .timeline-frame-8) .phase-impact > .fx-role-impact {

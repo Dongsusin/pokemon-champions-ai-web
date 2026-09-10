@@ -29,6 +29,7 @@ import {
   markPendingGoogleMigration,
 } from './accountStorage'
 import { deletePlayerProfile, ensurePlayerProfile } from './playerProfile'
+import { acquireAccountSession, ACCOUNT_SESSION_ERROR_CODES } from './accountSession'
 
 const AuthContext = createContext(null)
 
@@ -122,6 +123,15 @@ function createLocalGuest() {
 }
 
 function authErrorMessage(error) {
+  if (error?.code === ACCOUNT_SESSION_ERROR_CODES.occupied) {
+    return '다른 창이나 기기에서 이미 접속 중입니다. 접속 중인 창을 닫거나 로그아웃한 뒤 다시 시도해주세요.'
+  }
+  if (error?.code === ACCOUNT_SESSION_ERROR_CODES.lost) {
+    return '접속 상태를 확인할 수 없어 게임을 일시 중단했습니다. 인터넷 연결을 확인한 뒤 다시 로그인해주세요.'
+  }
+  if (error?.code === ACCOUNT_SESSION_ERROR_CODES.unavailable) {
+    return '접속 상태를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 잠시 후 다시 시도해주세요.'
+  }
   return AUTH_ERROR_MESSAGES[error?.code] ?? 'Google 로그인 중 오류가 발생했습니다.'
 }
 
@@ -140,70 +150,159 @@ function accountDeletionErrorMessage(error) {
 
 export function AuthProvider({ children }) {
   const initialAutoLoginRef = useRef(loadAutoLoginPreference())
-  const [user, setUser] = useState(() => readLocalGuest(initialAutoLoginRef.current))
-  const [ready, setReady] = useState(!isFirebaseConfigured)
+  const [user, setUser] = useState(null)
+  const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [profileSyncError, setProfileSyncError] = useState('')
   const [autoLogin, setAutoLoginState] = useState(initialAutoLoginRef.current)
   const autoLoginRef = useRef(initialAutoLoginRef.current)
   const userRef = useRef(user)
+  const candidateRef = useRef(readLocalGuest(initialAutoLoginRef.current))
+  const sessionRef = useRef(null)
+  const admissionRef = useRef(null)
+  const generationRef = useRef(0)
+  const cleanupRef = useRef(Promise.resolve())
+  const mountedRef = useRef(false)
+  const manualAuthRef = useRef(false)
 
   const setCurrentUser = useCallback((nextUser) => {
     userRef.current = nextUser
     setUser(nextUser)
   }, [])
 
-  useEffect(() => {
-    if (!firebaseAuth) {
-      setReady(true)
-      return undefined
+  const releaseSession = useCallback(async () => {
+    generationRef.current += 1
+    const pending = admissionRef.current?.promise
+    admissionRef.current = null
+    const session = sessionRef.current
+    sessionRef.current = null
+    setCurrentUser(null)
+    // Let a cancelled acquisition clean up before another login can claim its lock.
+    cleanupRef.current = Promise.all([cleanupRef.current, session?.handle.release(), pending])
+    await cleanupRef.current
+  }, [setCurrentUser])
+
+  const activateUser = useCallback((nextUser) => {
+    if (!nextUser) return Promise.resolve(false)
+    if (sessionRef.current?.uid === nextUser.uid && userRef.current && sessionRef.current.handle.isActive()) {
+      return Promise.resolve(true)
     }
+    if (admissionRef.current?.uid === nextUser.uid) return admissionRef.current.promise
 
-    let active = true
-    let unsubscribe = () => {}
+    const generation = ++generationRef.current
+    const previousSession = sessionRef.current
+    const previousAdmission = admissionRef.current?.promise
+    sessionRef.current = null
+    candidateRef.current = nextUser
+    setCurrentUser(null)
+    setReady(false)
+    setBusy(true)
+    setError('')
+    const isCurrent = () => mountedRef.current && generationRef.current === generation
 
-    const observeAuthState = () => {
-      if (!active) return
-      unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
-        if (!active) return
-        setError('')
-        setReady(true)
-
-        if (!nextUser) {
-          const localGuest = readLocalGuest(autoLoginRef.current)
-          setCurrentUser(localGuest)
-          setProfileSyncError('')
-          return
+    const promise = (async () => {
+      let handle
+      try {
+        await Promise.all([cleanupRef.current, previousSession?.handle.release(), previousAdmission])
+        if (!isCurrent()) return false
+        handle = await acquireAccountSession(nextUser, {
+          projectId: firebaseAuth?.app?.options.projectId,
+          onLost: (sessionError) => {
+            if (!isCurrent()) return
+            generationRef.current += 1
+            sessionRef.current = null
+            admissionRef.current = null
+            setCurrentUser(null)
+            setProfileSyncError('')
+            setError(authErrorMessage(sessionError))
+            setBusy(false)
+            setReady(true)
+          },
+        })
+        if (!isCurrent()) {
+          await handle.release()
+          return false
         }
 
-        clearLocalGuest()
+        sessionRef.current = { uid: nextUser.uid, handle }
+        if (nextUser.isLocalGuest) {
+          storeLocalGuest(nextUser, autoLoginRef.current)
+        } else {
+          // Credentials can be shared across tabs; only the admitted tab may change
+          // persistence. In particular, never sign out Firebase in a rejected tab.
+          await setPersistence(firebaseAuth, authPersistence(autoLoginRef.current))
+          if (!isCurrent()) {
+            await handle.release()
+            return false
+          }
+          clearLocalGuest()
+        }
+        setProfileSyncError('')
         setCurrentUser(nextUser)
-        ensurePlayerProfile(nextUser)
-          .then(() => {
-            if (active) setProfileSyncError('')
+        if (!nextUser.isLocalGuest) {
+          void ensurePlayerProfile(nextUser).catch(() => {
+            if (isCurrent()) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
           })
-          .catch(() => {
-            if (active) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
-          })
-      }, (authError) => {
-        if (!active) return
+        }
+        return true
+      } catch (sessionError) {
+        await handle?.release()
+        if (isCurrent()) {
+          sessionRef.current = null
+          setError(authErrorMessage(sessionError))
+        }
+        return false
+      } finally {
+        if (isCurrent()) {
+          admissionRef.current = null
+          setBusy(false)
+          setReady(true)
+        }
+      }
+    })()
+    admissionRef.current = { uid: nextUser.uid, promise }
+    return promise
+  }, [setCurrentUser])
+
+  useEffect(() => {
+    mountedRef.current = true
+    const restore = (firebaseUser) => {
+      if (!mountedRef.current || manualAuthRef.current) return
+      const nextUser = candidateRef.current?.isLocalGuest ? candidateRef.current : firebaseUser
+      if (nextUser) {
+        void activateUser(nextUser)
+      } else {
+        candidateRef.current = null
+        void releaseSession()
+        setProfileSyncError('')
+        setBusy(false)
+        setReady(true)
+      }
+    }
+    const unsubscribe = firebaseAuth
+      ? onAuthStateChanged(firebaseAuth, restore, (authError) => {
+        if (!mountedRef.current) return
+        void releaseSession()
         setError(authErrorMessage(authError))
+        setBusy(false)
         setReady(true)
       })
+      : (() => { restore(null); return () => {} })()
+
+    const restoreCachedPage = (event) => {
+      if (!event.persisted) return
+      // pagehide releases ownership even when the browser keeps the page in BFCache.
+      void releaseSession().then(() => restore(firebaseAuth?.currentUser ?? null))
     }
-
-    setPersistence(firebaseAuth, authPersistence(autoLoginRef.current))
-      .catch((authError) => {
-        if (active) setError(authErrorMessage(authError))
-      })
-      .finally(observeAuthState)
-
+    window.addEventListener('pageshow', restoreCachedPage)
     return () => {
-      active = false
+      mountedRef.current = false
       unsubscribe()
+      window.removeEventListener('pageshow', restoreCachedPage)
+      void releaseSession()
     }
-  }, [setCurrentUser])
+  }, [activateUser, releaseSession])
 
   const updateAutoLogin = useCallback(async (nextValue) => {
     const enabled = Boolean(nextValue)
@@ -212,7 +311,7 @@ export function AuthProvider({ children }) {
     try {
       if (userRef.current?.isLocalGuest) {
         storeLocalGuest(userRef.current, enabled)
-      } else if (firebaseAuth) {
+      } else if (firebaseAuth && userRef.current) {
         await setPersistence(firebaseAuth, authPersistence(enabled))
       }
       autoLoginRef.current = enabled
@@ -233,19 +332,23 @@ export function AuthProvider({ children }) {
 
     setBusy(true)
     setError('')
+    manualAuthRef.current = true
     try {
-      await setPersistence(firebaseAuth, authPersistence(autoLoginRef.current))
-      const provider = new GoogleAuthProvider()
-      provider.setCustomParameters({ prompt: 'select_account' })
-      await signInWithPopup(firebaseAuth, provider)
-      return true
+      let firebaseUser = firebaseAuth.currentUser
+      if (!firebaseUser || userRef.current?.isLocalGuest) {
+        const provider = new GoogleAuthProvider()
+        provider.setCustomParameters({ prompt: 'select_account' })
+        firebaseUser = (await signInWithPopup(firebaseAuth, provider)).user
+      }
+      return await activateUser(firebaseUser)
     } catch (authError) {
       setError(authErrorMessage(authError))
       return false
     } finally {
+      manualAuthRef.current = false
       setBusy(false)
     }
-  }, [])
+  }, [activateUser])
 
   const connectGuestToGoogle = useCallback(async () => {
     const currentGuest = userRef.current
@@ -260,36 +363,40 @@ export function AuthProvider({ children }) {
     setBusy(true)
     setError('')
     try {
-      clearLocalGuest()
-      if (firebaseAuth?.currentUser) await firebaseSignOut(firebaseAuth)
-      const localGuest = createLocalGuest()
-      storeLocalGuest(localGuest, autoLoginRef.current)
-      setProfileSyncError('')
-      setCurrentUser(localGuest)
+      // Reuse a remembered guest; creating a fresh UID must not bypass its window lock.
+      const localGuest = readLocalGuest(autoLoginRef.current) ?? createLocalGuest()
+      return await activateUser(localGuest)
     } catch {
       setError('이 PC에 게스트 정보를 저장하지 못했습니다.')
     } finally {
       setBusy(false)
     }
-  }, [setCurrentUser])
+  }, [activateUser])
 
   const signOut = useCallback(async () => {
     setBusy(true)
     setError('')
+    manualAuthRef.current = true
     try {
-      if (userRef.current?.isLocalGuest) {
+      const currentUser = userRef.current
+      candidateRef.current = null
+      if (currentUser?.isLocalGuest) {
         clearLocalGuest()
-        setCurrentUser(null)
-        setProfileSyncError('')
-      } else if (firebaseAuth) {
+      } else if (firebaseAuth && currentUser) {
         await firebaseSignOut(firebaseAuth)
       }
+      // Clear shared credentials before freeing the lock, so a newly admitted tab
+      // cannot be signed out by this window's delayed signOut operation.
+      await releaseSession()
+      setProfileSyncError('')
     } catch (authError) {
       setError(authErrorMessage(authError))
     } finally {
+      manualAuthRef.current = false
       setBusy(false)
+      setReady(true)
     }
-  }, [setCurrentUser])
+  }, [releaseSession])
 
   const deleteAccount = useCallback(async () => {
     const currentUser = userRef.current
@@ -298,12 +405,14 @@ export function AuthProvider({ children }) {
     setBusy(true)
     setError('')
     setProfileSyncError('')
+    manualAuthRef.current = true
 
     try {
       if (currentUser.isLocalGuest) {
         clearLocalPlayerData()
         clearLocalGuest()
-        setCurrentUser(null)
+        candidateRef.current = null
+        await releaseSession()
         return true
       }
 
@@ -317,6 +426,9 @@ export function AuthProvider({ children }) {
       })
       await reauthenticateWithPopup(firebaseUser, provider)
       await deletePlayerProfile(firebaseUser)
+      // Release while the ID token is still valid; deleteUser revokes authentication.
+      candidateRef.current = null
+      await releaseSession()
       await deleteUser(firebaseUser)
 
       clearLocalPlayerData()
@@ -327,9 +439,11 @@ export function AuthProvider({ children }) {
       setError(accountDeletionErrorMessage(accountError))
       return false
     } finally {
+      manualAuthRef.current = false
       setBusy(false)
+      setReady(true)
     }
-  }, [setCurrentUser])
+  }, [releaseSession, setCurrentUser])
 
   const value = useMemo(() => ({
     user,

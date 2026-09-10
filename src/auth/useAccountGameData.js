@@ -16,6 +16,7 @@ import {
   replaceLocalPlayerData,
 } from './accountStorage'
 import { loadPlayerGameData, savePlayerGameData } from './playerGameData'
+import { getActiveAccountSessionOwnerId, hasActiveAccountSession } from './accountSession'
 
 const CLOUD_SAVE_DEBOUNCE_MS = 700
 
@@ -38,34 +39,41 @@ export function useAccountGameData(user) {
   const timerRef = useRef(null)
   const savingRef = useRef(false)
   const pendingRef = useRef(false)
+  const generationRef = useRef(0)
 
   const flush = useCallback(async () => {
-    if (!cloudEnabled || !userId) return
+    if (!cloudEnabled || !userId || !hasActiveAccountSession(userId)) return
     if (savingRef.current) {
       pendingRef.current = true
       return
     }
 
     savingRef.current = true
+    const generation = generationRef.current
+    const ownerId = getActiveAccountSessionOwnerId(userId)
+    const isCurrent = () => generationRef.current === generation
+      && getActiveAccountSessionOwnerId(userId) === ownerId
     let latestRevision = ''
     try {
       do {
+        if (!isCurrent()) return
         pendingRef.current = false
         const payload = readLocalPlayerData()
         const result = await savePlayerGameData(userId, payload)
         latestRevision = result.revision
-      } while (pendingRef.current)
+      } while (pendingRef.current && isCurrent())
+      if (!isCurrent()) return
       markLocalPlayerDataSynced(userId, latestRevision)
       setSyncError('')
     } catch {
-      setSyncError('게임 데이터를 계정에 저장하지 못했습니다. 연결이 복구되면 다시 동기화합니다.')
+      if (isCurrent()) setSyncError('게임 데이터를 계정에 저장하지 못했습니다. 연결이 복구되면 다시 동기화합니다.')
     } finally {
-      savingRef.current = false
+      if (generationRef.current === generation) savingRef.current = false
     }
   }, [cloudEnabled, userId])
 
   const scheduleSave = useCallback(() => {
-    if (!cloudEnabled || !userId) return
+    if (!cloudEnabled || !userId || !hasActiveAccountSession(userId)) return
     markLocalPlayerDataDirty(userId)
     pendingRef.current = true
     window.clearTimeout(timerRef.current)
@@ -75,6 +83,7 @@ export function useAccountGameData(user) {
   }, [cloudEnabled, flush, userId])
 
   useEffect(() => {
+    generationRef.current += 1
     window.clearTimeout(timerRef.current)
     pendingRef.current = false
     savingRef.current = false
@@ -100,6 +109,8 @@ export function useAccountGameData(user) {
     }
 
     let active = true
+    const ownerId = getActiveAccountSessionOwnerId(userId)
+    const isCurrent = () => active && ownerId && getActiveAccountSessionOwnerId(userId) === ownerId
     setReady(false)
 
     const bootstrap = async () => {
@@ -109,6 +120,7 @@ export function useAccountGameData(user) {
 
       try {
         const cloudData = await loadPlayerGameData(userId)
+        if (!isCurrent()) return
 
         if (cloudData) {
           const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
@@ -123,6 +135,7 @@ export function useAccountGameData(user) {
 
           if (keepLocalData) {
             const result = await savePlayerGameData(userId, localPayload)
+            if (!isCurrent()) return
             markLocalPlayerDataSynced(userId, result.revision)
           } else {
             replaceLocalPlayerData(cloudData.payload)
@@ -132,12 +145,14 @@ export function useAccountGameData(user) {
           const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
           if (!localTransferAllowed) replaceLocalPlayerData({})
           const result = await savePlayerGameData(userId, readLocalPlayerData())
+          if (!isCurrent()) return
           markLocalPlayerDataSynced(userId, result.revision)
         }
 
         if (migration) clearPendingGoogleMigration()
         if (active) setSyncError('')
       } catch {
+        if (!isCurrent()) return
         const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
         if (!localTransferAllowed) replaceLocalPlayerData({})
         claimLocalPlayerData(userId)
@@ -153,6 +168,8 @@ export function useAccountGameData(user) {
 
     return () => {
       active = false
+      generationRef.current += 1
+      pendingRef.current = false
       window.clearTimeout(timerRef.current)
     }
   }, [cloudEnabled, userId])

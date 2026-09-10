@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -262,7 +262,94 @@ function buildRoutes(species, forms) {
     })
 }
 
+function formProfile(pokemon, baseSpecies, abilityNames) {
+  const zaMegaForm = getZaMegaForm(pokemon.name)
+  const zaAbilityOverride = ZA_MEGA_ABILITY_OVERRIDES[pokemon.name]
+  const profile = pokemonProfile(pokemon, abilityNames)
+
+  if (zaAbilityOverride) profile.abilities = [zaAbilityOverride.name]
+  // New upstream Mega records may not carry moves yet. Mega Evolution keeps
+  // the base Pokémon's learned moves, matching the runtime learnset fallback.
+  if (zaMegaForm && !profile.learnsetMoveIds.length) {
+    profile.learnsetMoveIds = [...baseSpecies.learnsetMoveIds]
+  }
+
+  return {
+    id: pokemon.id,
+    parentSpeciesId: baseSpecies.id,
+    slug: pokemon.name,
+    name: zaMegaForm?.name
+      ?? formDisplayName({ name: baseSpecies.slug, koreanName: baseSpecies.name }, pokemon.name),
+    generation: baseSpecies.generation,
+    isLegendary: baseSpecies.isLegendary,
+    isMythical: baseSpecies.isMythical,
+    ...profile,
+    ...(zaMegaForm ? {
+      isZaMega: true,
+      introducedIn: 'Pokémon Legends: Z-A',
+      requiredItemId: zaMegaForm.stone.id,
+    } : {}),
+  }
+}
+
+function assertZaMegaForms(forms) {
+  const generatedZaMegaForms = new Set(forms.filter((entry) => entry.isZaMega).map((entry) => entry.slug))
+  const missing = [...ZA_MEGA_FORM_SLUGS].filter((slug) => !generatedZaMegaForms.has(slug))
+  if (missing.length > 0) throw new Error(`Missing Pokémon Legends: Z-A Mega forms: ${missing.join(', ')}`)
+}
+
+// Refresh selected forms without changing the established species/learnset snapshot.
+// Example: node scripts/generatePokemonData.mjs --forms=absol-mega-z,lucario-mega-z
+async function refreshForms(slugs) {
+  if (!slugs.length || slugs.some((slug) => !/^[a-z0-9-]+$/.test(slug))) {
+    throw new Error('--forms requires comma-separated Pokémon form slugs')
+  }
+  for (const slug of slugs) {
+    if (ZA_MEGA_UNAVAILABLE_FORM_SLUGS.has(slug)) throw new Error(`Unavailable Mega form: ${slug}`)
+  }
+  const output = JSON.parse(await readFile(OUTPUT_PATH, 'utf8'))
+  const pokemonDetails = await mapConcurrent([...new Set(slugs)], (slug) => fetchJson(`${API_ROOT}/pokemon/${slug}`))
+  const abilityUrls = [...new Set(pokemonDetails
+    .filter((pokemon) => !ZA_MEGA_ABILITY_OVERRIDES[pokemon.name])
+    .flatMap((pokemon) => pokemon.abilities.map((entry) => entry.ability.url)))]
+  const abilityDetails = await mapConcurrent(abilityUrls, (url) => fetchJson(url))
+  const abilityNames = new Map(abilityDetails.map((ability) => [ability.name, localizedName(ability.names, ability.name)]))
+  for (const ability of abilityDetails) {
+    const name = abilityNames.get(ability.name)
+    output.abilities[name] = {
+      trigger: '조건 충족 시',
+      description: cleanText(ability.flavor_text_entries.filter((entry) => entry.language.name === 'ko').at(-1)?.flavor_text)
+        || `${name}의 조건을 만족하면 배틀 중 효과가 발동한다.`,
+    }
+  }
+  for (const pokemon of pokemonDetails) {
+    const baseSpecies = output.species.find((entry) => entry.id === idFromUrl(pokemon.species.url))
+    if (!baseSpecies || pokemon.is_default) throw new Error(`Expected a form of an existing species: ${pokemon.name}`)
+    const profile = formProfile(pokemon, baseSpecies, abilityNames)
+    if (!profile.abilities.length || !profile.stats.every(Number.isFinite) || !profile.learnsetMoveIds.length) {
+      throw new Error(`Incomplete form data: ${pokemon.name}`)
+    }
+    const existingIndex = output.forms.findIndex((entry) => entry.slug === profile.slug)
+    if (existingIndex >= 0) output.forms[existingIndex] = profile
+    else {
+      // Keep forms grouped by parent species, as in a full generation.
+      const nextSpeciesIndex = output.forms.findIndex((entry) => entry.parentSpeciesId > profile.parentSpeciesId)
+      output.forms.splice(nextSpeciesIndex < 0 ? output.forms.length : nextSpeciesIndex, 0, profile)
+    }
+    const override = ZA_MEGA_ABILITY_OVERRIDES[pokemon.name]
+    if (override) output.abilities[override.name] = { trigger: override.trigger, description: override.description }
+  }
+  assertZaMegaForms(output.forms)
+  output.generatedAt = new Date().toISOString()
+  output.formCount = output.forms.length
+  output.routes = buildRoutes(output.species, output.forms)
+  await writeFile(OUTPUT_PATH, `${JSON.stringify(output)}\n`, 'utf8')
+  console.log(`Refreshed ${pokemonDetails.length} forms; ${output.speciesCount} species and ${output.formCount} forms total.`)
+}
+
 async function main() {
+  const formArgument = process.argv.slice(2).find((argument) => argument.startsWith('--forms='))
+  if (formArgument) return refreshForms(formArgument.slice('--forms='.length).split(',').filter(Boolean))
   const speciesResource = await fetchJson(`${API_ROOT}/pokemon-species?limit=2000`)
   const speciesDetails = await mapConcurrent(
     speciesResource.results,
@@ -320,38 +407,11 @@ async function main() {
       ))
       .map((variety) => {
         const pokemon = pokemonByUrl.get(variety.pokemon.url)
-        const zaMegaForm = getZaMegaForm(pokemon.name)
-        const zaAbilityOverride = ZA_MEGA_ABILITY_OVERRIDES[pokemon.name]
-        const profile = pokemonProfile(pokemon, abilityNames)
-
-        if (zaAbilityOverride) {
-          profile.abilities = [zaAbilityOverride.name]
-        }
-
-        return {
-          id: pokemon.id,
-          parentSpeciesId: entry.id,
-          slug: pokemon.name,
-          name: zaMegaForm?.name
-            ?? formDisplayName({ name: entry.name, koreanName: baseSpecies.name }, pokemon.name),
-          generation: baseSpecies.generation,
-          isLegendary: baseSpecies.isLegendary,
-          isMythical: baseSpecies.isMythical,
-          ...profile,
-          ...(zaMegaForm ? {
-            isZaMega: true,
-            introducedIn: 'Pokémon Legends: Z-A',
-            requiredItemId: zaMegaForm.stone.id,
-          } : {}),
-        }
+        return formProfile(pokemon, baseSpecies, abilityNames)
       })
   })
 
-  const generatedZaMegaForms = new Set(forms.filter((entry) => entry.isZaMega).map((entry) => entry.slug))
-  const missingZaMegaForms = [...ZA_MEGA_FORM_SLUGS].filter((slug) => !generatedZaMegaForms.has(slug))
-  if (missingZaMegaForms.length > 0) {
-    throw new Error(`Missing Pokémon Legends: Z-A Mega forms: ${missingZaMegaForms.join(', ')}`)
-  }
+  assertZaMegaForms(forms)
 
   const output = {
     generatedAt: new Date().toISOString(),

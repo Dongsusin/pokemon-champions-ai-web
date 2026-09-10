@@ -48,6 +48,11 @@ export const ZA_MEGA_STONES = [
   stone('crabominite', '모단단게나이트', 'Crabominite', '모단단게', [form('crabominable-mega', '메가모단단게')]),
   stone('scovillainite', '스코빌런나이트', 'Scovillainite', '스코빌런', [form('scovillain-mega', '메가스코빌런')]),
   stone('glimmoranite', '킬라플로르나이트', 'Glimmoranite', '킬라플로르', [form('glimmora-mega', '메가킬라플로르')]),
+  stone('absolite-z', '앱솔나이트Z', 'Absolite Z', '앱솔', [form('absol-mega-z', '메가앱솔Z')], 'absolitez'),
+  stone('garchompite-z', '한카리아스나이트Z', 'Garchompite Z', '한카리아스', [form('garchomp-mega-z', '메가한카리아스Z')], 'garchompitez'),
+  stone('lucarionite-z', '루카리오나이트Z', 'Lucarionite Z', '루카리오', [form('lucario-mega-z', '메가루카리오Z')], 'lucarionitez'),
+  stone('golisopite', '갑주무사나이트', 'Golisopite', '갑주무사', [form('golisopod-mega', '메가갑주무사')]),
+  stone('baxcalibrite', '드닐레이브나이트', 'Baxcalibrite', '드닐레이브', [form('baxcalibur-mega', '메가드닐레이브')]),
 ]
 
 const formEntries = ZA_MEGA_STONES.flatMap((entry) => (
@@ -58,23 +63,45 @@ export const ZA_MEGA_FORMS = Object.fromEntries(formEntries)
 export const ZA_MEGA_FORM_SLUGS = new Set(Object.keys(ZA_MEGA_FORMS))
 
 export const ZA_MEGA_UNAVAILABLE_FORM_SLUGS = new Set([
-  'absol-mega-z',
-  'garchomp-mega-z',
-  'lucario-mega-z',
   'heatran-mega',
   'darkrai-mega',
   'zygarde-mega',
-  'golisopod-mega',
   'magearna-mega',
   'magearna-original-mega',
   'zeraora-mega',
   'tatsugiri-curly-mega',
   'tatsugiri-droopy-mega',
   'tatsugiri-stretchy-mega',
-  'baxcalibur-mega',
 ])
 
 export const ZA_MEGA_ABILITY_OVERRIDES = {
+  // Champions Regulation M-C (2026-09-09). Keep confirmed Mega abilities
+  // explicit: upstream records can still be empty or retain base-form abilities.
+  'absol-mega-z': {
+    name: '예리함',
+    trigger: '베는 기술 사용',
+    description: '베는 기술의 위력이 50% 올라간다.',
+  },
+  'garchomp-mega-z': {
+    name: '부유',
+    trigger: '상시',
+    description: '공중에 떠 있어 땅타입 기술과 압정 계열 효과를 받지 않는다.',
+  },
+  'lucario-mega-z': {
+    name: '파동의방호',
+    trigger: '접촉 기술로 공격받을 때',
+    description: '상대의 접촉 기술로 받는 데미지가 절반이 된다.',
+  },
+  'golisopod-mega': {
+    name: '단단한발톱',
+    trigger: '접촉 기술 사용',
+    description: '접촉 기술의 위력이 30% 올라간다.',
+  },
+  'baxcalibur-mega': {
+    name: '열교환',
+    trigger: '불꽃타입 기술로 공격받을 때',
+    description: '불꽃타입 기술로 공격받으면 공격이 1랭크 오른다. 화상 상태가 되지 않는다.',
+  },
   'meganium-mega': {
     name: '메가솔라',
     trigger: '상시',

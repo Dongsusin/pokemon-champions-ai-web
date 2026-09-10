@@ -245,7 +245,21 @@ assert.equal(requireProfile('gyarados-mega').name, '메가갸라도스')
 assert.equal(requireProfile('charizard-mega-x').name, '메가리자몽X')
 assert.equal(requireProfile('charizard-gmax').name, '거다이맥스 리자몽')
 assert.equal(requireProfile('groudon-primal').name, '원시그란돈')
-for (const profile of profiles.filter((entry) => /(?:-mega(?:-x|-y|x|y)?|-gmax|-primal)$/.test(entry.slug))) {
+for (const [baseId, slug, ability, types] of [
+  [359, 'absol-mega-z', '예리함', ['악', '고스트']],
+  [445, 'garchomp-mega-z', '부유', ['드래곤']],
+  [448, 'lucario-mega-z', '파동의방호', ['격투', '강철']],
+  [768, 'golisopod-mega', '단단한발톱', ['벌레', '강철']],
+  [998, 'baxcalibur-mega', '열교환', ['드래곤', '얼음']],
+]) {
+  const profile = requireProfile(slug)
+  assert(slugs(getBattleFormOptions(baseId)).has(slug), `Missing season Mega preview: ${slug}`)
+  assert(!slugs(getPersistentFormOptions(baseId)).has(slug), `Season Mega must remain battle-only: ${slug}`)
+  assert.deepEqual(profile.abilities, [ability])
+  assert.deepEqual(profile.types, types)
+  assert(getLearnableMoves(profile.id).length >= 4)
+}
+for (const profile of profiles.filter((entry) => /(?:-mega(?:-?[xyz])?|-gmax|-primal)$/.test(entry.slug))) {
   assert(!isSavablePokemonForm(profile), `Battle gimmick form became saveable: ${profile.slug}`)
 }
 

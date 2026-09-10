@@ -4,7 +4,18 @@ const BATTLE_AUDIO_ROOT = '/assets/audio/battle'
 const BATTLE_MOVE_AUDIO_ROOT = `${BATTLE_AUDIO_ROOT}/moves`
 const BATTLE_MUSIC_PATH = `${BATTLE_AUDIO_ROOT}/battle-theme.ogg`
 const POKEMON_CRY_ROOT = 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon'
+const RETRO_SAMPLE_NAMES = [
+  'retroNormal', 'retroFire', 'retroWater', 'retroElectric', 'retroGrass',
+  'retroIce', 'retroFighting', 'retroPoison', 'retroGround', 'retroFlying',
+  'retroPsychic', 'retroBug', 'retroRock', 'retroGhost', 'retroDragon',
+  'retroDark', 'retroSteel', 'retroFairy', 'retroStellar',
+  'ballThrow', 'ballOpen', 'recall', 'faint', 'heal', 'statusUp', 'statusDown',
+  'statusAilment', 'barrier', 'miss',
+]
 export const BATTLE_SAMPLE_PATHS = {
+  ...Object.fromEntries(RETRO_SAMPLE_NAMES.map((name) => [
+    name, `${BATTLE_AUDIO_ROOT}/retro/${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}.wav`,
+  ])),
   cursor: `${BATTLE_AUDIO_ROOT}/ui-cursor.ogg`,
   select: `${BATTLE_AUDIO_ROOT}/ui-select.ogg`,
   cancel: `${BATTLE_AUDIO_ROOT}/ui-cancel.ogg`,
@@ -58,6 +69,11 @@ const BATTLE_UI_VOLUME = 0.56
 const BATTLE_CRY_VOLUME = 0.56
 const BATTLE_MUSIC_VOLUME = 0.19
 const LOW_HP_MUSIC_VOLUME = 0.13
+const CUE_DURATIONS = {
+  announce: 380, attack: 760, impact: 440, resolve: 380, status: 560,
+  residual: 520, 'switch-out': 660, switch: 780, faint: 900,
+  form: 1200, gimmick: 3000, prompt: 420, result: 1300,
+}
 
 const DEFAULT_AUDIO_MIX = {
   master: 1,
@@ -107,6 +123,68 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
   let musicStarted = false
   let lowHpActive = false
   let lastCueId = null
+  let audioGeneration = 0
+  let playbackGeneration = 0
+  let cueSchedule = null
+  let musicStartTimer = null
+  const activeSources = new Map()
+  const cryTimers = new Set()
+  const pendingRequests = new Set()
+
+  const clearCryTimers = () => {
+    cryTimers.forEach((timer) => window.clearTimeout(timer))
+    cryTimers.clear()
+  }
+
+  const stopEffects = (includeUi = false) => {
+    playbackGeneration += 1
+    clearCryTimers()
+    for (const [source, entry] of activeSources) {
+      if (!includeUi && entry.bus === 'ui') continue
+      try { source.stop() } catch {}
+      entry.nodes.forEach((node) => { try { node.disconnect() } catch {} })
+      activeSources.delete(source)
+    }
+  }
+
+  const trackSource = (source, nodes, options = {}) => {
+    const entry = { nodes: [source, ...nodes], bus: options.bus ?? 'effects' }
+    activeSources.set(source, entry)
+    source.onended = () => {
+      entry.nodes.forEach((node) => { try { node.disconnect() } catch {} })
+      activeSources.delete(source)
+    }
+  }
+
+  const soundTiming = (start, duration) => {
+    if (!cueSchedule) return { start: Math.max(context.currentTime, start), duration }
+    const mappedStart = Math.max(context.currentTime,
+      cueSchedule.start + Math.max(0, start - cueSchedule.start) * cueSchedule.scale)
+    return {
+      start: mappedStart,
+      duration: Math.max(0, Math.min(duration * cueSchedule.scale, cueSchedule.end - mappedStart)),
+    }
+  }
+
+  const withSchedule = (schedule, play) => {
+    const previous = cueSchedule
+    cueSchedule = schedule
+    try { return play() } finally { cueSchedule = previous }
+  }
+
+  const fetchAudio = async (url) => {
+    const controller = new AbortController()
+    pendingRequests.add(controller)
+    const timer = window.setTimeout(() => controller.abort(), 4000)
+    try {
+      const response = await fetch(url, { cache: 'force-cache', signal: controller.signal })
+      if (!response.ok) throw new Error(`Failed to load audio: ${response.status}`)
+      return await response.arrayBuffer()
+    } finally {
+      window.clearTimeout(timer)
+      pendingRequests.delete(controller)
+    }
+  }
 
   const ensureContext = () => {
     if (context) {
@@ -118,6 +196,7 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     if (!AudioContext) return null
 
     context = new AudioContext()
+    audioGeneration += 1
     masterGain = context.createGain()
     effectsGain = context.createGain()
     uiGain = context.createGain()
@@ -165,20 +244,23 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     if (cryLoadPromises.has(normalizedId)) return cryLoadPromises.get(normalizedId)
 
     const loadPromise = (async () => {
+      const generation = audioGeneration
       const collections = normalizedId <= 649 ? ['legacy', 'latest'] : ['latest', 'legacy']
       for (const collection of collections) {
+        if (context !== audio || generation !== audioGeneration) return null
         try {
-          const response = await fetch(`${POKEMON_CRY_ROOT}/${collection}/${normalizedId}.ogg`, { cache: 'force-cache' })
-          if (!response.ok) continue
-          const encodedAudio = await response.arrayBuffer()
+          const encodedAudio = await fetchAudio(`${POKEMON_CRY_ROOT}/${collection}/${normalizedId}.ogg`)
           const decodedAudio = await audio.decodeAudioData(encodedAudio)
+          if (context !== audio || generation !== audioGeneration) return null
           cryBuffers.set(normalizedId, decodedAudio)
           return decodedAudio
         } catch {}
       }
-      failedCryIds.add(normalizedId)
+      if (context === audio && generation === audioGeneration) failedCryIds.add(normalizedId)
       return null
-    })().finally(() => cryLoadPromises.delete(normalizedId))
+    })().finally(() => {
+      if (cryLoadPromises.get(normalizedId) === loadPromise) cryLoadPromises.delete(normalizedId)
+    })
 
     cryLoadPromises.set(normalizedId, loadPromise)
     return loadPromise
@@ -187,17 +269,16 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
   const preload = (pokemonList = []) => {
     const audio = ensureContext()
     if (!audio) return Promise.resolve()
-    musicElement?.load()
     if (!sampleLoadPromise) {
+      musicElement?.load()
+      const generation = audioGeneration
       sampleLoadPromise = Promise.all(Object.entries(BATTLE_SAMPLE_PATHS).map(async ([name, path]) => {
         try {
-          const response = await fetch(path)
-          if (!response.ok) throw new Error(`Failed to load ${path}`)
-          const encodedAudio = await response.arrayBuffer()
+          const encodedAudio = await fetchAudio(path)
           const decodedAudio = await audio.decodeAudioData(encodedAudio)
-          sampleBuffers.set(name, decodedAudio)
+          if (context === audio && generation === audioGeneration) sampleBuffers.set(name, decodedAudio)
         } catch {
-          sampleBuffers.delete(name)
+          if (context === audio && generation === audioGeneration) sampleBuffers.delete(name)
         }
       }))
     }
@@ -215,8 +296,11 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
   const tone = (frequency, start, duration, options = {}) => {
     if (!context || !enabled) return
+    ;({ start, duration } = soundTiming(start, duration))
+    if (duration < 0.005) return
     const oscillator = context.createOscillator()
     const gain = context.createGain()
+    const nodes = [gain]
     const output = audioOutput(options)
     const volume = Math.max(0.0001, options.volume ?? 0.22)
     const end = start + duration
@@ -235,6 +319,7 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
     if (options.filter) {
       const filter = context.createBiquadFilter()
+      nodes.push(filter)
       filter.type = options.filter.type ?? 'lowpass'
       filter.frequency.value = options.filter.frequency ?? 1800
       filter.Q.value = options.filter.q ?? 0.7
@@ -244,24 +329,29 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
     if (context.createStereoPanner && options.pan !== undefined) {
       const panner = context.createStereoPanner()
+      nodes.push(panner)
       panner.pan.value = Math.max(-1, Math.min(1, options.pan))
       lastNode.connect(panner)
       lastNode = panner
     }
 
     lastNode.connect(output)
+    trackSource(oscillator, nodes, options)
     oscillator.start(start)
     oscillator.stop(end + 0.02)
   }
 
   const noise = (start, duration, options = {}) => {
     if (!context || !enabled) return
+    ;({ start, duration } = soundTiming(start, duration))
+    if (duration < 0.005) return
     const frameCount = Math.max(1, Math.floor(context.sampleRate * duration))
     const buffer = context.createBuffer(1, frameCount, context.sampleRate)
     const data = buffer.getChannelData(0)
     const source = context.createBufferSource()
     const filter = context.createBiquadFilter()
     const gain = context.createGain()
+    const nodes = [filter, gain]
     const volume = Math.max(0.0001, options.volume ?? 0.12)
 
     for (let index = 0; index < frameCount; index += 1) {
@@ -279,12 +369,14 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     const output = audioOutput(options)
     if (context.createStereoPanner && options.pan !== undefined) {
       const panner = context.createStereoPanner()
+      nodes.push(panner)
       panner.pan.value = Math.max(-1, Math.min(1, options.pan))
       gain.connect(panner)
       panner.connect(output)
     } else {
       gain.connect(output)
     }
+    trackSource(source, nodes, options)
     source.start(start)
     source.stop(start + duration + 0.02)
   }
@@ -293,15 +385,18 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     if (!context || !enabled) return false
     const buffer = sampleBuffers.get(name)
     if (!buffer) return false
+    const timing = soundTiming(start, options.duration ?? buffer.duration / (options.rate ?? 1))
+    if (timing.duration < 0.005) return false
     const source = context.createBufferSource()
     const gain = context.createGain()
+    const nodes = [gain]
     let lastNode = gain
     const playbackRate = Math.max(0.45, Math.min(2.25, options.rate ?? 1))
     const volume = Math.max(0.0001, options.volume ?? 0.72)
-    const playAt = Math.max(context.currentTime, start)
+    const playAt = timing.start
     const offset = Math.max(0, Math.min(buffer.duration - 0.01, options.offset ?? 0))
     const availableDuration = Math.max(0.01, buffer.duration - offset)
-    const requestedDuration = Math.max(0.01, options.duration ?? availableDuration / playbackRate)
+    const requestedDuration = Math.max(0.005, timing.duration)
     const sourceDuration = Math.min(availableDuration, requestedDuration * playbackRate)
     const outputDuration = sourceDuration / playbackRate
     const fadeIn = Math.min(options.fadeIn ?? 0.008, outputDuration * 0.2)
@@ -317,6 +412,7 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
     if (options.filter) {
       const filter = context.createBiquadFilter()
+      nodes.push(filter)
       filter.type = options.filter.type ?? 'lowpass'
       filter.frequency.value = options.filter.frequency ?? 2600
       filter.Q.value = options.filter.q ?? 0.7
@@ -326,13 +422,16 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
     if (context.createStereoPanner && options.pan !== undefined) {
       const panner = context.createStereoPanner()
+      nodes.push(panner)
       panner.pan.value = Math.max(-1, Math.min(1, options.pan))
       lastNode.connect(panner)
       lastNode = panner
     }
 
     lastNode.connect(audioOutput(options))
+    trackSource(source, nodes, options)
     source.start(playAt, offset, sourceDuration)
+    source.stop(playAt + outputDuration + 0.01)
     return true
   }
 
@@ -341,10 +440,14 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     const source = context.createBufferSource()
     const gain = context.createGain()
     const highpass = context.createBiquadFilter()
+    const nodes = [gain, highpass]
     const playbackRate = Math.max(0.55, Math.min(1.35, options.rate ?? 1))
     const volume = Math.max(0.0001, options.volume ?? 0.58)
     const playAt = Math.max(context.currentTime, start)
-    const endAt = playAt + buffer.duration / playbackRate
+    const maxDuration = cueSchedule ? cueSchedule.end - playAt : 1.25
+    const duration = Math.min(maxDuration, buffer.duration / playbackRate)
+    if (duration < 0.025) return false
+    const endAt = playAt + duration
 
     source.buffer = buffer
     source.playbackRate.value = playbackRate
@@ -360,6 +463,7 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
     if (context.createStereoPanner) {
       const panner = context.createStereoPanner()
+      nodes.push(panner)
       panner.pan.value = sidePan(sideId)
       gain.connect(panner)
       panner.connect(cryGain)
@@ -367,6 +471,7 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
       gain.connect(cryGain)
     }
 
+    trackSource(source, nodes, { bus: 'cry' })
     source.start(playAt)
     source.stop(endAt + 0.02)
     return true
@@ -496,8 +601,10 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     const audio = ensureContext()
     if (!audio || !enabled) return
     const cryIds = pokemonCryIds({ speciesId, originalSpeciesId })
-    const requestedAt = audio.currentTime
-    const scheduledAt = requestedAt + delay
+    const generation = playbackGeneration
+    const schedule = cueSchedule ? { ...cueSchedule, scale: 1 } : null
+    const scheduledAt = soundTiming(audio.currentTime + delay, 1).start
+    const fallbackName = name || `pokemon-${cryIds[0] ?? 'unknown'}`
     const playLoadedCry = (start) => {
       const buffer = cryIds.map((cryId) => cryBuffers.get(cryId)).find(Boolean)
       return playCryBuffer(buffer, start, sideId, { rate, volume })
@@ -505,16 +612,30 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
 
     if (playLoadedCry(scheduledAt)) return
     if (cryIds.length === 0 || cryIds.every((cryId) => failedCryIds.has(cryId))) {
-      playSynthCry(name, sideId, delay, rate)
+      withSchedule(schedule, () => playSynthCry(fallbackName, sideId, Math.max(0, scheduledAt - audio.currentTime), rate))
       return
     }
 
-    Promise.all(cryIds.map(preloadCry)).then(() => {
-      if (!context || context !== audio || !enabled || audio.currentTime - requestedAt > 1.6) return
-      if (!playLoadedCry(Math.max(scheduledAt, audio.currentTime + 0.01))) {
-        playSynthCry(name, sideId, Math.max(0, scheduledAt - audio.currentTime), rate)
-      }
-    })
+    // Do not let a slow cry download make an entrance silent, or arrive during
+    // the next move. Cache the recording for next time and use a bounded fallback.
+    let finished = false
+    let fallbackTimer
+    const finish = () => {
+      if (finished) return
+      finished = true
+      window.clearTimeout(fallbackTimer)
+      cryTimers.delete(fallbackTimer)
+      if (context !== audio || generation !== playbackGeneration || !enabled) return
+      if (schedule && audio.currentTime >= schedule.end - 0.025) return
+      withSchedule(schedule, () => {
+        if (!playLoadedCry(Math.max(scheduledAt, audio.currentTime + 0.005))) {
+          playSynthCry(fallbackName, sideId, Math.max(0, scheduledAt - audio.currentTime), rate)
+        }
+      })
+    }
+    fallbackTimer = window.setTimeout(finish, 120)
+    cryTimers.add(fallbackTimer)
+    Promise.all(cryIds.map(preloadCry)).then(finish)
   }
 
   const playMove = (cue) => {
@@ -564,6 +685,13 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
         duration: Math.min(0.2, profile.sampleDuration),
         pan: pulseIndex % 2 === 0 ? pan : -pan * 0.7,
       })
+    }
+
+    if (profile.isSoundMove) {
+      tone(root, now, 0.42, { volume: 0.145, wave: 'sine', slide: root * 1.5, pan })
+      tone(root * 1.5, now + 0.035, 0.42, { volume: 0.115, wave: 'triangle', slide: root * 0.8, pan: -pan })
+      sequence([root * 2, root * 1.75, root * 2.25], { step: 0.085, duration: 0.16, volume: 0.08, wave: 'sine', pan })
+      return
     }
 
     if (['punch', 'kick', 'strike', 'dash', 'barrage', 'bite'].includes(profile.archetype)) {
@@ -621,13 +749,6 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
       })
       tone(root * 2.7, now + 0.15, 0.34, { volume: 0.1, wave: 'sine', slide: root * 1.15, pan: -pan })
       noise(now + 0.14, 0.22, { volume: 0.055, frequency: 3900, q: 3.1, filterType: 'highpass', pan })
-      return
-    }
-
-    if (['sound'].includes(profile.archetype) || cue.moveFlags?.includes('sound')) {
-      tone(root, now, 0.42, { volume: 0.145, wave: 'sine', slide: root * 1.5, pan })
-      tone(root * 1.5, now + 0.035, 0.42, { volume: 0.115, wave: 'triangle', slide: root * 0.8, pan: -pan })
-      sequence([root * 2, root * 1.75, root * 2.25], { step: 0.085, duration: 0.16, volume: 0.08, wave: 'sine', pan })
       return
     }
 
@@ -828,9 +949,7 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     sequence([262, 330, 392, 523, 659, 784], { step: 0.09, duration: 0.13, volume: 0.13 })
   }
 
-  const playCue = (cue) => {
-    if (!cue || cue.id === lastCueId) return
-    lastCueId = cue.id
+  const renderCue = (cue) => {
     const audio = ensureContext()
     if (!audio || !enabled) return
     const now = audio.currentTime + 0.01
@@ -902,14 +1021,19 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
       playImpact(cue)
     } else if (cue.phase === 'resolve') {
       const pan = sidePan(cue.targetSideId)
-      if (cue.result === 'miss') sequence([392, 330, 262], { step: 0.07, duration: 0.09, volume: 0.1, pan })
+      if (cue.result === 'miss' || cue.result === 'failed') {
+        playSample('miss', now, { volume: 0.5, pan })
+        sequence([392, 330, 262], { step: 0.07, duration: 0.09, volume: 0.08, pan })
+      }
       if (cue.result === 'blocked') {
+        playSample('barrier', now, { volume: 0.58, pan })
         tone(880, now, 0.15, { volume: 0.13, wave: 'triangle', slide: 440, pan })
         noise(now, 0.14, { volume: 0.12, frequency: 2200, pan })
       }
       if (cue.result === 'immune') sequence([330, 247, 165], { step: 0.08, duration: 0.11, volume: 0.1, wave: 'triangle', pan })
     } else if (cue.phase === 'status' || cue.phase === 'residual') {
       const pan = sidePan(cue.targetSideId ?? cue.sideId)
+      const statusProfile = getMoveSoundProfile(cue)
       if (cue.result === 'charging') {
         const profile = getMoveSoundProfile(cue)
         playSample(profile.textureSample, now + 0.02, {
@@ -920,20 +1044,41 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
         })
         tone(profile.root * 0.55, now, 0.52, { volume: 0.14, wave: profile.wave, slide: profile.root * 2.2, pan })
         sequence(profile.signatureFrequencies.slice(0, 3), { delay: 0.14, step: 0.11, duration: 0.15, volume: 0.1, wave: profile.wave, pan })
-      } else if (cue.phase === 'residual') {
+      } else if (cue.phase === 'residual' && cue.damage > 0) {
+        playSample('statusAilment', now, { volume: 0.48, duration: 0.28, pan })
         tone(174, now, 0.22, { volume: 0.115, wave: 'sawtooth', slide: 98, pan })
         noise(now + 0.04, 0.16, { volume: 0.08, frequency: 540, q: 1.4, pan })
+      } else if (cue.result === 'heal' || statusProfile.isHealingMove || statusProfile.archetype === 'restore') {
+        playSample('heal', now, { volume: 0.7, pan })
+        sequence([523, 659, 784, 1047], { step: 0.07, duration: 0.1, volume: 0.085, wave: 'sine', pan })
+      } else if (cue.result === 'failed') {
+        playSample('miss', now, { volume: 0.45, pan })
+        tone(247, now, 0.18, { volume: 0.08, wave: 'triangle', slide: 165, pan })
+      } else if (cue.phase === 'residual') {
+        // Zero-damage upkeep is not a hit; do not play the poison/hurt sting.
+        tone(523, now, 0.08, { volume: 0.055, wave: 'sine', pan })
+      } else if (['boost', 'dance'].includes(statusProfile.archetype)) {
+        playSample('statusUp', now, { volume: 0.62, pan })
+        sequence([330, 440, 659], { step: 0.07, duration: 0.1, volume: 0.08, wave: 'triangle', pan })
+      } else if (statusProfile.archetype === 'barrier') {
+        playSample('barrier', now, { volume: 0.6, pan })
       } else {
+        playSample('statusAilment', now, { volume: 0.48, pan })
         sequence([220, 196, 174], { step: 0.1, duration: 0.13, volume: 0.1, wave: 'triangle', pan })
       }
     } else if (cue.phase === 'switch-out') {
+      const side = cue.state?.[cue.sideId]
+      const actor = side?.team?.[side.activeIndexes?.[cue.actorSlot ?? 0] ?? side.activeIndex]
+      if (actor?.fainted || actor?.hp <= 0) return
       const pan = sidePan(cue.sideId)
-      playSample('item', now, { volume: 0.42, rate: 0.72, pan })
+      playSample('recall', now, { volume: 0.78, pan })
       tone(1047, now, 0.36, { volume: 0.16, slide: 110, wave: 'sine', pan })
       noise(now + 0.04, 0.22, { volume: 0.09, frequency: 1800, pan })
     } else if (cue.phase === 'switch') {
       const pan = sidePan(cue.sideId)
-      playSample('item', now + 0.035, { volume: 0.55, rate: 1.08, pan })
+      duckMusicForGimmick(now, (cueSchedule?.end ?? now + 0.78) - now)
+      playSample('ballThrow', now, { volume: 0.54, pan })
+      playSample('ballOpen', now + 0.18, { volume: 0.8, pan })
       tone(165, now, 0.34, { volume: 0.16, slide: 990, wave: 'sine', pan })
       noise(now + 0.04, 0.16, { volume: 0.075, frequency: 2400, q: 2, pan })
       sequence([523, 659, 784], { delay: 0.2, step: 0.06, duration: 0.085, volume: 0.09, pan })
@@ -948,7 +1093,8 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     } else if (cue.phase === 'faint') {
       const faintedSideId = cue.targetSideId ?? cue.sideId
       const pan = sidePan(faintedSideId)
-      playSample('hurt', now, { volume: 0.36, rate: 0.68, pan })
+      duckMusicForGimmick(now, (cueSchedule?.end ?? now + 0.9) - now)
+      playSample('faint', now + 0.22, { volume: 0.7, pan })
       playCry({
         speciesId: cue.actorSpeciesId,
         originalSpeciesId: cue.actorOriginalSpeciesId,
@@ -957,11 +1103,13 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
         rate: 0.72,
         volume: 0.52,
       })
-      sequence([392, 330, 262, 196, 147, 110], { delay: 0.12, step: 0.105, duration: 0.15, volume: 0.135, wave: 'square', pan })
+      sequence([392, 330, 262, 196, 147, 110], { delay: 0.12, step: 0.105, duration: 0.15, volume: 0.065, wave: 'triangle', pan })
     } else if (cue.phase === 'prompt') {
       sequence([392, 523], { step: 0.1, duration: 0.13, volume: 0.115 })
     } else if (cue.phase === 'result') {
       battleStarted = false
+      window.clearTimeout(musicStartTimer)
+      stopLowHpWarning()
       stopMusic(true)
       const victory = cue.sideId === 'player'
       sequence(victory
@@ -975,18 +1123,69 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     }
   }
 
+  const playCue = (cue, options = {}) => {
+    if (!cue || (cue.id != null && cue.id !== '' && cue.id === lastCueId)) return
+    const audio = ensureContext()
+    if (!audio || !enabled) return
+    stopEffects()
+    lastCueId = cue.id ?? null
+    if (options.animationMode === 'skip' && cue.phase === 'announce') return
+    const nominalDuration = CUE_DURATIONS[cue.phase] ?? 760
+    const durationMs = Number.isFinite(options.durationMs)
+      ? Math.max(45, options.durationMs) : nominalDuration
+    const schedule = {
+      start: audio.currentTime,
+      end: audio.currentTime + durationMs / 1000,
+      scale: Math.min(1, durationMs / nominalDuration),
+    }
+    withSchedule(schedule, () => renderCue(cue))
+  }
+
   const start = (encounter = {}) => {
     battleStarted = true
     const audio = ensureContext()
     if (!audio || !enabled) return
-    preload([encounter.player, encounter.opponent])
+    stopEffects()
+    lastCueId = null
+    window.clearTimeout(musicStartTimer)
+    const opponentPokemon = encounter.opponentPokemon ?? [encounter.opponent]
+    const playerPokemon = encounter.playerPokemon ?? [encounter.player]
+    const entrances = [
+      ...opponentPokemon.filter(Boolean).map((pokemon) => ({ ...pokemon, sideId: 'opponent' })),
+      ...playerPokemon.filter(Boolean).map((pokemon) => ({ ...pokemon, sideId: 'player' })),
+    ]
+    void preload(entrances)
     stopMusic(true)
-    sequence([196, 262, 330, 392, 523, 659], { step: 0.075, duration: 0.115, volume: 0.145 })
-    playSample('select', audio.currentTime + 0.02, { volume: 0.62 })
-    noise(audio.currentTime + 0.08, 0.22, { volume: 0.085, frequency: 1900, filterType: 'highpass' })
-    playCry({ ...encounter.opponent, sideId: 'opponent', delay: 0.48, volume: 0.62 })
-    playCry({ ...encounter.player, sideId: 'player', delay: 0.86, volume: 0.62 })
-    window.setTimeout(startMusic, 760)
+    withSchedule({ start: audio.currentTime, end: audio.currentTime + 0.8 + entrances.length * 0.42, scale: 1 }, () => {
+      sequence([196, 262, 330, 392, 523, 659], { step: 0.075, duration: 0.115, volume: 0.145 })
+      playSample('select', audio.currentTime + 0.02, { volume: 0.62 })
+      noise(audio.currentTime + 0.08, 0.22, { volume: 0.085, frequency: 1900, filterType: 'highpass' })
+      entrances.forEach((pokemon, index) => {
+        const delay = 0.16 + index * 0.42
+        const pan = sidePan(pokemon.sideId)
+        playSample('ballThrow', audio.currentTime + delay, { volume: 0.45, pan })
+        playSample('ballOpen', audio.currentTime + delay + 0.12, { volume: 0.72, pan })
+        // Keep each cry within its entrance so doubles/triples remain intelligible.
+        withSchedule({ start: audio.currentTime, end: audio.currentTime + delay + 0.76, scale: 1 }, () => {
+          playCry({ ...pokemon, delay: delay + 0.23, volume: 0.62 })
+        })
+      })
+    })
+    const generation = audioGeneration
+    musicStartTimer = window.setTimeout(() => {
+      musicStartTimer = null
+      if (generation === audioGeneration && context === audio) startMusic()
+    }, 760)
+  }
+
+  const unlock = () => {
+    if (!enabled) return Promise.resolve(false)
+    const audio = ensureContext()
+    if (!audio) return Promise.resolve(false)
+    // Both APIs are invoked in the input handler, while user activation is live.
+    const resumed = audio.state === 'suspended' ? audio.resume() : Promise.resolve()
+    if (battleStarted) startMusic()
+    return resumed.then(() => context === audio && audio.state === 'running').catch(() => false)
   }
 
   const setEnabled = (nextEnabled) => {
@@ -1001,6 +1200,9 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
       startLowHpWarning()
     }
     if (!enabled) {
+      stopEffects(true)
+      window.clearTimeout(musicStartTimer)
+      musicStartTimer = null
       stopMusic()
       stopLowHpWarning()
     }
@@ -1037,6 +1239,14 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
   }
 
   const destroy = () => {
+    audioGeneration += 1
+    stopEffects(true)
+    window.clearTimeout(musicStartTimer)
+    musicStartTimer = null
+    pendingRequests.forEach((controller) => controller.abort())
+    pendingRequests.clear()
+    cueSchedule = null
+    lastCueId = null
     battleStarted = false
     stopMusic(true)
     stopLowHpWarning()
@@ -1050,6 +1260,8 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     compressor = null
     musicElement = null
     musicSource = null
+    musicStarted = false
+    lowHpActive = false
     sampleBuffers.clear()
     cryBuffers.clear()
     cryLoadPromises.clear()
@@ -1066,5 +1278,6 @@ export function createBattleAudio(initialEnabled = true, initialMix = {}) {
     setMix,
     setLowHpWarning,
     start,
+    unlock,
   }
 }
