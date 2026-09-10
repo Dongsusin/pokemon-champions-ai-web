@@ -18,11 +18,15 @@ import {
   Sparkles,
   Swords,
   Trash2,
+  Trophy,
   UserRound,
   Volume2,
   VolumeX,
   X,
 } from 'lucide-react'
+import { AchievementCatalog } from './AchievementsScreen'
+
+const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'account']
 
 const ATTACK_ANIMATION_OPTIONS = [
   { value: 'skip', label: '스킵' },
@@ -235,6 +239,9 @@ function AccountPanel({
 
 function SettingsModal({
   settings,
+  achievementProgress,
+  balance = 0,
+  initialTab = 'game',
   user,
   accountError,
   authBusy,
@@ -247,9 +254,14 @@ function SettingsModal({
   onReset,
   onSignOut,
 }) {
-  const [activeTab, setActiveTab] = useState('game')
+  const [activeTab, setActiveTab] = useState(() => SETTINGS_TAB_IDS.includes(initialTab) ? initialTab : 'game')
   const closeButtonRef = useRef(null)
+  const panelRef = useRef(null)
   const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    setActiveTab(SETTINGS_TAB_IDS.includes(initialTab) ? initialTab : 'game')
+  }, [initialTab])
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -260,6 +272,13 @@ function SettingsModal({
     const previousBodyOverflow = document.body.style.overflow
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onCloseRef.current()
+      if (event.key !== 'Tab') return
+      const controls = [...panelRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]')]
+        .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0)
+      const first = controls[0]
+      const last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
     }
 
     document.body.style.overflow = 'hidden'
@@ -280,7 +299,7 @@ function SettingsModal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="settings-modal-header">
           <span className="settings-header-mark"><Sparkles size={22} /></span>
           <div>
@@ -292,7 +311,16 @@ function SettingsModal({
           </button>
         </header>
 
-        <nav className="settings-tabs" role="tablist" aria-label="설정 분류">
+        <nav className="settings-tabs" role="tablist" aria-label="설정 분류" onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+          event.preventDefault()
+          const current = SETTINGS_TAB_IDS.indexOf(activeTab)
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? SETTINGS_TAB_IDS.length - 1
+            : (current + (event.key === 'ArrowRight' ? 1 : -1) + SETTINGS_TAB_IDS.length) % SETTINGS_TAB_IDS.length
+          const id = SETTINGS_TAB_IDS[next]
+          setActiveTab(id)
+          document.getElementById(`settings-${id}-tab`)?.focus()
+        }}>
           <button
             className={activeTab === 'game' ? 'selected' : ''}
             type="button"
@@ -300,6 +328,7 @@ function SettingsModal({
             id="settings-game-tab"
             aria-controls="settings-game-panel"
             aria-selected={activeTab === 'game'}
+            tabIndex={activeTab === 'game' ? 0 : -1}
             onClick={() => setActiveTab('game')}
           >
             <Gamepad2 size={20} /> 게임
@@ -311,9 +340,22 @@ function SettingsModal({
             id="settings-audio-tab"
             aria-controls="settings-audio-panel"
             aria-selected={activeTab === 'audio'}
+            tabIndex={activeTab === 'audio' ? 0 : -1}
             onClick={() => setActiveTab('audio')}
           >
             <Headphones size={20} /> 오디오
+          </button>
+          <button
+            className={activeTab === 'achievements' ? 'selected' : ''}
+            type="button"
+            role="tab"
+            id="settings-achievements-tab"
+            aria-controls="settings-achievements-panel"
+            aria-selected={activeTab === 'achievements'}
+            tabIndex={activeTab === 'achievements' ? 0 : -1}
+            onClick={() => setActiveTab('achievements')}
+          >
+            <Trophy size={20} /> 업적
           </button>
           <button
             className={activeTab === 'account' ? 'selected' : ''}
@@ -322,6 +364,7 @@ function SettingsModal({
             id="settings-account-tab"
             aria-controls="settings-account-panel"
             aria-selected={activeTab === 'account'}
+            tabIndex={activeTab === 'account' ? 0 : -1}
             onClick={() => setActiveTab('account')}
           >
             <UserRound size={20} /> 계정
@@ -398,6 +441,10 @@ function SettingsModal({
                 />
               ))}
             </div>
+          ) : activeTab === 'achievements' ? (
+            <div className="settings-achievements-panel" id="settings-achievements-panel" role="tabpanel" aria-labelledby="settings-achievements-tab">
+              <AchievementCatalog progress={achievementProgress} balance={balance} embedded />
+            </div>
           ) : (
             <AccountPanel
               user={user}
@@ -413,7 +460,7 @@ function SettingsModal({
         </div>
 
         <footer className="settings-modal-footer">
-          {activeTab !== 'account' && (
+          {['game', 'audio'].includes(activeTab) && (
             <button className="settings-reset-button" type="button" onClick={onReset}>
               <RotateCcw size={17} /> 기본값 복원
             </button>

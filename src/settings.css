@@ -95,7 +95,7 @@
 
 .settings-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 10px 12px 0;
   background: rgba(12, 10, 29, 0.68);
@@ -120,6 +120,43 @@
   color: #fff8e6;
   background: linear-gradient(180deg, rgba(83, 63, 107, 0.98), rgba(55, 48, 72, 0.96));
   box-shadow: inset 0 3px #5bf3f0;
+}
+
+.settings-tabs button:focus-visible { outline: 2px solid #89f0eb; outline-offset: -4px; }
+.settings-modal-backdrop:has(.settings-achievements-open) { padding: 24px; }
+.settings-modal.settings-achievements-open { width: min(1180px, calc(100vw - 48px)); height: min(820px, calc(100dvh - 48px)); max-height: calc(100dvh - 48px); }
+.settings-achievements-open .settings-modal-body { display: flex; overflow: hidden; padding: 12px; }
+.settings-achievements-panel { display: flex; flex: 1; min-width: 0; min-height: 0; }
+html .settings-modal.settings-achievements-open .achievement-screen.achievement-embedded { width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; gap: 10px; overflow: hidden; }
+html .settings-modal.settings-achievements-open .achievement-catalog { min-height: 0; }
+html .settings-modal.settings-achievements-open .achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+html[data-mobile-layout="landscape"] .settings-modal.settings-achievements-open { width: min(1380px, calc(100vw - 48px)); }
+
+@media (max-width: 760px) {
+  html .settings-modal.settings-achievements-open .achievement-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-tabs button { gap: 6px; font-size: 12px; }
+  .settings-tabs button svg { width: 17px; height: 17px; }
+}
+@media (max-width: 500px) and (orientation: portrait) {
+  html .settings-modal.settings-achievements-open .achievement-grid { grid-template-columns: 1fr; }
+  .settings-modal.settings-achievements-open .achievement-embedded-summary p { display: none; }
+}
+@media (max-height: 510px) and (orientation: landscape) {
+  .settings-modal-backdrop:has(.settings-achievements-open) { padding: 12px; }
+  .settings-modal.settings-achievements-open { width: calc(100vw - 28px); height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); border-width: 2px; border-radius: 12px; }
+  .settings-achievements-open .settings-modal-header { min-height: 40px; gap: 9px; padding: 4px 10px; }
+  .settings-achievements-open .settings-modal-header small { display: none; }
+  .settings-achievements-open .settings-modal-header h2 { font-size: 20px; }
+  .settings-achievements-open .settings-header-mark { width: 28px; height: 28px; border-radius: 8px; }
+  .settings-achievements-open .settings-header-mark svg { width: 18px; height: 18px; }
+  .settings-achievements-open .settings-close-button { width: 28px; height: 28px; border-radius: 7px; }
+  .settings-achievements-open .settings-tabs { gap: 6px; padding: 4px 8px 0; }
+  .settings-achievements-open .settings-tabs button { min-height: 29px; gap: 5px; font-size: 11px; }
+  .settings-achievements-open .settings-tabs button svg { width: 15px; height: 15px; }
+  .settings-achievements-open .settings-modal-body { padding: 6px 8px; }
+  .settings-achievements-open .achievement-embedded-summary { display: none; }
+  .settings-achievements-open .settings-modal-footer { padding: 4px 8px; }
+  .settings-achievements-open .settings-modal-footer button { min-height: 28px; font-size: 11px; }
 }
 
 .settings-modal-body {

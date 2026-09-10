@@ -1,10 +1,9 @@
 import SpriteImage from './SpriteImage'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import {
   ArrowLeft, ArrowRight, Check, CheckCheck, ChevronLeft, ChevronRight,
-  Crown, Flag, Gift, LockKeyhole, Medal, Search, ShieldCheck, Sparkles,
-  Target, Trophy, UsersRound, X, Zap,
+  Crown, Flag, Gift, Medal, Search, ShieldCheck, Sparkles,
+  Target, Trophy, UsersRound, Zap,
 } from 'lucide-react'
 import TrainerSprite from './TrainerSprite'
 import { TRAINERS } from './data/trainerTeams.js'
@@ -32,8 +31,14 @@ const CATEGORY_ICONS = {
 }
 const STATUS_FILTERS = [
   { id: 'all', label: '전체' },
-  { id: 'in-progress', label: '도전 중' },
-  { id: 'completed', label: '달성 완료' },
+  { id: 'in-progress', label: '미달성' },
+  { id: 'completed', label: '달성' },
+]
+const SORT_OPTIONS = [
+  { id: 'recommended', label: '추천' },
+  { id: 'progress', label: '진행도' },
+  { id: 'recent', label: '최근 달성' },
+  { id: 'name', label: '이름' },
 ]
 
 function formatNumber(value) {
@@ -41,7 +46,7 @@ function formatNumber(value) {
 }
 
 function formatDate(value) {
-  if (!value) return ''
+  if (value == null) return ''
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -112,7 +117,7 @@ function AchievementCard({ definition, record }) {
       </div>
       {record.completed && definition.rewardId && <RevealedReward definition={definition} compact />}
       <footer className="achievement-card-footer">
-        {isSealedReward ? <strong className="achievement-sealed-reward"><LockKeyhole size={14} /> 미공개 보상</strong> : <strong className="achievement-vp-reward"><Zap size={14} fill="currentColor" /> {formatNumber(definition.rewardVp)} <small>VP</small></strong>}
+        {isSealedReward ? <strong className="achievement-sealed-reward" aria-label="미공개 보상">?</strong> : <strong className="achievement-vp-reward"><Zap size={14} fill="currentColor" /> {formatNumber(definition.rewardVp)} <small>VP</small></strong>}
         {record.completed ? (
           <span className="achievement-paid"><CheckCheck size={13} /> 지급 완료{date && <time dateTime={new Date(record.completedAt).toISOString()}>{date}</time>}</span>
         ) : <span className="achievement-auto-reward">{isSealedReward ? '달성 후 공개' : '달성 시 자동 지급'}</span>}
@@ -121,10 +126,11 @@ function AchievementCard({ definition, record }) {
   )
 }
 
-function AchievementsScreen({ progress, onBack, balance = 0 }) {
+export function AchievementCatalog({ progress, onBack, balance = 0, embedded = false }) {
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState('all')
   const [query, setQuery] = useState('')
+  const [sort, setSort] = useState('recommended')
   const [page, setPage] = useState(1)
   const catalogRef = useRef(null)
   const entries = useMemo(() => ACHIEVEMENTS.map((definition) => ({
@@ -140,7 +146,7 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
   ])), [entries])
   const filteredEntries = useMemo(() => {
     const search = normalizeSearch(query)
-    return entries.filter(({ definition, record }) => {
+    const filtered = entries.filter(({ definition, record }) => {
       if (category !== 'all' && definition.category !== category) return false
       if (status === 'completed' && !record.completed) return false
       if (status === 'in-progress' && record.completed) return false
@@ -150,7 +156,17 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
       return [definition.title, definition.description, trainer?.name, trainer?.alias, revealedName]
         .some((text) => normalizeSearch(text).includes(search))
     })
-  }, [entries, category, status, query])
+    // Only public progress and titles participate in ordering. A sealed reward's
+    // amount, identity, and rarity must not be discoverable through sort order.
+    const ratio = ({ record }) => record.current / Math.max(1, record.target)
+    return filtered.sort((a, b) => {
+      if (sort === 'name') return a.definition.title.localeCompare(b.definition.title, 'ko')
+      if (sort === 'recent') return Number(b.record.completed) - Number(a.record.completed)
+        || (b.record.completedAt ?? 0) - (a.record.completedAt ?? 0) || ratio(b) - ratio(a)
+      if (sort === 'progress') return ratio(b) - ratio(a)
+      return Number(a.record.completed) - Number(b.record.completed) || ratio(b) - ratio(a)
+    })
+  }, [entries, category, status, query, sort])
   const pageCount = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
   const visibleEntries = filteredEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
@@ -159,6 +175,7 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
     setCategory('all')
     setStatus('all')
     setQuery('')
+    setSort('recommended')
     setPage(1)
   }
 
@@ -167,8 +184,16 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
     catalogRef.current?.scrollTo({ top: 0, behavior: 'instant' })
   }
 
+  const Container = embedded ? 'section' : 'main'
   return (
-    <main className="achievement-screen">
+    <Container className={`achievement-screen${embedded ? ' achievement-embedded' : ''}`} aria-label={embedded ? '업적 현황과 목록' : undefined}>
+      {embedded ? (
+        <div className="achievement-embedded-summary">
+          <span><Trophy size={18} /><strong>{completedEntries.length}<small> / {entries.length} 달성</small></strong></span>
+          <p>달성 시 VP가 자동 지급됩니다.</p>
+          <span className="achievement-embedded-wallet"><Zap size={15} /><strong>{formatNumber(balance)} <small>VP 보유</small></strong></span>
+        </div>
+      ) : <>
       <header className="achievement-header">
         <button className="achievement-back-button" type="button" onClick={onBack}><ArrowLeft size={18} /><span>돌아가기</span></button>
         <div className="achievement-title"><span>CHAMPION'S RECORD</span><h1>업적</h1><p>매번의 도전이, 당신만의 기록이 됩니다.</p></div>
@@ -184,6 +209,7 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
         <div className="achievement-overview-stat"><span><UsersRound size={15} /> 첫 승리를 거둔 AI</span><strong>{trainerCompleted}<small>/ {TRAINERS.length}</small></strong></div>
         <div className="achievement-overview-stat achievement-earned-stat"><span><Zap size={15} /> 받은 업적 보상</span><strong>{formatNumber(earnedVp)}<small>VP</small></strong></div>
       </section>
+      </>}
 
       <section className="achievement-catalog" aria-label="업적 목록">
         <div className="achievement-category-tabs" aria-label="업적 분류">
@@ -194,9 +220,10 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
           })}
         </div>
         <div className="achievement-toolbar">
-          <div className="achievement-status-filters" aria-label="달성 상태">
+          <div className="achievement-status-filters" role="group" aria-label="달성 상태">
             {STATUS_FILTERS.map((entry) => <button type="button" key={entry.id} className={status === entry.id ? 'achievement-selected' : ''} aria-pressed={status === entry.id} onClick={() => { setStatus(entry.id); setPage(1) }}>{entry.label}</button>)}
           </div>
+          <label className="achievement-sort"><span>정렬</span><select aria-label="업적 정렬" value={sort} onChange={(event) => { setSort(event.target.value); setPage(1) }}>{SORT_OPTIONS.map((entry) => <option value={entry.id} key={entry.id}>{entry.label}</option>)}</select></label>
           <label className="achievement-search"><Search size={16} /><input type="search" aria-label="업적 또는 트레이너 검색" placeholder="업적 또는 트레이너 검색" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} /><span>{filteredEntries.length}</span></label>
         </div>
         <div className="achievement-catalog-scroll" ref={catalogRef} tabIndex={0} aria-label="업적 카드 스크롤 영역">
@@ -215,8 +242,12 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
           <div><button type="button" disabled={currentPage === 1} aria-label="이전 업적 페이지" onClick={() => changePage(currentPage - 1)}><ChevronLeft size={17} /></button><span><strong>{currentPage}</strong> / {pageCount}</span><button type="button" disabled={currentPage === pageCount} aria-label="다음 업적 페이지" onClick={() => changePage(currentPage + 1)}><ChevronRight size={17} /></button></div>
         </footer>
       </section>
-    </main>
+    </Container>
   )
+}
+
+function AchievementsScreen(props) {
+  return <AchievementCatalog {...props} />
 }
 
 export function AchievementBattleRewards({ unlocked = [], baseVp = 0, rewardVp }) {
@@ -229,47 +260,6 @@ export function AchievementBattleRewards({ unlocked = [], baseVp = 0, rewardVp }
       <ul tabIndex={0} aria-label="이번 배틀 업적 보상 목록">{definitions.map((entry) => <li className={entry.rewardId ? 'achievement-battle-rare' : ''} key={entry.id}><Check size={13} /><div className="achievement-battle-reward-copy"><span>{entry.title}</span>{entry.rewardId && <RevealedReward definition={entry} compact />}</div><strong>+{formatNumber(entry.rewardVp)} VP</strong></li>)}</ul>
       <footer><span>승리 보상 {formatNumber(baseVp)} VP + 업적 보상</span><strong>총 +{formatNumber(Number(baseVp) + bonus)} VP 지급</strong></footer>
     </section>
-  )
-}
-
-export function AchievementRewardNotice({ unlocked = [], onClose, totalVp, baseVp = 0 }) {
-  const panelRef = useRef(null)
-  const closeRef = useRef(null)
-  const entries = rewardDefinitions(unlocked)
-  const bonus = totalVp ?? entries.reduce((total, entry) => total + entry.rewardVp, 0)
-  const open = entries.length > 0
-
-  useEffect(() => {
-    if (!open) return undefined
-    const previousFocus = document.activeElement
-    closeRef.current?.focus()
-    return () => { if (previousFocus?.isConnected) previousFocus.focus?.() }
-  }, [open])
-
-  if (!open) return null
-
-  function onKeyDown(event) {
-    if (event.key === 'Escape') { event.preventDefault(); onClose?.(); return }
-    if (event.key !== 'Tab') return
-    const controls = [...panelRef.current.querySelectorAll('button:not(:disabled), [tabindex="0"]')]
-    const first = controls[0]
-    const last = controls[controls.length - 1]
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
-    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
-  }
-
-  return createPortal(
-    <div className="achievement-reveal-backdrop">
-      <section className="achievement-reveal-dialog" role="dialog" aria-modal="true" aria-labelledby="achievement-reveal-title" aria-describedby="achievement-reveal-description" ref={panelRef} onKeyDown={onKeyDown}>
-        <button className="achievement-reveal-close" type="button" onClick={onClose} aria-label="업적 보상 알림 닫기" ref={closeRef}><X size={19} /></button>
-        <header><span><Trophy size={27} /></span><div><small>ACHIEVEMENT UNLOCKED</small><h2 id="achievement-reveal-title">새로운 기록, 특별한 보상</h2><p id="achievement-reveal-description">{entries.length}개 업적의 보상이 지급되었습니다.</p></div></header>
-        <div className="achievement-reveal-list" tabIndex={0} aria-label="새로 획득한 업적 보상">
-          {entries.map((entry) => <article key={entry.id}><h3><Check size={15} />{entry.title}<strong>+{formatNumber(entry.rewardVp)} VP</strong></h3>{entry.rewardId && <RevealedReward definition={entry} />}<p>{entry.description}</p></article>)}
-        </div>
-        <footer><span><Gift size={18} /> 총 보상 지급 완료</span><strong>+{formatNumber(Number(bonus) + Number(baseVp))} VP</strong></footer>
-        <button className="achievement-reveal-confirm" type="button" onClick={onClose}>확인 <Check size={17} /></button>
-      </section>
-    </div>, document.body,
   )
 }
 

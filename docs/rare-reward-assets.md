@@ -52,17 +52,20 @@
 
 필터는 `src/data/rareRewards.js`의 `filter` 필드에서 관리한다. 크리스털 칠색조는 청백색의 수정빛, 아스트랄 레쿠쟈는 짙은 청자색과 은은한 금빛 광채를 사용한다. `isShiny` 및 이로치 획득 기록과 독립된 외형이며, 능력치·타입·특성에는 영향을 주지 않는다.
 
-## 생성 이미지: 레전드플레이트 아이콘
+## 레전드플레이트 아이콘
 
-- 도구: 내장 `image_gen.imagegen` (CLI / 별도 API 키 사용 없음)
-- 생성일: 2026-09-10
-- 최종 파일: `public/assets/items/legend-plate.png`
-- 형식: 1254×1254 투명 RGBA PNG, 831,106바이트
-- 원본 결과: `C:/Users/pdwea/.codex/generated_images/01a088c0-81ac-7ff3-b6b5-43a0ca6397c2/exec-5f698762-4795-4021-aa07-c356cf31eab0.png`
-- 결과를 변경하지 않고 프로젝트 경로로 복사했다. 게임 화면에서는 아이템 크기에 맞춰 표시한다.
+- 원작: **Pokémon LEGENDS 아르세우스**의 레전드플레이트 가방 아이콘
+- 사용자 제공 참고 문서: https://pokemon.fandom.com/ko/wiki/%EB%A0%88%EC%A0%84%EB%93%9C%ED%94%8C%EB%A0%88%EC%9D%B4%ED%8A%B8
+- 이미지 출처·파일 정보: https://archives.bulbagarden.net/wiki/File:Bag_Legend_Plate_LA_Sprite.png
+- 원본 PNG: https://archives.bulbagarden.net/media/upload/0/02/Bag_Legend_Plate_LA_Sprite.png
+- 자료 등록자: **ShiroKuro-chan**, Bulbagarden Archives, 2022-02-02
+- 수록일: 2026-09-10
+- 최종 파일: `public/assets/items/legend-plate-la.png`
+- 형식·크기: 투명 PNG, 128×128, 5498바이트
+- SHA-256: `f7c9f2317aec8bb56b769a4778bdff606a62fa9ecff96c0573f2ee52696275fc`
 
-최종 프롬프트:
+참고 문서가 가리키는 실제 아이템을 표시하도록 기존 생성 이미지를 게임 원본 스프라이트로 교체했다. 받은 PNG를 변환·재색칠·확대 가공하지 않고 그대로 포함한다. 화면에서만 아이템 영역에 맞게 표시한다. 리소스 서비스 워커가 쿼리 문자열을 무시하고 경로 기준으로 캐시를 재사용하므로 새 파일명으로 제공해 이전 생성 아이콘이 표시되지 않게 했다.
 
-> Create one tiny pixel art inventory icon for a fantasy game: an ancient ivory stone tablet with a thick golden beveled rim and a simple ring-shaped embossed emblem in its center. Three-quarter perspective, centered, full object visible, crisp hard pixel edges, limited color palette, subtle rainbow mineral accents on the gold edge. Transparent RGBA background. No writing, text, letters, shadows, scenery, borders or other objects. Square canvas.
+크레딧: **Legend Plate inventory sprite — Pokémon LEGENDS: Arceus; Nintendo / Creatures / GAME FREAK. Source: Bulbagarden Archives, uploaded by ShiroKuro-chan.** 출처 파일 페이지는 이 이미지를 포켓몬 게임 스프라이트의 공정 이용 자료로 분류한다. 위키 본문의 CC-BY-SA 조건이 게임 이미지에도 적용된다고 표시하지 않으며, 이 프로젝트의 생성 원화나 소유 이미지라고 주장하지 않는다.
 
-포켓몬 스킨의 이미지 생성 요청은 도구에서 차단되어 생성 결과를 수록하지 않았다. 위 스프라이트와 게임 렌더링 효과를 최종 구현에 사용했다.
+현재 배틀에서는 아르세우스의 지닌 도구로 사용하며, 심판의뭉치가 상대의 약점을 기준으로 타입을 선택하고 아르세우스의 타입과 폼도 변경한다. 이는 표준 배틀 엔진에 맞춘 사용 방식이며, 이미지 교체로 효과·획득 조건·미획득 보상 숨김 규칙을 변경하지 않는다.

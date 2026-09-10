@@ -17,7 +17,8 @@ import {
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
 import BattleScreen from './BattleScreen'
-import AchievementsScreen, { AchievementRewardNotice } from './AchievementsScreen'
+import AchievementsScreen from './AchievementsScreen'
+import AchievementToast from './AchievementToast'
 import { loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
 import { getUnlockedPokemonSkins } from './data/rareRewards'
@@ -298,13 +299,17 @@ function GameApp({
   const [vp, setVp] = useState(vpBalance.current)
   const [achievementProgress, setAchievementProgress] = useState(achievementProgressRef.current)
   const [battleRewards, setBattleRewards] = useState(null)
-  const [collectionRewards, setCollectionRewards] = useState(null)
+  const [achievementToasts, setAchievementToasts] = useState([])
+  const notifiedAchievementIds = useRef(new Set())
+  const achievementToastSequence = useRef(0)
   const resolvedCompetitionRef = useRef(null)
   const settledBattleRef = useRef(null)
   const finishedBattleRef = useRef(null)
   const [itemInventory, setItemInventory] = useState(storedItemInventory.current)
   const [settings, setSettings] = useState(loadGameSettings)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsInitialTab, setSettingsInitialTab] = useState('game')
+  const [settingsOpenId, setSettingsOpenId] = useState(0)
   const [notice, setNotice] = useState('')
   const [competition, setCompetition] = useState(null)
   const [battleMatch, setBattleMatch] = useState(null)
@@ -319,6 +324,27 @@ function GameApp({
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
+
+  function enqueueAchievementToasts(unlocked) {
+    const fresh = unlocked.filter((definition) => {
+      if (notifiedAchievementIds.current.has(definition.id)) return false
+      notifiedAchievementIds.current.add(definition.id)
+      return true
+    })
+    if (fresh.length === 0) return
+    const id = `achievement-${++achievementToastSequence.current}`
+    setAchievementToasts(current => [...current, { id, unlocked: fresh }])
+  }
+
+  function dismissAchievementToast(id) {
+    setAchievementToasts(current => current[0]?.id === id ? current.slice(1) : current)
+  }
+
+  function openSettings(tab = 'game') {
+    setSettingsInitialTab(tab)
+    setSettingsOpenId(current => current + 1)
+    setSettingsOpen(true)
+  }
 
   useEffect(() => {
     const result = prepareAchievementRewards(achievementProgressRef.current, boxPokemon, storedItemInventory.current)
@@ -338,10 +364,7 @@ function GameApp({
     if (result.collection !== boxPokemon) setBoxPokemon(result.collection)
     setItemInventory(result.inventory)
     if (result.unlocked.length > 0) {
-      setCollectionRewards(current => ({
-        unlocked: [...(current?.unlocked ?? []), ...result.unlocked],
-        rewardVp: (current?.rewardVp ?? 0) + result.rewardVp,
-      }))
+      enqueueAchievementToasts(result.unlocked)
       gameAudioRef.current?.playEvent('reward')
     }
     onPlayerDataChanged?.()
@@ -712,6 +735,7 @@ function GameApp({
     if (result.collection !== boxPokemon) setBoxPokemon(result.collection)
     setVp(nextVp)
     setBattleRewards(settled)
+    enqueueAchievementToasts(result.unlocked)
     onPlayerDataChanged?.()
     if (baseVp + rewardVp > 0) {
       gameAudioRef.current?.playEvent('reward')
@@ -725,9 +749,7 @@ function GameApp({
     if (!settlement) return
     finishedBattleRef.current = battleMatch.id
     const { nextCompetition, baseVp, rewardVp, unlocked } = settlement
-    if (baseVp + rewardVp > 0) showNotice(unlocked.length
-      ? `업적 ${unlocked.length}개 달성! 보상 합계 ${(baseVp + rewardVp).toLocaleString()} VP 지급 완료`
-      : `배틀 승리 보상 ${baseVp} VP 지급 완료`)
+    if (baseVp + rewardVp > 0 && unlocked.length === 0) showNotice(`배틀 승리 보상 ${baseVp} VP 지급 완료`)
     setBattleMatch(null)
 
     if (nextCompetition.status !== 'active') {
@@ -1021,7 +1043,7 @@ function GameApp({
             className="icon-button"
             type="button"
             aria-label="설정"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => openSettings()}
           >
             <Settings size={21} />
           </button>
@@ -1109,7 +1131,7 @@ function GameApp({
           playerGender={settings.game.playerGender}
           audioSettings={settings.audio}
           onToggleSound={toggleSound}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={() => openSettings()}
           onResolved={settleCompetitionBattle}
           battleRewards={battleRewards}
           onComplete={finishCompetitionBattle}
@@ -1166,13 +1188,21 @@ function GameApp({
         />
       )}
 
-      {collectionRewards && screen !== 'battle' && screen !== 'hatch' && (
-        <AchievementRewardNotice unlocked={collectionRewards.unlocked} totalVp={collectionRewards.rewardVp}
-          onClose={() => setCollectionRewards(null)} />
+      {achievementToasts[0] && (
+        <AchievementToast key={achievementToasts[0].id} notification={achievementToasts[0]}
+          onDismiss={() => dismissAchievementToast(achievementToasts[0].id)}
+          onOpenAchievements={() => {
+            dismissAchievementToast(achievementToasts[0].id)
+            openSettings('achievements')
+          }} />
       )}
 
       {settingsOpen && (
         <SettingsModal
+          key={settingsOpenId}
+          initialTab={settingsInitialTab}
+          achievementProgress={achievementProgress}
+          balance={vp}
           settings={settings}
           user={user}
           accountError={accountError}

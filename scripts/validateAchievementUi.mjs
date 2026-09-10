@@ -58,11 +58,12 @@ await context.route('**/src/App.jsx', async route => {
   let body = await response.text()
   assert(body.includes('const trainerInitial ='), 'App test hook anchor changed')
   body = body.replace('const trainerInitial =', `window.__achievementQA = {
-    screen, vp, achievementProgress, battleMatch, competition, battleRewards, boxPokemon, itemInventory, collectionRewards, teams,
+    screen, vp, achievementProgress, battleMatch, competition, battleRewards, boxPokemon, itemInventory, achievementToasts, teams,
     resolvedCompetition: resolvedCompetitionRef.current,
     start: (...args) => startBattleMode(...args), enter: (...args) => startCompetitionBattle(...args),
     settle: (...args) => settleCompetitionBattle(...args), finish: (...args) => finishCompetitionBattle(...args),
-    purchase: (...args) => purchaseBattleItem(...args), open: id => selectMode({id})
+    purchase: (...args) => purchaseBattleItem(...args), open: id => selectMode({id}),
+    replaceCollection: value => setBoxPokemon(value)
   }; window.__firstAchievementRender ??= {
     pokemon: boxPokemon.map(({speciesId,skinId,heldItemId,captureId})=>({speciesId,skinId,heldItemId,captureId})),
     inventory: {...itemInventory}, vp
@@ -73,7 +74,7 @@ await context.route('**/src/BattleScreen.jsx', async route => {
   const response = await route.fetch()
   let body = await response.text()
   assert(body.includes('const currentLogEntry ='), 'Battle test hook anchor changed')
-  body = body.replace('const currentLogEntry =', `window.__achievementBattleQA = { summary,
+  body = body.replace('const currentLogEntry =', `window.__achievementBattleQA = { summary, state:battle, instance:battleAudioRef.current,
     replace: value => { setBattle(value); setIntroVisible(false); setTrainerDialogue(null); }
   }; const currentLogEntry =`)
   await route.fulfill({ response, body })
@@ -143,6 +144,7 @@ async function validateSealedRewards(targetPage) {
     const card = targetPage.locator('.achievement-card').filter({ has: targetPage.getByRole('heading', { name: definition.title, exact: true }) })
     assert.equal(await card.count(), 1)
     assert.equal(await card.locator('.achievement-sealed-reward').count(), 1)
+    assert.equal((await card.locator('.achievement-sealed-reward').innerText()).trim(), '?', 'Secret rewards must use the requested question-mark label')
     const dom = await card.innerHTML()
     const reward = getRareReward(definition.rewardId)
     for (const hiddenValue of [definition.rewardId, reward.name, String(definition.rewardVp), definition.rewardVp.toLocaleString('ko-KR'), reward.spriteFront, reward.sprite].filter(Boolean)) {
@@ -161,6 +163,58 @@ async function validateSealedRewards(targetPage) {
 async function openMode(targetPage, mode, expectedScreen = mode) {
   await targetPage.evaluate(id => window.__achievementQA.open(id), mode)
   await waitScreen(expectedScreen, targetPage)
+}
+
+async function openSettingsAchievements(targetPage = page, inBattle = false) {
+  await targetPage.getByRole('button', { name: inBattle ? '환경 설정' : '설정', exact: true }).click()
+  await targetPage.getByRole('tab', { name: '업적', exact: true }).click()
+  await targetPage.locator('#settings-achievements-panel .achievement-embedded').waitFor()
+  assert.equal(await targetPage.getByRole('dialog').count(), 1)
+}
+
+async function verifySettingsCatalog() {
+  await openSettingsAchievements()
+  assert.equal(await page.evaluate(() => window.__achievementQA.screen), 'lobby', 'Settings achievements must not navigate away from the current screen')
+  assert.equal(await page.locator('#settings-achievements-panel .achievement-card').count(), 12)
+  await page.getByRole('button', { name: '달성', exact: true }).click()
+  assert.equal(await page.locator('.achievement-empty').count(), 1)
+  await page.getByRole('button', { name: '미달성', exact: true }).click()
+  assert.equal(await page.locator('.achievement-is-complete').count(), 0)
+  await page.getByRole('combobox', { name: '업적 정렬' }).selectOption('name')
+  const names = await page.locator('.achievement-card h3').allTextContents()
+  assert.deepEqual(names, [...names].sort((left, right) => left.localeCompare(right, 'ko-KR')), 'Name sorting must order the visible achievements')
+  await page.getByRole('combobox', { name: '업적 정렬' }).selectOption('progress')
+  const ratios = await page.locator('.achievement-progress-track').evaluateAll(elements => elements.map(element => Number(element.getAttribute('aria-valuenow')) / Number(element.getAttribute('aria-valuemax'))))
+  assert(ratios.every((ratio, index) => index === 0 || ratio <= ratios[index - 1]), 'Progress sorting must put the nearest goals first')
+  await page.setViewportSize({ width: 844, height: 390 })
+  await assertInViewport('.settings-close-button')
+  await assertInViewport('#settings-achievements-panel .achievement-pagination')
+  await page.screenshot({ path: path.join(output, 'settings-achievements-landscape.png') })
+  await page.getByRole('button', { name: '설정 닫기', exact: true }).click()
+  assert.equal(await page.locator('.settings-modal').count(), 0)
+  assert.equal(await page.evaluate(() => window.__achievementQA.screen), 'lobby')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  console.log('Browser QA: settings achievement tab, status filters, sorting and compact layout passed')
+}
+
+async function assertNonBlockingToast(targetPage, expectedCount) {
+  await targetPage.locator('.achievement-toast').waitFor()
+  assert.equal(await targetPage.locator('.achievement-toast').count(), 1, 'One transaction must appear as one compact notification')
+  assert.equal(await targetPage.getByRole('status', { name: '업적 달성 알림' }).count(), 1)
+  assert.equal(await targetPage.locator('.achievement-reveal-dialog').count(), 0, 'Achievement rewards must not open the old blocking dialog')
+  const notification = await targetPage.evaluate(() => window.__achievementQA.achievementToasts[0])
+  assert.equal(notification.unlocked.length, expectedCount)
+  await targetPage.waitForFunction(() => {
+    const bounds = document.querySelector('.achievement-toast')?.getBoundingClientRect()
+    return bounds && bounds.left >= 0 && bounds.right <= innerWidth && bounds.top >= 0 && bounds.bottom <= innerHeight
+  })
+  await assertInViewport('.achievement-toast', targetPage)
+  const position = await targetPage.locator('.achievement-toast').evaluate(element => {
+    const bounds = element.getBoundingClientRect()
+    return { left: bounds.left, top: bounds.top, right: bounds.right, width: innerWidth }
+  })
+  assert(position.right > position.width * .8 && position.top < 120, 'Notifications must appear near the upper-right corner')
+  return notification
 }
 
 async function verifyEarnedRewardRecovery() {
@@ -184,6 +238,7 @@ async function verifyEarnedRewardRecovery() {
     }
     assert.equal(initial.first.inventory['legend-plate'], 1)
     assert.equal(await earnedPage.getByRole('dialog').count(), 0, 'Rehydrating an old achievement must not show a new reward notice')
+    assert.equal(await earnedPage.locator('.achievement-toast').count(), 0, 'Previously paid rewards must not enqueue a fresh notification')
 
     await openMode(earnedPage, 'training')
     await earnedPage.getByRole('searchbox', { name: '포켓몬 이름 검색' }).fill('뮤츠')
@@ -249,45 +304,106 @@ async function verifyCollectionRewardSettlement() {
   collectionPage.on('pageerror', error => errors.push(error.message))
   try {
     await collectionPage.goto(`${origin}/achievement-qa.html`, { waitUntil: 'domcontentloaded' })
-    await collectionPage.locator('.achievement-reveal-dialog').waitFor()
+    await assertNonBlockingToast(collectionPage, 1)
     const ordinaryReward = ACHIEVEMENTS.find(entry => entry.id === 'collection-all')
     const shinyReward = ACHIEVEMENTS.find(entry => entry.id === 'collection-shiny-all')
     const ordinaryBalance = initialVp + ordinaryReward.rewardVp
     await collectionPage.waitForFunction(balance => window.__achievementQA.vp === balance, ordinaryBalance)
-    assert.match(await collectionPage.locator('.achievement-reveal-dialog').innerText(), /크리스털 칠색조/)
-    assert.equal(await collectionPage.locator('.achievement-reveal-list > article').count(), 1)
+    assert.match(await collectionPage.locator('.achievement-toast').innerText(), /전국도감의 완성/)
+    assert.equal(await collectionPage.getByRole('dialog').count(), 0)
     assert.equal(await collectionPage.evaluate(() => JSON.parse(localStorage.getItem('champions-achievements-v1')).walletBalance), ordinaryBalance)
     await collectionPage.setViewportSize({ width: 844, height: 390 })
-    await assertInViewport('.achievement-reveal-confirm', collectionPage)
+    await assertInViewport('.achievement-toast', collectionPage)
     await collectionPage.screenshot({ path: path.join(output, 'collection-reward-landscape.png') })
-    await collectionPage.keyboard.press('Escape')
-    assert.equal(await collectionPage.locator('.achievement-reveal-dialog').count(), 0)
+    await collectionPage.getByRole('button', { name: '업적 알림 닫기', exact: true }).click()
+    await collectionPage.locator('.achievement-toast').waitFor({ state: 'detached' })
     await collectionPage.reload()
     await waitScreen('lobby', collectionPage)
     assert.equal(await collectionPage.evaluate(() => window.__achievementQA.vp), ordinaryBalance)
-    assert.equal(await collectionPage.locator('.achievement-reveal-dialog').count(), 0, 'Reload must not replay a paid collection reward')
+    assert.equal(await collectionPage.locator('.achievement-toast').count(), 0, 'Reload must not replay a paid collection reward')
 
-    await collectionPage.evaluate(() => {
-      const collection = JSON.parse(localStorage.getItem('champions-dex-v2'))
-      localStorage.setItem('champions-dex-v2', JSON.stringify(collection.map(entry => ({ ...entry, shinyObtained: true, isShiny: true }))))
-    })
-    await collectionPage.reload()
-    await collectionPage.locator('.achievement-reveal-dialog').waitFor()
+    await openMode(collectionPage, 'hatch')
+    await collectionPage.evaluate(() => window.__achievementQA.replaceCollection(
+      window.__achievementQA.boxPokemon.map(entry => ({ ...entry, shinyObtained: true, isShiny: true })),
+    ))
+    await assertNonBlockingToast(collectionPage, 1)
+    assert.equal(await collectionPage.evaluate(() => window.__achievementQA.screen), 'hatch', 'New collection achievements must notify immediately without leaving the draw screen')
     const shinyBalance = ordinaryBalance + shinyReward.rewardVp
     await collectionPage.waitForFunction(balance => window.__achievementQA.vp === balance, shinyBalance)
-    assert.match(await collectionPage.locator('.achievement-reveal-dialog').innerText(), /아스트랄 레쿠쟈/)
-    assert.equal(await collectionPage.locator('.achievement-reveal-list > article').count(), 1)
-    await collectionPage.getByRole('button', { name: '확인', exact: true }).click()
+    assert.match(await collectionPage.locator('.achievement-toast').innerText(), /모든 빛깔의 발견/)
+    await collectionPage.mouse.move(10, 200)
+    await collectionPage.locator('.achievement-toast').waitFor({ state: 'detached', timeout: 9000 })
+    assert.equal(await collectionPage.evaluate(() => window.__achievementQA.achievementToasts.length), 0, 'Notifications must dismiss automatically without user input')
     await collectionPage.reload()
     await waitScreen('lobby', collectionPage)
     assert.equal(await collectionPage.evaluate(() => window.__achievementQA.vp), shinyBalance)
-    assert.equal(await collectionPage.locator('.achievement-reveal-dialog').count(), 0)
+    assert.equal(await collectionPage.locator('.achievement-toast').count(), 0)
     assert.equal(await collectionPage.evaluate(() => Object.keys(window.__achievementQA.achievementProgress.unlocked).length), 2)
     console.log('Browser QA: ordinary and shiny full-collection rewards paid once across reloads')
   } catch (error) {
     await collectionPage.screenshot({ path: path.join(output, 'collection-reward-failure.png') }).catch(() => {})
     throw error
   } finally { await collectionContext.close() }
+}
+
+async function verifyToastQueue() {
+  const toastContext = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  await installHarness(toastContext)
+  const toastPage = await toastContext.newPage()
+  toastPage.on('pageerror', error => errors.push(error.message))
+  try {
+    await toastPage.goto(`${origin}/achievement-qa.html`, { waitUntil: 'domcontentloaded' })
+    await waitScreen('lobby', toastPage)
+    await toastPage.evaluate(() => window.__achievementQA.start('league'))
+    await waitScreen('competition', toastPage)
+    await toastPage.evaluate(() => window.__achievementQA.enter())
+    await waitScreen('battle', toastPage)
+    const firstMatch = await toastPage.evaluate(() => window.__achievementQA.battleMatch)
+    const firstBattle = completedBattle(firstMatch.opponent)
+    await toastPage.evaluate(value => window.__achievementBattleQA.replace(value), firstBattle)
+    await toastPage.locator('.achievement-toast').waitFor()
+    await toastPage.locator('.achievement-toast').hover()
+    const first = await toastPage.evaluate(() => ({
+      notification: window.__achievementQA.achievementToasts[0],
+      progress: window.__achievementQA.achievementProgress,
+      balance: window.__achievementQA.vp,
+    }))
+    assert(first.notification.unlocked.length > 1)
+    // Keep the current notification hovered while the next real battle finishes.
+    // This exercises two separate successful transactions in the queue.
+    await toastPage.evaluate(value => window.__achievementQA.finish(value), getBattleSummary(firstBattle))
+    await waitScreen('competition', toastPage)
+    await toastPage.evaluate(() => window.__achievementQA.enter())
+    await waitScreen('battle', toastPage)
+    const secondMatch = await toastPage.evaluate(() => window.__achievementQA.battleMatch)
+    assert.notEqual(secondMatch.opponent.id, firstMatch.opponent.id)
+    const secondBattle = completedBattle(secondMatch.opponent)
+    const secondSummary = getBattleSummary(secondBattle)
+    const secondExpected = applyBattleAchievements(first.progress, { battleId: secondMatch.id, summary: secondSummary, opponent: secondMatch.opponent })
+    assert(secondExpected.unlocked.length > 0)
+    await toastPage.evaluate(value => window.__achievementBattleQA.replace(value), secondBattle)
+    await toastPage.waitForFunction(() => window.__achievementQA.achievementToasts.length === 2)
+    assert.equal(await toastPage.locator('.achievement-toast').count(), 1)
+    assert.equal(await toastPage.evaluate(() => window.__achievementQA.achievementToasts[0].id), first.notification.id)
+    assert.equal(await toastPage.evaluate(() => window.__achievementQA.vp), first.balance + 100 + secondExpected.rewardVp)
+    await toastPage.getByRole('button', { name: '업적 알림 닫기', exact: true }).click()
+    await toastPage.waitForFunction(firstId => window.__achievementQA.achievementToasts.length === 1 && window.__achievementQA.achievementToasts[0].id !== firstId, first.notification.id)
+    assert.equal(await toastPage.locator('.achievement-toast').count(), 1)
+    const second = await toastPage.evaluate(() => window.__achievementQA.achievementToasts[0])
+    assert.deepEqual(second.unlocked.map(entry => entry.id), secondExpected.unlocked.map(entry => entry.id))
+    await toastPage.evaluate(value => { window.__achievementQA.settle(value); window.__achievementQA.settle(value) }, secondSummary)
+    assert.equal(await toastPage.evaluate(() => window.__achievementQA.achievementToasts.length), 1)
+    await toastPage.mouse.move(15, 400)
+    await toastPage.locator('.achievement-toast').waitFor({ state: 'detached', timeout: 9000 })
+    assert.equal(await toastPage.evaluate(() => window.__achievementQA.achievementToasts.length), 0)
+    assert.equal(await toastPage.getByRole('dialog').count(), 0)
+    await toastPage.getByRole('button', { name: '배틀 마치기', exact: false }).click()
+    await waitScreen('competition', toastPage)
+    console.log('Browser QA: realtime toast batches, queued transactions, manual dismissal, timeout and uninterrupted battle completion passed')
+  } catch (error) {
+    await toastPage.screenshot({ path: path.join(output, 'toast-queue-failure.png') }).catch(() => {})
+    throw error
+  } finally { await toastContext.close() }
 }
 
 try {
@@ -298,13 +414,14 @@ try {
   console.log('Browser QA: lobby loaded')
   await assertInViewport('.mode-achievements')
   await page.screenshot({ path: path.join(output, 'lobby-desktop.png') })
+  await verifySettingsCatalog()
   await page.getByRole('button', { name: '업적 보기', exact: true }).click()
   await waitScreen('achievements')
   assert.equal(await page.locator('.achievement-card').count(), 12)
   assert.equal(ACHIEVEMENTS.length, 278)
   assert.match(await page.locator('.achievement-overview').innerText(), /278/)
   await validateSealedRewards(page)
-  await page.getByRole('button', { name: '달성 완료', exact: true }).click()
+  await page.getByRole('button', { name: '달성', exact: true }).click()
   assert.equal(await page.locator('.achievement-empty').count(), 1)
   await page.getByRole('button', { name: '전체 업적 보기', exact: false }).click()
   await page.getByRole('button', { name: /AI 첫 승리/ }).click()
@@ -333,18 +450,43 @@ try {
   await page.getByRole('button', { name: '지닌 도구 선택창 닫기' }).click()
 
   const match = await startBattle()
+  await page.evaluate(() => {
+    window.__battleBeforeSettings = window.__achievementBattleQA.instance
+    window.__achievementBattleQA.replace(window.__achievementBattleQA.state)
+  })
+  await openSettingsAchievements(page, true)
+  assert.equal(await page.evaluate(() => window.__achievementQA.screen), 'battle')
+  assert(await page.evaluate(() => window.__achievementBattleQA.instance === window.__battleBeforeSettings), 'Opening the settings achievement tab must keep the same battle mounted')
+  const settingsSearch = page.getByRole('searchbox', { name: '업적 또는 트레이너 검색' })
+  await settingsSearch.fill('승리')
+  await settingsSearch.focus()
   const battle = completedBattle(match.opponent)
   const summary = getBattleSummary(battle)
   const expected = applyBattleAchievements(createAchievementState(), { battleId: match.id, summary, opponent: match.opponent })
   const paidVp = initialVp + 100 + expected.rewardVp
   await page.evaluate(value => window.__achievementBattleQA.replace(value), battle)
   await page.waitForFunction(value => window.__achievementQA.vp === value, paidVp)
+  const notification = await assertNonBlockingToast(page, expected.unlocked.length)
+  assert(expected.unlocked.length > 1, 'The battle fixture must exercise several simultaneous achievements')
+  assert.equal(await page.getByRole('dialog').count(), 1, 'Only the already opened settings dialog may remain')
+  assert(await settingsSearch.evaluate(element => document.activeElement === element), 'Realtime reward notifications must not steal keyboard focus')
+  assert(await page.evaluate(() => window.__achievementBattleQA.instance === window.__battleBeforeSettings))
+  await page.getByRole('button', { name: '달성', exact: true }).click()
+  assert((await page.locator('#settings-achievements-panel .achievement-is-complete').count()) > 0, 'An open settings catalog must reflect newly achieved battle goals')
+  await page.getByRole('button', { name: '설정 닫기', exact: true }).click()
   await page.locator('.achievement-battle-rewards').waitFor()
   assert.equal(await page.locator('.achievement-battle-rewards li').count(), expected.unlocked.length)
   const beforeDuplicate = await page.evaluate(() => JSON.stringify(window.__achievementQA.achievementProgress))
   await page.evaluate(value => { window.__achievementQA.settle(value); window.__achievementQA.settle(value) }, summary)
   assert.equal(await page.evaluate(() => window.__achievementQA.vp), paidVp)
   assert.equal(await page.evaluate(() => JSON.stringify(window.__achievementQA.achievementProgress)), beforeDuplicate)
+  assert.equal(await page.evaluate(() => window.__achievementQA.achievementToasts.length), 1, 'Repeated settlement must not add a duplicate notification')
+  assert.equal(await page.evaluate(() => window.__achievementQA.achievementToasts[0].id), notification.id)
+  await page.getByRole('button', { name: '달성 업적 보기', exact: true }).click()
+  await page.locator('#settings-achievements-panel .achievement-embedded').waitFor()
+  assert.equal(await page.evaluate(() => window.__achievementQA.screen), 'battle', 'Notification action must open settings without navigating away from battle')
+  assert(await page.evaluate(() => window.__achievementBattleQA.instance === window.__battleBeforeSettings))
+  await page.getByRole('button', { name: '설정 닫기', exact: true }).click()
   await assertInViewport('.battle-result-overlay > button')
   await page.screenshot({ path: path.join(output, 'rewards-desktop.png') })
   await page.setViewportSize({ width: 844, height: 390 })
@@ -357,8 +499,13 @@ try {
   await page.evaluate(value => { window.__achievementQA.finish(value); window.__achievementQA.finish(value) }, summary)
   assert.equal(await page.evaluate(() => window.__achievementQA.competition.round), round)
   await page.getByRole('button', { name: '업적 보기', exact: true }).click()
-  await page.getByRole('button', { name: '달성 완료', exact: true }).click()
+  await page.getByRole('button', { name: '달성', exact: true }).click()
   assert.equal(await page.locator('.achievement-is-complete').count(), expected.unlocked.length)
+  await page.getByRole('combobox', { name: '업적 정렬' }).selectOption('recent')
+  assert.equal(await page.locator('.achievement-is-complete').count(), expected.unlocked.length)
+  await page.getByRole('button', { name: '미달성', exact: true }).click()
+  assert.equal(await page.locator('.achievement-is-complete').count(), 0)
+  await page.getByRole('button', { name: '달성', exact: true }).click()
   await page.screenshot({ path: path.join(output, 'achievements-desktop.png') })
   await page.setViewportSize({ width: 844, height: 390 })
   await assertInViewport('.achievement-pagination')
@@ -372,6 +519,7 @@ try {
   await waitScreen('lobby')
   assert.equal(await page.evaluate(() => window.__achievementQA.vp), paidVp)
   assert.equal(await page.evaluate(() => Object.keys(window.__achievementQA.achievementProgress.unlocked).length), expected.unlocked.length)
+  assert.equal(await page.locator('.achievement-toast').count(), 0, 'Reload must not announce already settled battle achievements')
   const item = BATTLE_ITEMS.find(entry => entry.price > 0 && entry.price < paidVp)
   await page.evaluate(id => window.__achievementQA.purchase(id), item.id)
   await page.waitForFunction(value => window.__achievementQA.vp === value, paidVp - item.price)
@@ -422,12 +570,13 @@ try {
   await mobile.screenshot({ path: path.join(output, 'rewards-touch-landscape.png') })
   await mobileContext.close()
   await verifyEarnedRewardRecovery()
+  await verifyToastQueue()
   }
   await verifyCollectionRewardSettlement()
   assert.deepEqual(errors, [], 'Browser must not emit runtime errors')
   console.log(process.argv.includes('--collection-only')
-    ? 'Achievement collection UI passed: ordinary and shiny collection rewards, modal dismissal, VP persistence and no repeat payment.'
-    : 'Achievement UI passed: 278 achievements, sealed rewards, catalog/search/paging, real battle settlement, duplicate settlement/finish, mobile layout, reload/spending, failed-write retry, reward recovery before mirrors, saved skins, earned-only rare items, and once-only ordinary/shiny collection rewards.')
+    ? 'Achievement collection UI passed: ordinary and shiny collection rewards, nonblocking toast dismissal/timeout, VP persistence and no repeat payment.'
+    : 'Achievement UI passed: settings achievement tab without battle remount, status filters and sorting, 278 question-mark sealed rewards, realtime grouped toasts and queue/dismiss/timeout without focus theft, catalog/search/paging, real battle settlement, duplicate settlement/finish, mobile layout, reload/spending, failed-write retry, reward recovery before mirrors, saved skins, earned-only rare items, and once-only ordinary/shiny collection rewards.')
   console.log(`Screenshots: ${output}`)
 } catch (error) {
   console.error('Browser errors:', errors)
