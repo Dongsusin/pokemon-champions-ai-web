@@ -82,8 +82,9 @@
   height: clamp(156px, 15vw, 238px);
 }
 
-.app-shell.battle-view .battle-live-sprite-frame img.battle-live-sprite {
+.app-shell.battle-view .battle-live-sprite-frame :is(img, svg:where(.sprite-image-viewport)).battle-live-sprite {
   object-position: center bottom;
+  --sprite-lighting-filter: drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38));
   filter: drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38));
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -382,7 +383,7 @@
   background: #e8ebd9;
 }
 
-.app-shell.battle-view .battle-party-menu-icon img {
+.app-shell.battle-view .battle-party-menu-icon :is(img, svg:where(.sprite-image-viewport)) {
   width: 52px;
   height: 52px;
 }
@@ -1912,7 +1913,8 @@
 .app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-fairy { --tera-stage-color: #ffabdd; }
 .app-shell.battle-view .battle-pokemon-stage.is-terastal.tera-stellar { --tera-stage-color: #ffffff; }
 
-.app-shell.battle-view .battle-pokemon-stage.is-terastal .battle-live-sprite-frame img.battle-live-sprite {
+.app-shell.battle-view .battle-pokemon-stage.is-terastal .battle-live-sprite-frame :is(img, svg:where(.sprite-image-viewport)).battle-live-sprite {
+  --sprite-lighting-filter: brightness(1.12) saturate(1.32) drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38));
   filter: brightness(1.12) saturate(1.32) drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38));
 }
 
@@ -2376,7 +2378,7 @@
   box-shadow: 0 0 0 1px #172a40, 0 0 0 3px #f4c74c;
 }
 
-.app-shell.battle-view .battle-party-menu-icon img {
+.app-shell.battle-view .battle-party-menu-icon :is(img, svg:where(.sprite-image-viewport)) {
   width: 40px;
   height: 40px;
 }
@@ -2867,7 +2869,7 @@
   .shop-item-icon,
   .evolution-choice-sprite,
   .competition-match-party > button
-) > img {
+) > :is(img, svg:where(.sprite-image-viewport)) {
   box-sizing: border-box;
   display: block;
   max-width: 100%;
@@ -2876,7 +2878,7 @@
   object-position: center;
 }
 
-.competition-match-party > button > img {
+.competition-match-party > button > :is(img, svg:where(.sprite-image-viewport)) {
   width: 100%;
   height: 100%;
   padding: 2px;
@@ -2904,7 +2906,7 @@
   isolation: isolate;
 }
 
-.app-shell.battle-view .battle-party-menu-icon > img {
+.app-shell.battle-view .battle-party-menu-icon > :is(img, svg:where(.sprite-image-viewport)) {
   position: absolute;
   inset: 2px;
   display: block;
@@ -3371,7 +3373,7 @@
   box-shadow: inset 0 0 15px rgba(83, 105, 197, 0.28), 0 3px 8px rgba(13, 15, 62, 0.3);
 }
 
-.app-shell .battle-pokemon-inspector-icon img {
+.app-shell .battle-pokemon-inspector-icon :is(img, svg:where(.sprite-image-viewport)) {
   padding: 3px;
   image-rendering: pixelated;
 }
@@ -5116,7 +5118,7 @@
   box-shadow: inset 0 0 0 1px #536b79;
 }
 
-.app-shell.battle-view .battle-target-icon img {
+.app-shell.battle-view .battle-target-icon :is(img, svg:where(.sprite-image-viewport)) {
   width: min(64px, 100%);
   height: min(64px, 100%);
   object-fit: contain;

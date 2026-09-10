@@ -1,3 +1,4 @@
+import SpriteImage from './SpriteImage'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowDownAZ,
@@ -47,6 +48,7 @@ import {
 } from './data/trainingData'
 import { getTrainingCostBreakdown, TRAINING_COSTS } from './data/trainingCosts'
 import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
+import { getUnlockedPokemonSkins } from './data/rareRewards.js'
 
 const MOVE_CATEGORY_FILTERS = ['전체', '물리', '특수', '변화']
 const STAT_LABEL_BY_KEY = Object.fromEntries(STAT_META.map(({ key, label }) => [key, label]))
@@ -80,6 +82,7 @@ function trainingSignature(pokemon) {
     speciesId: pokemon.speciesId,
     gender: pokemon.gender,
     isShiny: Boolean(pokemon.isShiny),
+    skinId: pokemon.skinId ?? null,
     nature: pokemon.nature,
     ability: pokemon.ability,
     moves: pokemon.moves,
@@ -126,7 +129,7 @@ function BattleTooltip({
   )
 }
 
-function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack, onSave, onOpenHatch }) {
+function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progress, onBack, onSave, onOpenHatch }) {
   const trainingPokemon = useMemo(
     () => getTrainingRosterPokemon(pokemon).map((entry) => normalizePokemon(entry)),
     [pokemon],
@@ -208,6 +211,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
     : editablePokemon
   const species = previewSpecies ?? editableSpecies
   const isPreviewForm = Boolean(previewSpecies)
+  const unlockedSkins = getUnlockedPokemonSkins(progress, editablePokemon)
   const zaMegaStone = species ? getZaMegaStoneByFormSlug(species.slug) : null
   const evolutionOptions = editablePokemon ? getEvolutionOptions(editablePokemon.speciesId) : []
   const persistentFormOptions = editablePokemon ? getPersistentFormOptions(editablePokemon.speciesId) : []
@@ -633,12 +637,12 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                   )}
                   {entry.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
                   <span className="pokemon-icon-frame training-roster-sprite-frame" aria-hidden="true">
-                    <img
+                    <SpriteImage
                       className="pokemon-box-icon"
                       src={entry.icon}
                       alt=""
                       draggable="false"
-                      onError={fallbackImageHandler(entry.iconFallback)}
+                      fallbackSrc={entry.iconFallback}
                     />
                   </span>
                   <strong>{entry.name}</strong>
@@ -761,6 +765,16 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, onBack
                   </div>
 
                   <div className="training-select-stack">
+                    {unlockedSkins.length > 0 && (
+                      <label className="training-picker-field training-reward-skin-picker">
+                        <span><Sparkles size={14} /> 특별 스킨 <em className="training-field-cost">변경 무료</em></span>
+                        <select aria-label="획득한 특별 스킨 선택" value={editablePokemon.skinId ?? ''} disabled={isPreviewForm} onChange={(event) => updateSelected({ skinId: event.target.value || null })}>
+                          <option value="">기본 모습</option>
+                          {unlockedSkins.map((skin) => <option key={skin.id} value={skin.id}>{skin.name}</option>)}
+                        </select>
+                        <small>업적으로 획득한 모습입니다. 변경 후 저장하면 배틀에도 적용됩니다.</small>
+                      </label>
+                    )}
                     <div className="training-picker-field">
                       <span>
                         <Dna size={14} /> 진화 형태

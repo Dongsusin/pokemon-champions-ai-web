@@ -1003,7 +1003,7 @@
   content: none;
 }
 
-.app-shell.battle-view .battle-pokemon-stage.is-terastal .battle-live-sprite-frame img.battle-live-sprite {
+.app-shell.battle-view .battle-pokemon-stage.is-terastal .battle-live-sprite-frame :is(img, svg:where(.sprite-image-viewport)).battle-live-sprite {
   animation: battle-tera-body-glint 2.2s steps(8, end) infinite;
 }
 
@@ -1323,9 +1323,9 @@
 }
 
 @keyframes battle-tera-body-glint {
-  0%, 100% { filter: brightness(1.08) saturate(1.3) drop-shadow(0 0 5px #fff) drop-shadow(0 0 11px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
-  44% { filter: brightness(1.2) saturate(1.45) drop-shadow(0 0 8px #fff) drop-shadow(0 0 16px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
-  52% { filter: brightness(1.55) saturate(1.15) drop-shadow(0 0 12px #fff) drop-shadow(0 0 19px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
+  0%, 100% { filter: var(--sprite-cosmetic-filter, brightness(1)) brightness(1.08) saturate(1.3) drop-shadow(0 0 5px #fff) drop-shadow(0 0 11px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
+  44% { filter: var(--sprite-cosmetic-filter, brightness(1)) brightness(1.2) saturate(1.45) drop-shadow(0 0 8px #fff) drop-shadow(0 0 16px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
+  52% { filter: var(--sprite-cosmetic-filter, brightness(1)) brightness(1.55) saturate(1.15) drop-shadow(0 0 12px #fff) drop-shadow(0 0 19px var(--tera-stage-color)) drop-shadow(0 14px 7px rgba(0, 0, 0, 0.38)); }
 }
 
 @keyframes battle-form-core {

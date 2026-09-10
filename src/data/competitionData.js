@@ -86,8 +86,9 @@ export function createCompetition(
     .map((trainer) => createTrainerParticipant(trainer, playerTeam, random))
   const player = createPlayerParticipant(teamName)
   const participants = shuffle([player, ...trainers], random)
+  const competitionId = `${mode}-${Date.now()}-${Math.floor(random() * 1_000_000)}`
   const baseCompetition = {
-    id: `${mode}-${Date.now()}-${Math.floor(random() * 1_000_000)}`,
+    id: competitionId,
     mode,
     participants,
     playerTeam: playerTeam.map((pokemon) => ({ ...pokemon })),
@@ -97,6 +98,20 @@ export function createCompetition(
     championId: null,
     aiDifficulty,
     currentMatchRules: createBattleMatchRules(random, aiDifficulty),
+    achievementRun: {
+      version: 1,
+      competitionId,
+      mode,
+      requiredRounds: rules.roundLabels.length,
+      completedRounds: 0,
+      wins: 0,
+      totalPlayerFaints: 0,
+      allNormalOrHard: ['normal', 'hard'].includes(aiDifficulty.id),
+      historyValid: true,
+      status: 'active',
+      championId: null,
+      rounds: [],
+    },
   }
 
   if (mode === 'league') {
@@ -300,6 +315,58 @@ function leagueResult(competition, playerWon, random, battleSummary) {
   }
 }
 
+function advanceAchievementRun(competition, resolvedCompetition, playerWon, battleSummary) {
+  const previous = competition.achievementRun
+  const requiredRounds = COMPETITION_RULES[competition.mode]?.roundLabels.length ?? 0
+  const facts = battleSummary?.achievementFacts
+  const knownHistory = previous?.version === 1
+    && previous.competitionId === competition.id && previous.mode === competition.mode
+    && previous.requiredRounds === requiredRounds && Array.isArray(previous.rounds)
+    && previous.rounds.length === competition.round
+    && previous.rounds.every((entry, index) => entry?.round === index)
+  const previousRounds = knownHistory ? previous.rounds : []
+  const difficultyId = facts?.aiDifficultyId ?? null
+  const playerFaintCount = Number.isSafeInteger(facts?.playerFaintCount) && facts.playerFaintCount >= 0
+    ? facts.playerFaintCount : null
+  const playerTeamSize = Number.isSafeInteger(facts?.playerTeamSize) && facts.playerTeamSize > 0
+    ? facts.playerTeamSize : null
+  const completed = facts?.version === 1 && facts.completed === true && battleSummary?.forfeited !== true
+  const winnerConsistent = playerWon
+    ? battleSummary?.winner === 'player' && battleSummary?.opponentRemaining === 0
+      && Number.isSafeInteger(battleSummary?.playerRemaining) && battleSummary.playerRemaining > 0
+    : ['opponent', 'draw'].includes(battleSummary?.winner)
+  const valid = completed && winnerConsistent && playerFaintCount !== null && playerTeamSize !== null
+    && Number.isSafeInteger(battleSummary?.playerRemaining) && battleSummary.playerRemaining >= 0
+    && battleSummary.playerRemaining <= playerTeamSize
+    && ['normal', 'hard'].includes(difficultyId)
+    && ['normal', 'hard'].includes(competition.aiDifficulty?.id)
+  const rounds = [...previousRounds, {
+    round: competition.round,
+    completed,
+    won: completed && playerWon && battleSummary?.winner === 'player',
+    difficultyId,
+    playerTeamSize,
+    playerFaintCount,
+    valid,
+  }]
+  return {
+    version: 1,
+    competitionId: competition.id,
+    mode: competition.mode,
+    requiredRounds,
+    completedRounds: rounds.filter((entry) => entry.completed).length,
+    wins: rounds.filter((entry) => entry.won).length,
+    totalPlayerFaints: rounds.every((entry) => Number.isSafeInteger(entry.playerFaintCount))
+      ? rounds.reduce((sum, entry) => sum + entry.playerFaintCount, 0) : null,
+    allNormalOrHard: ['normal', 'hard'].includes(competition.aiDifficulty?.id)
+      && rounds.every((entry) => ['normal', 'hard'].includes(entry.difficultyId)),
+    historyValid: knownHistory && previous.historyValid === true && rounds.every((entry) => entry.valid),
+    status: resolvedCompetition.status,
+    championId: resolvedCompetition.championId ?? null,
+    rounds,
+  }
+}
+
 export function resolveCompetitionMatch(
   competition,
   playerWon,
@@ -307,9 +374,13 @@ export function resolveCompetitionMatch(
   random = Math.random,
 ) {
   if (!competition || competition.status !== 'active') return competition
-  const resolvedCompetition = competition.mode === 'league'
+  const result = competition.mode === 'league'
     ? leagueResult(competition, playerWon, random, battleSummary)
     : tournamentResult(competition, playerWon, random, battleSummary)
+  const resolvedCompetition = {
+    ...result,
+    achievementRun: advanceAchievementRun(competition, result, playerWon, battleSummary),
+  }
   return resolvedCompetition.status === 'active'
     ? {
         ...resolvedCompetition,

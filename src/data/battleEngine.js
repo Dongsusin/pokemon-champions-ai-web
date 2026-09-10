@@ -624,6 +624,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     megaActive: false,
     primalActive: false,
     ultraActive: false,
+    legendPlateType: null,
     usedBattleMechanicId: null,
     transformSnapshot: null,
     illusionSnapshot: null,
@@ -2210,6 +2211,10 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
     && heldItemType
     && /(?:-plate|ium-z--held)$/.test(attacker.heldItemId ?? '')
   ) resolvedMove.type = heldItemType
+  if (legendPlateApplies(attacker, move)) {
+    resolvedMove.type = resolveLegendPlateType(state, attacker, defender, resolvedMove)
+    resolvedMove.legendPlateType = resolvedMove.type
+  }
 
   if (
     move.id === 'multiattack'
@@ -2370,6 +2375,45 @@ function abilityImmunity(state, attacker, defender, move) {
     && getMoveTypeEffectiveness(state, attacker, defender, move) <= 1
   ) return defender.ability
   return null
+}
+
+function legendPlateApplies(pokemon, move) {
+  const item = getBattleItem(pokemon.heldItemId)
+  const profile = getSpeciesProfile(pokemon.speciesId)
+  return move.id === 'judgment'
+    && item?.effectId === 'legend-plate-judgment'
+    && item.compatibleBaseSpeciesIds.includes(Number(profile?.parentSpeciesId ?? profile?.id))
+    && !pokemon.transformSnapshot
+    && heldItemEffectsActive(pokemon)
+}
+
+function resolveLegendPlateType(state, attacker, defender, move) {
+  // Adaptation for this engine: prioritize effective damage, then the safest
+  // defensive typing against the selected opponent. Keep previews mutation-free.
+  const weatherId = effectiveMoveWeatherId(state, attacker)
+  return Object.keys(TYPE_CHART).filter((type) => type !== '스텔라')
+    .map((type, index) => {
+      const candidate = { ...move, type }
+      const blocked = abilityImmunity(state, attacker, defender, candidate)
+        || type === '땅' && !isGrounded(defender, state)
+        || weatherId === 'desolateland' && type === '물'
+        || weatherId === 'primordialsea' && type === '불꽃'
+      return {
+        type, index,
+        effectiveness: blocked ? 0 : getMoveTypeEffectiveness(state, attacker, defender, candidate),
+        exposure: Math.max(...defender.types.map((opponentType) => getTypeEffectiveness(opponentType, [type]))),
+      }
+    })
+    .sort((first, second) => second.effectiveness - first.effectiveness
+      || first.exposure - second.exposure || first.index - second.index)[0]?.type ?? move.type
+}
+
+function activateLegendPlateForm(state, pokemon, move) {
+  if (!legendPlateApplies(pokemon, move) || !move.legendPlateType) return false
+  pokemon.legendPlateType = move.legendPlateType
+  if (pokemon.teraActive) return false
+  const slug = move.legendPlateType === '노말' ? 'arceus' : `arceus-${TYPE_FORM_SLUG_BY_KO[move.legendPlateType]}`
+  return changeBattleForm(state, pokemon, slug, getBattleItem(pokemon.heldItemId).name, { hpMode: 'damage' })
 }
 
 function applyAbilityImmunityEffect(state, defender, ability) {
@@ -4023,6 +4067,7 @@ function applyTransform(state, attacker, defender) {
       spriteBack: attacker.spriteBack,
       spriteFrontFallback: attacker.spriteFrontFallback,
       spriteBackFallback: attacker.spriteBackFallback,
+      skinId: attacker.skinId,
     }
   }
 
@@ -4042,6 +4087,7 @@ function applyTransform(state, attacker, defender) {
   attacker.spriteBack = defender.spriteBack
   attacker.spriteFrontFallback = defender.spriteFrontFallback
   attacker.spriteBackFallback = defender.spriteBackFallback
+  attacker.skinId = defender.skinId ?? null
   appendLog(state, `${attacker.transformSnapshot.name}은(는) ${defender.name}의 모습으로 변신했다!`, 'status')
   emitFormChangeTimeline(state, attacker, previousSnapshot, '변신')
   return true
@@ -5124,6 +5170,13 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.spriteBack = form.spriteBack ?? transformed.spriteBack
   pokemon.spriteFrontFallback = form.spriteFrontFallback ?? transformed.spriteFrontFallback
   pokemon.spriteBackFallback = form.spriteBackFallback ?? transformed.spriteBackFallback
+  pokemon.skinId = transformed.skinId
+  if (transformed.skinId) {
+    pokemon.spriteFront = transformed.spriteFront
+    pokemon.spriteBack = transformed.spriteBack
+    pokemon.spriteFrontFallback = transformed.spriteFrontFallback
+    pokemon.spriteBackFallback = transformed.spriteBackFallback
+  }
 
   if (options.log !== false) {
     appendLog(state, `${pokemon.name}의 ${sourceName}! ${previousName}에서 모습이 변했다!`, 'ability')
@@ -5153,7 +5206,9 @@ function refreshHeldItemTypeAbility(state, pokemon) {
   const itemMatchesAbility = pokemon.ability === '멀티타입'
     ? /(?:-plate|ium-z--held)$/.test(pokemon.heldItemId ?? '')
     : pokemon.heldItemId?.endsWith('-memory')
-  const itemType = itemMatchesAbility ? HELD_ITEM_TYPE_BY_ID[pokemon.heldItemId] ?? '노말' : '노말'
+  const itemType = pokemon.heldItemId === 'legend-plate' && heldItemEffectsActive(pokemon)
+    ? pokemon.legendPlateType ?? '노말'
+    : itemMatchesAbility ? HELD_ITEM_TYPE_BY_ID[pokemon.heldItemId] ?? '노말' : '노말'
   const baseProfile = getSpeciesProfile(pokemon.battleBaseSpeciesId ?? pokemon.originalSpeciesId)
   const typeFormSlug = TYPE_FORM_SLUG_BY_KO[itemType]
   const targetFormSlug = itemType === '노말' || !typeFormSlug
@@ -7341,6 +7396,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   applyMoveTriggeredFormBefore(state, attacker, move)
+  activateLegendPlateForm(state, attacker, move)
 
   if (isChargeContinuation) {
     if (isSkyDropContinuation) releaseSkyDropTarget(state, attacker)
@@ -9869,15 +9925,25 @@ function resolveAiMove(state, attacker, defender, move, gimmick) {
     ? resolveBattleZMove(projectedAttacker, environmentMove, move)
     : null
   if (gimmick === 'zmove' && !zMove) return null
-
+  const resolvedMove = zMove ?? resolveBattleMaxMove(
+    projectedAttacker,
+    environmentMove,
+    gimmick === 'dynamax',
+    move,
+  )
+  // Judgment changes Arceus before damage is dealt, so its forecast must gain
+  // the same STAB without changing the battle state. Tera and Max moves do not
+  // activate that body-type change.
+  const legendPlateChangesType = !projectedAttacker.teraActive
+    && resolvedMove.legendPlateType
+    && legendPlateApplies(projectedAttacker, resolvedMove)
   return {
-    attacker: projectedAttacker,
-    move: zMove ?? resolveBattleMaxMove(
-      projectedAttacker,
-      environmentMove,
-      gimmick === 'dynamax',
-      move,
-    ),
+    attacker: legendPlateChangesType ? {
+      ...projectedAttacker,
+      types: [resolvedMove.legendPlateType],
+      originalTypes: [resolvedMove.legendPlateType],
+    } : projectedAttacker,
+    move: resolvedMove,
   }
 }
 

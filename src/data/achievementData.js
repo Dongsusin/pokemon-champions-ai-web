@@ -1,4 +1,6 @@
 import { TRAINERS } from './trainerTeams.js'
+import { POKEMON_POOL } from './pokemonPool.js'
+import { NATIONAL_DEX, getEvolutionSpeciesIds, getSpeciesProfile } from './trainingData.js'
 
 export const ACHIEVEMENT_STORAGE_KEY = 'champions-achievements-v1'
 export const ACHIEVEMENT_CATEGORIES = Object.freeze([
@@ -8,16 +10,27 @@ export const ACHIEVEMENT_CATEGORIES = Object.freeze([
   { id: 'exploration', label: '무대 정복' },
   { id: 'competition', label: '대회 업적' },
   { id: 'trainers', label: 'AI 첫 승리' },
+  { id: 'collection', label: '도감 완성' },
+  { id: 'mastery', label: '궁극의 도전' },
 ])
 
 const MECHANICS = ['mega', 'zmove', 'dynamax', 'tera', 'primal']
 const TRAINER_BY_ID = new Map(TRAINERS.map((trainer) => [trainer.id, trainer]))
 const REGION_COUNT = new Set(TRAINERS.map((trainer) => trainer.region).filter(Boolean)).size
+const NATIONAL_IDS = new Set(NATIONAL_DEX.map((entry) => entry.id))
+export const ACHIEVABLE_SPECIES_IDS = Object.freeze([...new Set(
+  POKEMON_POOL.flatMap((entry) => getEvolutionSpeciesIds(entry.id)).filter((id) => NATIONAL_IDS.has(id)),
+)].sort((left, right) => left - right))
+export const ACHIEVABLE_SHINY_SPECIES_IDS = ACHIEVABLE_SPECIES_IDS
+const ACHIEVABLE_IDS = new Set(ACHIEVABLE_SPECIES_IDS)
 const definition = (id, title, description, category, rewardVp, metric, target = 1) => (
   { id, title, description, category, rewardVp, metric, target }
 )
+const secretDefinition = (id, title, description, category, rewardVp, rewardId, metric, target = 1) => ({
+  ...definition(id, title, description, category, rewardVp, metric, target), secretReward: true, rewardId,
+})
 
-export const ACHIEVEMENTS = Object.freeze([
+const standardAchievements = [
   definition('wins-1', '승리의 첫걸음', '배틀에서 처음 승리하세요.', 'victory', 200, 'wins'),
   definition('wins-10', '승부의 감각', '배틀에서 10회 승리하세요.', 'victory', 300, 'wins', 10),
   definition('wins-50', '숙련된 승부사', '배틀에서 50회 승리하세요.', 'victory', 700, 'wins', 50),
@@ -53,10 +66,18 @@ export const ACHIEVEMENTS = Object.freeze([
   definition('streak-3', '멈추지 않는 기세', '패배·무승부·기권 없이 3연승을 달성하세요.', 'victory', 300, 'bestStreak', 3),
   definition('streak-5', '승리의 흐름', '패배·무승부·기권 없이 5연승을 달성하세요.', 'victory', 600, 'bestStreak', 5),
   definition('streak-10', '무패의 행진', '패배·무승부·기권 없이 10연승을 달성하세요.', 'victory', 1000, 'bestStreak', 10),
+  secretDefinition('flawless-league', '불패의 리그 지휘관', '노말 또는 하드 난이도로 리그 7경기 전체에서 단 한 번의 기절 없이 전승 우승하세요. 부활해도 기절 기록은 남습니다.', 'competition', 50000, 'armored-mewtwo', 'flawlessLeagues'),
+  secretDefinition('flawless-tournament', '완전무결한 토너먼트', '노말 또는 하드 난이도로 128강부터 결승까지 7경기 전체에서 단 한 번의 기절 없이 우승하세요. 부활해도 기절 기록은 남습니다.', 'competition', 50000, 'shadow-lugia', 'flawlessTournaments'),
+  secretDefinition('collection-all', '전국도감의 완성', `획득 가능한 전국도감 ${ACHIEVABLE_SPECIES_IDS.length}종을 모두 수집하세요. 뽑기로 해금한 진화계열도 포함합니다.`, 'collection', 100000, 'crystal-ho-oh', 'collectionSpeciesCount', ACHIEVABLE_SPECIES_IDS.length),
+  secretDefinition('collection-shiny-all', '모든 빛깔의 발견', `획득 가능한 전국도감 ${ACHIEVABLE_SHINY_SPECIES_IDS.length}종의 이로치를 모두 해금하세요. 같은 진화계열에서 이로치를 얻으면 그 계열 전체의 해금으로 인정합니다.`, 'collection', 200000, 'astral-rayquaza', 'shinySpeciesCount', ACHIEVABLE_SHINY_SPECIES_IDS.length),
   ...TRAINERS.map((trainer) => ({
     ...definition(`trainer-${trainer.id}`, `${trainer.name}에게 첫 승리`, `${trainer.name}에게 처음 승리하세요.`, 'trainers', 100, 'trainer'),
     trainerId: trainer.id,
   })),
+]
+export const ACHIEVEMENTS = Object.freeze([
+  ...standardAchievements,
+  secretDefinition('achievements-all', '챔피언의 모든 증명', `이 업적을 제외한 모든 ${standardAchievements.length}개 업적을 달성하세요.`, 'mastery', 300000, 'legend-plate', 'otherAchievements', standardAchievements.length),
 ].map((entry) => Object.freeze(entry)))
 
 const ACHIEVEMENT_IDS = new Set(ACHIEVEMENTS.map((entry) => entry.id))
@@ -65,6 +86,7 @@ const COUNTERS = [
   'lastStandingWins', 'noItemWins', 'monotypeWins', 'singleWins', 'doubleWins',
   'hardWins', 'boostedWins', 'leagueChampionships', 'tournamentChampionships',
   'perfectLeagues', 'currentStreak', 'bestStreak',
+  'flawlessLeagues', 'flawlessTournaments', 'collectionSpeciesCount', 'shinySpeciesCount',
 ]
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {}
 const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : 0
@@ -89,6 +111,8 @@ export function normalizeAchievementState(value) {
   const state = createAchievementState()
   const stats = record(source.stats)
   for (const key of COUNTERS) state.stats[key] = count(stats[key])
+  state.stats.collectionSpeciesCount = Math.min(ACHIEVABLE_SPECIES_IDS.length, state.stats.collectionSpeciesCount)
+  state.stats.shinySpeciesCount = Math.min(ACHIEVABLE_SHINY_SPECIES_IDS.length, state.stats.shinySpeciesCount)
   state.stats.bestStreak = Math.max(state.stats.bestStreak, state.stats.currentStreak)
   const mechanicWins = record(stats.mechanicWins)
   for (const mechanic of MECHANICS) state.stats.mechanicWins[mechanic] = count(mechanicWins[mechanic])
@@ -104,7 +128,10 @@ export function normalizeAchievementState(value) {
   return state
 }
 
-function metricValue(def, stats) {
+function metricValue(def, stats, unlocked = {}) {
+  if (def.metric === 'otherAchievements') return standardAchievements.filter((entry) => (
+    Object.hasOwn(unlocked, entry.id) && Number.isSafeInteger(unlocked[entry.id]) && unlocked[entry.id] >= 0
+  )).length
   if (def.metric === 'trainer') return count(stats.trainerWins?.[def.trainerId])
   if (def.metric === 'uniqueTrainers') return Object.values(record(stats.trainerWins)).filter((value) => count(value) > 0).length
   if (def.metric === 'uniqueRegions') {
@@ -122,7 +149,7 @@ export function getAchievementProgress(def, value) {
   const completed = Object.hasOwn(unlocked, def.id) && Number.isSafeInteger(unlocked[def.id]) && unlocked[def.id] >= 0
   const target = Math.max(1, count(def.target))
   return {
-    current: completed ? target : Math.min(target, metricValue(def, record(state.stats))),
+    current: completed ? target : Math.min(target, metricValue(def, record(state.stats), unlocked)),
     target,
     completed,
     completedAt: completed ? unlocked[def.id] : null,
@@ -138,12 +165,55 @@ function isMonotypeTeam(facts) {
 
 function unlockEligible(result, now, definitions = ACHIEVEMENTS) {
   const timestamp = Number.isSafeInteger(now) && now >= 0 ? now : Date.now()
-  for (const def of definitions) {
-    if (Object.hasOwn(result.state.unlocked, def.id) || metricValue(def, result.state.stats) < def.target) continue
+  // Evaluate the all-achievements goal last, including when only collection or
+  // championship goals are being settled in this call.
+  const orderedDefinitions = [...definitions.filter((def) => def.id !== 'achievements-all'), ACHIEVEMENTS.at(-1)]
+  for (const def of orderedDefinitions) {
+    if (Object.hasOwn(result.state.unlocked, def.id) || metricValue(def, result.state.stats, result.state.unlocked) < def.target) continue
     result.state.unlocked[def.id] = timestamp
     result.unlocked.push(def)
     result.rewardVp += def.rewardVp
   }
+}
+
+function isFlawlessCompetitionRun(run, mode) {
+  return run?.version === 1 && run.mode === mode && typeof run.competitionId === 'string'
+    && run.competitionId.length > 0 && run.requiredRounds === 7 && run.completedRounds === 7
+    && run.wins === 7 && run.totalPlayerFaints === 0 && run.allNormalOrHard === true
+    && run.historyValid === true && run.status === 'complete' && run.championId === 'player'
+    && Array.isArray(run.rounds) && run.rounds.length === 7
+    && run.rounds.every((round, index) => round?.round === index && round.valid === true
+      && round.completed === true && round.won === true && round.playerFaintCount === 0
+      && Number.isSafeInteger(round.playerTeamSize) && round.playerTeamSize > 0
+      && ['normal', 'hard'].includes(round.difficultyId))
+}
+
+/** Evaluate a real collection snapshot, including a previously saved collection. */
+export function applyCollectionAchievements(value, collection, now = Date.now()) {
+  const state = normalizeAchievementState(value)
+  const result = { state, unlocked: [], rewardVp: 0, processed: false }
+  if (!Array.isArray(collection)) return result
+  const species = new Set()
+  const shinySpecies = new Set()
+  for (const entry of collection) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+    const requestedId = Number(entry.dexSpeciesId ?? entry.speciesId ?? entry.id)
+    if (!Number.isSafeInteger(requestedId)) continue
+    const profile = getSpeciesProfile(requestedId)
+    const speciesId = profile?.parentSpeciesId ?? profile?.id
+    if (!ACHIEVABLE_IDS.has(speciesId)) continue
+    species.add(speciesId)
+    const shinyObtained = Object.hasOwn(entry, 'shinyObtained') ? entry.shinyObtained === true : entry.isShiny === true
+    if (shinyObtained) {
+      for (const id of getEvolutionSpeciesIds(speciesId)) if (ACHIEVABLE_IDS.has(id)) shinySpecies.add(id)
+    }
+  }
+  result.processed = state.stats.collectionSpeciesCount !== species.size || state.stats.shinySpeciesCount !== shinySpecies.size
+  state.stats.collectionSpeciesCount = species.size
+  state.stats.shinySpeciesCount = shinySpecies.size
+  unlockEligible(result, now, ACHIEVEMENTS.filter((def) => def.category === 'collection'))
+  result.processed ||= result.unlocked.length > 0
+  return result
 }
 
 /** Pure settlement: the caller persists this state and its VP balance together. */
@@ -212,8 +282,12 @@ export function applyBattleAchievements(value, event, now = Date.now()) {
     if (input.competitionMode === 'league') {
       bump('leagueChampionships')
       if (input.competitionPerfect === true) bump('perfectLeagues')
+      if (isFlawlessCompetitionRun(input.competitionRun, 'league')) bump('flawlessLeagues')
     }
-    if (input.competitionMode === 'tournament') bump('tournamentChampionships')
+    if (input.competitionMode === 'tournament') {
+      bump('tournamentChampionships')
+      if (isFlawlessCompetitionRun(input.competitionRun, 'tournament')) bump('flawlessTournaments')
+    }
   }
 
   unlockEligible(result, now)

@@ -1,3 +1,4 @@
+import SpriteImage from './SpriteImage'
 import { useMemo, useState } from 'react'
 import {
   ArrowLeft,
@@ -14,7 +15,7 @@ import {
   Trophy,
   UsersRound,
 } from 'lucide-react'
-import { BATTLE_ITEMS } from './data/shopData'
+import { ALL_BATTLE_ITEMS as BATTLE_ITEMS } from './data/shopData'
 import { BATTLE_TEAM_SIZE } from './data/teamData'
 import { typeClassName } from './data/trainingData'
 import {
@@ -48,14 +49,6 @@ const BATTLE_MODES = [
     accent: 'violet',
   },
 ]
-
-function fallbackImageHandler(fallback) {
-  return (event) => {
-    if (!fallback || event.currentTarget.dataset.fallbackApplied) return
-    event.currentTarget.dataset.fallbackApplied = 'true'
-    event.currentTarget.src = fallback
-  }
-}
 
 function BattleSelectScreen({
   pokemon,
@@ -141,12 +134,12 @@ function BattleSelectScreen({
                   <span className="battle-party-slot-number">{String(index + 1).padStart(2, '0')}</span>
                   {entry.isShiny && <span className="pokemon-shiny-mark" aria-label="이로치">★</span>}
                   <span className="pokemon-icon-frame battle-party-icon-frame" aria-hidden="true">
-                    <img
+                    <SpriteImage
                       className="pokemon-box-icon"
                       src={entry.icon}
                       alt=""
                       draggable="false"
-                      onError={fallbackImageHandler(entry.iconFallback)}
+                      fallbackSrc={entry.iconFallback}
                     />
                   </span>
                   <span className="battle-party-card-copy">

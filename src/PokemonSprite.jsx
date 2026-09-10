@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import SpriteImage from './SpriteImage'
 
 function PokemonSprite({
   animatedSrc,
@@ -21,10 +22,12 @@ function PokemonSprite({
   return (
     <span className={frameClasses} role="img" aria-label={alt}>
       {displaySrc && (
-        <img
+        <SpriteImage
           {...imageProps}
           className={imageClasses}
           src={displaySrc}
+          preserveAspectRatio={className.split(' ').includes('battle-live-sprite') ? 'xMidYMax meet' : undefined}
+          data-cosmetic-skin={displaySrc.startsWith('/assets/pokemon/skins/') || undefined}
           alt=""
           aria-hidden="true"
           loading="eager"

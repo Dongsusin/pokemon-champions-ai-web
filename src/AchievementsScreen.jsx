@@ -1,11 +1,15 @@
-import { useMemo, useRef, useState } from 'react'
+import SpriteImage from './SpriteImage'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowLeft, ArrowRight, Check, CheckCheck, ChevronLeft, ChevronRight,
-  Crown, Flag, Gift, Medal, Search, ShieldCheck, Sparkles,
-  Target, Trophy, UsersRound, Zap,
+  Crown, Flag, Gift, LockKeyhole, Medal, Search, ShieldCheck, Sparkles,
+  Target, Trophy, UsersRound, X, Zap,
 } from 'lucide-react'
 import TrainerSprite from './TrainerSprite'
 import { TRAINERS } from './data/trainerTeams.js'
+import { getPokemonSkin } from './data/rareRewards.js'
+import { getBattleItem } from './data/shopData.js'
 import {
   ACHIEVEMENTS,
   ACHIEVEMENT_CATEGORIES,
@@ -23,6 +27,8 @@ const CATEGORY_ICONS = {
   exploration: Flag,
   competition: Crown,
   trainers: UsersRound,
+  collection: Sparkles,
+  mastery: Crown,
 }
 const STATUS_FILTERS = [
   { id: 'all', label: '전체' },
@@ -52,11 +58,33 @@ function rewardDefinitions(unlocked) {
   )).filter(Boolean)
 }
 
+function getRevealedReward(definition) {
+  if (!definition?.rewardId) return null
+  const skin = getPokemonSkin(definition.rewardId)
+  if (skin) return { ...skin, image: skin.image ?? skin.spriteFront, kind: '특별 스킨' }
+  const item = getBattleItem(definition.rewardId)
+  return item ? { ...item, image: item.sprite, kind: '희귀 배틀 도구' } : null
+}
+
+function RevealedReward({ definition, compact = false }) {
+  const reward = getRevealedReward(definition)
+  const [imageFailed, setImageFailed] = useState(false)
+  useEffect(() => setImageFailed(false), [reward?.image])
+  if (!reward) return null
+  return (
+    <div className={`achievement-revealed-reward${compact ? ' achievement-reward-compact' : ''}`}>
+      <span className="achievement-reward-art" aria-hidden="true">{reward.image && !imageFailed ? <SpriteImage src={reward.image} alt="" loading="lazy" onError={() => setImageFailed(true)} /> : <Gift size={24} />}</span>
+      <div><small>{reward.kind} 획득</small><strong>{reward.name}</strong>{!compact && <p>{reward.description ?? reward.effect}</p>}{reward.artCredit && <small className="achievement-art-credit">스프라이트: {reward.artCredit}</small>}</div>
+    </div>
+  )
+}
+
 function AchievementCard({ definition, record }) {
   const trainer = TRAINER_BY_ID.get(definition.trainerId)
   const Icon = CATEGORY_ICONS[definition.category] ?? Medal
   const ratio = Math.min(100, Math.max(0, record.current / Math.max(1, record.target) * 100))
   const date = formatDate(record.completedAt)
+  const isSealedReward = definition.secretReward && !record.completed
 
   return (
     <article className={`achievement-card achievement-category-${definition.category}${record.completed ? ' achievement-is-complete' : ''}`}>
@@ -82,11 +110,12 @@ function AchievementCard({ definition, record }) {
           <span style={{ width: `${ratio}%` }} />
         </div>
       </div>
+      {record.completed && definition.rewardId && <RevealedReward definition={definition} compact />}
       <footer className="achievement-card-footer">
-        <strong className="achievement-vp-reward"><Zap size={14} fill="currentColor" /> {formatNumber(definition.rewardVp)} <small>VP</small></strong>
+        {isSealedReward ? <strong className="achievement-sealed-reward"><LockKeyhole size={14} /> 미공개 보상</strong> : <strong className="achievement-vp-reward"><Zap size={14} fill="currentColor" /> {formatNumber(definition.rewardVp)} <small>VP</small></strong>}
         {record.completed ? (
           <span className="achievement-paid"><CheckCheck size={13} /> 지급 완료{date && <time dateTime={new Date(record.completedAt).toISOString()}>{date}</time>}</span>
-        ) : <span className="achievement-auto-reward">달성 시 자동 지급</span>}
+        ) : <span className="achievement-auto-reward">{isSealedReward ? '달성 후 공개' : '달성 시 자동 지급'}</span>}
       </footer>
     </article>
   )
@@ -105,6 +134,7 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
   const earnedVp = completedEntries.reduce((sum, { definition }) => sum + definition.rewardVp, 0)
   const completionPercent = Math.round(completedEntries.length / Math.max(1, entries.length) * 100)
   const trainerCompleted = completedEntries.filter(({ definition }) => definition.trainerId).length
+  const revealedRewards = completedEntries.filter(({ definition }) => definition.rewardId)
   const categoryCounts = useMemo(() => Object.fromEntries(ACHIEVEMENT_CATEGORIES.map((entry) => [
     entry.id, entries.filter(({ definition }) => definition.category === entry.id).length,
   ])), [entries])
@@ -116,7 +146,8 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
       if (status === 'in-progress' && record.completed) return false
       if (!search) return true
       const trainer = TRAINER_BY_ID.get(definition.trainerId)
-      return [definition.title, definition.description, trainer?.name, trainer?.alias]
+      const revealedName = record.completed ? getRevealedReward(definition)?.name : ''
+      return [definition.title, definition.description, trainer?.name, trainer?.alias, revealedName]
         .some((text) => normalizeSearch(text).includes(search))
     })
   }, [entries, category, status, query])
@@ -169,6 +200,12 @@ function AchievementsScreen({ progress, onBack, balance = 0 }) {
           <label className="achievement-search"><Search size={16} /><input type="search" aria-label="업적 또는 트레이너 검색" placeholder="업적 또는 트레이너 검색" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} /><span>{filteredEntries.length}</span></label>
         </div>
         <div className="achievement-catalog-scroll" ref={catalogRef} tabIndex={0} aria-label="업적 카드 스크롤 영역">
+          {category === 'all' && status !== 'in-progress' && !query && revealedRewards.length > 0 && (
+            <section className="achievement-reward-showcase" aria-label="획득한 특별 보상">
+              <h2><Crown size={17} /> 획득한 특별 보상 <small>{revealedRewards.length}</small></h2>
+              <div>{revealedRewards.map(({ definition }) => <RevealedReward key={definition.id} definition={definition} compact />)}</div>
+            </section>
+          )}
           {visibleEntries.length ? <div className="achievement-grid">{visibleEntries.map(({ definition, record }) => <AchievementCard key={definition.id} definition={definition} record={record} />)}</div> : (
             <div className="achievement-empty"><Search size={35} /><h3>조건에 맞는 업적이 없습니다</h3><p>{status === 'completed' ? '배틀에서 조건을 달성하면 이곳에 첫 기록이 남습니다.' : '다른 분류를 선택하거나 검색어를 바꿔 보세요.'}</p><button type="button" onClick={resetFilters}>전체 업적 보기 <ArrowRight size={15} /></button></div>
           )}
@@ -189,9 +226,50 @@ export function AchievementBattleRewards({ unlocked = [], baseVp = 0, rewardVp }
   return (
     <section className="achievement-battle-rewards" aria-label="이번 배틀에서 달성한 업적">
       <header><span><Trophy size={16} /> 새 업적 {definitions.length}개 달성</span><strong>+{formatNumber(bonus)} VP</strong></header>
-      <ul tabIndex={0} aria-label="이번 배틀 업적 보상 목록">{definitions.map((entry) => <li key={entry.id}><Check size={13} /><span>{entry.title}</span><strong>+{formatNumber(entry.rewardVp)} VP</strong></li>)}</ul>
+      <ul tabIndex={0} aria-label="이번 배틀 업적 보상 목록">{definitions.map((entry) => <li className={entry.rewardId ? 'achievement-battle-rare' : ''} key={entry.id}><Check size={13} /><div className="achievement-battle-reward-copy"><span>{entry.title}</span>{entry.rewardId && <RevealedReward definition={entry} compact />}</div><strong>+{formatNumber(entry.rewardVp)} VP</strong></li>)}</ul>
       <footer><span>승리 보상 {formatNumber(baseVp)} VP + 업적 보상</span><strong>총 +{formatNumber(Number(baseVp) + bonus)} VP 지급</strong></footer>
     </section>
+  )
+}
+
+export function AchievementRewardNotice({ unlocked = [], onClose, totalVp, baseVp = 0 }) {
+  const panelRef = useRef(null)
+  const closeRef = useRef(null)
+  const entries = rewardDefinitions(unlocked)
+  const bonus = totalVp ?? entries.reduce((total, entry) => total + entry.rewardVp, 0)
+  const open = entries.length > 0
+
+  useEffect(() => {
+    if (!open) return undefined
+    const previousFocus = document.activeElement
+    closeRef.current?.focus()
+    return () => { if (previousFocus?.isConnected) previousFocus.focus?.() }
+  }, [open])
+
+  if (!open) return null
+
+  function onKeyDown(event) {
+    if (event.key === 'Escape') { event.preventDefault(); onClose?.(); return }
+    if (event.key !== 'Tab') return
+    const controls = [...panelRef.current.querySelectorAll('button:not(:disabled), [tabindex="0"]')]
+    const first = controls[0]
+    const last = controls[controls.length - 1]
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+  }
+
+  return createPortal(
+    <div className="achievement-reveal-backdrop">
+      <section className="achievement-reveal-dialog" role="dialog" aria-modal="true" aria-labelledby="achievement-reveal-title" aria-describedby="achievement-reveal-description" ref={panelRef} onKeyDown={onKeyDown}>
+        <button className="achievement-reveal-close" type="button" onClick={onClose} aria-label="업적 보상 알림 닫기" ref={closeRef}><X size={19} /></button>
+        <header><span><Trophy size={27} /></span><div><small>ACHIEVEMENT UNLOCKED</small><h2 id="achievement-reveal-title">새로운 기록, 특별한 보상</h2><p id="achievement-reveal-description">{entries.length}개 업적의 보상이 지급되었습니다.</p></div></header>
+        <div className="achievement-reveal-list" tabIndex={0} aria-label="새로 획득한 업적 보상">
+          {entries.map((entry) => <article key={entry.id}><h3><Check size={15} />{entry.title}<strong>+{formatNumber(entry.rewardVp)} VP</strong></h3>{entry.rewardId && <RevealedReward definition={entry} />}<p>{entry.description}</p></article>)}
+        </div>
+        <footer><span><Gift size={18} /> 총 보상 지급 완료</span><strong>+{formatNumber(Number(bonus) + Number(baseVp))} VP</strong></footer>
+        <button className="achievement-reveal-confirm" type="button" onClick={onClose}>확인 <Check size={17} /></button>
+      </section>
+    </div>, document.body,
   )
 }
 

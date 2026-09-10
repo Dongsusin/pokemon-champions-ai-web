@@ -1,3 +1,4 @@
+import SpriteImage from './SpriteImage'
 import {
   Boxes,
   ChevronLeft,
@@ -8,19 +9,11 @@ import {
   Package,
   Sparkles,
 } from 'lucide-react'
-import { BATTLE_ITEMS } from './data/shopData'
+import { ALL_BATTLE_ITEMS as BATTLE_ITEMS } from './data/shopData'
 import { BATTLE_TEAM_SIZE } from './data/teamData'
 import { typeClassName } from './data/trainingData'
 
 const ITEM_BY_ID = new Map(BATTLE_ITEMS.map((item) => [item.id, item]))
-
-function fallbackImageHandler(fallback) {
-  return (event) => {
-    if (!fallback || event.currentTarget.dataset.fallbackApplied) return
-    event.currentTarget.dataset.fallbackApplied = 'true'
-    event.currentTarget.src = fallback
-  }
-}
 
 function moveName(move) {
   return typeof move === 'string' ? move : move?.name
@@ -96,11 +89,11 @@ function LobbyTeamPanel({ pokemon, teams, activeTeamId, onSelectTeam, onOpenBox 
               <span className="lobby-team-slot-number">{String(index + 1).padStart(2, '0')}</span>
               {entry.isShiny && <span className="lobby-team-shiny" aria-label="이로치">★</span>}
               <span className="lobby-team-icon-frame" aria-hidden="true">
-                <img
+                <SpriteImage
                   src={entry.icon}
                   alt=""
                   draggable="false"
-                  onError={fallbackImageHandler(entry.iconFallback)}
+                  fallbackSrc={entry.iconFallback}
                 />
               </span>
               <span className="lobby-team-card-copy">

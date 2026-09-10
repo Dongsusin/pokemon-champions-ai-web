@@ -17,9 +17,10 @@ import {
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
 import BattleScreen from './BattleScreen'
-import AchievementsScreen from './AchievementsScreen'
-import { applyBattleAchievements } from './data/achievementData'
+import AchievementsScreen, { AchievementRewardNotice } from './AchievementsScreen'
 import { loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
+import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
+import { getUnlockedPokemonSkins } from './data/rareRewards'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
@@ -105,7 +106,7 @@ function loadStoredArray(key) {
   }
 }
 
-function loadStoredBox() {
+function loadStoredBox(progress) {
   const hasCurrentCollection = window.localStorage.getItem(BOX_STORAGE_KEY) !== null
   const storedPokemon = hasCurrentCollection
     ? loadStoredArray(BOX_STORAGE_KEY)
@@ -113,6 +114,9 @@ function loadStoredBox() {
   const obtainedPokemon = storedPokemon.filter((pokemon) => (
     pokemon?.directDrawCount === undefined
     || Math.max(0, Number(pokemon.directDrawCount) || 0) > 0
+    || getUnlockedPokemonSkins(progress, pokemon).some((skin) => (
+      pokemon?.rewardOrigin === skin.achievementId
+    ))
   ))
 
   return migratePokemonCollection(obtainedPokemon)
@@ -260,17 +264,21 @@ function GameApp({
   onPlayerDataChanged,
   onSignOut,
 }) {
-  const initialCollection = useRef(null)
-  if (initialCollection.current === null) initialCollection.current = loadStoredBox()
-  const initialTeamState = useRef(null)
-  if (initialTeamState.current === null) initialTeamState.current = loadStoredTeamState(initialCollection.current)
   const initialAchievementWallet = useRef(null)
   if (initialAchievementWallet.current === null) initialAchievementWallet.current = loadAchievementWallet()
+  const initialRewards = useRef(null)
+  if (initialRewards.current === null) initialRewards.current = restoreAchievementRewards(
+    initialAchievementWallet.current.progress,
+    loadStoredBox(initialAchievementWallet.current.progress), loadStoredItems(),
+  )
+  const initialCollection = useRef(initialRewards.current.collection)
+  const initialTeamState = useRef(null)
+  if (initialTeamState.current === null) initialTeamState.current = loadStoredTeamState(initialCollection.current)
   const achievementProgressRef = useRef(initialAchievementWallet.current.progress)
   const vpBalance = useRef(null)
   if (vpBalance.current === null) vpBalance.current = initialAchievementWallet.current.balance
   const storedItemInventory = useRef(null)
-  if (storedItemInventory.current === null) storedItemInventory.current = loadStoredItems()
+  if (storedItemInventory.current === null) storedItemInventory.current = initialRewards.current.inventory
   const initialDrawTutorialStep = useRef(undefined)
   if (initialDrawTutorialStep.current === undefined) {
     initialDrawTutorialStep.current = shouldStartDrawTutorial(initialCollection.current, vpBalance.current)
@@ -290,6 +298,7 @@ function GameApp({
   const [vp, setVp] = useState(vpBalance.current)
   const [achievementProgress, setAchievementProgress] = useState(achievementProgressRef.current)
   const [battleRewards, setBattleRewards] = useState(null)
+  const [collectionRewards, setCollectionRewards] = useState(null)
   const resolvedCompetitionRef = useRef(null)
   const settledBattleRef = useRef(null)
   const finishedBattleRef = useRef(null)
@@ -310,6 +319,33 @@ function GameApp({
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
+
+  useEffect(() => {
+    const result = prepareAchievementRewards(achievementProgressRef.current, boxPokemon, storedItemInventory.current)
+    if (!result.progressChanged) return
+    const nextVp = vpBalance.current + result.rewardVp
+    try {
+      saveAchievementWallet(result.state, nextVp)
+    } catch {
+      showNotice('수집 업적을 저장하지 못했습니다. 업적 화면을 다시 열면 재시도합니다.')
+      return
+    }
+    achievementProgressRef.current = result.state
+    vpBalance.current = nextVp
+    storedItemInventory.current = result.inventory
+    setAchievementProgress(result.state)
+    setVp(nextVp)
+    if (result.collection !== boxPokemon) setBoxPokemon(result.collection)
+    setItemInventory(result.inventory)
+    if (result.unlocked.length > 0) {
+      setCollectionRewards(current => ({
+        unlocked: [...(current?.unlocked ?? []), ...result.unlocked],
+        rewardVp: (current?.rewardVp ?? 0) + result.rewardVp,
+      }))
+      gameAudioRef.current?.playEvent('reward')
+    }
+    onPlayerDataChanged?.()
+  }, [boxPokemon, screen, onPlayerDataChanged])
 
   useEffect(() => {
     return () => {
@@ -382,6 +418,7 @@ function GameApp({
   }, [activeTeam?.id, teamIds, teams])
 
   useEffect(() => {
+    if (achievementProgress !== achievementProgressRef.current || vp !== vpBalance.current) return
     try {
       saveAchievementWallet(achievementProgress, vp)
     } catch {}
@@ -644,17 +681,18 @@ function GameApp({
     }
     // A failed storage write can be retried without rerolling the other AI matches.
     const { nextCompetition } = resolvedCompetitionRef.current
-    const result = applyBattleAchievements(achievementProgressRef.current, {
+    const result = prepareAchievementRewards(achievementProgressRef.current, boxPokemon, storedItemInventory.current, {
       battleId: battleMatch.id,
       summary: battleSummary,
       opponent: battleMatch.opponent,
       competitionMode: competition.mode,
+      competitionRun: nextCompetition.achievementRun,
       competitionChampion: nextCompetition.status === 'complete' && nextCompetition.championId === 'player',
       competitionPerfect: nextCompetition.mode === 'league' && nextCompetition.status === 'complete'
         && nextCompetition.standings?.player?.wins === 7 && nextCompetition.standings?.player?.losses === 0,
       forfeited,
     })
-    const baseVp = result.processed && playerWon && !forfeited ? (competition.mode === 'league' ? 100 : 150) : 0
+    const baseVp = result.battleProcessed && playerWon && !forfeited ? (competition.mode === 'league' ? 100 : 150) : 0
     const rewardVp = result.rewardVp
     const nextVp = vpBalance.current + baseVp + rewardVp
     try {
@@ -669,6 +707,9 @@ function GameApp({
     achievementProgressRef.current = result.state
     vpBalance.current = nextVp
     setAchievementProgress(result.state)
+    storedItemInventory.current = result.inventory
+    setItemInventory(result.inventory)
+    if (result.collection !== boxPokemon) setBoxPokemon(result.collection)
     setVp(nextVp)
     setBattleRewards(settled)
     onPlayerDataChanged?.()
@@ -889,7 +930,10 @@ function GameApp({
       return false
     }
 
-    const normalizedPokemon = normalizePokemon(pokemon)
+    const unlockedSkins = getUnlockedPokemonSkins(achievementProgressRef.current, pokemon)
+    const normalizedPokemon = normalizePokemon({ ...pokemon,
+      skinId: unlockedSkins.some(skin => skin.id === pokemon.skinId) ? pokemon.skinId : null,
+    })
     const trainingCost = getTrainingCostBreakdown(normalizePokemon(savedPokemon), normalizedPokemon)
 
     if (trainingCost.total > vpBalance.current) {
@@ -910,7 +954,7 @@ function GameApp({
     setVp(nextVp)
     gameAudioRef.current?.playEvent('save')
     showNotice(trainingCost.total === 0
-      ? `${normalizedPokemon.name} 설정 저장 완료 · 이로치 색상 전환 무료`
+      ? `${normalizedPokemon.name} 설정 저장 완료 · 외형 변경 무료`
       : `${normalizedPokemon.name} 트레이닝 완료 · ${trainingCost.total.toLocaleString()} VP 사용 · 남은 ${nextVp.toLocaleString()} VP`)
     return true
   }
@@ -1082,6 +1126,7 @@ function GameApp({
         />
       ) : screen === 'training' ? (
         <TrainingScreen
+          progress={achievementProgress}
           balance={vp}
           pokemon={boxPokemon}
           teams={teams}
@@ -1094,6 +1139,7 @@ function GameApp({
         <AchievementsScreen progress={achievementProgress} balance={vp} onBack={() => setScreen(achievementReturnScreen)} />
       ) : screen === 'shop' ? (
         <ShopScreen
+          progress={achievementProgress}
           balance={vp}
           inventory={itemInventory}
           onBack={returnToLobby}
@@ -1118,6 +1164,11 @@ function GameApp({
           onOpenHatch={enterHatchScreen}
           onOpenShop={openShop}
         />
+      )}
+
+      {collectionRewards && screen !== 'battle' && screen !== 'hatch' && (
+        <AchievementRewardNotice unlocked={collectionRewards.unlocked} totalVp={collectionRewards.rewardVp}
+          onClose={() => setCollectionRewards(null)} />
       )}
 
       {settingsOpen && (

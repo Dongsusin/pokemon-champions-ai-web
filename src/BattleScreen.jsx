@@ -1,3 +1,4 @@
+import SpriteImage from './SpriteImage'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
@@ -67,14 +68,6 @@ import { getBattleFormOptions, typeClassName } from './data/trainingData'
 
 function animationClassToken(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
-}
-
-function fallbackImageHandler(fallback) {
-  return (event) => {
-    if (!fallback || event.currentTarget.dataset.fallbackApplied) return
-    event.currentTarget.dataset.fallbackApplied = 'true'
-    event.currentTarget.src = fallback
-  }
 }
 
 const moveAssetDecodeCache = new Map()
@@ -1316,11 +1309,11 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
               onClick={() => onSelect(index)}
             >
               <span className="battle-party-menu-icon">
-                <img
+                <SpriteImage
                   src={pokemon.icon}
                   alt=""
                   draggable="false"
-                  onError={fallbackImageHandler(pokemon.iconFallback)}
+                  fallbackSrc={pokemon.iconFallback}
                 />
               </span>
               <span>
@@ -1574,11 +1567,11 @@ function MoveTargetMenu({
             >
               <span className="battle-target-number">{targetSideId === 'player' ? '아군' : '상대'} {String(slot + 1).padStart(2, '0')}</span>
               <span className="battle-target-icon">
-                <img
+                <SpriteImage
                   src={target.icon}
                   alt=""
                   draggable="false"
-                  onError={fallbackImageHandler(target.iconFallback)}
+                  fallbackSrc={target.iconFallback}
                 />
               </span>
               <span className="battle-target-info">
@@ -1683,12 +1676,12 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
           <small>CHALLENGER</small>
           <strong>PLAYER_01</strong>
           <span>{playerTeam.map((pokemon) => (
-            <img
+            <SpriteImage
               key={pokemon.captureId}
               src={pokemon.icon}
               alt={pokemon.name}
               draggable="false"
-              onError={fallbackImageHandler(pokemon.iconFallback)}
+              fallbackSrc={pokemon.iconFallback}
             />
           ))}</span>
         </div>
@@ -1706,12 +1699,12 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
           <small>{opponent.tier} TIER · TEAM {opponent.teamNumber}</small>
           <strong>{opponent.name}</strong>
           <span>{opponentTeam.pokemon.map((pokemon, index) => (
-            <img
+            <SpriteImage
               key={`${pokemon.speciesId}-${index}`}
               src={pokemon.icon ?? pokemon.iconFallback ?? ''}
               alt={pokemon.name}
               draggable="false"
-              onError={fallbackImageHandler(pokemon.iconFallback)}
+              fallbackSrc={pokemon.iconFallback}
             />
           ))}</span>
         </div>

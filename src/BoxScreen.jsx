@@ -1,3 +1,4 @@
+import SpriteImage from './SpriteImage'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowDownAZ,
@@ -28,10 +29,12 @@ import {
   getTrainingRosterPokemon,
 } from './data/pokemonPool'
 import {
-  BATTLE_ITEMS,
+  ALL_BATTLE_ITEMS,
   SHOP_CATEGORIES,
   getEquippedBattleItemCounts,
+  getOwnedBattleItems,
 } from './data/shopData'
+import { getPokemonSkin } from './data/rareRewards'
 import {
   DYNAMAX_MODES,
   TERA_TYPES,
@@ -43,7 +46,7 @@ import {
 
 const PARTY_SIZE = 6
 const BATTLE_LEVEL = 50
-const ITEM_BY_ID = new Map(BATTLE_ITEMS.map((item) => [item.id, item]))
+const ITEM_BY_ID = new Map(ALL_BATTLE_ITEMS.map((item) => [item.id, item]))
 const ITEM_CATEGORY_BY_ID = new Map(SHOP_CATEGORIES.map((category) => [category.id, category]))
 
 function normalizeItemSearch(value) {
@@ -209,7 +212,7 @@ function BoxScreen({
   const selectedGigantamaxProfile = selectedPokemon ? getGigantamaxProfile(selectedPokemon.speciesId) : null
   const equippedItemCounts = useMemo(() => getEquippedBattleItemCounts(pokemon), [pokemon])
   const ownedItems = useMemo(
-    () => BATTLE_ITEMS.filter((item) => (inventory[item.id] ?? 0) > 0),
+    () => getOwnedBattleItems(inventory),
     [inventory],
   )
   const itemCategoryCounts = useMemo(() => Object.fromEntries(SHOP_CATEGORIES.map((category) => [
@@ -229,9 +232,10 @@ function BoxScreen({
     })
   }, [itemCategory, itemSearch, ownedItems])
   const partySlots = Array.from({ length: PARTY_SIZE }, (_, index) => teamPokemon[index] ?? null)
-  const selectedSprite = selectedProfile
+  const selectedSkin = getPokemonSkin(selectedPokemon?.skinId)
+  const selectedSprite = selectedSkin?.spriteFront ?? (selectedProfile
     ? showShiny ? selectedProfile.spriteFrontShiny : selectedProfile.spriteFront
-    : null
+    : null)
   const selectedSpriteFallback = selectedProfile
     ? showShiny ? selectedProfile.spriteFrontShinyFallback : selectedProfile.spriteFrontFallback
     : null
@@ -421,12 +425,12 @@ function BoxScreen({
                     <span className="pc-party-index">{index + 1}</span>
                     {entry.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
                     <span className="pokemon-icon-frame pc-party-sprite-frame" aria-hidden="true">
-                      <img
+                      <SpriteImage
                         className="pokemon-box-icon"
                         src={entry.icon}
                         alt=""
                         draggable="false"
-                        onError={fallbackImageHandler(entry.iconFallback)}
+                        fallbackSrc={entry.iconFallback}
                       />
                     </span>
                     <span>
@@ -566,7 +570,7 @@ function BoxScreen({
                   onClick={() => setSelectedCaptureId(entry.captureId)}
                 >
                   <span>{index + 1}</span>
-                  <img src={entry.icon} alt="" onError={fallbackImageHandler(entry.iconFallback)} />
+                  <SpriteImage src={entry.icon} alt="" fallbackSrc={entry.iconFallback} />
                   <strong>{entry.name}</strong>
                 </button>
               ) : (
@@ -636,12 +640,12 @@ function BoxScreen({
                         </span>
                       )}
                       <span className="pokemon-icon-frame team-box-card-sprite" aria-hidden="true">
-                        <img
+                        <SpriteImage
                           className="pokemon-box-icon"
                           src={entry.icon ?? profile?.icon}
                           alt=""
                           draggable="false"
-                          onError={fallbackImageHandler(entry.iconFallback ?? profile?.iconFallback)}
+                          fallbackSrc={entry.iconFallback ?? profile?.iconFallback}
                         />
                       </span>
                       <strong>{entry.name}</strong>

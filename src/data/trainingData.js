@@ -3,6 +3,7 @@ import pokemonGenderData from './generatedPokemonGenderData.json' with { type: '
 import gen5SpriteManifest from './generatedGen5SpriteManifest.json' with { type: 'json' }
 import battleMoveData from './generatedBattleMoves.json' with { type: 'json' }
 import { isBattleMoveSupported } from './moveSupportData.js'
+import { getPokemonSkin } from './rareRewards.js'
 import {
   createVirtualPokemonFormProfiles,
   decorateGeneratedPokemonProfile,
@@ -848,7 +849,7 @@ export function normalizePokemon(pokemon) {
   const requestedSpecies = getSpeciesProfile(pokemon.speciesId)
   const canonicalSpecies = getCanonicalPokemonFormProfile(requestedSpecies)
 
-  if (!canonicalSpecies) return { ...pokemon, level: BATTLE_LEVEL }
+  if (!canonicalSpecies) return { ...pokemon, skinId: null, level: BATTLE_LEVEL }
 
   const genderOptions = getPokemonGenderOptions(canonicalSpecies)
   const requestedGender = normalizePokemonGender(pokemon.gender)
@@ -893,10 +894,14 @@ export function normalizePokemon(pokemon) {
   const { hiddenPowerType, hiddenPowerTypeConfigured } = resolveHiddenPowerConfiguration(pokemon)
   const isShiny = Boolean(pokemon.isShiny)
   const shinyObtained = Boolean(pokemon.shinyObtained ?? pokemon.isShiny)
-  const spriteFront = isShiny ? species.spriteFrontShiny : species.spriteFront
-  const spriteBack = isShiny ? species.spriteBackShiny : species.spriteBack
-  const spriteFrontFallback = isShiny ? species.spriteFrontShinyFallback : species.spriteFrontFallback
-  const spriteBackFallback = isShiny ? species.spriteBackShinyFallback : species.spriteBackFallback
+  const requestedSkin = getPokemonSkin(pokemon.skinId)
+  const selectedSkin = requestedSkin?.baseSpeciesId === Number(species.parentSpeciesId ?? species.id) ? requestedSkin : null
+  const standardFront = isShiny ? species.spriteFrontShiny : species.spriteFront
+  const standardBack = isShiny ? species.spriteBackShiny : species.spriteBack
+  const spriteFront = selectedSkin?.spriteFront ?? standardFront
+  const spriteBack = selectedSkin?.spriteBack ?? standardBack
+  const spriteFrontFallback = selectedSkin ? standardFront : isShiny ? species.spriteFrontShinyFallback : species.spriteFrontFallback
+  const spriteBackFallback = selectedSkin ? standardBack : isShiny ? species.spriteBackShinyFallback : species.spriteBackFallback
 
   return {
     ...pokemon,
@@ -906,9 +911,10 @@ export function normalizePokemon(pokemon) {
     name: species.name,
     formName: species.formName ?? species.name,
     isShiny,
+    skinId: selectedSkin?.id ?? null,
     shinyObtained,
     directDrawCount: Math.max(0, Number(pokemon.directDrawCount ?? 0)),
-    icon: species.icon,
+    icon: selectedSkin?.spriteFront ?? species.icon,
     iconFallback: species.iconFallback,
     spriteFront,
     spriteBack,

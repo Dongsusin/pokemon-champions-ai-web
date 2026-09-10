@@ -1,4 +1,5 @@
 import generatedBattleItems, { GENERATED_BATTLE_ITEM_META } from './generatedBattleItems.js'
+import { RARE_BATTLE_ITEMS } from './rareRewards.js'
 
 export const MAX_ITEM_QUANTITY = 1
 
@@ -10,12 +11,24 @@ export const SHOP_CATEGORIES = [
 ]
 
 export const BATTLE_ITEMS = generatedBattleItems
+export const REWARD_BATTLE_ITEMS = RARE_BATTLE_ITEMS
+export const ALL_BATTLE_ITEMS = [...BATTLE_ITEMS, ...REWARD_BATTLE_ITEMS]
 export const BATTLE_ITEM_META = GENERATED_BATTLE_ITEM_META
 
-const BATTLE_ITEM_BY_ID = new Map(BATTLE_ITEMS.map((item) => [item.id, item]))
+const BATTLE_ITEM_BY_ID = new Map(ALL_BATTLE_ITEMS.map((item) => [item.id, item]))
 
 export function getBattleItem(itemId) {
   return BATTLE_ITEM_BY_ID.get(itemId) ?? null
+}
+
+export function getVisibleBattleItems(inventory = {}) {
+  const owned = normalizeItemInventory(inventory)
+  return [...BATTLE_ITEMS, ...REWARD_BATTLE_ITEMS.filter((item) => owned[item.id] > 0)]
+}
+
+export function getOwnedBattleItems(inventory = {}) {
+  const owned = normalizeItemInventory(inventory)
+  return ALL_BATTLE_ITEMS.filter((item) => owned[item.id] > 0)
 }
 
 export function getEquippedBattleItemCounts(pokemon = []) {
@@ -32,7 +45,7 @@ export function getEquippedBattleItemCounts(pokemon = []) {
 export function normalizeItemInventory(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
-  return Object.fromEntries(BATTLE_ITEMS.flatMap((item) => {
+  return Object.fromEntries(ALL_BATTLE_ITEMS.flatMap((item) => {
     const quantity = Math.min(MAX_ITEM_QUANTITY, Math.max(0, Math.floor(Number(value[item.id]) || 0)))
     return quantity > 0 ? [[item.id, quantity]] : []
   }))
@@ -40,10 +53,10 @@ export function normalizeItemInventory(value) {
 
 export function createCompleteBattleItemInventory(value = {}) {
   const currentInventory = normalizeItemInventory(value)
-  return Object.fromEntries(BATTLE_ITEMS.map((item) => [
+  return { ...currentInventory, ...Object.fromEntries(BATTLE_ITEMS.map((item) => [
     item.id,
     currentInventory[item.id] ?? MAX_ITEM_QUANTITY,
-  ]))
+  ])) }
 }
 
 export function attemptItemPurchase(balance, inventory, itemId) {
@@ -52,6 +65,7 @@ export function attemptItemPurchase(balance, inventory, itemId) {
   const currentInventory = normalizeItemInventory(inventory)
 
   if (!item) return { ok: false, reason: 'unknown-item', balance: currentBalance, inventory: currentInventory }
+  if (item.rewardOnly) return { ok: false, reason: 'reward-only', balance: currentBalance, inventory: currentInventory }
 
   const isOwned = Boolean(currentInventory[item.id])
   if (isOwned) {

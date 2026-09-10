@@ -17,8 +17,8 @@ import {
   Zap,
 } from 'lucide-react'
 import BattleItemSprite from './BattleItemSprite'
+import { getUnlockedRareItems } from './data/rareRewards.js'
 import {
-  BATTLE_ITEM_META,
   BATTLE_ITEMS,
   SHOP_CATEGORIES,
 } from './data/shopData'
@@ -53,37 +53,42 @@ function ItemArtwork({ item, Icon, compact = false }) {
   )
 }
 
-function ShopScreen({ balance, inventory, onBack, onPurchase }) {
+function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
   const [category, setCategory] = useState('all')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const rareItems = useMemo(() => getUnlockedRareItems(progress), [progress])
+  const catalogItems = useMemo(() => [...BATTLE_ITEMS, ...rareItems], [rareItems])
+  const categories = useMemo(() => rareItems.length > 0 ? [...SHOP_CATEGORIES, { id: 'rewards', label: '업적 보상', eyebrow: 'EARNED REWARDS' }] : SHOP_CATEGORIES, [rareItems.length])
+  const rareItemIds = useMemo(() => new Set(rareItems.map((item) => item.id)), [rareItems])
 
-  const categoryCounts = useMemo(() => Object.fromEntries(SHOP_CATEGORIES.map((entry) => [
+  const categoryCounts = useMemo(() => Object.fromEntries(categories.map((entry) => [
     entry.id,
     entry.id === 'all'
-      ? BATTLE_ITEMS.length
-      : BATTLE_ITEMS.filter((item) => item.category === entry.id).length,
-  ])), [])
+      ? catalogItems.length
+      : entry.id === 'rewards' ? rareItems.length : catalogItems.filter((item) => item.category === entry.id).length,
+  ])), [categories, catalogItems, rareItems.length])
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = normalizeSearchText(query)
 
-    return BATTLE_ITEMS.filter((item) => {
-      if (category !== 'all' && item.category !== category) return false
+    return catalogItems.filter((item) => {
+      if (category === 'rewards' && !rareItemIds.has(item.id)) return false
+      if (category !== 'all' && category !== 'rewards' && item.category !== category) return false
       if (!normalizedQuery) return true
 
       return [item.name, item.englishName, item.id, item.sourceCategory]
         .some((value) => normalizeSearchText(value).includes(normalizedQuery))
     })
-  }, [category, query])
+  }, [category, query, catalogItems, rareItemIds])
 
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE))
   const visibleItems = filteredItems.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
   const ownedItems = useMemo(
-    () => BATTLE_ITEMS.filter((item) => (inventory[item.id] ?? 0) > 0),
-    [inventory],
+    () => catalogItems.filter((item) => rareItemIds.has(item.id) || (inventory[item.id] ?? 0) > 0),
+    [inventory, catalogItems, rareItemIds],
   )
-  const unownedItemCount = BATTLE_ITEMS.length - ownedItems.length
+  const unownedItemCount = catalogItems.length - ownedItems.length
   const firstVisibleItem = filteredItems.length === 0 ? 0 : ((page - 1) * ITEMS_PER_PAGE) + 1
   const lastVisibleItem = Math.min(page * ITEMS_PER_PAGE, filteredItems.length)
 
@@ -96,7 +101,7 @@ function ShopScreen({ balance, inventory, onBack, onPurchase }) {
   }, [page, pageCount])
 
   return (
-    <main className="shop-screen">
+    <main className={`shop-screen${rareItems.length > 0 ? ' shop-has-rewards' : ''}`}>
       <header className="shop-header">
         <button className="screen-back-button" type="button" aria-label="로비로 돌아가기" onClick={onBack}>
           <ArrowLeft size={19} />
@@ -154,7 +159,7 @@ function ShopScreen({ balance, inventory, onBack, onPurchase }) {
           <div className="shop-guide-card">
             <Sparkles size={17} />
             <div>
-              <strong>장착형 배틀 도구 {BATTLE_ITEM_META.count.toLocaleString()}종</strong>
+              <strong>장착형 배틀 도구 {catalogItems.length.toLocaleString()}종</strong>
               <p>한글명, 영문명 또는 도구 ID로 검색하고 분류별로 빠르게 찾아보세요.</p>
             </div>
           </div>
@@ -180,11 +185,11 @@ function ShopScreen({ balance, inventory, onBack, onPurchase }) {
             </label>
 
             <span className="shop-item-count">
-              {BATTLE_ITEMS.length.toLocaleString()}<em> TOTAL</em>
+              {catalogItems.length.toLocaleString()}<em> TOTAL</em>
             </span>
 
             <div className="shop-category-tabs" aria-label="상품 분류">
-              {SHOP_CATEGORIES.map((entry) => (
+              {categories.map((entry) => (
                 <button
                   className={category === entry.id ? 'active' : ''}
                   key={entry.id}
@@ -203,16 +208,17 @@ function ShopScreen({ balance, inventory, onBack, onPurchase }) {
           <div className="shop-item-grid">
             {visibleItems.length > 0 ? visibleItems.map((item) => {
               const Icon = CATEGORY_ICONS[item.category]
-              const isOwned = Boolean(inventory[item.id])
+              const isReward = rareItemIds.has(item.id)
+              const isOwned = isReward || Boolean(inventory[item.id])
               const canAfford = balance >= item.price
               const categoryMeta = CATEGORY_BY_ID.get(item.category)
 
               return (
-                <article className={`shop-item-card category-${item.category}${isOwned ? ' owned' : ''}${!canAfford && !isOwned ? ' insufficient' : ''}`} key={item.id}>
-                  <span className="shop-item-grade">{item.grade}</span>
+                <article className={`shop-item-card category-${item.category}${isOwned ? ' owned' : ''}${isReward ? ' shop-rare-reward' : ''}${!canAfford && !isOwned ? ' insufficient' : ''}`} key={item.id}>
+                  <span className="shop-item-grade">{isReward ? '업적 한정' : item.grade}</span>
                   <ItemArtwork item={item} Icon={Icon} />
                   <div className="shop-item-name">
-                    <small>{categoryMeta?.eyebrow} · {item.generation}세대</small>
+                    <small>{isReward ? 'EARNED REWARD · 희귀 도구' : `${categoryMeta?.eyebrow} · ${item.generation}세대`}</small>
                     <h3 title={item.englishName}>{item.name}</h3>
                   </div>
                   <span className={`shop-owned-badge ${isOwned ? 'owned' : 'unowned'}`}>
@@ -222,10 +228,10 @@ function ShopScreen({ balance, inventory, onBack, onPurchase }) {
                   <p title={item.description}>{item.description}</p>
                   <div className="shop-item-effect"><Sparkles size={13} /><span>{item.effect}</span></div>
                   <footer>
-                    <strong><Zap size={14} fill="currentColor" /> {item.price.toLocaleString()}<em>VP</em></strong>
-                    <button type="button" disabled={isOwned} onClick={() => onPurchase(item.id)}>
+                    <strong>{isReward ? <><Sparkles size={14} /> 업적 보상</> : <><Zap size={14} fill="currentColor" /> {item.price.toLocaleString()}<em>VP</em></>}</strong>
+                    <button type="button" disabled={isOwned || isReward} onClick={() => { if (!isReward) onPurchase(item.id) }}>
                       {isOwned ? <Check size={14} /> : <ShoppingBag size={14} />}
-                      {isOwned ? '보유 중' : canAfford ? '구매' : 'VP 부족'}
+                      {isReward ? '획득 완료' : isOwned ? '보유 중' : canAfford ? '구매' : 'VP 부족'}
                     </button>
                   </footer>
                 </article>

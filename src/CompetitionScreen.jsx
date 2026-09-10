@@ -1,3 +1,4 @@
+import SpriteImage from './SpriteImage'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
@@ -30,14 +31,6 @@ function pokemonIconSources(slot) {
   return {
     primary: slot.icon ?? profile?.icon ?? profile?.iconFallback,
     fallback: slot.iconFallback ?? profile?.iconFallback,
-  }
-}
-
-function fallbackImageHandler(fallback) {
-  return (event) => {
-    if (!fallback || event.currentTarget.dataset.fallbackApplied) return
-    event.currentTarget.dataset.fallbackApplied = 'true'
-    event.currentTarget.src = fallback
   }
 }
 
@@ -83,11 +76,11 @@ function MatchTrainer({ participant, side, team, getInspectorProps, playerGender
               type="button"
               key={`${participant.id}-${pokemon.captureId ?? pokemon.speciesId}-${index}`}
             >
-              <img
+              <SpriteImage
                 src={pokemonIconSources(pokemon).primary}
                 alt={pokemon.name}
                 draggable="false"
-                onError={fallbackImageHandler(pokemonIconSources(pokemon).fallback)}
+                fallbackSrc={pokemonIconSources(pokemon).fallback}
               />
             </button>
           )
@@ -143,7 +136,7 @@ function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label
               onClick={() => onToggle(entry.captureId)}
             >
               <small>{String(index + 1).padStart(2, '0')}</small>
-              <img src={sources.primary} alt="" draggable="false" onError={fallbackImageHandler(sources.fallback)} />
+              <SpriteImage src={sources.primary} alt="" draggable="false" fallbackSrc={sources.fallback} />
               <span>{entry.name}</span>
               {selected && <b>{selectedIndex + 1}</b>}
             </button>
