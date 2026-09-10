@@ -35,6 +35,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { createBattleAudio } from './battleAudio'
+import { AchievementBattleRewards } from './AchievementsScreen'
 import BattlePokemonStatusTooltip, { battleStatStageEntries } from './BattlePokemonStatusTooltip'
 import MoveChoreographyCanvas from './MoveChoreographyCanvas.jsx'
 import PokemonSprite from './PokemonSprite'
@@ -1767,6 +1768,8 @@ function BattleScreen({
   audioSettings = {},
   onToggleSound,
   onOpenSettings,
+  onResolved,
+  battleRewards = null,
   onComplete,
 }) {
   const [battle, setBattle] = useState(() => createBattle({ playerPokemon, opponent, opponentTeam, rules }))
@@ -1789,6 +1792,7 @@ function BattleScreen({
   const playbackTokenRef = useRef(0)
   const turnLockedRef = useRef(false)
   const battleAudioRef = useRef(null)
+  const resultReportedRef = useRef(false)
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
   const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
   const activeTrainerDialogue = trainerDialogue
@@ -1798,6 +1802,11 @@ function BattleScreen({
   const opponentActivePokemon = getActivePokemonList(battle, 'opponent')
   const inspectedPokemonSide = hoveredPokemonSide ?? focusedPokemonSide ?? pinnedPokemonSide
   const summary = useMemo(() => getBattleSummary(battle), [battle])
+  useEffect(() => {
+    if (!summary.winner || isTurnAnimating || resultReportedRef.current) return
+    resultReportedRef.current = true
+    onResolved?.(summary)
+  }, [summary, isTurnAnimating, onResolved])
   const currentLogEntry = battle.log.at(-1)
   const currentBattleMessage = turnCue?.message ?? currentLogEntry?.message ?? '배틀을 준비하고 있습니다.'
   const currentBattleTone = turnCue ? cueTone(turnCue) : currentLogEntry?.tone ?? 'neutral'
@@ -2159,6 +2168,7 @@ function BattleScreen({
       ...summary,
       winner: forcedWinner ?? summary.winner,
       playerRemaining: forcedWinner === 'opponent' ? 0 : summary.playerRemaining,
+      forfeited: forcedWinner === 'opponent' && !summary.winner,
     })
   }
 
@@ -2581,6 +2591,11 @@ function BattleScreen({
             <h2>{battle.winner === 'player' ? `${opponent.name}에게 승리!` : `${opponent.name}에게 패배`}</h2>
             <p>{summary.turns}턴 · 아군 {summary.playerRemaining}마리 · 상대 {summary.opponentRemaining}마리</p>
           </div>
+          {battleRewards && <AchievementBattleRewards
+            unlocked={battleRewards.unlocked}
+            baseVp={battleRewards.baseVp}
+            rewardVp={battleRewards.rewardVp}
+          />}
           <button type="button" onClick={() => completeBattle()}>
             배틀 마치기 <ChevronRight size={18} />
           </button>

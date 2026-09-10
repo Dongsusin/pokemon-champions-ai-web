@@ -10,12 +10,16 @@ import {
   Smartphone,
   Sparkles,
   Swords,
+  Trophy,
   Volume2,
   VolumeX,
   Zap,
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
 import BattleScreen from './BattleScreen'
+import AchievementsScreen from './AchievementsScreen'
+import { applyBattleAchievements } from './data/achievementData'
+import { loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
@@ -34,7 +38,6 @@ import {
   normalizeGameSettings,
 } from './gameSettings'
 import {
-  INITIAL_VP_BALANCE,
   createPokemonDraw,
   getDrawBanner,
   getPokemonEvolutionFamilyKey,
@@ -81,7 +84,6 @@ const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
 const TEAMS_STORAGE_KEY = 'champions-teams-v1'
 const TEAM_STORAGE_KEY = 'champions-team-v2'
 const LEGACY_TEAM_STORAGE_KEY = 'champions-team-v1'
-const VP_STORAGE_KEY = 'champions-vp-v1'
 const ITEM_STORAGE_KEY = 'champions-battle-items-v1'
 const DRAW_TUTORIAL_STORAGE_KEY = 'champions-draw-tutorial-v1'
 const STANDARD_DRAW_PRICE = getDrawBanner('standard').price
@@ -177,14 +179,6 @@ function removeEvolutionFamilyDuplicates(teams, collection) {
   })
 }
 
-function loadStoredVp() {
-  const storedValue = window.localStorage.getItem(VP_STORAGE_KEY)
-  if (storedValue === null) return INITIAL_VP_BALANCE
-
-  const storedVp = Math.floor(Number(storedValue))
-  return Number.isFinite(storedVp) && storedVp >= 0 ? storedVp : INITIAL_VP_BALANCE
-}
-
 function loadStoredItems() {
   try {
     const storedItems = window.localStorage.getItem(ITEM_STORAGE_KEY)
@@ -246,6 +240,13 @@ const modes = [
     description: '배틀 아이템 구매',
     icon: ShoppingBag,
   },
+  {
+    id: 'achievements',
+    eyebrow: 'ACHIEVEMENTS',
+    title: '업적',
+    description: '도전 달성과 VP 보상',
+    icon: Trophy,
+  },
 ]
 
 function GameApp({
@@ -263,8 +264,11 @@ function GameApp({
   if (initialCollection.current === null) initialCollection.current = loadStoredBox()
   const initialTeamState = useRef(null)
   if (initialTeamState.current === null) initialTeamState.current = loadStoredTeamState(initialCollection.current)
+  const initialAchievementWallet = useRef(null)
+  if (initialAchievementWallet.current === null) initialAchievementWallet.current = loadAchievementWallet()
+  const achievementProgressRef = useRef(initialAchievementWallet.current.progress)
   const vpBalance = useRef(null)
-  if (vpBalance.current === null) vpBalance.current = loadStoredVp()
+  if (vpBalance.current === null) vpBalance.current = initialAchievementWallet.current.balance
   const storedItemInventory = useRef(null)
   if (storedItemInventory.current === null) storedItemInventory.current = loadStoredItems()
   const initialDrawTutorialStep = useRef(undefined)
@@ -277,12 +281,18 @@ function GameApp({
   const [screen, setScreen] = useState(initialDrawTutorialStep.current ? 'hatch' : 'lobby')
   const [selectedMode, setSelectedMode] = useState(initialDrawTutorialStep.current ? 'hatch' : 'start')
   const [boxReturnScreen, setBoxReturnScreen] = useState('lobby')
+  const [achievementReturnScreen, setAchievementReturnScreen] = useState('lobby')
   const [drawResults, setDrawResults] = useState([])
   const [drawTutorialStep, setDrawTutorialStep] = useState(initialDrawTutorialStep.current)
   const [boxPokemon, setBoxPokemon] = useState(initialCollection.current)
   const [teams, setTeams] = useState(initialTeamState.current.teams)
   const [activeTeamId, setActiveTeamId] = useState(initialTeamState.current.activeTeamId)
   const [vp, setVp] = useState(vpBalance.current)
+  const [achievementProgress, setAchievementProgress] = useState(achievementProgressRef.current)
+  const [battleRewards, setBattleRewards] = useState(null)
+  const resolvedCompetitionRef = useRef(null)
+  const settledBattleRef = useRef(null)
+  const finishedBattleRef = useRef(null)
   const [itemInventory, setItemInventory] = useState(storedItemInventory.current)
   const [settings, setSettings] = useState(loadGameSettings)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -373,9 +383,9 @@ function GameApp({
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(VP_STORAGE_KEY, String(vp))
+      saveAchievementWallet(achievementProgress, vp)
     } catch {}
-  }, [vp])
+  }, [vp, achievementProgress])
 
   useEffect(() => {
     try {
@@ -393,6 +403,7 @@ function GameApp({
     onPlayerDataChanged?.()
   }, [
     activeTeamId,
+    achievementProgress,
     boxPokemon,
     drawTutorialStep,
     itemInventory,
@@ -503,6 +514,12 @@ function GameApp({
       return
     }
 
+    if (mode.id === 'achievements') {
+      setAchievementReturnScreen('lobby')
+      setScreen('achievements')
+      return
+    }
+
   }
 
   const returnToLobby = () => {
@@ -544,6 +561,13 @@ function GameApp({
     setScreen('shop')
   }
 
+  const openAchievements = () => {
+    if (screen === 'achievements') return
+    setAchievementReturnScreen(screen)
+    setSelectedMode('achievements')
+    setScreen('achievements')
+  }
+
   const selectSavedTeam = (teamId) => {
     if (!teams.some((team) => team.id === teamId)) return
     setActiveTeamId(teamId)
@@ -569,6 +593,10 @@ function GameApp({
 
     setCompetition(nextCompetition)
     setBattleMatch(null)
+    setBattleRewards(null)
+    resolvedCompetitionRef.current = null
+    settledBattleRef.current = null
+    finishedBattleRef.current = null
     setScreen('competition')
     gameAudioRef.current?.playEvent('competition')
     showNotice(`${activeTeam.name}으로 ${battleModeName} 참가 완료 · AI ${getAiBattleDifficultyLabel(nextCompetition.aiDifficulty)}`)
@@ -589,32 +617,76 @@ function GameApp({
     const selectedOpponentPokemon = selectCounterBattlePokemon(opponentTeam.pokemon, playerTeam, rules)
 
     setBattleMatch({
+      id: `${competition.id}:${competition.round}:${currentMatch.opponent.id}`,
       opponent: currentMatch.opponent,
       opponentTeam: { ...opponentTeam, pokemon: selectedOpponentPokemon },
       playerTeam,
       rules,
       competitionLabel: `${competition.mode === 'league' ? '8인 리그전' : '128강 토너먼트'} · ${getCompetitionRoundLabel(competition)}`,
     })
+    setBattleRewards(null)
+    resolvedCompetitionRef.current = null
+    settledBattleRef.current = null
     setScreen('battle')
   }
 
-  const finishCompetitionBattle = (battleSummary) => {
+  const settleCompetitionBattle = (battleSummary) => {
+    if (!competition || !battleMatch) return null
+    if (settledBattleRef.current?.battleId === battleMatch.id) return settledBattleRef.current
+    const forfeited = battleSummary.forfeited === true
+    if (!forfeited && !battleSummary.achievementFacts?.completed) return null
     const playerWon = battleSummary.winner === 'player'
-    const reward = playerWon ? (competition.mode === 'league' ? 100 : 150) : 0
-    const nextCompetition = resolveCompetitionMatch(
-      competition,
-      playerWon,
-      battleSummary,
-    )
-
-    if (reward > 0) {
-      const nextVp = vpBalance.current + reward
-      vpBalance.current = nextVp
-      setVp(nextVp)
-      gameAudioRef.current?.playEvent('reward')
-      showNotice(`배틀 승리 보상으로 ${reward} VP를 획득했습니다.`)
+    if (resolvedCompetitionRef.current?.battleId !== battleMatch.id) {
+      resolvedCompetitionRef.current = {
+        battleId: battleMatch.id,
+        nextCompetition: resolveCompetitionMatch(competition, playerWon, battleSummary),
+      }
     }
+    // A failed storage write can be retried without rerolling the other AI matches.
+    const { nextCompetition } = resolvedCompetitionRef.current
+    const result = applyBattleAchievements(achievementProgressRef.current, {
+      battleId: battleMatch.id,
+      summary: battleSummary,
+      opponent: battleMatch.opponent,
+      competitionMode: competition.mode,
+      competitionChampion: nextCompetition.status === 'complete' && nextCompetition.championId === 'player',
+      competitionPerfect: nextCompetition.mode === 'league' && nextCompetition.status === 'complete'
+        && nextCompetition.standings?.player?.wins === 7 && nextCompetition.standings?.player?.losses === 0,
+      forfeited,
+    })
+    const baseVp = result.processed && playerWon && !forfeited ? (competition.mode === 'league' ? 100 : 150) : 0
+    const rewardVp = result.rewardVp
+    const nextVp = vpBalance.current + baseVp + rewardVp
+    try {
+      saveAchievementWallet(result.state, nextVp)
+    } catch {
+      gameAudioRef.current?.playEvent('error')
+      showNotice('보상을 저장하지 못했습니다. 저장 공간을 확인한 뒤 배틀 마치기를 다시 눌러주세요.')
+      return null
+    }
+    const settled = { battleId: battleMatch.id, nextCompetition, unlocked: result.unlocked, rewardVp, baseVp }
+    settledBattleRef.current = settled
+    achievementProgressRef.current = result.state
+    vpBalance.current = nextVp
+    setAchievementProgress(result.state)
+    setVp(nextVp)
+    setBattleRewards(settled)
+    onPlayerDataChanged?.()
+    if (baseVp + rewardVp > 0) {
+      gameAudioRef.current?.playEvent('reward')
+    }
+    return settled
+  }
 
+  const finishCompetitionBattle = (battleSummary) => {
+    if (!battleMatch || finishedBattleRef.current === battleMatch.id) return
+    const settlement = settleCompetitionBattle(battleSummary)
+    if (!settlement) return
+    finishedBattleRef.current = battleMatch.id
+    const { nextCompetition, baseVp, rewardVp, unlocked } = settlement
+    if (baseVp + rewardVp > 0) showNotice(unlocked.length
+      ? `업적 ${unlocked.length}개 달성! 보상 합계 ${(baseVp + rewardVp).toLocaleString()} VP 지급 완료`
+      : `배틀 승리 보상 ${baseVp} VP 지급 완료`)
     setBattleMatch(null)
 
     if (nextCompetition.status !== 'active') {
@@ -844,7 +916,7 @@ function GameApp({
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${screen === 'battle' ? ' battle-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${screen === 'battle' ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -909,6 +981,10 @@ function GameApp({
           >
             <Settings size={21} />
           </button>
+
+          {screen !== 'battle' && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
+            <Trophy size={21} />
+          </button>}
 
         </div>
       </header>
@@ -990,6 +1066,8 @@ function GameApp({
           audioSettings={settings.audio}
           onToggleSound={toggleSound}
           onOpenSettings={() => setSettingsOpen(true)}
+          onResolved={settleCompetitionBattle}
+          battleRewards={battleRewards}
           onComplete={finishCompetitionBattle}
         />
       ) : screen === 'hatch' ? (
@@ -1012,6 +1090,8 @@ function GameApp({
           onSave={saveTraining}
           onOpenHatch={enterHatchScreen}
         />
+      ) : screen === 'achievements' ? (
+        <AchievementsScreen progress={achievementProgress} balance={vp} onBack={() => setScreen(achievementReturnScreen)} />
       ) : screen === 'shop' ? (
         <ShopScreen
           balance={vp}

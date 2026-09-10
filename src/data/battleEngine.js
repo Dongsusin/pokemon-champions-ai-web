@@ -759,6 +759,23 @@ function createSide(id, name, entries, teamGimmicks = [], leadName = '', activeS
     id,
     name,
     team,
+    // Keep participation facts separate from mutable battle forms and items.
+    // A consumed/transferred item or a revived ally must not erase a challenge failure.
+    achievementStart: {
+      teamSize: team.length,
+      heldItemCount: team.filter((pokemon) => Boolean(pokemon.heldItemId)).length,
+      teamTypes: team.map((pokemon) => [...pokemon.types]),
+      teamSpeciesIds: team.map((pokemon) => Number(pokemon.dexSpeciesId ?? pokemon.speciesId)),
+      usedMechanics: [...new Set(team.map((pokemon) => {
+        const slug = getSpeciesProfile(pokemon.speciesId)?.slug ?? ''
+        if (slug.includes('-mega')) return 'mega'
+        if (slug.endsWith('-primal')) return 'primal'
+        if (slug.endsWith('-gmax')) return 'dynamax'
+        if (slug === 'necrozma-ultra') return 'zmove'
+        return null
+      }).filter(Boolean))],
+    },
+    faintCount: 0,
     activeIndex: activeIndexes[0] ?? 0,
     activeIndexes,
     rotationSlot: 0,
@@ -1558,6 +1575,12 @@ function cloneSide(side) {
   return {
     ...side,
     team: side.team.map(clonePokemon),
+    achievementStart: side.achievementStart ? {
+      ...side.achievementStart,
+      teamTypes: side.achievementStart.teamTypes.map((types) => [...types]),
+      teamSpeciesIds: [...side.achievementStart.teamSpeciesIds],
+      usedMechanics: [...side.achievementStart.usedMechanics],
+    } : null,
     usedMechanics: { ...side.usedMechanics },
     activeIndexes: [...(side.activeIndexes ?? [side.activeIndex])],
     wishSlots: Object.fromEntries(Object.entries(side.wishSlots ?? {})
@@ -9571,7 +9594,10 @@ function markPokemonFaint(state, sideId, activeSlot, timeline = null, actionOrde
   if (!pokemon || pokemon.hp > 0 || pokemon.fainted) return false
 
   pokemon.fainted = true
-  getSide(state, sideId).allyFaintedThisTurn = true
+  const side = getSide(state, sideId)
+  // This guard runs only once per faint, but revival permits a later faint to count again.
+  side.faintCount = (side.faintCount ?? 0) + 1
+  side.allyFaintedThisTurn = true
   releaseSkyDropConnections(state, pokemon)
   releaseTrapsSourcedBy(state, pokemon)
   appendLog(state, `${pokemon.name}은(는) 쓰러졌다!`, 'faint')
@@ -12145,11 +12171,41 @@ export function forcePlayerSwitch(state, targetIndex) {
 }
 
 export function getBattleSummary(state) {
+  const start = state.player.achievementStart
+  const survivors = state.player.team.filter((pokemon) => !pokemon.fainted && pokemon.hp > 0)
+  const difficulty = normalizeAiBattleDifficulty(state.rules?.aiDifficulty)
   return {
     winner: state.winner,
     playerRemaining: remainingCount(state.player),
     opponentRemaining: remainingCount(state.opponent),
     turns: Math.max(1, state.turn - 1),
+    achievementFacts: {
+      version: 1,
+      completed: state.phase === 'complete' && ['player', 'opponent'].includes(state.winner),
+      playerTeamSize: start?.teamSize ?? null,
+      playerFaintCount: Number.isInteger(state.player.faintCount) ? state.player.faintCount : null,
+      playerUsedMechanics: [...new Set([
+        ...(start?.usedMechanics ?? []),
+        ...Object.entries(state.player.usedMechanics ?? {})
+          .filter(([, used]) => used)
+          .map(([mechanicId]) => mechanicId),
+      ])],
+      formatId: state.rules?.format?.id ?? null,
+      teamRuleId: state.rules?.teamRule?.id ?? null,
+      aiDifficultyId: difficulty.id,
+      aiBoostStage: difficulty.boostStage,
+      playerHeldItemCountAtStart: start?.heldItemCount ?? null,
+      playerTeamTypes: start?.teamTypes.map((types) => [...types]) ?? [],
+      playerTeamSpeciesIds: [...(start?.teamSpeciesIds ?? [])],
+      opponentTeamSize: state.opponent.achievementStart?.teamSize ?? null,
+      // Minimum among survivors; only a single survivor makes this the last Pokemon's ratio.
+      playerRemainingHpRatio: survivors.length > 0
+        ? Math.min(...survivors.map((pokemon) => pokemon.hp / Math.max(1, pokemon.maxHp)))
+        : 0,
+      opponentId: state.opponentMeta?.id ?? null,
+      opponentTier: state.opponentMeta?.tier ?? null,
+      opponentRegion: state.opponentMeta?.region ?? null,
+    },
   }
 }
 

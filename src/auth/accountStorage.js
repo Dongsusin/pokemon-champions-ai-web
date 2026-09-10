@@ -1,3 +1,5 @@
+import { ACHIEVEMENT_STORAGE_KEY, normalizeAchievementState } from '../data/achievementData.js'
+
 export const PLAYER_STORAGE_KEYS = [
   'champions-dex-v2',
   'champions-box-v1',
@@ -8,6 +10,7 @@ export const PLAYER_STORAGE_KEYS = [
   'champions-battle-items-v1',
   'champions-draw-tutorial-v1',
   'champions-settings-v1',
+  ACHIEVEMENT_STORAGE_KEY,
 ]
 
 export const PLAYER_SYNC_STORAGE_KEY = 'champions-cloud-sync-v1'
@@ -94,8 +97,10 @@ export function getPlayerDataProgressScore(payload = {}) {
   const ownedItemCount = Object.values(itemInventory ?? {}).filter(Boolean).length
   const tutorialScore = payload['champions-draw-tutorial-v1'] === 'complete' ? 10 : 0
   const settingsScore = payload['champions-settings-v1'] ? 1 : 0
+  const achievements = normalizeAchievementState(parseStoredJson(payload, ACHIEVEMENT_STORAGE_KEY, null))
+  const achievementScore = Object.keys(achievements.unlocked).length * 100 + achievements.stats.wins * 10
 
-  return pokemonScore + teamPokemonCount * 100 + ownedItemCount * 50 + tutorialScore + settingsScore
+  return pokemonScore + teamPokemonCount * 100 + ownedItemCount * 50 + tutorialScore + settingsScore + achievementScore
 }
 
 export function readPlayerSyncState() {

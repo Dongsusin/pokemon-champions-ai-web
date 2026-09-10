@@ -46,6 +46,8 @@
     "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",
     "validate:account-sync": "node scripts/validateAccountGameData.mjs",
     "validate:account-session": "node scripts/validateAccountSession.mjs",
+    "validate:achievements": "node scripts/validateBattleAchievementFacts.mjs && node scripts/validateAchievements.mjs && node scripts/validateAchievementStorage.mjs && node scripts/validateAccountGameData.mjs",
+    "validate:achievements-ui": "node scripts/validateAchievementUi.mjs",
     "generate:sprite-manifest": "node scripts/generateGen5SpriteManifest.mjs",
     "generate:trainer-teams": "node scripts/generateTrainerTeams.mjs && node scripts/generateTrainerLoadouts.mjs",
     "generate:trainer-loadouts": "node scripts/generateTrainerLoadouts.mjs",
