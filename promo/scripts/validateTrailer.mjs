@@ -15,6 +15,22 @@ const file = 'promo/output/champions-arena-promo-1080p.mp4'
 const sink = process.platform === 'win32' ? 'NUL' : '/dev/null'
 const assert = (condition, message) => { if (!condition) throw new Error(message) }
 const readJson = async name => JSON.parse(await fs.readFile(name, 'utf8'))
+const hashFile = async name => crypto.createHash('sha256').update(await fs.readFile(name)).digest('hex')
+const battleCaptures = new Set()
+async function verifyBattleFraming(capture) {
+  const layout = capture.battleLayout
+  assert(layout?.width === 1920 && layout.height > 0, `${capture.id}: recapture the current battle layout`)
+  const players = layout.stages.filter(stage => stage.side === 'player')
+  const opponents = layout.stages.filter(stage => stage.side === 'opponent')
+  assert(players.length > 0 && opponents.length > 0, `${capture.id}: missing battle participants`)
+  assert(players.every(stage => stage.width >= 300 && stage.bottom >= .045), `${capture.id}: player sprites are undersized or cut off`)
+  assert(opponents.every(stage => stage.width >= 250), `${capture.id}: opponent sprites are undersized`)
+  assert(Math.abs(players[0].centerX - opponents[0].centerX) < .6, `${capture.id}: opposing teams are still too far apart`)
+  for (const source of ['src/BattleScreen.jsx', 'src/battleGen5.css', 'promo/capture.jsx', 'promo/capture.css']) {
+    assert(capture.battleSourceHashes?.[source] === await hashFile(source), `${capture.id}: stale battle footage (${source})`)
+  }
+  battleCaptures.add(capture.id)
+}
 
 function run(args, allowedExitCodes = [0]) {
   return new Promise((resolve, reject) => {
@@ -49,10 +65,14 @@ for (const [index, capture] of captures.entries()) {
   assert(Number.isFinite(captureDuration) && captureDuration >= sourceOffset + shot.duration,
     `Capture ${shot.id} covers ${captureDuration}s but its selected cut requires ${sourceOffset + shot.duration}s`)
   assert(Array.isArray(capture.errors) && capture.errors.length === 0, `Capture ${shot.id} has errors: ${JSON.stringify(capture.errors)}`)
+  assert(Array.isArray(capture.productionLabels) && capture.productionLabels.length === 0, `${shot.id}: remove the small production/scene explanation labels and recapture`)
   assert(capture.status?.playing !== false, `Capture ${shot.id} did not play`)
   assert(capture.status?.artLoaded !== false, `Capture ${shot.id} has an unloaded image`)
   if (capture.status?.failedAssets) assert(capture.status.failedAssets.length === 0, `Capture ${shot.id} has failed assets: ${JSON.stringify(capture.status.failedAssets)}`)
-  if (shot.kind === 'battle') assert(capture.audio === true, `Battle ${shot.id} has no recorded game audio`)
+  if (shot.kind === 'battle') {
+    assert(capture.audio === true, `Battle ${shot.id} has no recorded game audio`)
+    await verifyBattleFraming(capture)
+  }
   const sceneParams = new URL(shot.url, 'http://localhost').searchParams
   if (shot.kind === 'title' && sceneParams.has('intro')) {
     const status = capture.status ?? {}
@@ -84,6 +104,7 @@ for (const [index, capture] of captures.entries()) {
       const take = await readJson(`promo/raw/take-${variant.sceneId}.json`)
       assert(take.audio === true && take.errors.length === 0 && take.status?.sceneId === variant.sceneId && take.status?.playing === true, `Failed source battle capture: ${variant.sceneId}`)
       assert(take.captureDuration >= group.captureDuration && Number.isFinite(take.syncStartSeconds), `Incomplete source capture: ${variant.sceneId}`)
+      await verifyBattleFraming(take)
     }
     assert(status.videos.every(video => video.started && video.currentTime > 1 && video.readyState >= 2), `${shot.id} includes a video that did not advance`)
     const hero = await readJson(`promo/raw/${shot.audioSource}.json`)
@@ -167,7 +188,6 @@ assert(audio.integratedLUFS >= -18 && audio.integratedLUFS <= -14, `Final mix is
 const score = await readJson('promo/generated/soundtrack.json')
 assert(score.durationSeconds === timelineDuration, `Soundtrack ${score.durationSeconds}s differs from the ${timelineDuration}s timeline`)
 assert(score.kind === 'web-battle-bgm' && score.sourcePath === 'public/assets/audio/battle/battle-theme.ogg', 'Trailer must use the actual web battle music')
-const hashFile = async name => crypto.createHash('sha256').update(await fs.readFile(name)).digest('hex')
 const frameRenders = []
 const verifiedSources = new Map()
 for (const shot of shots.filter(shot => ['title','cinematic','wall'].includes(shot.kind))) {
@@ -211,7 +231,7 @@ const bytes = await fs.readFile(file)
 const sha256 = crypto.createHash('sha256').update(bytes).digest('hex')
 const smoothness = await readJson('promo/generated/smoothness-validation.json')
 assert(smoothness.mode === 'validation' && smoothness.passed && smoothness.failures.length === 0 && smoothness.videoSha256 === sha256, 'Run validateSmoothness.mjs on this final movie; transition/camera validation is missing or failed')
-assert(smoothness.boundaries.length === shots.length - 1 && smoothness.cameras.length === 5 && smoothness.cadence.expectedFrames === expectedFrames, 'Smoothness report does not cover all transitions and camera reveals')
+assert(smoothness.boundaries.length === shots.length - 1 && smoothness.cameras.length === shots.filter(shot => shot.kind === 'wall' || shot.id === 'pokemon').length && smoothness.cadence.expectedFrames === expectedFrames, 'Smoothness report does not cover all transitions and camera reveals')
 const pictureEdit = await readJson('promo/generated/picture-lock.render.json')
 const editFingerprint = crypto.createHash('sha256').update(await fs.readFile('promo/scripts/renderTrailer.mjs')).update(JSON.stringify(shots)).digest('hex')
 assert(pictureEdit.editFingerprint === editFingerprint && pictureEdit.transitionDuration === .4 && pictureEdit.transitions === shots.length-1 && pictureEdit.duration === timelineDuration, 'Final picture composition is stale or lacks all transitions')
@@ -222,7 +242,7 @@ const compositionSeconds = shots.reduce((totals, shot) => {
   return totals
 }, {})
 const report = {
-  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 7,
+  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 8,
   title: probe.stderr.match(/^\s*title\s*:\s*(.+)$/m)?.[1].trim() || path.basename(file),
   durationSeconds, timelineDurationSeconds: timelineDuration, video, audio,
   bytes: bytes.length, sha256,
@@ -231,6 +251,7 @@ const report = {
   verification: {
     fullAudioVideoDecode: true, expectedVideoFrames: expectedFrames, visibleSyncMarkerFrames: greenFrames,
     capturePageErrors: 0, capturesWithSyncMarkers: captures.filter(c => Number.isFinite(c.syncStartSeconds)).length,
+    currentBattleFraming: { verifiedCaptures: [...battleCaptures], removedProductionLabels: true },
     trainerRoster, pokemonRoster, titles, gimmickWalls, frameRenders, smoothness,
     gimmickEngine: { passed: fixtureCheck.passed, variants: fixtureCheck.checks.length, sourceHashes: fixtureCheck.sourceHashes, groups: fixtureCheck.groups },
   },

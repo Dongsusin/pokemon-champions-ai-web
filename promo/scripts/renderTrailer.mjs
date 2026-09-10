@@ -18,8 +18,15 @@ const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
 const shots = JSON.parse(await fs.readFile('promo/timeline.json', 'utf8'))
 const totalDuration = shots.reduce((seconds, shot) => seconds + shot.duration, 0)
 const transitionDuration = .4
+// A shot's transition describes how that shot enters at its chapter boundary.
+// Keep a small, predictable palette without flashes, random noise or black dips.
+const supportedTransitions = new Set(['fade', 'smoothleft', 'smoothright', 'smoothup', 'smoothdown', 'wipeleft', 'wiperight', 'diagtl', 'diagbr'])
 const deterministicKinds = new Set(['title', 'cinematic', 'wall'])
 if (!Number.isFinite(totalDuration) || totalDuration < 60 || totalDuration > 180 || shots.some(shot => !Number.isFinite(shot.duration) || shot.duration <= 0)) throw new Error('Trailer must have valid clips and last 60–180 seconds')
+for (const shot of shots) {
+  if (!supportedTransitions.has(shot.transition ?? 'fade')) throw new Error(`Unsupported incoming transition for ${shot.id}: ${shot.transition}`)
+  if (Math.abs(shot.duration * 30 - Math.round(shot.duration * 30)) > 1e-6) throw new Error(`Shot ${shot.id} must end on a 30fps frame boundary`)
+}
 const reuseClips = process.argv.includes('--reuse-clips')
 const audioOnly = process.argv.includes('--audio-only')
 const onlyClips = process.argv.find(argument => argument.startsWith('--only-clips='))?.split('=')[1].split(',').filter(Boolean)
@@ -82,12 +89,10 @@ const encoding = ['-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv4
 const clamp = expression => `min(1,max(0,${expression}))`
 const rise = (time, duration) => `(1-pow(1-${clamp(`(t-${time})/${duration}`)},3))`
 const motions = {
-  eyebrow: { at: .06, duration: .30, dx: -32, dy: 0 },
-  title: { at: .14, duration: .42, dx: -46, dy: 20 },
-  description: { at: .34, duration: .34, dx: 0, dy: 20 },
-  tag: { at: .43, duration: .30, dx: 32, dy: 0 },
+  title: { at: .14, duration: .48, dx: -38, dy: 16 },
+  description: { at: .38, duration: .38, dx: 0, dy: 16 },
 }
-async function encode({ id, source = id, start, length, overlay, audio = false, audioSource = source, audioOffset = 0, output = id, smoothSource = null }) {
+async function encode({ id, source = id, start, length, contentDuration = length, overlay, audio = false, audioSource = source, audioOffset = 0, output = id, smoothSource = null }) {
   if (smoothSource) {
     const args = ['-i', smoothSource]
     if (audio) args.push('-ss',String(audioOffset),'-i',`promo/raw/${audioSource}-audio.webm`)
@@ -110,14 +115,15 @@ async function encode({ id, source = id, start, length, overlay, audio = false, 
     const motion = motions[layer.name]
     if (motion) {
       const incoming = `(1-${rise(motion.at, motion.duration)})`
-      const outgoing = rise(length - .30, .22)
+      const exitAt = Math.max(0, contentDuration - .25)
+      const outgoing = rise(exitAt, .22)
       x += `+${motion.dx}*${incoming}-10*${outgoing}`
       y += `+${motion.dy}*${incoming}-6*${outgoing}`
-      alpha = `,fade=t=in:st=${motion.at}:d=${Math.min(.22, motion.duration)}:alpha=1,fade=t=out:st=${length-.30}:d=0.22:alpha=1`
+      alpha = `,fade=t=in:st=${motion.at}:d=${Math.min(.22, motion.duration)}:alpha=1,fade=t=out:st=${exitAt}:d=0.22:alpha=1`
     } else if (layer.name === 'sweep') {
-      // A brief highlight travels under the eyebrow; it never crosses battle action.
-      x += `+250*${rise(.24, .50)}`
-      alpha = ',fade=t=in:st=0.24:d=0.10:alpha=1,fade=t=out:st=0.42:d=0.30:alpha=1'
+      // A restrained underline follows the headline entrance, away from action.
+      x += `+210*${rise(.28, .58)}`
+      alpha = ',fade=t=in:st=0.28:d=0.16:alpha=1,fade=t=out:st=0.54:d=0.32:alpha=1'
     } else {
       alpha = ',fade=t=in:st=0:d=0.16:alpha=1'
     }
@@ -156,7 +162,7 @@ for (const shot of renderShots) {
     if (exists && previous?.fingerprint === fingerprint) continue
   }
   const offset = shot.sourceOffset ?? 0
-  await encode({ id:shot.id, start:smoothSource ? 0 : await sourceStart(shot.id)+offset, length, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle'||Boolean(shot.audioSource),audioSource:shot.audioSource||shot.id,audioOffset:offset,smoothSource })
+  await encode({ id:shot.id, start:smoothSource ? 0 : await sourceStart(shot.id)+offset, length, contentDuration:shot.duration, overlay:shot.overlay ? shot.id : null, audio:shot.kind==='battle'||Boolean(shot.audioSource),audioSource:shot.audioSource||shot.id,audioOffset:offset,smoothSource })
   await fs.writeFile(`promo/generated/${shot.id}.render.json`, JSON.stringify({ fingerprint }))
   console.log(`Rendered ${shot.id}: ${shot.duration}s`)
 }
@@ -169,28 +175,31 @@ const pictureSourceFiles = shots.flatMap(shot => [
 ])
 const pictureSourceHashes = Object.fromEntries(await Promise.all(pictureSourceFiles.map(async file => [file,crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex')])))
 if (!audioOnly) {
-  // Outgoing shots carry a 12-frame handle. Crossfades start at the existing
-  // chapter boundary, so every action, subtitle and the 110-second BGM stay aligned.
+  // Outgoing shots carry a 12-frame handle. Every incoming transition starts at
+  // its chapter boundary, preserving the full timeline, subtitles and BGM timing.
   const args = shots.flatMap(shot => ['-threads','2','-i',`promo/generated/${shot.id}.mp4`])
   const filters = []
   for (const [index,shot] of shots.entries()) {
     const length = shot.duration + (index === shots.length - 1 ? 0 : transitionDuration)
-    filters.push(`[${index}:v]settb=AVTB,setpts=PTS-STARTPTS,setsar=1[v${index}]`)
+    filters.push(`[${index}:v]fps=30,settb=AVTB,setpts=PTS-STARTPTS,setsar=1[v${index}]`)
     filters.push(`[${index}:a]asetpts=PTS-STARTPTS,apad,atrim=duration=${length}[a${index}]`)
   }
+  const transitionPlan = []
   let boundary = 0, video = 'v0', audio = 'a0'
   for (let index=1;index<shots.length;index++) {
     boundary += shots[index-1].duration
-    filters.push(`[${video}][v${index}]xfade=transition=fade:duration=${transitionDuration}:offset=${boundary}[blend${index}]`)
+    const transition = shots[index].transition ?? 'fade'
+    filters.push(`[${video}][v${index}]xfade=transition=${transition}:duration=${transitionDuration}:offset=${boundary}[blend${index}]`)
     filters.push(`[${audio}][a${index}]acrossfade=d=${transitionDuration}:c1=tri:c2=tri[sound${index}]`)
+    transitionPlan.push({ from: shots[index-1].id, to: shots[index].id, transition, offset: boundary, duration: transitionDuration })
     video = `blend${index}`; audio = `sound${index}`
   }
   filters.push(`[${video}]fade=t=in:st=0:d=0.18,fade=t=out:st=${totalDuration-.65}:d=0.65,format=yuv420p[picture]`)
-  console.log(`Compositing ${shots.length-1} continuous ${transitionDuration}s transitions…`)
+  console.log(`Compositing ${shots.length-1} continuous ${transitionDuration}s transitions: ${transitionPlan.map(cut => cut.transition).join(', ')}…`)
   await run([...args,'-filter_complex_threads','1','-filter_complex',filters.join(';'),'-map','[picture]','-map',`[${audio}]`,'-t',String(totalDuration),...encoding,'promo/generated/picture-lock.mp4'])
   await fs.writeFile('promo/generated/picture-lock.render.json',JSON.stringify({
-    editFingerprint, sourceHashes:pictureSourceHashes, transitionDuration, transitions: shots.length-1, duration: totalDuration,
-    method: 'overlapping video dissolve and audio crossfade with outgoing handles',
+    editFingerprint, sourceHashes:pictureSourceHashes, transitionDuration, transitions: shots.length-1, transitionPlan, duration: totalDuration,
+    method: 'per-shot video transitions and continuous audio crossfades with outgoing handles',
   },null,2))
 } else {
   const pictureEdit = await fs.readFile('promo/generated/picture-lock.render.json','utf8').then(JSON.parse,()=>null)

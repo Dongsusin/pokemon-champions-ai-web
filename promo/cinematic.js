@@ -2,20 +2,22 @@ import { BATTLE_ITEMS } from '../src/data/shopData.js'
 import { TRAINERS } from '../src/data/trainerTeams.js'
 import { getTrainerSpriteCandidates } from '../src/data/trainerSprites.js'
 import { NATIONAL_DEX } from '../src/data/trainingData.js'
+import { ACHIEVEMENTS } from '../src/data/achievementData.js'
 
 const SCENES = {
   pokemon: {duration:12,accent:'#a6f6da',copy:[
-    {eyebrow:'하나의 만남에서 시작되는 모험',title:'당신의 파트너. <em>가능성은 끝없이.</em>',description:'세대를 넘어, 타입을 넘어. 더 넓어지는 선택의 세계.'},
-    {eyebrow:'1세대부터 9세대까지 · 전국도감 전체',title:`<em>${NATIONAL_DEX.length.toLocaleString('ko-KR')}종</em>의 포켓몬. 나만의 드림팀.`,description:'수많은 만남 속에서, 당신만의 여섯 마리를 찾아라.'},
+    {title:'당신의 파트너. <em>가능성은 끝없이.</em>'},
+    {title:`<em>${NATIONAL_DEX.length.toLocaleString('ko-KR')}종</em>의 포켓몬. 나만의 드림팀.`},
   ]},
   trainers: {duration:14,accent:'#b2e9ff',copy:[
-    {eyebrow:'모든 트레이너, 각자의 배틀',title:`<em>${TRAINERS.length}명</em>의 AI 트레이너.`,description:'익숙한 라이벌부터 챔피언까지, 끝없이 이어지는 도전.'},
-    {eyebrow:'다음 상대는 누구인가',title:'각자의 파트너. <em>각자의 전략.</em>',description:'상대의 한 수를 읽고, 당신만의 승리를 만들어라.'},
+    {title:`<em>${TRAINERS.length}명</em>의 AI 트레이너.`},
+    {title:'각자의 파트너. <em>각자의 전략.</em>'},
   ]},
   items: {duration:8,accent:'#adf6fd',copy:[
-    {eyebrow:`${BATTLE_ITEMS.length}종의 배틀 아이템`,title:'하나의 도구. <em>무한한 변수.</em>',description:'공격을 강화하고, 위기를 버티고, 승부를 바꿔라.'},
-    {eyebrow:'작은 선택이 만드는 큰 차이',title:'전략의 마지막 한 조각.',description:'포켓몬과 기술에 어울리는 도구로 완성하는 나만의 전술.'},
+    {title:'하나의 도구. <em>무한한 변수.</em>'},
+    {title:`<em>${BATTLE_ITEMS.length}종</em>의 아이템. 전략을 완성하다.`},
   ]},
+  challenges: {duration:10,accent:'#f4dba2',copy:[{title:'승리 너머의 <em>도전.</em>'}]},
 }
 const params = new URLSearchParams(location.search)
 const sceneId = params.get('scene') || 'trainers'
@@ -26,9 +28,7 @@ stage.classList.add(`scene-${sceneId}`)
 stage.style.setProperty('--accent',scene.accent)
 scene.copy.forEach((copy,index) => {
   const target = document.querySelector(index ? '.copy-two' : '.copy-one')
-  target.querySelector('.eyebrow').textContent = copy.eyebrow
   target.querySelector('h1,h2').innerHTML = copy.title
-  target.querySelector('p').textContent = copy.description
   // Preserve the emphasis markup while giving each word an independent reveal.
   const title = target.querySelector('h1,h2')
   let wordIndex = 0
@@ -50,9 +50,34 @@ scene.copy.forEach((copy,index) => {
     }
   }
   animateWords(title,'title')
-  wordIndex = 0
-  animateWords(target.querySelector('p'),'description')
 })
+
+const CHALLENGE_FEATURES = [
+  {id:'flawless-league',number:'7전 전승',condition:['노말 · 하드 난이도','한 번의 기절도 없이 리그 우승'],icon:'<path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/>'},
+  {id:'flawless-tournament',number:'128강 → 우승',condition:['노말 · 하드 난이도','한 번의 기절도 없이 7경기 돌파'],icon:'<path d="M8 3h8v6a4 4 0 0 1-8 0V3Z"/><path d="M8 5H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4M12 13v7m-4 1h8"/>'},
+  {id:'collection-all',number:`${NATIONAL_DEX.length.toLocaleString('ko-KR')}종`,condition:['세대를 넘어 모든 포켓몬 수집','전국도감을 당신의 컬렉션으로'],icon:'<path d="M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1v15"/><path d="M6 8h3m-3 4h3m6-4h3m-3 4h3"/>'},
+]
+const challengeCards = []
+if (sceneId === 'challenges') {
+  for (const [index,feature] of CHALLENGE_FEATURES.entries()) {
+    const achievement = ACHIEVEMENTS.find(entry=>entry.id===feature.id)
+    if (!achievement) throw new Error(`Missing cinematic achievement: ${feature.id}`)
+    const card = document.createElement('article')
+    card.className = 'challenge-card'
+    card.dataset.achievementId = achievement.id
+    card.style.setProperty('--index',index)
+    const icon = document.createElement('div')
+    icon.className = 'challenge-icon'
+    icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${feature.icon}</svg>`
+    const number = document.createElement('strong');number.className='challenge-number';number.textContent=feature.number
+    const title = document.createElement('h3');title.textContent=achievement.title
+    const condition = document.createElement('p')
+    for (const line of feature.condition) {const span=document.createElement('span');span.textContent=line;condition.append(span)}
+    card.append(icon,number,title,condition)
+    document.querySelector('.challenge-lineup').append(card)
+    challengeCards.push(card)
+  }
+}
 
 const ITEM_IDS = ['life-orb','focus-sash','charizardite-x','choice-scarf','leftovers','assault-vest','lum-berry','electrium-z--held']
 function itemArtwork(item,size) {
@@ -95,7 +120,6 @@ const FEATURED_GROUPS = [
   ['레드','그린','성호','난천','목호','아이리스'],
   ['지우','카르네','단델','금랑','네모','태홍'],
 ]
-const REGIONS = {kanto:'관동',johto:'성도',hoenn:'호연',sinnoh:'신오',unova:'하나',kalos:'칼로스',alola:'알로라',galar:'가라르',paldea:'팔데아',anime:'애니메이션'}
 const rosterImages = []
 const featuredGroups = []
 const trainerLoadQueue = []
@@ -280,9 +304,8 @@ if (sceneId === 'pokemon') {
     figure.style.setProperty('--index',index)
     const img=pokemonArtwork(pokemon)
     const caption=document.createElement('figcaption')
-    const types=document.createElement('small');types.textContent=pokemon.types.join(' · ')
     const label=document.createElement('strong');label.textContent=pokemon.name
-    caption.append(types,label);figure.append(img,caption);group.append(figure)
+    caption.append(label);figure.append(img,caption);group.append(figure)
   })
   document.querySelector('.pokemon-spotlight').append(group)
   pokemonGroups.push(group)
@@ -309,11 +332,9 @@ if (sceneId === 'trainers') {
       figure.style.setProperty('--index',index)
       const img = trainerArtwork(trainer)
       const caption = document.createElement('figcaption')
-      const region = document.createElement('small')
-      region.textContent = REGIONS[trainer.region] ?? trainer.region
       const label = document.createElement('strong')
       label.textContent = trainer.name
-      caption.append(region,label)
+      caption.append(label)
       figure.append(img,caption)
       group.append(figure)
     })
@@ -336,10 +357,9 @@ function trainerMotion(time) {
     peakVisibleTrainerCount = Math.max(peakVisibleTrainerCount,shownTrainerIds.size)
   }
   featuredGroups.forEach((group,index) => {
-    const start = index ? 8.35 : 3.15
-    const end = index ? 14.5 : 8.2
-    const enter = smooth((time-start)/.55)
-    const leave = smooth((time-(end-.4))/.4)
+    const start = index ? 8 : 3.15
+    const enter = smooth((time-start)/.75)
+    const leave = index ? 0 : smooth((time-8)/.75)
     group.style.opacity = String(enter*(1-leave))
     group.style.transform = `translateY(${(1-enter)*35-leave*18}px) scale(${.965+enter*.035+leave*.018})`
     group.style.visibility = enter>0 && leave<1 ? 'visible' : 'hidden'
@@ -389,9 +409,14 @@ function pokemonMotion(time) {
   visiblePokemonIds.forEach(id=>shownPokemonIds.add(id))
   peakVisiblePokemonCount=Math.max(peakVisiblePokemonCount,visiblePokemonIds.size)
   pokemonRoster.style.opacity=String(transition)
-  const label=document.querySelector('.pokemon-scale-label')
-  label.style.opacity=String(smooth((time-2.45)/.6))
-  label.querySelector('strong').textContent=visiblePokemonIds.size.toLocaleString('ko-KR')
+}
+
+function challengeMotion(time) {
+  challengeCards.forEach((card,index)=>{
+    const enter=smooth((time-.65-index*.24)/1.05)
+    card.style.opacity=String(enter)
+    card.style.transform=`translateY(${(1-enter)*56+Math.sin(time*.65+index)*2}px) scale(${.97+enter*.03})`
+  })
 }
 
 // Original light, rings and particles surround actual in-game pixel assets.
@@ -421,6 +446,7 @@ function paint(time) {
   ctx.restore()
   if(sceneId==='trainers')trainerMotion(time)
   if(sceneId==='pokemon')pokemonMotion(time)
+  if(sceneId==='challenges')challengeMotion(time)
 }
 paint(0)
 
@@ -468,6 +494,9 @@ window.promoCinematic={
       pokemonCameraScale,
       pokemonAtlasReady,
       featuredPokemonNames:activePokemonGroups.flatMap(group=>[...group.querySelectorAll('strong')].map(label=>label.textContent)),
+      challengeIds:challengeCards.map(card=>card.dataset.achievementId),
+      visibleChallengeCount:challengeCards.filter(card=>Number(card.style.opacity)>.5).length,
+      headlineText:scene.copy.map(copy=>copy.title.replace(/<[^>]*>/g,'')),
       failedAssets:[...document.images,...pokemonRosterImages].filter(img=>img.dataset.loadFailed==='true').map(img=>img.alt),
     }
   },

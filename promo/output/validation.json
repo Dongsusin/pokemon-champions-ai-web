@@ -1,15 +1,15 @@
 {
   "date": "2026-09-10",
-  "generatedAt": "2026-09-10T07:16:05.599Z",
-  "revision": 7,
+  "generatedAt": "2026-09-10T13:19:31.147Z",
+  "revision": 8,
   "title": "Pokémon Champions Arena — Break the Limit",
-  "durationSeconds": 110,
-  "timelineDurationSeconds": 110,
+  "durationSeconds": 132,
+  "timelineDurationSeconds": 132,
   "video": {
     "width": 1920,
     "height": 1080,
     "fps": 30,
-    "frames": 3300,
+    "frames": 3960,
     "codec": "h264",
     "pixelFormat": "yuv420p"
   },
@@ -18,9 +18,9 @@
     "sampleRate": 48000,
     "channels": 2,
     "channelLayout": "stereo",
-    "integratedLUFS": -16.06,
-    "truePeakDbTP": -2.59,
-    "loudnessRangeLU": 3.1,
+    "integratedLUFS": -16.07,
+    "truePeakDbTP": -2.56,
+    "loudnessRangeLU": 2.9,
     "soundtrack": {
       "kind": "web-battle-bgm",
       "title": "Face The Champion!",
@@ -31,8 +31,8 @@
       "sourcePath": "public/assets/audio/battle/battle-theme.ogg",
       "sourceSha256": "5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540",
       "output": "promo/generated/soundtrack.wav",
-      "outputSha256": "75c9d445dfc094f9274753cade19a74788e332fbddd77dfc8f523b4abadc7861",
-      "durationSeconds": 110,
+      "outputSha256": "f958eb930125dee6ce07b402047bdd312aa9ba27b37e8402a9ef347122903d46",
+      "durationSeconds": 132,
       "sourceStartSeconds": 0,
       "sampleRate": 48000,
       "channels": 2,
@@ -42,14 +42,14 @@
       "modifications": "Excerpt from the web game battle music; fades, loudness adjustment and gameplay-effects mix."
     }
   },
-  "bytes": 73318698,
-  "sha256": "63f8386df5a71173d7e99d85723c752d290e2fa6819504d0e23878b3b231805d",
+  "bytes": 97145491,
+  "sha256": "537235061bbc39838b51bc92962006c17f4541f3faf88c5ecafab4c373174f9d",
   "compositionSeconds": {
     "title": 12,
-    "cinematic": 34,
-    "showcase": 6,
+    "cinematic": 44,
+    "showcase": 14,
     "wall": 48,
-    "battle": 10
+    "battle": 14
   },
   "shots": [
     {
@@ -62,7 +62,8 @@
         "visibleText": [
           "POKÉMON",
           "CHAMPIONS ARENA"
-        ]
+        ],
+        "cta": null
       }
     },
     {
@@ -72,7 +73,7 @@
       "captureStatus": {
         "sceneId": "pokemon",
         "playing": true,
-        "currentTime": 13.106199999991059,
+        "currentTime": 12.81249999999404,
         "duration": 12,
         "art": null,
         "artLoaded": true,
@@ -2147,6 +2148,12 @@
         "pokemonCameraScale": 1,
         "pokemonAtlasReady": true,
         "featuredPokemonNames": [],
+        "challengeIds": [],
+        "visibleChallengeCount": 0,
+        "headlineText": [
+          "당신의 파트너. 가능성은 끝없이.",
+          "1,025종의 포켓몬. 나만의 드림팀."
+        ],
         "failedAssets": []
       }
     },
@@ -2157,7 +2164,7 @@
       "captureStatus": {
         "sceneId": "trainers",
         "playing": true,
-        "currentTime": 15.5695,
+        "currentTime": 14.714900000000002,
         "duration": 14,
         "art": null,
         "artLoaded": true,
@@ -2167,7 +2174,14 @@
         "shownTrainerCount": 238,
         "peakVisibleTrainerCount": 238,
         "visibleTrainerCount": 238,
-        "featuredTrainerNames": [],
+        "featuredTrainerNames": [
+          "지우",
+          "카르네",
+          "단델",
+          "금랑",
+          "네모",
+          "태홍"
+        ],
         "totalPokemonCount": 0,
         "selectedPokemonCount": 0,
         "selectedSpeciesIds": [],
@@ -2176,9 +2190,24 @@
         "shownPokemonCount": 0,
         "peakVisiblePokemonCount": 0,
         "visiblePokemonCount": 0,
+        "visibleSpeciesIds": [],
+        "pokemonCameraScale": 1,
+        "pokemonAtlasReady": false,
         "featuredPokemonNames": [],
+        "challengeIds": [],
+        "visibleChallengeCount": 0,
+        "headlineText": [
+          "238명의 AI 트레이너.",
+          "각자의 파트너. 각자의 전략."
+        ],
         "failedAssets": []
       }
+    },
+    {
+      "id": "competition",
+      "kind": "showcase",
+      "duration": 8,
+      "captureStatus": null
     },
     {
       "id": "items-art",
@@ -2187,7 +2216,7 @@
       "captureStatus": {
         "sceneId": "items",
         "playing": true,
-        "currentTime": 8.82660000000298,
+        "currentTime": 8.605800000002981,
         "duration": 8,
         "art": null,
         "artLoaded": true,
@@ -2206,7 +2235,16 @@
         "shownPokemonCount": 0,
         "peakVisiblePokemonCount": 0,
         "visiblePokemonCount": 0,
+        "visibleSpeciesIds": [],
+        "pokemonCameraScale": 1,
+        "pokemonAtlasReady": false,
         "featuredPokemonNames": [],
+        "challengeIds": [],
+        "visibleChallengeCount": 0,
+        "headlineText": [
+          "하나의 도구. 무한한 변수.",
+          "344종의 아이템. 전략을 완성하다."
+        ],
         "failedAssets": []
       }
     },
@@ -2287,59 +2325,59 @@
           },
           {
             "id": "mega-blastoise",
-            "currentTime": 9.114146,
+            "currentTime": 9.423994,
             "readyState": 4,
             "started": true,
-            "delay": 2.05
+            "delay": 2.63
           },
           {
             "id": "mega-venusaur",
-            "currentTime": 8.777017,
+            "currentTime": 9.96,
             "readyState": 4,
             "started": true,
-            "delay": 2.3
+            "delay": 1.82
           },
           {
             "id": "mega-gardevoir",
-            "currentTime": 8.553211,
+            "currentTime": 9.140455,
             "readyState": 4,
             "started": true,
-            "delay": 2.55
+            "delay": 2.9000000000000004
           },
           {
             "id": "mega-lucario",
-            "currentTime": 8.744661,
+            "currentTime": 10,
             "readyState": 4,
             "started": true,
-            "delay": 2.8
+            "delay": 1.55
           },
           {
             "id": "mega-ampharos",
-            "currentTime": 8.785027,
+            "currentTime": 9.911292,
             "readyState": 4,
             "started": true,
-            "delay": 3.05
+            "delay": 2.09
           },
           {
             "id": "mega-alakazam",
-            "currentTime": 7.851335,
+            "currentTime": 8.814102,
             "readyState": 4,
             "started": true,
-            "delay": 3.3
+            "delay": 3.17
           },
           {
             "id": "mega-salamence",
-            "currentTime": 7.816991,
+            "currentTime": 9.646105,
             "readyState": 4,
             "started": true,
-            "delay": 3.55
+            "delay": 2.3600000000000003
           },
           {
             "id": "mega-metagross",
-            "currentTime": 7.632766,
+            "currentTime": 8.551462,
             "readyState": 4,
             "started": true,
-            "delay": 3.8
+            "delay": 3.4400000000000004
           }
         ],
         "errors": []
@@ -2416,59 +2454,59 @@
           },
           {
             "id": "zmove-greninja",
-            "currentTime": 9.447353,
+            "currentTime": 9.407956,
             "readyState": 4,
             "started": true,
-            "delay": 2.05
+            "delay": 2.63
           },
           {
             "id": "zmove-arcanine",
-            "currentTime": 9.358702,
+            "currentTime": 10,
             "readyState": 4,
             "started": true,
-            "delay": 2.3
+            "delay": 1.82
           },
           {
             "id": "zmove-roserade",
-            "currentTime": 8.819604,
+            "currentTime": 9.007871,
             "readyState": 4,
             "started": true,
-            "delay": 2.55
+            "delay": 2.9000000000000004
           },
           {
             "id": "zmove-espeon",
-            "currentTime": 8.916558,
+            "currentTime": 9.96,
             "readyState": 4,
             "started": true,
-            "delay": 2.8
+            "delay": 1.55
           },
           {
             "id": "zmove-absol",
-            "currentTime": 8.694705,
+            "currentTime": 9.94224,
             "readyState": 4,
             "started": true,
-            "delay": 3.05
+            "delay": 2.09
           },
           {
             "id": "zmove-froslass",
-            "currentTime": 8.209225,
+            "currentTime": 8.766225,
             "readyState": 4,
             "started": true,
-            "delay": 3.3
+            "delay": 3.17
           },
           {
             "id": "zmove-lucario",
-            "currentTime": 8.186107,
+            "currentTime": 9.55211,
             "readyState": 4,
             "started": true,
-            "delay": 3.55
+            "delay": 2.3600000000000003
           },
           {
             "id": "zmove-lycanroc",
-            "currentTime": 7.770694,
+            "currentTime": 8.604939,
             "readyState": 4,
             "started": true,
-            "delay": 3.8
+            "delay": 3.4400000000000004
           }
         ],
         "errors": []
@@ -2545,59 +2583,59 @@
           },
           {
             "id": "dynamax-charizard",
-            "currentTime": 9.217364,
+            "currentTime": 9.323538,
             "readyState": 4,
             "started": true,
-            "delay": 2.05
+            "delay": 2.63
           },
           {
             "id": "dynamax-blastoise",
-            "currentTime": 9.198164,
+            "currentTime": 10,
             "readyState": 4,
             "started": true,
-            "delay": 2.3
+            "delay": 1.82
           },
           {
             "id": "dynamax-venusaur",
-            "currentTime": 9.17337,
+            "currentTime": 9.066008,
             "readyState": 4,
             "started": true,
-            "delay": 2.55
+            "delay": 2.9000000000000004
           },
           {
             "id": "dynamax-pikachu",
-            "currentTime": 8.788744,
+            "currentTime": 9.96,
             "readyState": 4,
             "started": true,
-            "delay": 2.8
+            "delay": 1.55
           },
           {
             "id": "dynamax-butterfree",
-            "currentTime": 8.631922,
+            "currentTime": 9.940743,
             "readyState": 4,
             "started": true,
-            "delay": 3.05
+            "delay": 2.09
           },
           {
             "id": "dynamax-corviknight",
-            "currentTime": 8.230163,
+            "currentTime": 8.796083,
             "readyState": 4,
             "started": true,
-            "delay": 3.3
+            "delay": 3.17
           },
           {
             "id": "dynamax-lapras",
-            "currentTime": 8.085511,
+            "currentTime": 9.594389,
             "readyState": 4,
             "started": true,
-            "delay": 3.55
+            "delay": 2.3600000000000003
           },
           {
             "id": "dynamax-duraludon",
-            "currentTime": 7.620612,
+            "currentTime": 8.497194,
             "readyState": 4,
             "started": true,
-            "delay": 3.8
+            "delay": 3.4400000000000004
           }
         ],
         "errors": []
@@ -2674,88 +2712,130 @@
           },
           {
             "id": "tera-garchomp",
-            "currentTime": 9.454924,
+            "currentTime": 9.422912,
             "readyState": 4,
             "started": true,
-            "delay": 2.05
+            "delay": 2.63
           },
           {
             "id": "tera-charizard",
-            "currentTime": 9.528336,
+            "currentTime": 10,
             "readyState": 4,
             "started": true,
-            "delay": 2.3
+            "delay": 1.82
           },
           {
             "id": "tera-greninja",
-            "currentTime": 9.231544,
+            "currentTime": 9.140733,
             "readyState": 4,
             "started": true,
-            "delay": 2.55
+            "delay": 2.9000000000000004
           },
           {
             "id": "tera-lucario",
-            "currentTime": 8.934369,
+            "currentTime": 9.96,
             "readyState": 4,
             "started": true,
-            "delay": 2.8
+            "delay": 1.55
           },
           {
             "id": "tera-dragonite",
-            "currentTime": 8.36955,
+            "currentTime": 9.96,
             "readyState": 4,
             "started": true,
-            "delay": 3.05
+            "delay": 2.09
           },
           {
             "id": "tera-metagross",
-            "currentTime": 7.768391,
+            "currentTime": 8.800172,
             "readyState": 4,
             "started": true,
-            "delay": 3.3
+            "delay": 3.17
           },
           {
             "id": "tera-tyranitar",
-            "currentTime": 8.179235,
+            "currentTime": 9.636766,
             "readyState": 4,
             "started": true,
-            "delay": 3.55
+            "delay": 2.3600000000000003
           },
           {
             "id": "tera-gengar",
-            "currentTime": 7.807316,
+            "currentTime": 8.607534,
             "readyState": 4,
             "started": true,
-            "delay": 3.8
+            "delay": 3.4400000000000004
           }
         ],
         "errors": []
       }
     },
     {
+      "id": "challenges",
+      "kind": "cinematic",
+      "duration": 10,
+      "captureStatus": {
+        "sceneId": "challenges",
+        "playing": true,
+        "currentTime": 10.8563,
+        "duration": 10,
+        "art": null,
+        "artLoaded": true,
+        "totalTrainerCount": 0,
+        "loadedTrainerCount": 0,
+        "trainerLoadRetries": 0,
+        "shownTrainerCount": 0,
+        "peakVisibleTrainerCount": 0,
+        "visibleTrainerCount": 0,
+        "featuredTrainerNames": [],
+        "totalPokemonCount": 0,
+        "selectedPokemonCount": 0,
+        "selectedSpeciesIds": [],
+        "loadedPokemonCount": 0,
+        "pokemonLoadRetries": 0,
+        "shownPokemonCount": 0,
+        "peakVisiblePokemonCount": 0,
+        "visiblePokemonCount": 0,
+        "visibleSpeciesIds": [],
+        "pokemonCameraScale": 1,
+        "pokemonAtlasReady": false,
+        "featuredPokemonNames": [],
+        "challengeIds": [
+          "flawless-league",
+          "flawless-tournament",
+          "collection-all"
+        ],
+        "visibleChallengeCount": 3,
+        "headlineText": [
+          "승리 너머의 도전."
+        ],
+        "failedAssets": []
+      }
+    },
+    {
       "id": "double",
       "kind": "battle",
-      "duration": 6,
+      "duration": 8,
       "captureStatus": {
         "sceneId": "double",
         "prepared": true,
         "playing": true,
-        "classes": "battle-game-screen cue-faint actor-opponent target-player format-double weather-clear terrain-neutral",
-        "message": "한카리아스은(는) 쓰러졌다!",
-        "busy": true
+        "classes": "battle-game-screen cue-command actor-none target-none format-double weather-clear terrain-neutral",
+        "message": "도깨비불을(를) 사용할 수 있는 대상이 없다!",
+        "busy": false
       }
     },
     {
       "id": "battle",
       "kind": "battle",
-      "duration": 4,
+      "duration": 6,
       "captureStatus": {
         "sceneId": "battle",
         "prepared": true,
         "playing": true,
-        "classes": "battle-game-screen cue-impact actor-opponent target-player format-single weather-clear terrain-neutral",
-        "message": "리자몽에게 35의 데미지!",
-        "busy": true
+        "classes": "battle-game-screen cue-command actor-none target-none format-single weather-clear terrain-neutral",
+        "message": "효과가 별로인 듯하다…",
+        "busy": false
       }
     },
     {
@@ -2766,26 +2846,64 @@
         "sceneId": "outro",
         "logoLoaded": true,
         "visibleText": [
-          "POKÉMON CHAMPIONS ARENA",
-          "FAN GAME · AI BATTLE",
-          "THE NEXT CHAMPION IS YOU",
           "POKÉMON",
           "CHAMPIONS ARENA",
           "다음 챔피언은, 당신.",
-          "나만의 포켓몬과 전략으로 완성하는 AI 배틀",
-          "당신의 팀으로 도전하세요 →",
-          "실제 게임·배틀 화면 포함",
-          "비공식 팬메이드 프로젝트"
-        ]
+          "pokemon-champions-area-web.co.kr"
+        ],
+        "cta": "pokemon-champions-area-web.co.kr"
       }
     }
   ],
   "verification": {
     "fullAudioVideoDecode": true,
-    "expectedVideoFrames": 3300,
+    "expectedVideoFrames": 3960,
     "visibleSyncMarkerFrames": 0,
     "capturePageErrors": 0,
-    "capturesWithSyncMarkers": 11,
+    "capturesWithSyncMarkers": 14,
+    "currentBattleFraming": {
+      "verifiedCaptures": [
+        "take-mega",
+        "take-mega-blastoise",
+        "take-mega-venusaur",
+        "take-mega-gardevoir",
+        "take-mega-lucario",
+        "take-mega-ampharos",
+        "take-mega-alakazam",
+        "take-mega-salamence",
+        "take-mega-metagross",
+        "take-zmove",
+        "take-zmove-greninja",
+        "take-zmove-arcanine",
+        "take-zmove-roserade",
+        "take-zmove-espeon",
+        "take-zmove-absol",
+        "take-zmove-froslass",
+        "take-zmove-lucario",
+        "take-zmove-lycanroc",
+        "take-dynamax",
+        "take-dynamax-charizard",
+        "take-dynamax-blastoise",
+        "take-dynamax-venusaur",
+        "take-dynamax-pikachu",
+        "take-dynamax-butterfree",
+        "take-dynamax-corviknight",
+        "take-dynamax-lapras",
+        "take-dynamax-duraludon",
+        "take-tera",
+        "take-tera-garchomp",
+        "take-tera-charizard",
+        "take-tera-greninja",
+        "take-tera-lucario",
+        "take-tera-dragonite",
+        "take-tera-metagross",
+        "take-tera-tyranitar",
+        "take-tera-gengar",
+        "double",
+        "battle"
+      ],
+      "removedProductionLabels": true
+    },
     "trainerRoster": [
       {
         "shotId": "trainers",
@@ -4048,7 +4166,7 @@
         "fps": 30,
         "duration": 6.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "ff951ede6e98da901da9895ec2eb42331c0713fe289272fa99fc7eea563bd4d1",
+        "sha256": "9bde8edbdc911d95d75c3a4ee0a1beed1f2b8bce51131afdd75a72bdaceb3be8",
         "errors": []
       },
       {
@@ -4057,7 +4175,7 @@
         "fps": 30,
         "duration": 12.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "49535904c73a42f9c7b99bdf756af4ac833084af5980cd72c875370c7e954d8e",
+        "sha256": "062ca6dad678f2ef9cfa54ee667681286503cf270dbe8c2b1f95b12f32d2bb4d",
         "peakVisiblePokemonCount": 1025,
         "peakVisibleTrainerCount": 0,
         "errors": []
@@ -4068,7 +4186,7 @@
         "fps": 30,
         "duration": 14.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "900a2d58f79dffe71207fc61e3bb56b439b7834efed82e31b2c31f462b66859b",
+        "sha256": "22930aaab7aed39bab43644dfab85ca3bf1b10c00a94d9f1b9278b8432312074",
         "peakVisiblePokemonCount": 0,
         "peakVisibleTrainerCount": 238,
         "errors": []
@@ -4079,7 +4197,7 @@
         "fps": 30,
         "duration": 8.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "6b90f8d4ef72e4106fb11f363058c37257b2ff5f449401302da37033781ed805",
+        "sha256": "8aec51118e3ceb96cb2e31e31b1dc09bbc5e54513eb81c09d00cc634f050ce40",
         "peakVisiblePokemonCount": 0,
         "peakVisibleTrainerCount": 0,
         "errors": []
@@ -4090,7 +4208,7 @@
         "fps": 30,
         "duration": 12.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "ee2b5ebf285ebcf992272f4c013f74d93aa73d5a9ccd38622f170321afcb773b",
+        "sha256": "51b2b1a0338b4819b01c87248b002565c36b8426267a818b1d24bc9c7147f5a4",
         "openingVisibleCount": 1,
         "finalVisibleCount": 9,
         "errors": []
@@ -4101,7 +4219,7 @@
         "fps": 30,
         "duration": 12.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "ff4071c0a5fa784db64f788c67c3166a8b1c0f59452b534abda89d7e9c7f8cdd",
+        "sha256": "dd1ef86cf2b654bd90918ba8396e25ec0830f21a27b728c445f545be8399d39c",
         "openingVisibleCount": 1,
         "finalVisibleCount": 9,
         "errors": []
@@ -4112,7 +4230,7 @@
         "fps": 30,
         "duration": 12.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "f9df0ec0e88c4f2589f6997b0c7f55f3ce4c2ff1fe6acc3bc8811e18b0e40ad1",
+        "sha256": "630faf8f8785f65e055f036c1539ca787c62d3b71283daade18fc485336a5e62",
         "openingVisibleCount": 1,
         "finalVisibleCount": 9,
         "errors": []
@@ -4123,9 +4241,20 @@
         "fps": 30,
         "duration": 12.4,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "c35aab202d22deb1f1a222e84587ce3e8c8030b892f109395d69b5c8b87bd98a",
+        "sha256": "d10dab4b2d23476e6e299510b2ba3fa653ff6882510f1962f8d515d3daa1b0d7",
         "openingVisibleCount": 1,
         "finalVisibleCount": 9,
+        "errors": []
+      },
+      {
+        "shotId": "challenges",
+        "frames": 312,
+        "fps": 30,
+        "duration": 10.4,
+        "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
+        "sha256": "5aa79590c16adeccc841bea8b414ed94b7747ceaec066cccd6c34c932fdeaebf",
+        "peakVisiblePokemonCount": 0,
+        "peakVisibleTrainerCount": 0,
         "errors": []
       },
       {
@@ -4134,16 +4263,16 @@
         "fps": 30,
         "duration": 6,
         "timingMethod": "Explicit frameIndex/30 scene seek, paused Web Animations, seeked video frames, two requestAnimationFrame paint barriers, JPEG 95 screenshot; no wall-clock recording",
-        "sha256": "e3a6b97bf22e54c8cc77bb74784ff1efc019464cff9781feeaaf5df4e049db4a",
+        "sha256": "4839dfa53ffd1e100e556b5072fc315414e946c3b11154316192ac6f2b455637",
         "errors": []
       }
     ],
     "smoothness": {
-      "revision": 1,
-      "generatedAt": "2026-09-10T07:15:59.033Z",
+      "revision": 2,
+      "generatedAt": "2026-09-10T13:17:54.399Z",
       "mode": "validation",
       "videoPath": "promo/output/champions-arena-promo-1080p.mp4",
-      "videoSha256": "63f8386df5a71173d7e99d85723c752d290e2fa6819504d0e23878b3b231805d",
+      "videoSha256": "537235061bbc39838b51bc92962006c17f4541f3faf88c5ecafab4c373174f9d",
       "method": "Decoded native frames; grayscale boundary luminance; picture-only camera frame differences; native PTS cadence. No fps insertion or motion interpolation in the audit.",
       "thresholds": {
         "expectedFramesPerSecond": 30,
@@ -4154,12 +4283,112 @@
         "maximumCameraHoldSeconds": 0.13333333333333333,
         "maximumCameraNearDuplicateRatio": 0.15
       },
-      "timelineDurationSeconds": 110,
+      "timelineDurationSeconds": 132,
+      "chapters": [
+        {
+          "shotId": "intro",
+          "kind": "title",
+          "startSeconds": 0,
+          "durationSeconds": 6,
+          "incomingTransition": null
+        },
+        {
+          "shotId": "pokemon",
+          "kind": "cinematic",
+          "startSeconds": 6,
+          "durationSeconds": 12,
+          "incomingTransition": "smoothup"
+        },
+        {
+          "shotId": "trainers",
+          "kind": "cinematic",
+          "startSeconds": 18,
+          "durationSeconds": 14,
+          "incomingTransition": "smoothleft"
+        },
+        {
+          "shotId": "competition",
+          "kind": "showcase",
+          "startSeconds": 32,
+          "durationSeconds": 8,
+          "incomingTransition": "fade"
+        },
+        {
+          "shotId": "items-art",
+          "kind": "cinematic",
+          "startSeconds": 40,
+          "durationSeconds": 8,
+          "incomingTransition": "smoothright"
+        },
+        {
+          "shotId": "items",
+          "kind": "showcase",
+          "startSeconds": 48,
+          "durationSeconds": 6,
+          "incomingTransition": "fade"
+        },
+        {
+          "shotId": "mega",
+          "kind": "wall",
+          "startSeconds": 54,
+          "durationSeconds": 12,
+          "incomingTransition": "diagbr"
+        },
+        {
+          "shotId": "zmove",
+          "kind": "wall",
+          "startSeconds": 66,
+          "durationSeconds": 12,
+          "incomingTransition": "smoothleft"
+        },
+        {
+          "shotId": "dynamax",
+          "kind": "wall",
+          "startSeconds": 78,
+          "durationSeconds": 12,
+          "incomingTransition": "diagbr"
+        },
+        {
+          "shotId": "tera",
+          "kind": "wall",
+          "startSeconds": 90,
+          "durationSeconds": 12,
+          "incomingTransition": "smoothup"
+        },
+        {
+          "shotId": "challenges",
+          "kind": "cinematic",
+          "startSeconds": 102,
+          "durationSeconds": 10,
+          "incomingTransition": "fade"
+        },
+        {
+          "shotId": "double",
+          "kind": "battle",
+          "startSeconds": 112,
+          "durationSeconds": 8,
+          "incomingTransition": "smoothleft"
+        },
+        {
+          "shotId": "battle",
+          "kind": "battle",
+          "startSeconds": 120,
+          "durationSeconds": 6,
+          "incomingTransition": "fade"
+        },
+        {
+          "shotId": "outro",
+          "kind": "title",
+          "startSeconds": 126,
+          "durationSeconds": 6,
+          "incomingTransition": "fade"
+        }
+      ],
       "cadence": {
-        "frameCount": 3300,
-        "expectedFrames": 3300,
+        "frameCount": 3960,
+        "expectedFrames": 3960,
         "firstTimestampSeconds": 0,
-        "lastTimestampSeconds": 109.966667,
+        "lastTimestampSeconds": 131.966667,
         "minimumIntervalSeconds": 0.033333,
         "maximumIntervalSeconds": 0.033333,
         "badIntervals": [],
@@ -4168,342 +4397,430 @@
       "boundaries": [
         {
           "shotId": "pokemon",
+          "transition": "smoothup",
+          "transitionDurationSeconds": 0.4,
           "boundarySeconds": 6,
           "sampleStartSeconds": 5.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 18.229167,
+          "minimumMeanGray": 15.819444,
           "blackFrames": 0,
           "brightness": [
-            20.319444,
-            20.319444,
-            20.319444,
-            20.319444,
-            20.305556,
-            19.4375,
-            19.097222,
-            18.701389,
-            18.256944,
-            18.229167,
-            18.451389,
-            18.3125,
-            18.923611,
-            19.409722,
-            19.854167,
-            20.736111,
-            22.173611,
-            22.972222,
-            23.743056
+            23.548611,
+            23.548611,
+            23.548611,
+            23.548611,
+            23.541667,
+            23.548611,
+            23.479167,
+            22.916667,
+            21.034722,
+            18.798611,
+            16.784722,
+            15.819444,
+            16.506944,
+            18.020833,
+            19.340278,
+            20.479167,
+            21.451389,
+            22.270833,
+            22.756944
           ],
           "passed": true
         },
         {
           "shotId": "trainers",
+          "transition": "smoothleft",
+          "transitionDurationSeconds": 0.4,
           "boundarySeconds": 18,
           "sampleStartSeconds": 17.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 15.6875,
+          "minimumMeanGray": 14.270833,
           "blackFrames": 0,
           "brightness": [
-            39.770833,
-            39.777778,
-            39.770833,
-            39.756944,
-            39.763889,
-            36.444444,
-            34.159722,
-            32.076389,
-            29.756944,
-            27.1875,
-            25.388889,
-            22.986111,
-            20.895833,
-            19.590278,
-            17.743056,
-            16.548611,
-            15.6875,
-            16.569444,
-            17.256944
+            38.895833,
+            38.902778,
+            38.923611,
+            38.909722,
+            38.909722,
+            38.805556,
+            38.256944,
+            36.319444,
+            33.5625,
+            29.465278,
+            24.951389,
+            20.5625,
+            17.111111,
+            15.277778,
+            14.270833,
+            14.479167,
+            15.277778,
+            16.145833,
+            16.791667
+          ],
+          "passed": true
+        },
+        {
+          "shotId": "competition",
+          "transition": "fade",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 32,
+          "sampleStartSeconds": 31.85,
+          "sampleDurationSeconds": 0.65,
+          "frameCount": 19,
+          "minimumMeanGray": 24.965278,
+          "blackFrames": 0,
+          "brightness": [
+            25,
+            24.993056,
+            24.965278,
+            24.993056,
+            24.979167,
+            25.777778,
+            26.777778,
+            27.895833,
+            28.486111,
+            29.763889,
+            30.916667,
+            32.138889,
+            33.479167,
+            35.194444,
+            36.583333,
+            38.319444,
+            40.083333,
+            40.145833,
+            40.118056
           ],
           "passed": true
         },
         {
           "shotId": "items-art",
-          "boundarySeconds": 32,
-          "sampleStartSeconds": 31.85,
+          "transition": "smoothright",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 40,
+          "sampleStartSeconds": 39.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 10.930556,
+          "minimumMeanGray": 10.506944,
           "blackFrames": 0,
           "brightness": [
-            25.0625,
-            25.041667,
-            25.020833,
-            25.048611,
-            25.048611,
-            23.458333,
-            22.027778,
-            20.798611,
-            19.284722,
-            17.763889,
-            16.270833,
-            14.805556,
-            13.208333,
-            12.326389,
-            11.305556,
-            10.930556,
-            11.270833,
-            11.611111,
-            12.152778
+            39.340278,
+            38.951389,
+            38.5,
+            38.118056,
+            37.729167,
+            37.541667,
+            36.638889,
+            34.604167,
+            31.444444,
+            27.840278,
+            23.548611,
+            19.340278,
+            15.75,
+            12.791667,
+            10.951389,
+            10.506944,
+            10.770833,
+            11.111111,
+            11.486111
           ],
           "passed": true
         },
         {
           "shotId": "items",
-          "boundarySeconds": 40,
-          "sampleStartSeconds": 39.85,
+          "transition": "fade",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 48,
+          "sampleStartSeconds": 47.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 17.701389,
+          "minimumMeanGray": 19.1875,
           "blackFrames": 0,
           "brightness": [
-            17.944444,
-            17.875,
-            17.833333,
-            17.763889,
-            17.701389,
-            29.569444,
-            42.319444,
-            53.666667,
-            63.479167,
-            73.152778,
-            84.631944,
-            96.111111,
-            107.875,
-            119.569444,
-            130.847222,
-            143.034722,
-            153.131944,
-            153.159722,
-            153.215278
+            19.1875,
+            19.201389,
+            19.194444,
+            19.256944,
+            19.236111,
+            30.944444,
+            43.701389,
+            55.333333,
+            65.597222,
+            75.791667,
+            87.395833,
+            99.1875,
+            111.243056,
+            123.243056,
+            134.826389,
+            147.361111,
+            157.743056,
+            157.826389,
+            157.840278
           ],
           "passed": true
         },
         {
           "shotId": "mega",
-          "boundarySeconds": 46,
-          "sampleStartSeconds": 45.85,
+          "transition": "diagbr",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 54,
+          "sampleStartSeconds": 53.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 80.326389,
+          "minimumMeanGray": 87.256944,
           "blackFrames": 0,
           "brightness": [
-            153.1875,
-            153.173611,
-            153.180556,
-            153.159722,
-            153.166667,
-            148.402778,
-            143.118056,
-            137.451389,
-            131.465278,
-            124.840278,
-            118.548611,
-            111.75,
-            105.173611,
-            98.548611,
-            92.194444,
-            85.986111,
-            80.326389,
-            80.368056,
-            80.486111
+            156.388889,
+            156.0625,
+            155.6875,
+            155.354167,
+            154.993056,
+            154.965278,
+            155.013889,
+            154.972222,
+            153.798611,
+            149.916667,
+            142.138889,
+            129.326389,
+            114.0625,
+            100.798611,
+            91.5625,
+            87.444444,
+            87.256944,
+            87.458333,
+            87.652778
           ],
           "passed": true
         },
         {
           "shotId": "zmove",
-          "boundarySeconds": 58,
-          "sampleStartSeconds": 57.85,
+          "transition": "smoothleft",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 66,
+          "sampleStartSeconds": 65.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 46.090278,
+          "minimumMeanGray": 83.930556,
           "blackFrames": 0,
           "brightness": [
-            67.166667,
-            67.097222,
-            67.097222,
-            67.048611,
-            67.076389,
-            68.409722,
-            70.381944,
-            71.854167,
-            73.201389,
-            56.076389,
-            53.833333,
-            51.083333,
-            48.6875,
-            46.090278,
-            50.548611,
-            49.013889,
-            47.638889,
-            47.666667,
-            47.701389
+            84.604167,
+            84.576389,
+            84.590278,
+            84.576389,
+            84.555556,
+            84.458333,
+            84.215278,
+            83.930556,
+            84.020833,
+            84.555556,
+            85.694444,
+            86.951389,
+            87.909722,
+            88.263889,
+            88.326389,
+            88.263889,
+            87.923611,
+            87.944444,
+            88.006944
           ],
           "passed": true
         },
         {
           "shotId": "dynamax",
-          "boundarySeconds": 70,
-          "sampleStartSeconds": 69.85,
+          "transition": "diagbr",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 78,
+          "sampleStartSeconds": 77.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 66.25,
+          "minimumMeanGray": 82.965278,
           "blackFrames": 0,
           "brightness": [
-            66.284722,
-            66.291667,
-            66.263889,
-            66.277778,
-            66.25,
-            67.854167,
-            69.4375,
-            71.118056,
-            72.25,
-            73.625,
-            74.569444,
-            75.395833,
-            75.861111,
-            76.805556,
-            77.430556,
-            78.625,
-            79.520833,
-            79.555556,
-            79.548611
+            84.701389,
+            84.6875,
+            84.666667,
+            84.680556,
+            84.604167,
+            84.597222,
+            84.5625,
+            84.368056,
+            83.833333,
+            83.1875,
+            82.965278,
+            83.263889,
+            83.583333,
+            84.166667,
+            84.270833,
+            84.229167,
+            83.048611,
+            83.180556,
+            83.340278
           ],
           "passed": true
         },
         {
           "shotId": "tera",
-          "boundarySeconds": 82,
-          "sampleStartSeconds": 81.85,
+          "transition": "smoothup",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 90,
+          "sampleStartSeconds": 89.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 67.493056,
+          "minimumMeanGray": 51.590278,
           "blackFrames": 0,
           "brightness": [
-            67.513889,
-            67.5,
-            67.493056,
-            67.513889,
-            67.506944,
-            69.270833,
-            70.826389,
-            72.604167,
-            73.819444,
-            75.201389,
-            76.201389,
-            77.055556,
-            77.604167,
-            78.583333,
-            79.118056,
-            80.208333,
-            81.430556,
-            81.416667,
-            81.458333
+            84.284722,
+            84.291667,
+            84.305556,
+            84.222222,
+            83.638889,
+            83.618056,
+            83.263889,
+            81.534722,
+            78.270833,
+            73.5,
+            67.229167,
+            60.777778,
+            55.472222,
+            53.291667,
+            51.590278,
+            54.270833,
+            54.486111,
+            54.645833,
+            54.833333
+          ],
+          "passed": true
+        },
+        {
+          "shotId": "challenges",
+          "transition": "fade",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 102,
+          "sampleStartSeconds": 101.85,
+          "sampleDurationSeconds": 0.65,
+          "frameCount": 19,
+          "minimumMeanGray": 13.75,
+          "blackFrames": 0,
+          "brightness": [
+            86.604167,
+            86.618056,
+            86.583333,
+            86.576389,
+            86.5,
+            80.381944,
+            74.020833,
+            68.0625,
+            61.652778,
+            55.652778,
+            49.548611,
+            43.388889,
+            36.875,
+            31.159722,
+            24.9375,
+            18.9375,
+            13.75,
+            14.194444,
+            14.680556
           ],
           "passed": true
         },
         {
           "shotId": "double",
-          "boundarySeconds": 94,
-          "sampleStartSeconds": 93.85,
+          "transition": "smoothleft",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 112,
+          "sampleStartSeconds": 111.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 67.680556,
+          "minimumMeanGray": 19.256944,
           "blackFrames": 0,
           "brightness": [
-            67.763889,
-            67.722222,
-            67.763889,
-            67.680556,
-            67.6875,
-            69.993056,
-            72.958333,
-            75.291667,
-            77.236111,
-            78.819444,
-            81.798611,
-            84.201389,
-            87.173611,
-            89.680556,
-            92.465278,
-            95.4375,
-            98.569444,
-            98.909722,
-            99.083333
+            19.256944,
+            19.291667,
+            19.263889,
+            19.284722,
+            19.263889,
+            19.534722,
+            21.416667,
+            26.375,
+            34.083333,
+            44.395833,
+            56.916667,
+            69.618056,
+            80.736111,
+            88.868056,
+            94.020833,
+            96.236111,
+            96.770833,
+            96.826389,
+            96.916667
           ],
           "passed": true
         },
         {
           "shotId": "battle",
-          "boundarySeconds": 100,
-          "sampleStartSeconds": 99.85,
+          "transition": "fade",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 120,
+          "sampleStartSeconds": 119.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 98.284722,
+          "minimumMeanGray": 95.666667,
           "blackFrames": 0,
           "brightness": [
-            101.881944,
-            101.965278,
-            101.916667,
-            101.986111,
-            101.958333,
-            102,
-            102.027778,
-            101.895833,
-            100.736111,
-            99.916667,
-            99.465278,
-            99.166667,
-            98.625,
-            98.472222,
-            98.645833,
-            98.284722,
-            98.618056,
-            98.819444,
-            98.791667
+            97.402778,
+            97.104167,
+            96.618056,
+            96.006944,
+            95.666667,
+            96.270833,
+            96.5625,
+            96.9375,
+            96.618056,
+            96.694444,
+            97.090278,
+            97.604167,
+            97.6875,
+            98.541667,
+            98.861111,
+            99.493056,
+            99.743056,
+            101.666667,
+            102.729167
           ],
           "passed": true
         },
         {
           "shotId": "outro",
-          "boundarySeconds": 104,
-          "sampleStartSeconds": 103.85,
+          "transition": "fade",
+          "transitionDurationSeconds": 0.4,
+          "boundarySeconds": 126,
+          "sampleStartSeconds": 125.85,
           "sampleDurationSeconds": 0.65,
           "frameCount": 19,
-          "minimumMeanGray": 44.979167,
+          "minimumMeanGray": 35.0625,
           "blackFrames": 0,
           "brightness": [
-            114.923611,
-            114.763889,
-            114.055556,
-            114.006944,
-            113.902778,
-            107.888889,
-            101.701389,
-            96.375,
-            90.381944,
-            84.625,
-            78.840278,
-            73.034722,
-            66.958333,
-            61.659722,
-            55.743056,
-            50.354167,
-            44.979167,
-            45.284722,
-            45.263889
+            101.590278,
+            101.263889,
+            101.055556,
+            100.902778,
+            100.652778,
+            95.048611,
+            89.277778,
+            84.006944,
+            78.25,
+            72.930556,
+            67.409722,
+            61.826389,
+            55.861111,
+            50.6875,
+            45.180556,
+            39.770833,
+            35.0625,
+            35.222222,
+            35.319444
           ],
           "passed": true
         }
@@ -4528,7 +4845,7 @@
         },
         {
           "shotId": "mega",
-          "sampleStartSeconds": 48.15,
+          "sampleStartSeconds": 56.15,
           "sampleDurationSeconds": 2.7,
           "crop": [
             1840,
@@ -4545,7 +4862,7 @@
         },
         {
           "shotId": "zmove",
-          "sampleStartSeconds": 60.15,
+          "sampleStartSeconds": 68.15,
           "sampleDurationSeconds": 2.7,
           "crop": [
             1840,
@@ -4562,7 +4879,7 @@
         },
         {
           "shotId": "dynamax",
-          "sampleStartSeconds": 72.15,
+          "sampleStartSeconds": 80.15,
           "sampleDurationSeconds": 2.7,
           "crop": [
             1840,
@@ -4579,7 +4896,7 @@
         },
         {
           "shotId": "tera",
-          "sampleStartSeconds": 84.15,
+          "sampleStartSeconds": 92.15,
           "sampleDurationSeconds": 2.7,
           "crop": [
             1840,
@@ -4725,22 +5042,5 @@
         }
       ]
     }
-  },
-  "browserPlayback": {
-    "checkedAt": "2026-09-10T07:17:12.313Z",
-    "url": "http://127.0.0.1:5184/promo/preview.html",
-    "chapter": "mega-to-zmove",
-    "seekTargetSeconds": 46,
-    "observedTimesSeconds": [
-      54.974368,
-      68.442637
-    ],
-    "durationSeconds": 110,
-    "readyState": 4,
-    "paused": false,
-    "error": null,
-    "videoWidth": 1920,
-    "videoHeight": 1080,
-    "passed": true
   }
 }

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import os from 'node:os'
+import crypto from 'node:crypto'
 import { resolveChromiumExecutable } from './browserRuntime.mjs'
 import { PROMO_GIMMICK_GROUPS } from '../fixtures.mjs'
 
@@ -16,6 +17,10 @@ try { ({ chromium } = require('playwright')) } catch { ({ chromium } = require(p
 const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
 const raw = path.join(root, 'promo/raw')
 await fs.mkdir(raw, { recursive: true })
+const battleSourceFiles = ['src/BattleScreen.jsx', 'src/battleGen5.css', 'promo/capture.jsx', 'promo/capture.css']
+const battleSourceHashes = Object.fromEntries(await Promise.all(battleSourceFiles.map(async file =>
+  [file, crypto.createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')],
+)))
 const variants = process.argv.includes('--variants')
 const shots = variants
   ? PROMO_GIMMICK_GROUPS.flatMap(group => group.variants.map(variant => ({ id: `take-${variant.sceneId}`, kind: 'battle', url: variant.url, duration: group.captureDuration })))
@@ -76,6 +81,18 @@ try {
     if (shot.kind === 'wall') await page.evaluate(() => window.promoWall.ready)
     if (shot.kind === 'title') await page.evaluate(() => window.titleReady)
     await page.waitForTimeout(1600)
+    const battleLayout = shot.kind === 'battle' ? await page.evaluate(() => {
+      const camera = document.querySelector('.battle-field-camera')
+      return {
+        width: camera.clientWidth, height: camera.clientHeight,
+        stages: [...camera.querySelectorAll('.battle-pokemon-stage')].map(stage => ({
+          side: stage.classList.contains('player') ? 'player' : 'opponent',
+          width: stage.offsetWidth, height: stage.offsetHeight,
+          centerX: (stage.offsetLeft + stage.offsetWidth / 2) / camera.clientWidth,
+          bottom: (camera.clientHeight - stage.offsetTop - stage.offsetHeight) / camera.clientHeight,
+        })),
+      }
+    }) : undefined
     await page.screenshot({ path: path.join(raw, `${shot.id}-before.png`), timeout: 90000 })
     // A removed solid-color marker gives the video an exact audio sync origin.
     // Browser recording may stop before page.close returns, so wall-clock tail
@@ -85,6 +102,10 @@ try {
       marker.style.cssText = 'position:fixed;inset:0;background:rgb(0,255,0);z-index:2147483647'
       document.body.append(marker)
     })
+    // Commit the marker to a painted frame before timing its hold. Under load,
+    // a timer alone can elapse before the compositor presents the green frame.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await page.screenshot({ timeout: 90000 })
     await page.waitForTimeout(650)
     const start = Date.now()
     const audio = await page.evaluate(async kind => {
@@ -103,6 +124,17 @@ try {
     if (audioData) await fs.writeFile(path.join(raw, `${shot.id}-audio.webm`), Buffer.from(audioData, 'base64'))
     await page.screenshot({ path: path.join(raw, `${shot.id}-after.png`), timeout: 90000 })
     const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || window.promoCinematic?.status?.() || window.promoWall?.status?.() || window.promoTitle?.status?.() || null)
+    const productionLabels = await page.evaluate(() => {
+      const labels = new Set()
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) {
+        const node = walker.currentNode, parent = node.parentElement
+        if (!parent || parent.closest('script,style')) continue
+        const text = node.textContent.trim()
+        if (/실제 게임 화면|프로모션 연출|홍보용 연출|실제 배틀 촬영/.test(text)) labels.add(text)
+      }
+      return [...labels]
+    })
     const events = await page.evaluate(() => {
       const events = window.promo?.events || []
       const origin = events.find(event => event.event === 'play')?.time
@@ -125,13 +157,25 @@ try {
     }
     if (markerEnd < 0) throw new Error(`Missing video/audio sync marker in ${shot.id}`)
     const syncStartSeconds = (markerEnd+1)/25
-    const metadata = { id: shot.id, duration: shot.duration, captureDuration, syncStartSeconds, videoTailSeconds, recordedActionMs: Date.now()-start, audio, status, events, errors }
+    const metadata = { id: shot.id, duration: shot.duration, captureDuration, syncStartSeconds, videoTailSeconds, recordedActionMs: Date.now()-start, audio, status, events, errors, productionLabels, ...(battleLayout ? { battleLayout, battleSourceHashes } : {}) }
     await fs.writeFile(path.join(raw, `${shot.id}.json`), JSON.stringify(metadata, null, 2))
-    console.log(JSON.stringify(metadata))
+    console.log(JSON.stringify({ id: shot.id, captureDuration, audio, errors, ...(battleLayout ? { battleLayout } : {}), status }))
   }
   const selected = shots.filter(s => !only.length || only.includes(s.id))
   if (only.some(id => !shots.some(shot => shot.id === id))) throw new Error('Unknown capture ID')
   let next = 0
-  const worker = async () => { while (next < selected.length) await captureShot(selected[next++]) }
+  const failures = []
+  const worker = async () => {
+    while (next < selected.length) {
+      const shot = selected[next++]
+      try { await captureShot(shot) }
+      catch (error) {
+        failures.push({ id: shot.id, error: error.stack || String(error) })
+        console.error(`Capture failed: ${shot.id}: ${error.message}`)
+      }
+    }
+  }
   await Promise.all(Array.from({ length: variants && !process.argv.includes('--serial') ? 2 : 1 }, worker))
+  await fs.writeFile(path.join(raw, 'capture-failures.json'), JSON.stringify(failures, null, 2))
+  if (failures.length) throw new Error(`Failed captures (retry these IDs): ${failures.map(failure => failure.id).join(', ')}. See promo/raw/capture-failures.json`)
 } finally { await browser.close() }

@@ -52,3 +52,53 @@ html, body, #root { width:100%; height:100%; overflow:hidden; }
 .promo-trainer-lineup strong {font-size:25px;letter-spacing:-1px;}
 .promo-trainer-lineup > button > b {position:absolute;right:12px;top:10px;font-size:13px;color:#a8bee5;}
 @media(max-width:1600px) {.promo-showcase{padding:25px;} .promo-trainer-art{transform:scale(.85);transform-origin:right bottom;} .promo-trainer-identity{left:48px;top:55px;} .promo-trainer-lineup{height:125px;} .promo-trainer-lineup .trainer-sprite-frame{width:75px;height:105px;} .promo-trainer-heading{height:118px;} .promo-trainer-team > span{width:78px;} }
+
+/* Keep the real upcoming match above the trailer's lower headline band. */
+.promo-showcase.scene-competition {padding:36px 64px 282px;}
+.promo-showcase.scene-competition > .competition-screen {height:762px;max-width:none;grid-template-rows:78px minmax(0,1fr);gap:20px;transform-origin:50% 36%;}
+.promo-showcase.scene-competition.is-playing > .competition-screen {animation:promo-match-camera 8s cubic-bezier(.3,0,.4,1) both;}
+.scene-competition .competition-header {min-height:78px;grid-template-columns:1fr auto;border-radius:22px;padding:10px 26px;background:linear-gradient(120deg,#111d3eee,#263753d9);}
+.scene-competition .competition-title-lockup {justify-content:flex-start;gap:18px;}
+.scene-competition .competition-title-lockup h1 {font-size:34px;letter-spacing:-1.3px;margin:0;}
+.scene-competition .competition-round-chip {padding:8px 20px;}
+.scene-competition .competition-round-chip strong {font-size:30px;}
+.scene-competition .competition-mode-emblem {width:48px;height:48px;}
+.scene-competition .screen-back-button,
+.scene-competition .competition-bracket-toggle,
+.scene-competition .competition-title-lockup > div > span,
+.scene-competition .competition-round-chip small,
+.scene-competition .competition-match-kicker,
+.scene-competition .competition-match-trainer-tier,
+.scene-competition .competition-match-trainer > div small,
+.scene-competition .competition-versus-mark small,
+.scene-competition .competition-versus-mark > span,
+.scene-competition .competition-battle-rules small,
+.scene-competition .competition-current-match-panel > footer {display:none;}
+.scene-competition .competition-current-match-panel {display:grid;grid-template-rows:420px 66px minmax(0,1fr);padding:14px 24px 16px;border-radius:26px;background:linear-gradient(125deg,#10203bf2,#242649e8);box-shadow:0 26px 70px #0005;}
+.scene-competition .competition-matchup-stage {grid-template-columns:minmax(0,1fr) 116px minmax(0,1fr);min-height:0;padding:8px 15px 14px;}
+.scene-competition .competition-match-trainer {grid-template-columns:240px minmax(0,1fr);grid-template-rows:290px 98px;height:388px;gap:0 18px;}
+.scene-competition .competition-match-trainer.side-opponent {grid-template-columns:minmax(0,1fr) 240px;}
+.scene-competition .competition-match-trainer-sprite {grid-row:1;grid-column:1;width:240px;height:286px;align-self:end;filter:drop-shadow(0 20px 14px #0007);}
+.scene-competition .competition-match-trainer-sprite img {width:100%;height:100%;object-fit:contain;object-position:center bottom;image-rendering:pixelated;}
+.scene-competition .competition-match-trainer > div:not(.competition-match-party) {grid-row:1;grid-column:2;}
+.scene-competition .competition-match-trainer.side-opponent > div:not(.competition-match-party) {grid-column:1;}
+.scene-competition .competition-match-trainer h2 {font-size:56px;line-height:1.2;letter-spacing:-2px;overflow:visible;white-space:normal;}
+.scene-competition .competition-versus-mark strong {font-size:82px;letter-spacing:-5px;color:#b8eeff;text-shadow:0 0 35px #63c6ff3b;}
+.scene-competition .competition-match-party {grid-row:2;grid-column:1/-1;grid-template-columns:repeat(6,minmax(0,1fr));gap:11px;width:100%;margin:14px 0 0;}
+.scene-competition .competition-match-party button {width:100%;height:88px;border-radius:14px;border-color:#bfe7ff45;background:linear-gradient(150deg,#ddecf4,#93b5cf);}
+.scene-competition .competition-match-party :is(img,svg:where(.sprite-image-viewport)) {width:96px;height:86px;}
+.scene-competition .competition-battle-rules {padding:6px 12px 10px;gap:12px;}
+.scene-competition .competition-battle-rules > span {padding:12px 15px;border-radius:12px;align-items:center;}
+.scene-competition .competition-battle-rules strong {font-size:21px;letter-spacing:-.5px;margin:0;}
+.scene-competition .competition-team-selection {padding:10px 12px 0;}
+.scene-competition .competition-team-selection > header {margin-bottom:10px;}
+.scene-competition .competition-team-selection > header span {font-size:20px;letter-spacing:.2px;}
+.scene-competition .competition-team-selection > header strong {font-size:20px;}
+.scene-competition .competition-team-selection > div {gap:12px;}
+.scene-competition .competition-team-selection button {grid-template-columns:70px minmax(0,1fr);height:72px;padding:4px 13px 4px 7px;border-radius:14px;transition:background .6s,border-color .6s,box-shadow .6s,transform .6s;}
+.scene-competition .competition-team-selection button > small {display:none;}
+.scene-competition .competition-team-selection button > :is(img,svg:where(.sprite-image-viewport)) {width:68px;height:62px;}
+.scene-competition .competition-team-selection button > span {font-size:21px;letter-spacing:-.6px;}
+.scene-competition .competition-team-selection button > b {top:5px;right:7px;width:22px;height:22px;font-size:12px;}
+.scene-competition .competition-team-selection button.selected {transform:translateY(-3px);}
+@keyframes promo-match-camera {from{transform:scale(1) translateY(0)}to{transform:scale(1.018) translateY(-3px)}}

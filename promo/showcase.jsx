@@ -105,18 +105,21 @@ function Showcase() {
       playbackFrames.current.forEach(cancelAnimationFrame)
       playbackTimers.current = []
       playbackFrames.current = []
+      document.querySelector('.promo-showcase')?.classList.remove('is-playing')
     }
     const later = (milliseconds, action) => playbackTimers.current.push(setTimeout(action, milliseconds))
-    const scroll = (selector, end, duration = 3000) => {
+    const scroll = (selector, end, duration = 3000, horizontal = false) => {
       const element = document.querySelector(selector)
       if (!element) return
-      const start = element.scrollTop
+      const property = horizontal ? 'scrollLeft' : 'scrollTop'
+      const start = element[property]
       const startTime = performance.now()
-      const target = Math.max(0, Math.min(end, element.scrollHeight - element.clientHeight))
+      const extent = horizontal ? element.scrollWidth - element.clientWidth : element.scrollHeight - element.clientHeight
+      const target = Math.max(0, Math.min(end, extent))
       const frame = now => {
         const progress = Math.min(1, (now - startTime) / duration)
         const eased = progress * progress * (3 - 2 * progress)
-        element.scrollTop = start + (target - start) * eased
+        element[property] = start + (target - start) * eased
         if (progress < 1) playbackFrames.current.push(requestAnimationFrame(frame))
       }
       playbackFrames.current.push(requestAnimationFrame(frame))
@@ -155,6 +158,21 @@ function Showcase() {
           later(2000, () => setTrainer(0))
           later(4100, () => setTrainer(3))
           later(5900, () => setTrainer(5))
+        } else if (scene === 'competition') {
+          const surface = document.querySelector('.promo-showcase')
+          surface?.classList.add('is-playing')
+          // Select a different lead through the real selection buttons. No match
+          // is started and the generated teams, rules and bracket stay intact.
+          const selectLead = index => {
+            const buttons = [...document.querySelectorAll('.competition-team-selection > div > button')]
+            const selected = buttons.filter(button=>button.getAttribute('aria-pressed')==='true')
+            const required = selected.length
+            if (!buttons[index] || !required) return
+            selected.forEach(button=>button.click())
+            for (let offset=0;offset<required;offset++) buttons[(index+offset)%buttons.length].click()
+          }
+          later(2200, () => selectLead(1))
+          later(5100, () => selectLead(2))
         } else if (scene === 'items') {
           category('.shop-category-tabs button', detail ? 3 : 2)
           later(2200, () => click('.shop-pagination button[aria-label="다음 페이지"]'))

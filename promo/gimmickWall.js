@@ -17,8 +17,7 @@ const scene = GROUPS[sceneId]
 const stage = document.querySelector('#gimmick-wall')
 const grid = document.querySelector('.video-grid')
 const viewport = document.querySelector('.wall-viewport')
-const heroCaption = document.querySelector('.hero-caption')
-const titleWords = [], descriptionWords = []
+const titleWords = []
 const errors = [], loadedIds = new Set(), playedIds = new Set(), shownIds = new Set()
 let tiles = [], peakVisibleCount = 0, openingVisibleCount = 0, playing = false, currentTime = 0, startedAt = 0, frameId = null
 
@@ -29,7 +28,7 @@ fitStage()
 addEventListener('resize',fitStage)
 const clamp = value => Math.max(0,Math.min(1,value))
 const easeOut = value => 1 - (1 - clamp(value)) ** 3
-const smooth = value => { const p = clamp(value); return p * p * (3 - 2 * p) }
+const smooth = value => { const p = clamp(value); return p * p * p * (p * (p * 6 - 15) + 10) }
 const progress = (time,start,duration) => clamp((time - start) / duration)
 function fail(error) {
   const message = error instanceof Error ? error.message : String(error)
@@ -79,23 +78,17 @@ function buildTile(data,index) {
   video.muted = true; video.defaultMuted = true; video.playsInline = true; video.preload = 'auto'
   video.setAttribute('muted',''); video.setAttribute('playsinline','')
   video.src = data.url
-  video.setAttribute('aria-label',`${data.pokemonName} · ${data.moveName}`)
-  const caption = document.createElement('figcaption'); caption.className = 'tile-caption'
-  const copy = document.createElement('span'); copy.className = 'tile-copy'
-  const name = document.createElement('strong'); name.className = 'tile-name'; name.textContent = data.pokemonName
-  const move = document.createElement('span'); move.className = 'tile-move'; move.textContent = data.moveName
-  copy.append(name,move)
-  const [typeLabel,typeColor] = typeInfo(data.type)
-  const type = document.createElement('span'); type.className = 'type-badge'; type.textContent = typeLabel
-  figure.style.setProperty('--type-color',typeColor)
-  caption.append(copy,type); figure.append(video,caption)
+  video.setAttribute('aria-label',`${data.pokemonName} · ${data.moveName} · ${typeInfo(data.type)[0]} 타입 · ${scene.label}`)
+  figure.append(video)
   // The first manifest clip is the opening hero, placed in the center cell.
   const position = index === 0 ? 4 : index <= 4 ? index - 1 : index
   figure.style.gridColumn = String(position % 3 + 1)
   figure.style.gridRow = String(Math.floor(position / 3) + 1)
   grid.append(figure)
-  const delay = index === 0 ? 0 : 2.05 + (index - 1) * .25
-  return { ...data,index,figure,video,caption,delay,hasStarted:false,playPending:false }
+  // Neighbouring battles arrive first, then the four corners complete the wall.
+  const revealOrder = [3,1,5,7,0,2,6,8].indexOf(position)
+  const delay = index === 0 ? 0 : 1.55 + revealOrder * .27
+  return { ...data,index,position,figure,video,delay,revealAlpha:index === 0 ? 1 : 0,hasStarted:false,playPending:false }
 }
 function recordVisibility() {
   const bounds = viewport.getBoundingClientRect()
@@ -104,7 +97,7 @@ function recordVisibility() {
     const rect = tile.figure.getBoundingClientRect()
     const width = Math.max(0,Math.min(rect.right,bounds.right) - Math.max(rect.left,bounds.left))
     const height = Math.max(0,Math.min(rect.bottom,bounds.bottom) - Math.max(rect.top,bounds.top))
-    if (width * height >= rect.width * rect.height * .75 && tile.video.readyState >= 2) {
+    if (width * height >= rect.width * rect.height * .75 && tile.revealAlpha >= .95 && tile.video.readyState >= 2) {
       shownIds.add(tile.id); visible++
     }
   }
@@ -113,30 +106,24 @@ function recordVisibility() {
 }
 function render(time) {
   currentTime = Math.max(0,Math.min(DURATION,time))
-  // A gentle camera move takes three seconds; all nine scenes then stay readable.
-  const reveal = smooth(progress(currentTime,2,3))
-  grid.style.transform = `scale(${3.05 - 2.05 * reveal})`
-  const captionAlpha = easeOut(progress(currentTime,4.2,.8))
-  // Reserve a separate caption rail once the wall opens; battle sprites near
-  // the bottom of the original footage remain completely unobstructed.
-  grid.style.setProperty('--caption-height',`${36 * captionAlpha}px`)
-  for (const tile of tiles) tile.caption.style.opacity = String(captionAlpha)
-  const heroIn = easeOut(progress(currentTime,.12,.45))
-  const heroOut = 1 - smooth(progress(currentTime,3.05,.9))
-  heroCaption.style.opacity = String(heroIn * heroOut)
-  heroCaption.style.transform = `translateY(${(1 - heroIn) * 20}px)`
+  // A held hero shot opens into the wall with zero velocity at both ends.
+  // The final small settle keeps the composition alive without a new cut.
+  const reveal = smooth(progress(currentTime,1.2,5.6))
+  const settle = smooth(progress(currentTime,6.8,5.2))
+  grid.style.transform = `scale(${3.1 - 2.082 * reveal - .018 * settle})`
+  for (const tile of tiles) {
+    const enter = tile.index === 0 ? 1 : smooth(progress(currentTime,tile.delay,1.05))
+    const column = tile.position % 3 - 1
+    const row = Math.floor(tile.position / 3) - 1
+    tile.revealAlpha = enter
+    tile.figure.style.opacity = String(enter)
+    tile.figure.style.transform = `translate3d(${column * (1 - enter) * 10}px,${row * (1 - enter) * 10}px,0) scale(${.975 + .025 * enter})`
+  }
   titleWords.forEach((word,index) => {
-    const enter = easeOut(progress(currentTime,.22 + index * .08,.65))
-    word.style.opacity = String(clamp(enter * 2))
-    word.style.transform = `translateY(${(1 - enter) * 108}%) rotate(${(1 - enter) * 4}deg)`
-    word.style.backgroundPosition = `${150 - 270 * progress(currentTime,1.25,1.2)}% 0`
-  })
-  descriptionWords.forEach((word,index) => {
-    const enter = easeOut(progress(currentTime,.7 + index * .035,.48))
+    const enter = easeOut(progress(currentTime,.14 + index * .13,.9))
     word.style.opacity = String(enter)
-    word.style.transform = `translateY(${(1 - enter) * 105}%)`
+    word.style.transform = `translate3d(0,${(1 - enter) * 104}%,0)`
   })
-  document.querySelector('.bottom-streak').style.transform = `translateX(${-65 + currentTime / DURATION * 140}%)`
   recordVisibility()
 }
 function startVideo(tile) {
@@ -183,16 +170,8 @@ const ready = (async () => {
     if (!tile.id || !tile.pokemonName || !tile.moveName || !tile.type || !tile.url || !Number.isFinite(tile.duration) || tile.duration <= 0) throw new Error(`Incomplete gimmick clip metadata: ${tile.id || 'unknown'}`)
   }
   stage.style.setProperty('--accent',group.accent || scene.accent)
-  document.querySelector('.gimmick-label').textContent = scene.label
   wordsInto(document.querySelector('.headline-base'),scene.title,titleWords)
   wordsInto(document.querySelector('.headline-emphasis'),scene.emphasis,titleWords)
-  const species = new Set(group.tiles.map(tile => tile.pokemonName)).size
-  const moves = new Set(group.tiles.map(tile => tile.moveName)).size
-  const types = new Set(group.tiles.map(tile => tile.type)).size
-  wordsInto(document.querySelector('.description'),`${species}마리의 포켓몬 · ${moves}가지 기술 · ${types}가지 타입. 같은 기믹, 서로 다른 승부.`,descriptionWords)
-  const hero = group.tiles[0]
-  document.querySelector('.hero-name').textContent = hero.pokemonName
-  document.querySelector('.hero-move').textContent = `${hero.moveName} · ${typeInfo(hero.type)[0]}`
   tiles = group.tiles.map(buildTile)
   render(0)
   await Promise.all([document.fonts.ready,...tiles.map(tile => preload(tile.video,tile.id))])
@@ -200,6 +179,7 @@ const ready = (async () => {
     if (tile.video.duration + .1 < tile.duration) throw new Error(`Gimmick clip is shorter than its metadata: ${tile.id}`)
   }
   render(0)
+  openingVisibleCount = recordVisibility()
 })()
 // Keep the error visible and collect it in status while preserving rejection for capture callers.
 ready.catch(fail)

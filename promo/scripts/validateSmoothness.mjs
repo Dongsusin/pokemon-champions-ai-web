@@ -17,6 +17,9 @@ const reportFile = `promo/generated/smoothness-${baselineMode ? 'baseline' : 'va
 const shots = JSON.parse(await fs.readFile('promo/timeline.json', 'utf8'))
 const timelineDuration = shots.reduce((sum, shot) => sum + shot.duration, 0)
 const FPS = 30
+const transitionDuration = .4
+if (!shots.length || shots.some(shot => !Number.isFinite(shot.duration) || shot.duration <= 0)) throw new Error('Timeline must contain positive shot durations')
+const hasCameraReveal = shot => shot.kind === 'wall' || (shot.kind === 'cinematic' && new URL(shot.url, 'http://localhost').searchParams.get('scene') === 'pokemon')
 const thresholds = {
   expectedFramesPerSecond: FPS,
   maximumFrameIntervalErrorSeconds: .002,
@@ -47,9 +50,10 @@ async function grayFrames(start, duration, width, height, crop) {
   if (!stdout.length || stdout.length % frameBytes) throw new Error(`Incomplete grayscale frames at ${start}s`)
   return { data: stdout, frameBytes, frameCount: stdout.length / frameBytes }
 }
-async function measureBoundary(shotId, boundary) {
+async function measureBoundary(shot, boundary) {
   const start = boundary - .15
-  const { data, frameBytes, frameCount } = await grayFrames(start, .65, 16, 9)
+  const sampleDuration = .15 + transitionDuration + Math.min(.1, shot.duration - transitionDuration)
+  const { data, frameBytes, frameCount } = await grayFrames(start, sampleDuration, 16, 9)
   const brightness = []
   for (let frame = 0; frame < frameCount; frame++) {
     let sum = 0
@@ -57,13 +61,14 @@ async function measureBoundary(shotId, boundary) {
     brightness.push(round(sum / frameBytes))
   }
   const blackFrames = brightness.filter(value => value < thresholds.nearBlackMeanGray).length
-  return { shotId, boundarySeconds: boundary, sampleStartSeconds: start, sampleDurationSeconds: .65, frameCount, minimumMeanGray: Math.min(...brightness), blackFrames, brightness, passed: blackFrames <= thresholds.maximumBoundaryBlackFrames }
+  return { shotId: shot.id, transition: shot.transition ?? 'fade', transitionDurationSeconds: transitionDuration, boundarySeconds: boundary, sampleStartSeconds: start, sampleDurationSeconds: sampleDuration, frameCount, minimumMeanGray: Math.min(...brightness), blackFrames, brightness, passed: blackFrames <= thresholds.maximumBoundaryBlackFrames }
 }
 async function measureCamera(shot, shotStart) {
   // These windows exclude the eased camera's intentionally still endpoints.
   // Crop to the moving picture, so animated captions cannot conceal a freeze.
-  const localStart = shot.kind === 'wall' ? 2.15 : 2.5
-  const duration = shot.kind === 'wall' ? 2.7 : 5
+  const localStart = Math.min(shot.kind === 'wall' ? 2.15 : 2.5, shot.duration * .25)
+  const duration = Math.min(shot.kind === 'wall' ? 2.7 : 5, shot.duration - localStart - transitionDuration)
+  if (duration < 2 / FPS) throw new Error(`Camera reveal ${shot.id} is too short to measure between its transitions`)
   const crop = shot.kind === 'wall' ? [1840, 770, 40, 80] : [1848, 670, 36, 74]
   const start = shotStart + localStart
   const { data, frameBytes, frameCount } = await grayFrames(start, duration, 160, 90, crop)
@@ -94,15 +99,16 @@ async function measureCamera(shot, shotStart) {
   }
 }
 
-const failures = [], boundaries = [], cameras = []
+const failures = [], boundaries = [], cameras = [], chapters = []
 let at = 0
 for (const [index, shot] of shots.entries()) {
   if (index) {
-    const boundary = await measureBoundary(shot.id, at)
+    const boundary = await measureBoundary(shot, at)
     boundaries.push(boundary)
     if (!boundary.passed) failures.push(`${shot.id}: ${boundary.blackFrames} near-black frames at ${at}s transition`)
   }
-  if (shot.kind === 'wall' || shot.id === 'pokemon') {
+  chapters.push({ shotId: shot.id, kind: shot.kind, startSeconds: at, durationSeconds: shot.duration, incomingTransition: index ? shot.transition ?? 'fade' : null })
+  if (hasCameraReveal(shot)) {
     const camera = await measureCamera(shot, at)
     cameras.push(camera)
     if (!camera.passed) failures.push(`${shot.id}: camera held ${camera.maximumHoldSeconds}s; ${(camera.nearDuplicateRatio * 100).toFixed(1)}% near-duplicate intervals`)
@@ -135,10 +141,10 @@ const comparison = baseline ? {
   cameras: cameras.map(camera => ({ shotId: camera.shotId, baselineMaximumHoldSeconds: baseline.cameras.find(before => before.shotId === camera.shotId)?.maximumHoldSeconds ?? null, currentMaximumHoldSeconds: camera.maximumHoldSeconds, baselineNearDuplicateRatio: baseline.cameras.find(before => before.shotId === camera.shotId)?.nearDuplicateRatio ?? null, currentNearDuplicateRatio: camera.nearDuplicateRatio })),
 } : null
 const report = {
-  revision: 1, generatedAt: new Date().toISOString(), mode: baselineMode ? 'baseline' : 'validation',
+  revision: 2, generatedAt: new Date().toISOString(), mode: baselineMode ? 'baseline' : 'validation',
   videoPath: video.replaceAll('\\', '/'), videoSha256,
   method: 'Decoded native frames; grayscale boundary luminance; picture-only camera frame differences; native PTS cadence. No fps insertion or motion interpolation in the audit.',
-  thresholds, timelineDurationSeconds: timelineDuration, cadence, boundaries, cameras, comparison,
+  thresholds, timelineDurationSeconds: timelineDuration, chapters, cadence, boundaries, cameras, comparison,
   failures, passed: failures.length === 0,
 }
 await fs.mkdir('promo/generated', { recursive: true })
