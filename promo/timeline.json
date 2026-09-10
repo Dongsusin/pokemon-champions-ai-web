@@ -1,22 +1,12 @@
 [
   {
     "id": "intro",
-    "kind": "cinematic",
-    "url": "/promo/cinematic.html?scene=clash",
-    "duration": 8,
+    "kind": "title",
+    "url": "/promo/title.html?outro=1",
+    "duration": 6,
     "caption": {
-      "title": "단 한 번의 선택. 지금, 한계를 넘어.",
-      "description": "포켓몬 챔피언스 아레나"
-    }
-  },
-  {
-    "id": "partners-art",
-    "kind": "cinematic",
-    "url": "/promo/cinematic.html?scene=partners",
-    "duration": 8,
-    "caption": {
-      "title": "수많은 만남. 가능성은 당신의 조합 속에.",
-      "description": "좋아하는 포켓몬과 승리의 팀을 완성하세요."
+      "title": "POKÉMON CHAMPIONS ARENA",
+      "description": "다음 챔피언은, 당신."
     }
   },
   {
@@ -34,35 +24,20 @@
     }
   },
   {
-    "id": "rivals-art",
-    "kind": "cinematic",
-    "url": "/promo/cinematic.html?scene=rivals",
-    "duration": 8,
-    "caption": {
-      "title": "다음 상대는 누구인가. 238명의 AI 트레이너.",
-      "description": "각자의 파트너와 전략을 가진 도전자들."
-    }
-  },
-  {
     "id": "trainers",
-    "kind": "showcase",
-    "url": "/promo/showcase.html?scene=trainers",
-    "duration": 6,
-    "overlay": {
-      "counter": "02 / FACE THE CHALLENGE",
-      "eyebrow": "238 AI TRAINERS",
-      "title": "다음 상대는, 어떤 트레이너?",
-      "description": "다양한 AI 캐릭터와 팀을 상대로 새로운 승부에 도전하세요.",
-      "tag": "AI CHALLENGE",
-      "accent": "#f8cb76",
-      "footage": "게임 데이터·리소스로 구성한 트레이너 소개"
+    "kind": "cinematic",
+    "url": "/promo/cinematic.html?scene=trainers",
+    "duration": 14,
+    "caption": {
+      "title": "238명의 AI 트레이너.",
+      "description": "다양한 파트너와 전략으로 기다리는 도전자들."
     }
   },
   {
     "id": "items-art",
     "kind": "cinematic",
     "url": "/promo/cinematic.html?scene=items",
-    "duration": 6,
+    "duration": 8,
     "caption": {
       "title": "하나의 도구. 무한한 변수.",
       "description": "344종의 배틀 아이템으로 완성하는 전략."
@@ -80,16 +55,6 @@
       "description": "공격을 강화하고, 위기를 버티고, 새로운 가능성을 여세요.",
       "tag": "BATTLE ITEMS",
       "accent": "#a9ef8c"
-    }
-  },
-  {
-    "id": "power-art",
-    "kind": "cinematic",
-    "url": "/promo/cinematic.html?scene=power",
-    "duration": 4,
-    "caption": {
-      "title": "잠재력을 깨워라.",
-      "description": "메가진화 · Z기술 · 거다이맥스 · 테라스탈"
     }
   },
   {

@@ -1,46 +1,205 @@
 {
   "date": "2026-09-10",
-  "revision": 2,
-  "title": "Break the Limit",
-  "durationSeconds": 96.021029,
+  "generatedAt": "2026-09-10T05:11:54.987Z",
+  "revision": 3,
+  "title": "Pokémon Champions Arena — Break the Limit",
+  "durationSeconds": 84.021029,
+  "timelineDurationSeconds": 84,
   "video": {
     "width": 1920,
     "height": 1080,
     "fps": 30,
-    "frames": 2880,
-    "codec": "H.264",
+    "frames": 2520,
+    "codec": "h264",
     "pixelFormat": "yuv420p"
   },
   "audio": {
-    "codec": "AAC",
+    "codec": "aac",
     "sampleRate": 48000,
     "channels": 2,
-    "integratedLUFS": -15.54,
-    "truePeakDbTP": -1.31,
+    "channelLayout": "stereo",
+    "integratedLUFS": -15.56,
+    "truePeakDbTP": -2.48,
+    "loudnessRangeLU": 3.6,
     "soundtrackBPM": 160
   },
-  "bytes": 46495979,
-  "sha256": "fe83c4cb1f50e5014a4c844c21fd9b9fa70f655d13ce4cda356c1838810c280a",
+  "bytes": 40492458,
+  "sha256": "6e4b32ec911d6d0fa9a999aff9604e77fe47f3e45c2ac961b35df34943341962",
   "compositionSeconds": {
-    "cinematic": 34,
-    "title": 6,
-    "actualBattle": 36,
-    "gameUIAndTrainerMontage": 20
+    "title": 12,
+    "showcase": 14,
+    "cinematic": 22,
+    "battle": 36
   },
+  "shots": [
+    {
+      "id": "intro",
+      "kind": "title",
+      "duration": 6,
+      "captureStatus": null
+    },
+    {
+      "id": "pokemon",
+      "kind": "showcase",
+      "duration": 8,
+      "captureStatus": null
+    },
+    {
+      "id": "trainers",
+      "kind": "cinematic",
+      "duration": 14,
+      "captureStatus": {
+        "sceneId": "trainers",
+        "playing": true,
+        "currentTime": 15.124499999991057,
+        "duration": 14,
+        "art": null,
+        "artLoaded": true,
+        "totalTrainerCount": 238,
+        "loadedTrainerCount": 238,
+        "trainerLoadRetries": 0,
+        "shownTrainerCount": 238,
+        "peakVisibleTrainerCount": 238,
+        "visibleTrainerCount": 238,
+        "featuredTrainerNames": [],
+        "failedAssets": []
+      }
+    },
+    {
+      "id": "items-art",
+      "kind": "cinematic",
+      "duration": 8,
+      "captureStatus": {
+        "sceneId": "items",
+        "playing": true,
+        "currentTime": 8.83770000000298,
+        "duration": 8,
+        "art": null,
+        "artLoaded": true,
+        "totalTrainerCount": 0,
+        "loadedTrainerCount": 0,
+        "shownTrainerCount": 0,
+        "peakVisibleTrainerCount": 0,
+        "visibleTrainerCount": 0,
+        "featuredTrainerNames": [],
+        "failedAssets": []
+      }
+    },
+    {
+      "id": "items",
+      "kind": "showcase",
+      "duration": 6,
+      "captureStatus": null
+    },
+    {
+      "id": "mega",
+      "kind": "battle",
+      "duration": 7,
+      "captureStatus": {
+        "sceneId": "mega",
+        "prepared": true,
+        "playing": true,
+        "classes": "battle-game-screen cue-status actor-opponent target-opponent format-single weather-clear terrain-neutral",
+        "message": "화강돌은(는) 상대를 길동무로 삼으려 한다!",
+        "busy": true
+      }
+    },
+    {
+      "id": "zmove",
+      "kind": "battle",
+      "duration": 6,
+      "captureStatus": {
+        "sceneId": "zmove",
+        "prepared": true,
+        "playing": true,
+        "classes": "battle-game-screen cue-command actor-none target-none format-single weather-clear terrain-neutral",
+        "message": "레드과의 승부에서 이겼다!",
+        "busy": false
+      }
+    },
+    {
+      "id": "dynamax",
+      "kind": "battle",
+      "duration": 7,
+      "captureStatus": {
+        "sceneId": "dynamax",
+        "prepared": true,
+        "playing": true,
+        "classes": "battle-game-screen cue-impact actor-opponent target-player format-single weather-clear terrain-neutral",
+        "message": "거다이맥스 팬텀에게 138의 데미지!",
+        "busy": true
+      }
+    },
+    {
+      "id": "tera",
+      "kind": "battle",
+      "duration": 6,
+      "captureStatus": {
+        "sceneId": "tera",
+        "prepared": true,
+        "playing": true,
+        "classes": "battle-game-screen cue-attack actor-opponent target-opponent format-single weather-clear terrain-neutral",
+        "message": "갸라도스의 용의춤!",
+        "busy": true
+      }
+    },
+    {
+      "id": "double",
+      "kind": "battle",
+      "duration": 6,
+      "captureStatus": {
+        "sceneId": "double",
+        "prepared": true,
+        "playing": true,
+        "classes": "battle-game-screen cue-faint actor-opponent target-player format-double weather-clear terrain-neutral",
+        "message": "한카리아스은(는) 쓰러졌다!",
+        "busy": true
+      }
+    },
+    {
+      "id": "battle",
+      "kind": "battle",
+      "duration": 4,
+      "captureStatus": {
+        "sceneId": "battle",
+        "prepared": true,
+        "playing": true,
+        "classes": "battle-game-screen cue-impact actor-opponent target-player format-single weather-clear terrain-neutral",
+        "message": "리자몽에게 35의 데미지!",
+        "busy": true
+      }
+    },
+    {
+      "id": "outro",
+      "kind": "title",
+      "duration": 6,
+      "captureStatus": null
+    }
+  ],
   "verification": {
     "fullAudioVideoDecode": true,
+    "expectedVideoFrames": 2520,
     "visibleSyncMarkerFrames": 0,
     "capturePageErrors": 0,
-    "capturesWithSyncMarkers": 11,
-    "battleClipsVisuallyReviewed": 6,
+    "capturesWithSyncMarkers": 9,
+    "trainerRoster": [
+      {
+        "shotId": "trainers",
+        "expectedCount": 238,
+        "totalCount": 238,
+        "loadedCount": 238,
+        "shownCount": 238,
+        "visibleCountAtCaptureEnd": 238,
+        "peakVisibleCount": 238
+      }
+    ],
     "browserPlayback": {
       "readyState": 4,
       "error": null,
       "videoWidth": 1920,
       "videoHeight": 1080,
       "observedPlaying": true,
-      "observedCurrentTime": 63.361293
-    },
-    "productionCodeChanged": false
+      "observedCurrentTime": 36.199466
+    }
   }
 }

@@ -16,6 +16,8 @@ let chromium
 try { ({ chromium } = require('playwright')) } catch { ({ chromium } = require(path.join(runtimeModules, 'playwright'))) }
 const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
 const shots = JSON.parse(await fs.readFile('promo/timeline.json', 'utf8'))
+const totalDuration = shots.reduce((seconds, shot) => seconds + shot.duration, 0)
+if (!Number.isFinite(totalDuration) || totalDuration < 60 || totalDuration > 180 || shots.some(shot => !Number.isFinite(shot.duration) || shot.duration <= 0)) throw new Error('Trailer must have valid clips and last 60–180 seconds')
 const reuseClips = process.argv.includes('--reuse-clips')
 const rendererSource = await fs.readFile(fileURLToPath(import.meta.url))
 await fs.mkdir('promo/generated', { recursive: true })
@@ -94,10 +96,12 @@ let at = 0
 const stamp = seconds => `${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}:${String(Math.floor(seconds)%60).padStart(2,'0')},000`
 const captions = shots.map((s,i)=>{ const start=at; at+=s.duration; const wording=s.caption || s.overlay; const copy=wording ? `${wording.title}\n${wording.description}` : '다음 챔피언은, 당신.\n당신의 팀으로 도전하세요.'; return `${i+1}\n${stamp(start)} --> ${stamp(at)}\n${copy}\n` }).join('\n')
 await fs.writeFile('promo/output/champions-arena-promo-ko.srt',captions)
-if (at !== 96) throw new Error(`Unexpected timeline duration ${at}`)
+if (at !== totalDuration) throw new Error(`Unexpected timeline duration ${at}`)
+const musicDuration = await duration('promo/generated/soundtrack.wav')
+if (Math.abs(musicDuration-totalDuration) > .1) throw new Error(`Music length ${musicDuration}s does not match timeline ${totalDuration}s; regenerate soundtrack`)
 const mix = '[0:a]volume=1.05,asplit=2[sfx][key];[1:a]volume=0.92[music];[music][key]sidechaincompress=threshold=0.035:ratio=2.4:attack=8:release=140:makeup=1[bed];[bed][sfx]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.92,loudnorm=I=-16:TP=-1.5:LRA=11[a]'
-await run(['-i','promo/generated/picture-lock.mp4','-i','promo/generated/soundtrack.wav','-i','promo/output/champions-arena-promo-ko.srt','-filter_complex',mix,'-map','0:v','-map','[a]','-map','2:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-c:s','mov_text','-metadata:s:s:0','language=kor','-disposition:s:0','0','-metadata','title=Pokémon Champions Arena — Break the Limit','-metadata','comment=Unofficial fan game. Promotional animated key art, actual gameplay and original battle soundtrack.','-t','96','-movflags','+faststart','promo/output/champions-arena-promo-1080p.mp4'])
-await run(['-ss','6','-i','promo/output/champions-arena-promo-1080p.mp4','-frames:v','1','-q:v','2','promo/output/champions-arena-promo-poster.jpg'])
+await run(['-i','promo/generated/picture-lock.mp4','-i','promo/generated/soundtrack.wav','-i','promo/output/champions-arena-promo-ko.srt','-filter_complex',mix,'-map','0:v','-map','[a]','-map','2:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-c:s','mov_text','-metadata:s:s:0','language=kor','-disposition:s:0','0','-metadata','title=Pokémon Champions Arena — Break the Limit','-metadata','comment=Unofficial fan game. In-game trainer and item sprite montage, actual gameplay and original battle soundtrack.','-t',String(totalDuration),'-movflags','+faststart','promo/output/champions-arena-promo-1080p.mp4'])
+await run(['-ss','3','-i','promo/output/champions-arena-promo-1080p.mp4','-frames:v','1','-q:v','2','promo/output/champions-arena-promo-poster.jpg'])
 const probe = await run(['-i','promo/output/champions-arena-promo-1080p.mp4','-af','loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json','-f','null','NUL'])
 await fs.writeFile('promo/generated/final-audio-analysis.txt',probe)
 const stat = await fs.stat('promo/output/champions-arena-promo-1080p.mp4')

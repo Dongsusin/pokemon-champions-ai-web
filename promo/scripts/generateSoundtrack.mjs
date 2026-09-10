@@ -1,6 +1,6 @@
 /**
- * BREAK THE LIMIT — original battle-trailer score, revision 2.
- * 160 BPM, 64 bars, 96 seconds. D minor with Phrygian flat-second tension.
+ * BREAK THE LIMIT — original battle-trailer score, revision 3.
+ * 160 BPM, 56 bars, 84 seconds. D minor with Phrygian flat-second tension.
  * All instruments and notes are original synthesis; no recordings or borrowed themes.
  * node promo/scripts/generateSoundtrack.mjs [--out=path.wav] [--sample-rate=48000]
  */
@@ -14,10 +14,11 @@ const out = path.resolve(args.out || path.join(here, '../generated/soundtrack.wa
 const SR = Number(args['sample-rate'] || 44100);
 if (!/\.wav$/i.test(out)) throw new Error('The output path must end in .wav');
 if (!Number.isInteger(SR) || SR < 22050 || SR > 96000) throw new Error('Sample rate must be between 22050 and 96000');
-const DURATION = 96;
 const BPM = 160;
 const BEAT = 60 / BPM;
 const BAR = BEAT * 4;
+const BARS = 56;
+const DURATION = BARS * BAR;
 const TAU = Math.PI * 2;
 const N = Math.round(SR * DURATION);
 const left = new Float32Array(N);
@@ -211,20 +212,20 @@ const theme = [
   [[0, 74, .25], [1, 69, .14], [1.75, 72, .18], [2.5, 75, .14], [3, 74, .30]],
 ];
 
-for (let bar = 0; bar < 64; bar++) {
+for (let bar = 0; bar < BARS; bar++) {
   const at = bar * BAR;
-  const intro = at < 7.5;
-  const rivals = at >= 24 && at < 37.5;
-  const tactical = at >= 37.5 && at < 49.5;
-  const showcase = at >= 49.5 && at < 79.5;
-  const climax = at >= 79.5 && at < 90;
-  const ending = at >= 90;
+  const intro = at < 6;
+  const rivals = at >= 13.5 && at < 28.5;
+  const tactical = at >= 28.5 && at < 42;
+  const showcase = at >= 42 && at < 67.5;
+  const climax = at >= 67.5 && at < 78;
+  const ending = at >= 78;
   const pattern = climax ? ROOTS.climax : rivals ? ROOTS.rivals : tactical ? ROOTS.tactical : ROOTS.main;
   const root = pattern[bar % pattern.length];
   const power = intro ? .84 : tactical ? .88 : climax ? 1.18 : showcase ? 1.08 : .98;
 
-  if (bar === 63) {
-    // Last downbeat at 94.5 seconds: a heavy resolved D power chord and minor-third lead.
+  if (bar === BARS - 1) {
+    // Last downbeat at 82.5 seconds: a heavy resolved D power chord and minor-third lead.
     kick(at, 1);
     metalHit(at, 1.05);
     cymbal(at, .95);
@@ -268,7 +269,7 @@ for (let bar = 0; bar < 64; bar++) {
     hat(at + step * BAR / hatSteps, power * (step % 2 ? .54 : .88), step === hatSteps - 2, step % 2 ? .32 : -.32);
   }
   if (bar % 2 === 0) tom(at + BEAT * 2.5, 38, power * .65, -.38);
-  if (climax || showcase && bar >= 45) {
+  if (climax || showcase && bar >= 37) {
     for (let beat = 0; beat < 4; beat++) cymbal(at + BEAT * beat, .52, true);
   }
 
@@ -278,8 +279,8 @@ for (let bar = 0; bar < 64; bar++) {
     brass(at + 2.5 * BEAT, [50, 57, root === 39 ? 63 : 62], .14, .52 * power);
   }
   // Original four-bar competitive theme, introduced early and returned in the battle drop.
-  if (bar >= 5 && bar < 16 || bar >= 18 && bar < 25 || bar >= 33 && bar < 53 || climax || ending) {
-    const phrase = theme[(bar - 5 + 64) % 4];
+  if (bar >= 4 && bar < 19 || showcase || climax || ending) {
+    const phrase = theme[(bar - 4 + BARS) % 4];
     phrase.forEach(([beat, midi, duration]) => {
       const shift = rivals && bar % 4 === 0 && midi === 74 ? 1 : 0;
       lead(at + beat * BEAT, midi + shift, duration, power * (climax ? .93 : ending ? .79 : .76), showcase || climax);
@@ -300,24 +301,24 @@ for (let bar = 0; bar < 64; bar++) {
 }
 
 const sections = [
-  { at: 0, until: 8, label: 'Immediate battle hook' },
-  { at: 8, until: 24, label: 'Build your roster' },
-  { at: 24, until: 38, label: 'Face the rivals' },
-  { at: 38, until: 50, label: 'Tactical preparation' },
-  { at: 50, until: 80, label: 'Gimmick battle drop' },
-  { at: 80, until: 90, label: 'Final battle climax' },
-  { at: 90, until: 96, label: 'Victory and title' },
+  { at: 0, until: 6, label: 'Opening title and battle hook' },
+  { at: 6, until: 14, label: 'Build your roster' },
+  { at: 14, until: 28, label: 'Face the rivals' },
+  { at: 28, until: 42, label: 'Tactical preparation' },
+  { at: 42, until: 68, label: 'Gimmick battle drop' },
+  { at: 68, until: 78, label: 'Final battle climax' },
+  { at: 78, until: 84, label: 'Victory and title' },
 ];
 metalHit(.01, .85);
 cymbal(.01, .85);
-for (const time of [8, 24, 38, 50, 58, 66, 74, 80, 90]) {
-  metalHit(time, time === 50 || time === 80 ? 1.18 : .7);
-  cymbal(time, time === 50 || time === 80 ? 1.2 : .75);
-  kick(time, time === 50 || time === 80 ? 1.2 : .7);
+for (const time of [6, 14, 28, 42, 49, 55, 62, 68, 78]) {
+  metalHit(time, time === 42 ? 1.18 : time === 68 ? .9 : .7);
+  cymbal(time, time === 42 ? 1.2 : .75);
+  kick(time, time === 42 ? 1.2 : .7);
 }
-for (const [time, duration] of [[8, 1.5], [24, 1.5], [38, 1.5], [50, 3], [66, 1.5], [80, 3], [90, 1.5]]) {
-  rise(time - duration, duration, time === 50 || time === 80 ? 1.1 : .75);
-  const count = time === 50 || time === 80 ? 12 : 6;
+for (const [time, duration] of [[6, 1.5], [14, 1.5], [28, 1.5], [42, 3], [55, 1.5], [67.5, 1.5], [78, 1.5]]) {
+  rise(time - duration, duration, time === 42 ? 1.1 : .75);
+  const count = time === 42 ? 12 : 6;
   for (let hit = 0; hit < count; hit++) {
     snare(time - .78 + hit * .055, .20 + hit * .024, hit % 2 ? -.13 : .13);
   }
@@ -348,7 +349,8 @@ for (const [seconds, feedback, gain, cross] of [[.037, .48, .21, false], [.051, 
   }
 }
 
-// Two deliberate, very short suspense breaks make the following full drops hit harder.
+// A short suspense break precedes the 42-second gimmick drop on an exact bar boundary.
+// The later double-battle edit at 68 seconds keeps its continuous rhythmic pickup.
 function suspense(t, from, to) {
   if (t < from || t >= to) return 1;
   const down = 1 - unit((t - from) / .028);
@@ -359,8 +361,8 @@ let dcL = 0;
 let dcR = 0;
 for (let i = 0; i < N; i++) {
   const t = i / SR;
-  const fade = unit(t / .006) * (t > 95.17 ? Math.cos(unit((t - 95.17) / .83) * Math.PI / 2) ** 1.4 : 1);
-  const drop = suspense(t, 49.68, 50) * suspense(t, 79.68, 80);
+  const fade = unit(t / .006) * (t > DURATION - .83 ? Math.cos(unit((t - (DURATION - .83)) / .83) * Math.PI / 2) ** 1.4 : 1);
+  const drop = suspense(t, 41.68, 42);
   dcL += .0001 * (left[i] - dcL);
   dcR += .0001 * (right[i] - dcR);
   left[i] = Math.tanh((left[i] - dcL) * 1.34) / 1.34 * fade * drop;
@@ -393,13 +395,13 @@ for (let i = 0; i < N; i++) {
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, buffer);
 const report = {
-  title: 'Break the Limit', revision: 2,
+  title: 'Break the Limit', revision: 3,
   description: 'Urgent battle trailer: 160 BPM distorted power riffs, sixteenth-note strings, martial drums, competitive lead, hard drops.',
-  durationSeconds: DURATION, bpm: BPM, bars: 64, meter: '4/4', key: 'D minor / Phrygian flat-second tension',
+  durationSeconds: DURATION, bpm: BPM, bars: BARS, meter: '4/4', key: 'D minor / Phrygian flat-second tension',
   sampleRate: SR, channels: 2, bitDepth: 16, peakDbfs: -1.5,
   rmsDbfs: Number((20 * Math.log10(Math.sqrt(sumSquares / (N * 2)))).toFixed(2)), clippedFrames,
   sections: sections.map((section, i) => ({ ...section, rmsDbfs: Number((20 * Math.log10(Math.sqrt(sectionEnergy[i].sum / (sectionEnergy[i].frames * 2)))).toFixed(2)) })),
-  suspenseBreaks: [[49.68, 50], [79.68, 80]], finalCadenceAt: 94.5,
+  suspenseBreaks: [[41.68, 42]], finalCadenceAt: (BARS - 1) * BAR,
   events,
   provenance: 'Original arrangement, melodies, riffs, drums and synthesizers. No third-party samples, recordings or Pokemon themes.',
   file: out,
