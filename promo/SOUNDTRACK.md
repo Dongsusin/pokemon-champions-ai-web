@@ -1,6 +1,6 @@
 # Trailer soundtrack
 
-The **132-second (2:12)** edit uses the same battle music as the live web game: **“Face The Champion!” by Spring Spring**. The existing local file is `public/assets/audio/battle/battle-theme.ogg`, referenced by `src/battleAudio.js`. The edit retains the complete Pokédex, trainer and item montages and four walls of nine recaptured gimmick battles, and adds competition and achievement sequences. It ends with `pokemon-champions-area-web.co.kr`. Final output measurements belong to the newly generated `output/validation.json`, not this edit specification.
+The **122-second (2:02)** edit uses the same battle music as the live web game: **“Face The Champion!” by Spring Spring**. The existing local file is `public/assets/audio/battle/battle-theme.ogg`, referenced by `src/battleAudio.js`. The edit features the complete Pokédex, trainer and item montages, the competition preparation screen and four walls of nine recaptured gimmick battles, followed by double and single battles. It ends with `pokemon-champions-area-web.co.kr`. Final output measurements belong to the newly generated `output/validation.json`, not this edit specification.
 
 ## Source and attribution
 
@@ -15,15 +15,15 @@ The creator's source page offers CC BY 3.0. The trailer uses that license and cr
 
 The preview page and `output/champions-arena-promo-credits.txt` carry the distribution credit and unofficial fan-game notice. Removing small production captions from the video does not remove this attribution. Include the text file's credit in the video description or alongside the MP4 when sharing it.
 
-> Music: “Face The Champion!” by Spring Spring. Licensed under CC BY 3.0. Source: https://opengameart.org/content/face-the-champion — License: https://creativecommons.org/licenses/by/3.0/ . Edited for this trailer: first 132 seconds excerpted, fades, resampling, loudness adjustment, and ducking/mixing with game effects.
+> Music: “Face The Champion!” by Spring Spring. Licensed under CC BY 3.0. Source: https://opengameart.org/content/face-the-champion — License: https://creativecommons.org/licenses/by/3.0/ . Edited for this trailer: first 122 seconds excerpted, fades, resampling, loudness adjustment, and ducking/mixing with game effects.
 
 ## Edit and mix
 
-The soundtrack preparation script reads the repository's existing music file without downloading another recording. It derives the duration from `timeline.json`, extracts **0–132 seconds**, applies a **0.25-second fade-in** and a **1.75-second fade-out** at the end, and writes **48,000 Hz stereo PCM**. The music is normalized in two passes toward **−18 LUFS integrated** before effects are mixed.
+The soundtrack preparation script reads the repository's existing music file without downloading another recording. It derives the duration from `timeline.json`, extracts **0–122 seconds**, applies a **0.25-second fade-in** and a **1.75-second fade-out** at the end, and writes **48,000 Hz stereo PCM**. The music is normalized in two passes toward **−18 LUFS integrated** before effects are mixed.
 
 Gameplay effects and Pokemon cries remain from the captured Web Audio output. The capture entry point sets game music to zero so the continuous soundtrack is not layered over another audible battle track. During final mixing, gameplay effects trigger music ducking, and the complete mix targets **−16 LUFS integrated**. The resulting output is measured separately; actual loudness and true peak are recorded in `output/validation.json` and `generated/final-audio-analysis.txt`.
 
-Each of the 13 incoming scene transitions lasts **0.4 seconds**. Visual transitions vary by the incoming `timeline.json` entry; effects use continuous audio crossfades at the same boundaries. Outgoing handles preserve the full 132-second timeline. The double-battle picture and effects both use the same 2.4-second source offset, and gimmick walls use only their central hero clip's effects rather than layering nine battle tracks.
+Each of the 12 incoming scene transitions lasts **0.4 seconds**. Visual transitions vary by the incoming `timeline.json` entry; effects use continuous audio crossfades at the same boundaries. Outgoing handles preserve the full 122-second timeline. The double-battle picture and effects both use the same 2.4-second source offset, and gimmick walls use only their central hero clip's effects rather than layering nine battle tracks.
 
 Run from the repository root:
 

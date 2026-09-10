@@ -2,7 +2,7 @@
 
 이 폴더의 `capture.html`은 광고 제작용으로 분리한 Vite 진입점이다. 실제 제품의 `BattleScreen`, `battleEngine`, `PokemonSprite`, `TrainerSprite`, 기술 Canvas 연출, 기믹 연출과 `battleAudio`를 그대로 사용한다. 전투 화면을 새로 그리거나 HP·데미지·변신 결과를 영상용으로 합성하지 않는다.
 
-132초 편집은 포켓몬을 확대하고 양 진영을 가까이 배치한 현재 웹게임 화면으로 기믹 배틀 36개와 싱글·더블 원본을 다시 촬영해 사용한다. 교대·기절·기술 이펙트도 현재 게임의 위치 계산과 연출을 그대로 따른다. 최종 촬영·렌더의 통과 여부는 `output/validation.json`에서 확인한다.
+122초 편집은 포켓몬을 확대하고 양 진영을 가까이 배치한 현재 웹게임 화면으로 기믹 배틀 36개와 싱글·더블 원본을 다시 촬영해 사용한다. 교대·기절·기술 이펙트도 현재 게임의 위치 계산과 연출을 그대로 따른다. 최종 촬영·렌더의 통과 여부는 `output/validation.json`에서 확인한다.
 
 촬영에서는 로그인 없이 준비된 매치를 연다. 플레이어에게 게임에서 배울 수 있는 기술과 사용할 수 있는 아이템·기믹을 지정하고, 상대는 게임에 등록된 실제 AI 트레이너의 1번 팀에서 포켓몬을 선택한다. 싱글은 1대1, 더블은 2대2의 촬영용 매치이며, 전체 6마리 팀을 플레이한 기록은 아니다. 상대의 원래 기술·아이템을 유지하고 정상 AI가 행동을 선택한다. 이 구성이 기존 계정, 저장 데이터, 일반 게임 흐름을 바꾸지 않는다.
 
@@ -21,7 +21,7 @@
 
 시간은 준비 완료 후 `play()` 호출을 기준으로 한 예상값이다. 플레이어 연출이 끝나면 상대 AI의 행동이 이어진다. 더블 장면은 **13초를 촬영한 뒤 2.4초부터 8초**, 싱글 `battle`은 10초 원본에서 6초를 사용한다. 더블에서 냉동빔과 스톤샤워의 타격 및 후속 반응을 더 길게 보여준다. `timeline.json`의 `captureDuration`과 `sourceOffset`을 영상과 효과음에 동일하게 적용하며, 최종 장면을 연결할 0.4초 여유 구간도 원본에 확보한다.
 
-배틀 외에 `showcase.html?scene=competition`에서 실제 `CompetitionScreen`의 128강 토너먼트 대회 준비 화면을 8초 소개한다. `cinematic.html?scene=challenges`의 10초 장면은 실제 업적 데이터로 무기절 리그·토너먼트 우승과 1,025종 수집 조건을 보여준다. 이 화면은 완료한 대회나 획득한 보상을 가장하는 플레이 기록이 아니라 기능 소개다. 전체 1,025종 포켓몬, 238명 트레이너, 실제 아이템 이미지 몽타주는 유지하고, 엔딩은 `https://pokemon-champions-area-web.co.kr`로 안내한다.
+배틀 외에 `showcase.html?scene=competition`에서 실제 `CompetitionScreen`의 128강 토너먼트 대회 준비 화면을 8초 소개한다. 전체 1,025종 포켓몬, 238명 트레이너, 실제 아이템 이미지 몽타주를 유지한다. 테라스탈 장면이 끝난 뒤 더블배틀은 102–110초, 싱글 공격은 110–116초에 배치하며, 116–122초 엔딩은 `https://pokemon-champions-area-web.co.kr`로 안내한다.
 
 ## 기믹별 아홉 화면 확장
 
@@ -96,7 +96,7 @@ node promo/scripts/validateTrailer.mjs
 
 새 촬영 전에 `createBattleTurnTimeline`으로 원하는 플레이어 기믹·공격·명중이 생성되는지 확인한다. 촬영 후에는 브라우저 오류, 실제 영상 디코딩, 플레이 진행과 영상·효과음 동기화를 별도로 확인한다. 이전 촬영의 통과 결과를 새 원본의 검증 결과로 사용하지 않는다.
 
-36개 기믹 매치는 `node promo/scripts/validateGimmickFixtures.mjs`로 재검증한다. 기술의 실제 습득 가능 여부, 기믹 활성화, 첫 연출의 주체, 공격·명중·양의 데미지, 첫 턴 패배 여부, 메타데이터와 엔진의 기술명·타입 일치를 검사한다. 거다이맥스는 지원 전용 폼과 `gmax` 기술, 테라스탈은 선택한 9가지 타입까지 확인한다. 결과·타임라인·소스 해시는 `promo/generated/gimmick-fixtures-validation.json`에 기록한다. 최종 편집의 13개 진입 전환은 `timeline.json`의 `smoothup`, `smoothleft`, `smoothright`, `diagbr`, `fade`를 사용해 각 챕터 경계에서 0.4초 동안 진행하며 효과음도 교차 페이드한다. 새 최종 파일의 판정과 측정값은 `output/validation.json`을 기준으로 한다.
+36개 기믹 매치는 `node promo/scripts/validateGimmickFixtures.mjs`로 재검증한다. 기술의 실제 습득 가능 여부, 기믹 활성화, 첫 연출의 주체, 공격·명중·양의 데미지, 첫 턴 패배 여부, 메타데이터와 엔진의 기술명·타입 일치를 검사한다. 거다이맥스는 지원 전용 폼과 `gmax` 기술, 테라스탈은 선택한 9가지 타입까지 확인한다. 결과·타임라인·소스 해시는 `promo/generated/gimmick-fixtures-validation.json`에 기록한다. 최종 편집의 12개 진입 전환은 `timeline.json`의 `smoothup`, `smoothleft`, `smoothright`, `diagbr`, `fade`를 사용해 각 챕터 경계에서 0.4초 동안 진행하며 효과음도 교차 페이드한다. 새 최종 파일의 판정과 측정값은 `output/validation.json`을 기준으로 한다.
 
 저장소 루트에서 간단히 장면별 기믹과 기술 이벤트를 재확인할 수 있다.
 
