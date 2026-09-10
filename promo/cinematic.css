@@ -5,17 +5,42 @@ html,body {margin:0;width:100%;height:100%;overflow:hidden;}
 .color-wash {position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,#2d567b12,transparent 40%,#22baff12);mix-blend-mode:screen;pointer-events:none;}
 .atmosphere {position:absolute;inset:0;width:100%;height:100%;z-index:2;mix-blend-mode:screen;pointer-events:none;}
 .shade {position:absolute;inset:0;z-index:4;pointer-events:none;background:linear-gradient(180deg,#02061277,transparent 22%,transparent 48%,#030916dd 81%,#030916fc);}
-.copy {position:absolute;left:50px;right:50px;bottom:102px;z-index:6;pointer-events:none;transform-origin:center bottom;text-align:center;}
+.copy {position:absolute;left:50px;right:50px;bottom:102px;z-index:6;pointer-events:none;transform-origin:center bottom;text-align:center;--copy-start:.32s;}
 .copy .eyebrow {display:block;margin-bottom:19px;font-size:26px;line-height:1.2;letter-spacing:5px;font-weight:800;color:var(--accent);text-shadow:0 3px 18px #000e;}
 .copy h1,.copy h2 {margin:0;font-size:92px;line-height:1.14;letter-spacing:-5px;font-weight:950;text-wrap:balance;text-shadow:0 5px 0 #09122666,0 9px 35px #020814ee,0 1px 2px #000;}
-.copy h1 em,.copy h2 em {font-style:normal;color:var(--accent);}
+.copy h1 em,.copy h2 em {font-style:normal;color:var(--accent);position:relative;}
+.title-clip,.description-clip {display:inline-block;vertical-align:top;overflow:clip;padding:0 .055em;margin:0 -.055em;}
+.title-word {display:inline-block;transform-origin:left bottom;animation:title-word-in .6s cubic-bezier(.13,.83,.2,1) both;animation-delay:calc(var(--copy-start) + var(--word) * .075s);}
+.copy em .title-word {background:linear-gradient(110deg,var(--accent) 0 38%,#fff 47%,var(--accent) 55% 100%);background-size:260% 100%;background-position:150% 0;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;animation-name:title-word-in,accent-sweep;animation-duration:.6s,1.05s;animation-delay:calc(var(--copy-start) + var(--word) * .075s),calc(var(--copy-start) + 1.05s);}
+.description-word {display:inline-block;animation:description-word-in .48s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--copy-start) + .48s + var(--word) * .035s);}
+.copy .eyebrow {animation:eyebrow-in .65s cubic-bezier(.15,.8,.2,1) both;animation-delay:calc(var(--copy-start) - .14s);}
+.copy::after {content:'';display:block;position:absolute;width:180px;height:3px;left:calc(50% - 90px);top:-22px;background:linear-gradient(90deg,transparent,var(--accent),transparent);transform-origin:center;animation:copy-rule-in .7s ease-out both;animation-delay:calc(var(--copy-start) + .15s);}
 .copy p {margin:18px 0 0;font-size:27px;line-height:1.55;letter-spacing:-1px;font-weight:600;color:#edf4ff;text-shadow:0 3px 14px #000;}
 .copy-one {animation:copy-first 8s cubic-bezier(.2,.7,.2,1) both;}
-.copy-two {animation:copy-second 8s cubic-bezier(.2,.7,.2,1) both;}
+.copy-two {animation:copy-second 8s cubic-bezier(.2,.7,.2,1) both;--copy-start:4.05s;}
 .brand {position:absolute;right:53px;top:39px;z-index:7;font:700 17px Arial,sans-serif;letter-spacing:4px;opacity:.8;text-shadow:0 2px 12px #000;}
 .footage-note {position:absolute;left:47px;bottom:26px;z-index:8;font-size:17px;letter-spacing:1px;font-weight:600;color:#d9e5f0ba;text-shadow:0 2px 9px #000;}
 .bottom-streak {position:absolute;bottom:0;left:0;width:72%;height:3px;z-index:7;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.85;transform-origin:left;animation:bottom-streak 8s ease-in-out both;}
-.item-orbit,.item-hero,.trainer-roster,.trainer-spotlight {display:none;}
+.item-orbit,.item-hero,.trainer-roster,.trainer-spotlight,.pokemon-roster,.pokemon-spotlight {display:none;}
+
+/* A real sprite selection wall resolves into two teams of six. */
+.scene-pokemon {background:radial-gradient(ellipse at 50% 40%,#194846,#0c2032 46%,#030916 78%);}
+.scene-pokemon .shade {background:linear-gradient(180deg,#03091600 0 52%,#03091645 66%,#030916e0 78%,#030916fc);}
+.scene-pokemon .pokemon-roster {display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(3,198px);position:absolute;left:70px;right:70px;top:87px;gap:6px 10px;z-index:3;transform-origin:center 50%;}
+.roster-pokemon {margin:0;display:flex;align-items:center;justify-content:center;flex-direction:column;min-width:0;}
+.roster-pokemon img {display:block;width:154px;height:152px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 3px 8px #0008);}
+.roster-pokemon figcaption {font-size:23px;font-weight:800;letter-spacing:-.5px;color:#e2fff7;text-shadow:0 2px 10px #000;line-height:1.5;}
+.scene-pokemon .pokemon-spotlight {display:block;position:absolute;inset:0;z-index:5;}
+.pokemon-group {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;position:absolute;left:65px;right:65px;top:202px;height:455px;opacity:0;visibility:hidden;transform-origin:center 70%;}
+.pokemon-object {position:relative;margin:0;display:flex;align-items:center;flex-direction:column;justify-content:flex-start;min-width:0;isolation:isolate;}
+.pokemon-object::before {content:'';position:absolute;top:40px;left:-18px;right:-18px;height:340px;z-index:-1;background:radial-gradient(ellipse,#83ffcd30,transparent 65%);}
+.pokemon-object::after {content:'';position:absolute;left:27px;right:27px;top:318px;height:30px;border:1px solid #9af6d76e;border-radius:50%;background:#7af9d20a;box-shadow:0 0 25px #59ffbb22;z-index:-1;}
+.pokemon-object > img {display:block;width:268px;height:340px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 18px #82ffd124) drop-shadow(0 22px 12px #0009);}
+.pokemon-object figcaption {text-align:center;margin-top:17px;}
+.pokemon-object small {display:block;font-size:19px;font-weight:700;letter-spacing:2px;color:#9fddd5;margin-bottom:8px;text-shadow:0 2px 12px #000;}
+.pokemon-object strong {display:block;font-size:40px;font-weight:900;letter-spacing:-1px;text-shadow:0 3px 18px #000;}
+.scene-pokemon .copy {bottom:99px;}
+.scene-pokemon .copy h1,.scene-pokemon .copy h2 {font-size:87px;}
 
 /* Every roster entry is present in the opening wall; no card or web UI. */
 .scene-trainers {background:radial-gradient(ellipse at 50% 44%,#1e4259,#0c1b31 44%,#030916 76%);}
@@ -36,7 +61,7 @@ html,body {margin:0;width:100%;height:100%;overflow:hidden;}
 .scene-trainers .copy {bottom:93px;}
 .scene-trainers .copy h1,.scene-trainers .copy h2 {font-size:88px;}
 .scene-trainers .copy-one {animation:trainer-copy-first 14s cubic-bezier(.2,.7,.2,1) both;}
-.scene-trainers .copy-two {animation:trainer-copy-second 14s cubic-bezier(.2,.7,.2,1) both;}
+.scene-trainers .copy-two {animation:trainer-copy-second 14s cubic-bezier(.2,.7,.2,1) both;--copy-start:8.55s;}
 .scene-trainers .bottom-streak {animation-duration:14s;}
 
 /* Magnified in-game pixel icons, staged as objects in an energy field. */
@@ -54,10 +79,15 @@ html,body {margin:0;width:100%;height:100%;overflow:hidden;}
 .sheet-icon {display:block;image-rendering:pixelated;background-repeat:no-repeat;}
 .cinematic:not(.is-playing) *, .cinematic:not(.is-playing) *::before {animation-play-state:paused!important;}
 
-@keyframes copy-first {0%,4%{opacity:0;transform:translateY(40px) scale(1.025);filter:blur(7px)}10%,39%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}46%,100%{opacity:0;transform:translateY(-25px) scale(.985);filter:blur(4px)}}
-@keyframes copy-second {0%,45%{opacity:0;transform:translateY(35px) scale(1.035);filter:blur(6px)}54%,97%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1.006);filter:blur(0)}}
-@keyframes trainer-copy-first {0%,1%{opacity:0;transform:translateY(30px);filter:blur(5px)}6%,52%{opacity:1;transform:translateY(0);filter:blur(0)}58%,100%{opacity:0;transform:translateY(-20px);filter:blur(4px)}}
-@keyframes trainer-copy-second {0%,59%{opacity:0;transform:translateY(25px);filter:blur(5px)}66%,100%{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes copy-first {0%,2%{opacity:0;transform:translateY(8px);filter:blur(0)}5%,40%{opacity:1;transform:translateY(0);filter:blur(0)}47%,100%{opacity:0;transform:translateX(26px) translateY(-20px) skewX(-4deg);filter:blur(3px)}}
+@keyframes copy-second {0%,47%{opacity:0;transform:translateY(8px)}50%,97%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(0)}}
+@keyframes trainer-copy-first {0%,1%{opacity:0;transform:translateY(8px);filter:blur(0)}3%,52%{opacity:1;transform:translateY(0);filter:blur(0)}58%,100%{opacity:0;transform:translateX(26px) translateY(-20px) skewX(-4deg);filter:blur(3px)}}
+@keyframes trainer-copy-second {0%,59%{opacity:0;transform:translateY(8px)}61%,100%{opacity:1;transform:translateY(0)}}
+@keyframes title-word-in {0%{opacity:0;transform:translateY(112%) rotate(5deg) scale(.92);filter:blur(3px)}70%{opacity:1;transform:translateY(-4%) rotate(-.4deg) scale(1.008);filter:blur(0)}100%{opacity:1;transform:translateY(0) rotate(0) scale(1);filter:blur(0)}}
+@keyframes description-word-in {0%{opacity:0;transform:translateY(105%)}100%{opacity:1;transform:translateY(0)}}
+@keyframes eyebrow-in {0%{opacity:0;transform:translateY(-15px);letter-spacing:11px}100%{opacity:1;transform:translateY(0);letter-spacing:5px}}
+@keyframes accent-sweep {0%{background-position:150% 0}100%{background-position:-120% 0}}
+@keyframes copy-rule-in {0%{opacity:0;transform:scaleX(0)}65%{opacity:1;transform:scaleX(1.2)}100%{opacity:.75;transform:scaleX(1)}}
 @keyframes bottom-streak {0%{transform:translateX(-65%) scaleX(.5)}100%{transform:translateX(78%) scaleX(1.3)}}
 @keyframes item-float {0%{opacity:0;transform:translate(-50%,-38%) scale(.75) rotate(-9deg)}12%{opacity:.83;transform:translate(-50%,-50%) scale(1) rotate(0)}55%{opacity:.88;transform:translate(-43%,-59%) scale(1.06) rotate(5deg)}100%{opacity:.84;transform:translate(-53%,-51%) scale(.99) rotate(-3deg)}}
 @keyframes item-radiance {0%,100%{opacity:.6;transform:scale(.92)}50%{opacity:1;transform:scale(1.12)}}

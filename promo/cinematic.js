@@ -1,8 +1,13 @@
 import { BATTLE_ITEMS } from '../src/data/shopData.js'
 import { TRAINERS } from '../src/data/trainerTeams.js'
 import { getTrainerSpriteCandidates } from '../src/data/trainerSprites.js'
+import { NATIONAL_DEX } from '../src/data/trainingData.js'
 
 const SCENES = {
+  pokemon: {duration:8,accent:'#a6f6da',copy:[
+    {eyebrow:'세대를 넘나드는 다양한 포켓몬',title:'만남은 다양하게. <em>팀은 나답게.</em>',description:'익숙한 파트너부터 새로운 에이스까지, 당신의 선택을 기다린다.'},
+    {eyebrow:'당신만의 여섯 마리',title:'당신의 파트너. <em>무한한 가능성.</em>',description:'각자의 타입과 특성을 조합해, 나만의 배틀 팀을 완성하라.'},
+  ]},
   trainers: {duration:14,accent:'#b2e9ff',copy:[
     {eyebrow:'모든 트레이너, 각자의 배틀',title:`<em>${TRAINERS.length}명</em>의 AI 트레이너.`,description:'익숙한 라이벌부터 챔피언까지, 끝없이 이어지는 도전.'},
     {eyebrow:'다음 상대는 누구인가',title:'각자의 파트너. <em>각자의 전략.</em>',description:'상대의 한 수를 읽고, 당신만의 승리를 만들어라.'},
@@ -24,6 +29,29 @@ scene.copy.forEach((copy,index) => {
   target.querySelector('.eyebrow').textContent = copy.eyebrow
   target.querySelector('h1,h2').innerHTML = copy.title
   target.querySelector('p').textContent = copy.description
+  // Preserve the emphasis markup while giving each word an independent reveal.
+  const title = target.querySelector('h1,h2')
+  let wordIndex = 0
+  function animateWords(element,className) {
+    for (const node of [...element.childNodes]) {
+      if (node.nodeType === Node.ELEMENT_NODE) { animateWords(node,className); continue }
+      const fragment = document.createDocumentFragment()
+      for (const token of node.textContent.split(/(\s+)/)) {
+        if (!token.trim()) { fragment.append(document.createTextNode(token)); continue }
+        const clip = document.createElement('span')
+        clip.className = `${className}-clip`
+        const glyph = document.createElement('span')
+        glyph.className = `${className}-word`
+        glyph.style.setProperty('--word',wordIndex++)
+        glyph.textContent = token
+        clip.append(glyph);fragment.append(clip)
+      }
+      node.replaceWith(fragment)
+    }
+  }
+  animateWords(title,'title')
+  wordIndex = 0
+  animateWords(target.querySelector('p'),'description')
 })
 
 const ITEM_IDS = ['life-orb','focus-sash','charizardite-x','choice-scarf','leftovers','assault-vest','lum-berry','electrium-z--held']
@@ -132,6 +160,83 @@ async function loadTrainerRoster() {
   }
   await Promise.all(Array.from({length:6},worker))
 }
+
+// These are supported national-dex profiles and the same animated sprites used
+// by the actual game. The opening selection wall is followed by two larger teams.
+const POKEMON_NAMES = [
+  '리자몽','루카리오','개굴닌자','가디안','피카츄','한카리아스',
+  '이상해꽃','거북왕','팬텀','망나뇽','마기라스','메타그로스',
+  '나인테일','윈디','갸라도스','잠만보','핫삼','번치코',
+  '보만다','밀로틱','초염몽','엘레이드','따라큐','드래펄트',
+]
+const POKEMON_TEAMS = [POKEMON_NAMES.slice(0,6),POKEMON_NAMES.slice(6,12)]
+const pokemonRoster = document.querySelector('.pokemon-roster')
+const pokemonRosterImages = []
+const pokemonGroups = []
+const pokemonLoadQueue = []
+const shownPokemonIds = new Set()
+let pokemonLoadRetries = 0
+let peakVisiblePokemonCount = 0
+function pokemonArtwork(pokemon) {
+  const sources = [...new Set([pokemon.spriteFront,pokemon.spriteFrontFallback].flat().filter(Boolean))]
+  if (!sources.length) throw new Error(`Missing Pokémon sprite: ${pokemon.name}`)
+  const img = document.createElement('img')
+  img.alt = pokemon.name
+  img.dataset.pokemonId = String(pokemon.id)
+  img.decoding = 'sync'
+  img.loading = 'eager'
+  pokemonLoadQueue.push(async () => {
+    for (const source of sources) {
+      for (let attempt=0;attempt<3;attempt++) {
+        if (attempt) {pokemonLoadRetries++;await new Promise(resolve=>setTimeout(resolve,attempt*650))}
+        const url = new URL(source,location.href)
+        if (attempt) url.searchParams.set('promoRetry',String(attempt))
+        try {await loadImageSource(img,url.href);return} catch {img.removeAttribute('src')}
+      }
+    }
+    img.dataset.loadFailed = 'true'
+    throw new Error(`Cinematic Pokémon failed to load after retries: ${pokemon.name}`)
+  })
+  return img
+}
+async function loadPokemonRoster() {
+  let next=0
+  const worker=async()=>{while(next<pokemonLoadQueue.length)await pokemonLoadQueue[next++]()}
+  await Promise.all(Array.from({length:6},worker))
+}
+if (sceneId === 'pokemon') {
+  const selectedPokemon = POKEMON_NAMES.map(name=>{
+    const profile = NATIONAL_DEX.find(entry=>entry.name===name)
+    if (!profile) throw new Error(`Missing supported Pokémon profile: ${name}`)
+    return profile
+  })
+  selectedPokemon.forEach((pokemon,index)=>{
+    const figure=document.createElement('figure')
+    figure.className='roster-pokemon'
+    figure.style.setProperty('--index',index)
+    const img=pokemonArtwork(pokemon)
+    const name=document.createElement('figcaption');name.textContent=pokemon.name
+    figure.append(img,name);pokemonRoster.append(figure);pokemonRosterImages.push(img)
+  })
+  POKEMON_TEAMS.forEach((names,groupIndex)=>{
+    const group=document.createElement('div')
+    group.className='pokemon-group'
+    group.dataset.group=groupIndex
+    names.forEach((name,index)=>{
+      const pokemon=selectedPokemon.find(entry=>entry.name===name)
+      const figure=document.createElement('figure')
+      figure.className='pokemon-object'
+      figure.style.setProperty('--index',index)
+      const img=pokemonArtwork(pokemon)
+      const caption=document.createElement('figcaption')
+      const types=document.createElement('small');types.textContent=pokemon.types.join(' · ')
+      const label=document.createElement('strong');label.textContent=pokemon.name
+      caption.append(types,label);figure.append(img,caption);group.append(figure)
+    })
+    document.querySelector('.pokemon-spotlight').append(group)
+    pokemonGroups.push(group)
+  })
+}
 if (sceneId === 'trainers') {
   TRAINERS.forEach((trainer,index) => {
     const figure = document.createElement('div')
@@ -193,6 +298,29 @@ function trainerMotion(time) {
     }
   })
 }
+function pokemonMotion(time) {
+  const reveal = smooth((time-.02)/.5)
+  const spotlight = smooth((time-2.25)/.45)
+  pokemonRoster.style.opacity=String(reveal*(1-spotlight*.94))
+  pokemonRoster.style.transform=`scale(${1+smooth(time/8)*.035}) translateY(${-spotlight*8}px)`
+  if(Number(pokemonRoster.style.opacity)>.5) {
+    pokemonRosterImages.forEach(img=>{
+      const rect=img.getBoundingClientRect()
+      if(img.complete&&img.naturalWidth>0&&rect.left>=0&&rect.top>=0&&rect.right<=innerWidth&&rect.bottom<=innerHeight)shownPokemonIds.add(img.dataset.pokemonId)
+    })
+    peakVisiblePokemonCount=Math.max(peakVisiblePokemonCount,shownPokemonIds.size)
+  }
+  pokemonGroups.forEach((group,index)=>{
+    const start=index?5.1:2.35
+    const end=index?8.5:4.95
+    const enter=smooth((time-start)/.45)
+    const leave=smooth((time-(end-.3))/.3)
+    group.style.opacity=String(enter*(1-leave))
+    group.style.visibility=enter>0&&leave<1?'visible':'hidden'
+    group.style.transform=`translateY(${(1-enter)*24-leave*18}px) scale(${.94+enter*.06+leave*.018})`
+    for(const [i,figure]of[...group.children].entries())figure.style.transform=`translateY(${Math.sin(time*1.35+i*.9)*7}px)`
+  })
+}
 
 // Original light, rings and particles surround actual in-game pixel assets.
 const canvas = document.querySelector('.atmosphere')
@@ -212,7 +340,7 @@ function paint(time) {
     if(i%9===0){ctx.globalAlpha=alpha*.35;ctx.fillRect(x-.5,y+3,1,18)}
   })
   ctx.globalAlpha=1
-  ctx.save();ctx.translate(960,sceneId==='trainers'?620:400)
+  ctx.save();ctx.translate(960,sceneId==='trainers'?620:sceneId==='pokemon'?560:400)
   for(let ring=0;ring<3;ring++) {
     ctx.strokeStyle=ring%2?'#97fff5':'#b4bbff';ctx.globalAlpha=.16-ring*.025;ctx.lineWidth=2
     ctx.beginPath();ctx.ellipse(0,0,(sceneId==='trainers'?660:305)+ring*140,90+ring*42,-.12+time*.015,0,Math.PI*2);ctx.stroke()
@@ -220,6 +348,7 @@ function paint(time) {
   for(let i=0;i<9;i++) {const angle=time*.22+i*Math.PI*2/9;const x=Math.cos(angle)*530,y=Math.sin(angle)*145;ctx.fillStyle='#c4fdff';ctx.globalAlpha=.6;ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fill()}
   ctx.restore()
   if(sceneId==='trainers')trainerMotion(time)
+  if(sceneId==='pokemon')pokemonMotion(time)
 }
 paint(0)
 
@@ -239,13 +368,14 @@ function stop(){if(frameId!==null)cancelAnimationFrame(frameId);frameId=null;pla
 function animate(now){currentTime=(now-startedAt)/1000;paint(currentTime);if(playing)frameId=requestAnimationFrame(animate)}
 window.promoCinematic={
   sceneId,
-  ready:Promise.all([document.fonts.ready,sceneId==='trainers'?loadTrainerRoster():Promise.all([...document.images].map(decodeImage))]).then(()=>true),
-  play(){stop();shownTrainerIds.clear();peakVisibleTrainerCount=0;stage.classList.add('is-playing');void stage.offsetWidth;document.getAnimations().forEach(animation=>{animation.currentTime=0;animation.play()});startedAt=performance.now();currentTime=0;playing=true;paint(0);frameId=requestAnimationFrame(animate);return {sceneId,duration:scene.duration,playing:true}},
+  ready:Promise.all([document.fonts.ready,sceneId==='trainers'?loadTrainerRoster():sceneId==='pokemon'?loadPokemonRoster():Promise.all([...document.images].map(decodeImage))]).then(()=>true),
+  play(){stop();shownTrainerIds.clear();shownPokemonIds.clear();peakVisibleTrainerCount=0;peakVisiblePokemonCount=0;stage.classList.add('is-playing');void stage.offsetWidth;document.getAnimations().forEach(animation=>{animation.currentTime=0;animation.play()});startedAt=performance.now();currentTime=0;playing=true;paint(0);frameId=requestAnimationFrame(animate);return {sceneId,duration:scene.duration,playing:true}},
   stop,
   setTime(time){stop();stage.classList.add('is-playing');void stage.offsetWidth;currentTime=Math.max(0,Number(time)||0);document.getAnimations().forEach(animation=>{animation.currentTime=currentTime*1000;animation.pause()});paint(currentTime);return currentTime},
   status(){
     const visibleRoster = Number(roster.style.opacity)>.1
     const activeGroups=featuredGroups.filter(group=>Number(group.style.opacity)>.1)
+    const activePokemonGroups=pokemonGroups.filter(group=>Number(group.style.opacity)>.1)
     return {sceneId,playing,currentTime,duration:scene.duration,art:null,artLoaded:true,
       totalTrainerCount:rosterImages.length,
       loadedTrainerCount:rosterImages.filter(img=>img.complete&&img.naturalWidth>0).length,
@@ -254,6 +384,15 @@ window.promoCinematic={
       peakVisibleTrainerCount,
       visibleTrainerCount:visibleRoster?rosterImages.length:activeGroups.reduce((count,group)=>count+group.children.length,0),
       featuredTrainerNames:activeGroups.flatMap(group=>[...group.querySelectorAll('strong')].map(label=>label.textContent)),
+      totalPokemonCount:pokemonRosterImages.length,
+      selectedPokemonCount:pokemonRosterImages.length,
+      selectedSpeciesIds:pokemonRosterImages.map(img=>Number(img.dataset.pokemonId)),
+      loadedPokemonCount:pokemonRosterImages.filter(img=>img.complete&&img.naturalWidth>0).length,
+      pokemonLoadRetries,
+      shownPokemonCount:shownPokemonIds.size,
+      peakVisiblePokemonCount,
+      visiblePokemonCount:Number(pokemonRoster.style.opacity)>.1?pokemonRosterImages.length:activePokemonGroups.reduce((count,group)=>count+group.children.length,0),
+      featuredPokemonNames:activePokemonGroups.flatMap(group=>[...group.querySelectorAll('strong')].map(label=>label.textContent)),
       failedAssets:[...document.images].filter(img=>img.dataset.loadFailed==='true').map(img=>img.alt),
     }
   },

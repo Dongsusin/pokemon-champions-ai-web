@@ -4,6 +4,7 @@ import crypto from 'node:crypto'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
+import { NATIONAL_DEX } from '../../src/data/trainingData.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 process.chdir(root)
@@ -35,6 +36,8 @@ const timelineDuration = shots.reduce((total, shot) => total + shot.duration, 0)
 assert(timelineDuration >= 60 && timelineDuration <= 180, `Trailer is outside the requested 1–3 minutes: ${timelineDuration}s`)
 const captures = await Promise.all(shots.map(shot => readJson(`promo/raw/${shot.id}.json`)))
 const trainerRoster = []
+const pokemonRoster = []
+const titles = []
 for (const [index, capture] of captures.entries()) {
   const shot = shots[index]
   assert(capture.id === shot.id, `Capture ID mismatch for ${shot.id}`)
@@ -48,6 +51,24 @@ for (const [index, capture] of captures.entries()) {
   assert(capture.status?.artLoaded !== false, `Capture ${shot.id} has an unloaded image`)
   if (capture.status?.failedAssets) assert(capture.status.failedAssets.length === 0, `Capture ${shot.id} has failed assets: ${JSON.stringify(capture.status.failedAssets)}`)
   if (shot.kind === 'battle') assert(capture.audio === true, `Battle ${shot.id} has no recorded game audio`)
+  const sceneParams = new URL(shot.url, 'http://localhost').searchParams
+  if (shot.kind === 'title' && sceneParams.has('intro')) {
+    const status = capture.status ?? {}
+    assert(status.logoLoaded === true, 'Opening logo failed to load')
+    assert(JSON.stringify(status.visibleText) === JSON.stringify(['POKÉMON', 'CHAMPIONS ARENA']), 'Opening must contain only the logo and game title')
+    titles.push({ shotId: shot.id, logoLoaded: status.logoLoaded, visibleText: status.visibleText })
+  }
+  if (shot.kind === 'cinematic' && sceneParams.get('scene') === 'pokemon') {
+    const status = capture.status ?? {}
+    const ids = status.selectedSpeciesIds
+    assert(Array.isArray(ids) && ids.length >= 12 && new Set(ids).size === ids.length, 'Pokémon montage must have a diverse, unique selection')
+    assert(ids.every(id => NATIONAL_DEX.some(entry => entry.id === id)), 'Pokémon montage contains an unsupported species')
+    for (const key of ['totalPokemonCount', 'selectedPokemonCount', 'loadedPokemonCount', 'shownPokemonCount', 'peakVisiblePokemonCount']) {
+      assert(status[key] === ids.length, `Pokémon capture ${shot.id}: ${key}=${status[key]}, expected ${ids.length}`)
+    }
+    assert(Array.isArray(status.failedAssets) && status.failedAssets.length === 0, 'Pokémon montage has unverified or failed image loads')
+    pokemonRoster.push({ shotId: shot.id, selectedSpeciesIds: ids, selectedCount: ids.length, loadedCount: status.loadedPokemonCount, shownCount: status.shownPokemonCount, peakVisibleCount: status.peakVisiblePokemonCount })
+  }
   const requiresTrainerRoster = shot.kind === 'cinematic' && new URL(shot.url, 'http://localhost').searchParams.get('scene') === 'trainers'
   if (requiresTrainerRoster || capture.status?.totalTrainerCount > 0) {
     const status = capture.status ?? {}
@@ -124,7 +145,7 @@ const compositionSeconds = shots.reduce((totals, shot) => {
   return totals
 }, {})
 const report = {
-  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 3,
+  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 4,
   title: probe.stderr.match(/^\s*title\s*:\s*(.+)$/m)?.[1].trim() || path.basename(file),
   durationSeconds, timelineDurationSeconds: timelineDuration, video, audio,
   bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
@@ -133,7 +154,7 @@ const report = {
   verification: {
     fullAudioVideoDecode: true, expectedVideoFrames: expectedFrames, visibleSyncMarkerFrames: greenFrames,
     capturePageErrors: 0, capturesWithSyncMarkers: captures.filter(c => Number.isFinite(c.syncStartSeconds)).length,
-    trainerRoster,
+    trainerRoster, pokemonRoster, titles,
   },
 }
 await fs.writeFile('promo/generated/final-audio-analysis.txt', analysis.stderr)

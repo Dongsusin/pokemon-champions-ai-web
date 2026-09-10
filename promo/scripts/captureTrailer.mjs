@@ -69,6 +69,7 @@ try {
     }
     if (shot.kind === 'showcase') await page.evaluate(() => window.promoShowcase?.ready)
     if (shot.kind === 'cinematic') await page.evaluate(() => window.promoCinematic.ready)
+    if (shot.kind === 'title') await page.evaluate(() => window.titleReady)
     await page.waitForTimeout(1600)
     await page.screenshot({ path: path.join(raw, `${shot.id}-before.png`) })
     // A removed solid-color marker gives the video an exact audio sync origin.
@@ -95,7 +96,7 @@ try {
     const audioData = await page.evaluate(() => window.promoAudio.stop())
     if (audioData) await fs.writeFile(path.join(raw, `${shot.id}-audio.webm`), Buffer.from(audioData, 'base64'))
     await page.screenshot({ path: path.join(raw, `${shot.id}-after.png`) })
-    const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || window.promoCinematic?.status?.() || null)
+    const status = await page.evaluate(() => window.promo?.status?.() || window.promoShowcase?.status?.() || window.promoCinematic?.status?.() || window.promoTitle?.status?.() || null)
     const video = page.video()
     const videoTailSeconds = (Date.now()-start)/1000
     await page.close()

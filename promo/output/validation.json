@@ -1,9 +1,9 @@
 {
   "date": "2026-09-10",
-  "generatedAt": "2026-09-10T05:11:54.987Z",
-  "revision": 3,
+  "generatedAt": "2026-09-10T05:43:13.278Z",
+  "revision": 4,
   "title": "Pokémon Champions Arena — Break the Limit",
-  "durationSeconds": 84.021029,
+  "durationSeconds": 84.02,
   "timelineDurationSeconds": 84,
   "video": {
     "width": 1920,
@@ -23,12 +23,12 @@
     "loudnessRangeLU": 3.6,
     "soundtrackBPM": 160
   },
-  "bytes": 40492458,
-  "sha256": "6e4b32ec911d6d0fa9a999aff9604e77fe47f3e45c2ac961b35df34943341962",
+  "bytes": 41348252,
+  "sha256": "6a6b31e60fdf3ed346993a91d640d7bbdb6043e6339095fb99aa349c018dd71d",
   "compositionSeconds": {
     "title": 12,
-    "showcase": 14,
-    "cinematic": 22,
+    "cinematic": 30,
+    "showcase": 6,
     "battle": 36
   },
   "shots": [
@@ -36,13 +36,69 @@
       "id": "intro",
       "kind": "title",
       "duration": 6,
-      "captureStatus": null
+      "captureStatus": {
+        "sceneId": "intro",
+        "logoLoaded": true,
+        "visibleText": [
+          "POKÉMON",
+          "CHAMPIONS ARENA"
+        ]
+      }
     },
     {
       "id": "pokemon",
-      "kind": "showcase",
+      "kind": "cinematic",
       "duration": 8,
-      "captureStatus": null
+      "captureStatus": {
+        "sceneId": "pokemon",
+        "playing": true,
+        "currentTime": 9.0269,
+        "duration": 8,
+        "art": null,
+        "artLoaded": true,
+        "totalTrainerCount": 0,
+        "loadedTrainerCount": 0,
+        "trainerLoadRetries": 0,
+        "shownTrainerCount": 0,
+        "peakVisibleTrainerCount": 0,
+        "visibleTrainerCount": 0,
+        "featuredTrainerNames": [],
+        "totalPokemonCount": 24,
+        "selectedPokemonCount": 24,
+        "selectedSpeciesIds": [
+          6,
+          448,
+          658,
+          282,
+          25,
+          445,
+          3,
+          9,
+          94,
+          149,
+          248,
+          376,
+          38,
+          59,
+          130,
+          143,
+          212,
+          257,
+          373,
+          350,
+          392,
+          475,
+          778,
+          887
+        ],
+        "loadedPokemonCount": 24,
+        "pokemonLoadRetries": 0,
+        "shownPokemonCount": 24,
+        "peakVisiblePokemonCount": 24,
+        "visiblePokemonCount": 0,
+        "featuredPokemonNames": [],
+        "failedAssets": []
+      }
     },
     {
       "id": "trainers",
@@ -51,7 +107,7 @@
       "captureStatus": {
         "sceneId": "trainers",
         "playing": true,
-        "currentTime": 15.124499999991057,
+        "currentTime": 15.5695,
         "duration": 14,
         "art": null,
         "artLoaded": true,
@@ -62,6 +118,15 @@
         "peakVisibleTrainerCount": 238,
         "visibleTrainerCount": 238,
         "featuredTrainerNames": [],
+        "totalPokemonCount": 0,
+        "selectedPokemonCount": 0,
+        "selectedSpeciesIds": [],
+        "loadedPokemonCount": 0,
+        "pokemonLoadRetries": 0,
+        "shownPokemonCount": 0,
+        "peakVisiblePokemonCount": 0,
+        "visiblePokemonCount": 0,
+        "featuredPokemonNames": [],
         "failedAssets": []
       }
     },
@@ -72,16 +137,26 @@
       "captureStatus": {
         "sceneId": "items",
         "playing": true,
-        "currentTime": 8.83770000000298,
+        "currentTime": 8.82660000000298,
         "duration": 8,
         "art": null,
         "artLoaded": true,
         "totalTrainerCount": 0,
         "loadedTrainerCount": 0,
+        "trainerLoadRetries": 0,
         "shownTrainerCount": 0,
         "peakVisibleTrainerCount": 0,
         "visibleTrainerCount": 0,
         "featuredTrainerNames": [],
+        "totalPokemonCount": 0,
+        "selectedPokemonCount": 0,
+        "selectedSpeciesIds": [],
+        "loadedPokemonCount": 0,
+        "pokemonLoadRetries": 0,
+        "shownPokemonCount": 0,
+        "peakVisiblePokemonCount": 0,
+        "visiblePokemonCount": 0,
+        "featuredPokemonNames": [],
         "failedAssets": []
       }
     },
@@ -173,7 +248,22 @@
       "id": "outro",
       "kind": "title",
       "duration": 6,
-      "captureStatus": null
+      "captureStatus": {
+        "sceneId": "outro",
+        "logoLoaded": true,
+        "visibleText": [
+          "POKÉMON CHAMPIONS ARENA",
+          "FAN GAME · AI BATTLE",
+          "THE NEXT CHAMPION IS YOU",
+          "POKÉMON",
+          "CHAMPIONS ARENA",
+          "다음 챔피언은, 당신.",
+          "나만의 포켓몬과 전략으로 완성하는 AI 배틀",
+          "당신의 팀으로 도전하세요 →",
+          "실제 게임·배틀 화면 포함",
+          "비공식 팬메이드 프로젝트"
+        ]
+      }
     }
   ],
   "verification": {
@@ -181,7 +271,7 @@
     "expectedVideoFrames": 2520,
     "visibleSyncMarkerFrames": 0,
     "capturePageErrors": 0,
-    "capturesWithSyncMarkers": 9,
+    "capturesWithSyncMarkers": 11,
     "trainerRoster": [
       {
         "shotId": "trainers",
@@ -193,13 +283,62 @@
         "peakVisibleCount": 238
       }
     ],
+    "pokemonRoster": [
+      {
+        "shotId": "pokemon",
+        "selectedSpeciesIds": [
+          6,
+          448,
+          658,
+          282,
+          25,
+          445,
+          3,
+          9,
+          94,
+          149,
+          248,
+          376,
+          38,
+          59,
+          130,
+          143,
+          212,
+          257,
+          373,
+          350,
+          392,
+          475,
+          778,
+          887
+        ],
+        "selectedCount": 24,
+        "loadedCount": 24,
+        "shownCount": 24,
+        "peakVisibleCount": 24
+      }
+    ],
+    "titles": [
+      {
+        "shotId": "intro",
+        "logoLoaded": true,
+        "visibleText": [
+          "POKÉMON",
+          "CHAMPIONS ARENA"
+        ]
+      }
+    ],
     "browserPlayback": {
+      "browser": "Codex in-app browser",
+      "durationSeconds": 84.021029,
+      "width": 1920,
+      "height": 1080,
       "readyState": 4,
-      "error": null,
-      "videoWidth": 1920,
-      "videoHeight": 1080,
-      "observedPlaying": true,
-      "observedCurrentTime": 36.199466
+      "mediaError": null,
+      "pausedDuringCheck": false,
+      "seekSeconds": 6,
+      "observedCurrentTimeSeconds": 24.305404,
+      "playbackAdvanced": true
     }
   }
 }
