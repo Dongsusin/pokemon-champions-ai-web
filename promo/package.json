@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "music": "node scripts/generateSoundtrack.mjs",
+    "music": "node scripts/prepareWebSoundtrack.mjs",
     "capture": "node scripts/captureTrailer.mjs",
     "render": "node scripts/renderTrailer.mjs"
   },

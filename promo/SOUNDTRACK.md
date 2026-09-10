@@ -1,25 +1,50 @@
 # Trailer soundtrack
 
-`Break the Limit` is an original, aggressive battle instrumental composed for the 84-second game advertisement. Revision 3 keeps the established battle instruments and melody while fitting the shorter edit, including its opening banner and trainer-image montage. It uses no third-party samples, existing recordings, or Pokemon themes. Every drum, bass note, riff, melodic note, and transition is synthesized by the checked-in JavaScript generator.
+The current 84-second trailer uses the same battle music as the live web game: **“Face The Champion!” by Spring Spring**. The existing local file is `public/assets/audio/battle/battle-theme.ogg`, referenced by `src/battleAudio.js`. This track replaces the original instrumental used in the previous trailer. The visual edit and chapter timing are unchanged.
+
+## Source and attribution
+
+- Title: **Face The Champion!**
+- Creator: **Spring Spring**
+- Original source: https://opengameart.org/content/face-the-champion
+- Selected license: **Creative Commons Attribution 3.0 Unported (CC BY 3.0)** — https://creativecommons.org/licenses/by/3.0/
+- Existing local source: Ogg Vorbis, 44,100 Hz, stereo, approximately 359.31 seconds.
+- Local source SHA-256: `5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540`
+
+The creator's source page offers CC BY 3.0. The trailer uses that license and credits the title, creator, source, license, and edits. The project is an unofficial fan game; the music credit does not imply the creator endorses it.
+
+The preview page and `output/champions-arena-promo-credits.txt` carry the distribution credit. Include the text file's credit in the video description or alongside the video when sharing the MP4.
+
+> Music: “Face The Champion!” by Spring Spring. Licensed under CC BY 3.0. Source: https://opengameart.org/content/face-the-champion — License: https://creativecommons.org/licenses/by/3.0/ . Edited for this trailer: first 84 seconds excerpted, fades, resampling, loudness adjustment, and ducking/mixing with game effects.
+
+## Edit and mix
+
+The soundtrack preparation script reads the repository's existing music file without downloading another recording. It extracts **0–84 seconds**, applies a **0.25-second fade-in** and a **1.75-second fade-out** at the end, and writes **48,000 Hz stereo PCM**. The music is normalized in two passes toward **−18 LUFS integrated** before effects are mixed.
+
+Gameplay effects and Pokemon cries remain from the captured Web Audio output. The capture entry point sets game music to zero so the continuous soundtrack is not layered over another audible battle track. During final mixing, gameplay effects trigger music ducking, and the complete mix targets **−16 LUFS integrated**. The resulting output is measured separately; actual loudness and true peak are recorded in `output/validation.json` and `generated/final-audio-analysis.txt`.
+
+Run from the repository root:
 
 ```powershell
-node promo/scripts/generateSoundtrack.mjs
+node promo/scripts/prepareWebSoundtrack.mjs
+node promo/scripts/renderTrailer.mjs
+node promo/scripts/validateTrailer.mjs
 ```
 
-The generator writes `promo/generated/soundtrack.wav` and an adjacent JSON report. The WAV is stereo 16-bit PCM at 44,100 Hz, exactly 84 seconds. An optional `--out=path.wav` argument changes the output; `--sample-rate=48000` renders directly at video-friendly 48 kHz. The score has a fixed random seed, so repeated runs with the same sample rate produce the same PCM audio.
+The preparation step writes `promo/generated/soundtrack.wav` and `promo/generated/soundtrack.json`. When the existing `promo/generated/picture-lock.mp4` matches the unchanged visual edit, replace only the final audio mix:
 
-The arrangement uses **160 BPM, 56 bars in 4/4**, and a D minor tonal center with the Phrygian E-flat creating a recurring challenge motif. Short, syncopated, distorted power chords and bass drive the rhythm. Sixteenth-note staccato string/synth patterns, a repeating four-bar competitive lead theme, clipped brass stabs, double-kick pickups, snare cracks, tom fills, ride cymbals, and metallic impacts provide the battle character. Eighth-note lead echoes and a short room keep the faster articulation clear.
+```powershell
+node promo/scripts/prepareWebSoundtrack.mjs
+node promo/scripts/renderTrailer.mjs --audio-only
+node promo/scripts/validateTrailer.mjs
+```
 
-| Time | Section | Musical direction |
-| --- | --- | --- |
-| 0–6 s | Opening banner | Immediate metallic hit, urgent low riff and string pulse |
-| 6–14 s | Pokemon roster | Full four-bar battle theme over syncopated power chords |
-| 14–28 s | AI trainer images | Strong flat-second tension and altered lead responses |
-| 28–42 s | Items and team building | Tighter, lower-register tactical riff; drum build |
-| 42–68 s | Gimmicks | Full battle drop, returning lead and increasingly dense percussion |
-| 68–78 s | Battle climax | Double-kick pickups, doubled upper strings, ride and strongest lead |
-| 78–84 s | Closing title | Heavy final cadence at 82.5 s, complete endpoint fade |
+## Archived original instrumental
 
-A brief 0.32-second suspense break at **41.68–42 s** creates room before the gimmick drop, which lands on an exact bar boundary. The later climax begins on the 67.5-second downbeat and continues across the 68-second double-battle cut; there is no forced silence at that off-grid visual edit. Additional impacts are placed at the editorial timestamps while the instrumental phrases stay on the 160 BPM grid.
+The earlier original battle score and its deterministic synthesis generator remain available for reference, but that score is **not used in the current video**. Generate it under a separate name to preserve the active soundtrack:
 
-The generated track is normalized to **−1.5 dBFS sample peak** after bus saturation and DC removal. The 44.1 kHz output measures **−15.00 dBFS RMS**, with **0 clipped frames**. FFmpeg loudness analysis measures the unmodified source at **−13.87 LUFS integrated**, **−1.48 dBTP true peak**, and **4.60 LU loudness range**. These are the music-source values; the final video must be measured separately after gameplay effects, ducking, and final loudness normalization. The final fade reaches exact digital silence.
+```powershell
+node promo/scripts/generateSoundtrack.mjs --out=promo/generated/original-soundtrack.wav
+```
+
+The archived generator uses no third-party music recordings or sound fonts. Its original arrangement and measurements do not describe the current web-game soundtrack or the new final mix.

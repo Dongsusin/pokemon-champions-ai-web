@@ -1,7 +1,7 @@
 {
   "date": "2026-09-10",
-  "generatedAt": "2026-09-10T05:43:13.278Z",
-  "revision": 4,
+  "generatedAt": "2026-09-10T05:58:52.864Z",
+  "revision": 5,
   "title": "Pokémon Champions Arena — Break the Limit",
   "durationSeconds": 84.02,
   "timelineDurationSeconds": 84,
@@ -18,13 +18,32 @@
     "sampleRate": 48000,
     "channels": 2,
     "channelLayout": "stereo",
-    "integratedLUFS": -15.56,
-    "truePeakDbTP": -2.48,
-    "loudnessRangeLU": 3.6,
-    "soundtrackBPM": 160
+    "integratedLUFS": -16.07,
+    "truePeakDbTP": -1.93,
+    "loudnessRangeLU": 2.9,
+    "soundtrack": {
+      "kind": "web-battle-bgm",
+      "title": "Face The Champion!",
+      "artist": "Spring Spring",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourceUrl": "https://opengameart.org/content/face-the-champion",
+      "sourcePath": "public/assets/audio/battle/battle-theme.ogg",
+      "sourceSha256": "5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540",
+      "output": "promo/generated/soundtrack.wav",
+      "outputSha256": "240602ceb42295ca95ffcb34af52560f1fe8eae7ff8d76d7fd45e746ce2b4198",
+      "durationSeconds": 84,
+      "sourceStartSeconds": 0,
+      "sampleRate": 48000,
+      "channels": 2,
+      "fadeInSeconds": 0.25,
+      "fadeOutSeconds": 1.75,
+      "targetIntegratedLUFS": -18,
+      "modifications": "Excerpt from the web game battle music; fades, loudness adjustment and gameplay-effects mix."
+    }
   },
-  "bytes": 41348252,
-  "sha256": "6a6b31e60fdf3ed346993a91d640d7bbdb6043e6339095fb99aa349c018dd71d",
+  "bytes": 41439338,
+  "sha256": "8935eb228d6334d4b6896c1c9d53fae5c9e4294e28a66826d8d33aac3968a091",
   "compositionSeconds": {
     "title": 12,
     "cinematic": 30,
@@ -328,6 +347,10 @@
         ]
       }
     ],
+    "pictureStream": {
+      "unchangedByAudioReplacement": true,
+      "sha256": "784b4fd01c7948278b0b9be3cba738c9db6c37f0ec31e0d90b572b26a17a3bbc"
+    },
     "browserPlayback": {
       "browser": "Codex in-app browser",
       "durationSeconds": 84.021029,
@@ -336,8 +359,8 @@
       "readyState": 4,
       "mediaError": null,
       "pausedDuringCheck": false,
-      "seekSeconds": 6,
-      "observedCurrentTimeSeconds": 24.305404,
+      "seekSeconds": 42,
+      "observedCurrentTimeSeconds": 55.178456,
       "playbackAdvanced": true
     }
   }

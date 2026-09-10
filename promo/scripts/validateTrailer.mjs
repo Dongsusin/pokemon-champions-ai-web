@@ -135,9 +135,15 @@ const audio = {
 assert(audio.codec === 'aac' && audio.sampleRate === 48000 && audio.channels === 2, `Unexpected audio format: ${JSON.stringify(audio)}`)
 assert(Number.isFinite(audio.integratedLUFS) && Number.isFinite(audio.truePeakDbTP), 'Final audio is silent or has invalid loudness measurements')
 assert(audio.truePeakDbTP < 0, `Final audio reaches/exceeds full scale: ${audio.truePeakDbTP} dBTP`)
+assert(audio.integratedLUFS >= -18 && audio.integratedLUFS <= -14, `Final mix is outside the trailer loudness range: ${audio.integratedLUFS} LUFS`)
 const score = await readJson('promo/generated/soundtrack.json')
 assert(score.durationSeconds === timelineDuration, `Soundtrack ${score.durationSeconds}s differs from the ${timelineDuration}s timeline`)
-audio.soundtrackBPM = score.bpm
+assert(score.kind === 'web-battle-bgm' && score.sourcePath === 'public/assets/audio/battle/battle-theme.ogg', 'Trailer must use the actual web battle music')
+const hashFile = async name => crypto.createHash('sha256').update(await fs.readFile(name)).digest('hex')
+assert(score.sourceSha256 === await hashFile(score.sourcePath), 'Soundtrack source no longer matches the web game BGM')
+assert(score.outputSha256 === await hashFile('promo/generated/soundtrack.wav'), 'Prepared soundtrack differs from its report')
+assert(probe.stderr.includes(score.title) && probe.stderr.includes(score.artist) && probe.stderr.includes(score.licenseUrl), 'Final MP4 is missing the music attribution')
+audio.soundtrack = score
 
 const bytes = await fs.readFile(file)
 const compositionSeconds = shots.reduce((totals, shot) => {
@@ -145,7 +151,7 @@ const compositionSeconds = shots.reduce((totals, shot) => {
   return totals
 }, {})
 const report = {
-  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 4,
+  date: new Date().toISOString().slice(0, 10), generatedAt: new Date().toISOString(), revision: 5,
   title: probe.stderr.match(/^\s*title\s*:\s*(.+)$/m)?.[1].trim() || path.basename(file),
   durationSeconds, timelineDurationSeconds: timelineDuration, video, audio,
   bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex'),

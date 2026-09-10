@@ -8,7 +8,8 @@
 - 편집 구성과 문구: `timeline.json`
 - 재생·장면 이동·다운로드 페이지: `preview.html`
 - 게임 장면의 촬영 범위·출처: `FOOTAGE.md`
-- 오리지널 음악의 편곡·출처: `SOUNDTRACK.md`
+- 사용 음악의 출처·편집 방법: `SOUNDTRACK.md`
+- 영상과 함께 배포할 음악 크레딧: `output/champions-arena-promo-credits.txt`
 - 실제 포켓몬·트레이너·아이템 이미지와 문구 애니메이션: `cinematic.html`, `cinematic.css`, `cinematic.js`
 - 게임 화면 위에 합성하는 제목·설명 애니메이션: `overlay.html`, `scripts/renderTrailer.mjs`
 - 완성 파일 검증 결과: `output/validation.json`
@@ -35,9 +36,9 @@
 
 도구 화면과 모든 배틀은 실제 게임 컴포넌트를 사용하는 촬영 전용 진입점에서 녹화한다. 포켓몬·트레이너 소개는 실제 게임 데이터와 스프라이트로 구성한 광고용 몽타주다. 게임 계정에 로그인하거나 사용자 저장 데이터를 변경하지 않는다. 준비된 1대1·2대2 매치를 사용하며, 배틀 결과·HP·기믹은 실제 엔진 계산으로 나온다.
 
-음악은 160 BPM의 오리지널 전투곡이다. 빠른 현악·신스 리프, 디스토션 저음, 강한 킥·스네어·톰·금속 타격을 유지하면서 84초에 맞춰 편집했다. 42초 기믹 시작에 강하게 전개하고, 더블 배틀은 리듬을 이어가며 고조한다. 실제 게임 효과음을 Web Audio 출력에서 녹음해 혼합했으며, 최종 믹스는 -16 LUFS를 목표로 조정한다. 포켓몬 테마 음악을 복제하지 않았다. 영상 내 비공식 팬메이드 프로젝트 표기를 유지한다.
+음악은 현재 웹게임 대전에서 재생하는 `public/assets/audio/battle/battle-theme.ogg`를 사용한다. Spring Spring의 [“Face The Champion!”](https://opengameart.org/content/face-the-champion)이며 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)으로 제공된다. 원음의 0–84초를 발췌하고 0.25초 페이드인, 마지막 1.75초 페이드아웃을 적용한다. 48 kHz 스테레오로 변환하고 두 번의 음량 측정을 거쳐 음악을 -18 LUFS로 조정한 뒤, 실제 게임 효과음이 나올 때 음악을 낮추어 혼합한다. 최종 믹스는 -16 LUFS를 목표로 조정한다. 실제 완성 파일 측정값은 `output/validation.json`에 기록한다.
 
-2026-09-10에 공식 Pokémon Game Sound Library의 원곡 사용 가능 여부를 확인했으나, [공식 FAQ](https://soundlibrary.pokemon.co.jp/en/support)와 [가이드라인](https://soundlibrary.pokemon.co.jp/en/download)은 상품·서비스의 광고·홍보 목적 사용을 금지한다. 이번 홍보 영상에는 공식 원곡을 적용하지 않고 기존 오리지널 전투곡을 유지했다.
+배틀 촬영에서는 게임 음악을 음소거하고 효과음과 포켓몬 울음소리를 Web Audio 출력에서 녹음하므로, 영상 전체에 이어지는 음악과 촬영 음악이 겹치지 않는다. 이전 홍보 영상의 오리지널 전투곡은 이번 영상에 사용하지 않는다. 제목·저작자·원본 및 라이선스 링크·편집 사실은 미리보기 페이지와 별도 크레딧 파일에 표기한다. 영상 배포 시 크레딧 파일의 문구를 함께 제공한다. 비공식 팬메이드 프로젝트 표기는 유지한다.
 
 ## 재제작
 
@@ -52,10 +53,24 @@ node node_modules/vite/bin/vite.js --config promo/vite.config.mjs
 다른 터미널에서 저장소 루트를 기준으로 실행한다.
 
 ```powershell
-node promo/scripts/generateSoundtrack.mjs
+node promo/scripts/prepareWebSoundtrack.mjs
 node promo/scripts/captureTrailer.mjs
 node promo/scripts/renderTrailer.mjs
 node promo/scripts/validateTrailer.mjs
+```
+
+장면 편집이 완료된 `promo/generated/picture-lock.mp4`가 있으면 영상 장면을 다시 렌더링하지 않고 음악만 재합성할 수 있다.
+
+```powershell
+node promo/scripts/prepareWebSoundtrack.mjs
+node promo/scripts/renderTrailer.mjs --audio-only
+node promo/scripts/validateTrailer.mjs
+```
+
+이전 오리지널 전투곡 생성기는 보관용이다. 별도 파일로 생성해 현재 영상의 음악 파일을 덮어쓰지 않는다.
+
+```powershell
+node promo/scripts/generateSoundtrack.mjs --out=promo/generated/original-soundtrack.wav
 ```
 
 촬영 서버는 `http://127.0.0.1:5184`를 사용하며 HMR을 꺼서 파일 저장 중 장면이 초기화되지 않게 한다. 원본 영상은 브라우저의 25fps 녹화이며 최종 편집에서 30fps로 변환한다. 원본과 중간 파일은 `raw/`, `generated/`에 저장하고 Git에서 제외한다. 완성 MP4·표지·자막과 소스는 저장소에 포함한다.

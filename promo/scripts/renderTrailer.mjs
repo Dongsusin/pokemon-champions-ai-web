@@ -19,9 +19,11 @@ const shots = JSON.parse(await fs.readFile('promo/timeline.json', 'utf8'))
 const totalDuration = shots.reduce((seconds, shot) => seconds + shot.duration, 0)
 if (!Number.isFinite(totalDuration) || totalDuration < 60 || totalDuration > 180 || shots.some(shot => !Number.isFinite(shot.duration) || shot.duration <= 0)) throw new Error('Trailer must have valid clips and last 60–180 seconds')
 const reuseClips = process.argv.includes('--reuse-clips')
+const audioOnly = process.argv.includes('--audio-only')
 const onlyClips = process.argv.find(argument => argument.startsWith('--only-clips='))?.split('=')[1].split(',').filter(Boolean)
+if (audioOnly && onlyClips) throw new Error('--audio-only cannot be combined with --only-clips')
 if (onlyClips?.some(id => !shots.some(shot => shot.id === id))) throw new Error('Unknown clip in --only-clips')
-const renderShots = onlyClips ? shots.filter(shot => onlyClips.includes(shot.id)) : shots
+const renderShots = audioOnly ? [] : onlyClips ? shots.filter(shot => onlyClips.includes(shot.id)) : shots
 const rendererSource = await fs.readFile(fileURLToPath(import.meta.url))
 await fs.mkdir('promo/generated', { recursive: true })
 await fs.mkdir('promo/output', { recursive: true })
@@ -48,6 +50,7 @@ async function sourceStart(id) {
   if (Number.isFinite(metadata.syncStartSeconds)) return metadata.syncStartSeconds
   return Math.max(0, await duration(`promo/raw/${id}.webm`) - metadata.videoTailSeconds)
 }
+if (!audioOnly) {
 const browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
 try {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
@@ -68,6 +71,7 @@ try {
     await fs.writeFile(`promo/generated/${shot.id}-overlay.json`, JSON.stringify(manifest, null, 2))
   }
 } finally { await browser.close() }
+}
 
 const encoding = ['-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv420p','-r','30','-video_track_timescale','15360','-threads','4','-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-movflags','+faststart']
 // Text arrives once, settles for reading, then leaves just before the cut.
@@ -139,8 +143,14 @@ for (const shot of renderShots) {
   console.log(`Rendered ${shot.id}: ${shot.duration}s`)
 }
 if (onlyClips) process.exit(0)
-await fs.writeFile('promo/generated/concat.txt', shots.map(s=>`file '${s.id}.mp4'`).join('\n'))
-await run(['-f','concat','-safe','0','-i','promo/generated/concat.txt','-c','copy','promo/generated/picture-lock.mp4'])
+if (!audioOnly) {
+  await fs.writeFile('promo/generated/concat.txt', shots.map(s=>`file '${s.id}.mp4'`).join('\n'))
+  await run(['-f','concat','-safe','0','-i','promo/generated/concat.txt','-c','copy','promo/generated/picture-lock.mp4'])
+} else {
+  const previous = JSON.parse(await fs.readFile('promo/output/validation.json', 'utf8'))
+  if (previous.timelineDurationSeconds !== totalDuration || JSON.stringify(previous.shots.map(({id, kind, duration}) => ({id, kind, duration}))) !== JSON.stringify(shots.map(({id, kind, duration}) => ({id, kind, duration})))) throw new Error('Picture edit changed; run a full render before --audio-only')
+  if (Math.abs(await duration('promo/generated/picture-lock.mp4') - totalDuration) > .1) throw new Error('Picture-lock duration differs from the timeline; run a full render')
+}
 let at = 0
 const stamp = seconds => `${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}:${String(Math.floor(seconds)%60).padStart(2,'0')},000`
 const captions = shots.map((s,i)=>{ const start=at; at+=s.duration; const wording=s.caption || s.overlay; const copy=wording ? [wording.title, wording.description].filter(Boolean).join('\n') : '다음 챔피언은, 당신.\n당신의 팀으로 도전하세요.'; return `${i+1}\n${stamp(start)} --> ${stamp(at)}\n${copy}\n` }).join('\n')
@@ -148,8 +158,19 @@ await fs.writeFile('promo/output/champions-arena-promo-ko.srt',captions)
 if (at !== totalDuration) throw new Error(`Unexpected timeline duration ${at}`)
 const musicDuration = await duration('promo/generated/soundtrack.wav')
 if (Math.abs(musicDuration-totalDuration) > .1) throw new Error(`Music length ${musicDuration}s does not match timeline ${totalDuration}s; regenerate soundtrack`)
-const mix = '[0:a]volume=1.05,asplit=2[sfx][key];[1:a]volume=0.92[music];[music][key]sidechaincompress=threshold=0.035:ratio=2.4:attack=8:release=140:makeup=1[bed];[bed][sfx]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.92,loudnorm=I=-16:TP=-1.5:LRA=11[a]'
-await run(['-i','promo/generated/picture-lock.mp4','-i','promo/generated/soundtrack.wav','-i','promo/output/champions-arena-promo-ko.srt','-filter_complex',mix,'-map','0:v','-map','[a]','-map','2:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-c:s','mov_text','-metadata:s:s:0','language=kor','-disposition:s:0','0','-metadata','title=Pokémon Champions Arena — Break the Limit','-metadata','comment=Unofficial fan game. In-game trainer and item sprite montage, actual gameplay and original battle soundtrack.','-t',String(totalDuration),'-movflags','+faststart','promo/output/champions-arena-promo-1080p.mp4'])
+const score = JSON.parse(await fs.readFile('promo/generated/soundtrack.json', 'utf8'))
+const hashFile = async file => crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex')
+if (score.kind !== 'web-battle-bgm' || score.sourcePath !== 'public/assets/audio/battle/battle-theme.ogg' || score.sourceSha256 !== await hashFile(score.sourcePath) || score.outputSha256 !== await hashFile('promo/generated/soundtrack.wav')) throw new Error('Prepare the current web battle BGM with prepareWebSoundtrack.mjs before rendering')
+const musicCredit = `Music: ${score.title} by ${score.artist}. ${score.license} (${score.licenseUrl}). Source: ${score.sourceUrl}. ${score.modifications}`
+const mix = '[0:a]volume=1.05,asplit=2[sfx][key];[1:a]volume=0.92[music];[music][key]sidechaincompress=threshold=0.035:ratio=2.4:attack=8:release=140:makeup=1[bed];[bed][sfx]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.92'
+const mixInputs = ['-i','promo/generated/picture-lock.mp4','-i','promo/generated/soundtrack.wav']
+// Leave extra peak headroom for AAC encoding of the dense battle track.
+const target = 'I=-16:TP=-2.5:LRA=11'
+const analysis = await run([...mixInputs,'-filter_complex',`${mix},loudnorm=${target}:print_format=json[a]`,'-map','[a]','-t',String(totalDuration),'-f','null',process.platform === 'win32' ? 'NUL' : '/dev/null'])
+const measured = JSON.parse(analysis.match(/\{\s*"input_i"[\s\S]*?\}/)?.[0] || 'null')
+if (!measured || !Number.isFinite(Number(measured.input_i))) throw new Error('Cannot measure the final soundtrack mix')
+const normalize = `loudnorm=${target}:measured_I=${measured.input_i}:measured_TP=${measured.input_tp}:measured_LRA=${measured.input_lra}:measured_thresh=${measured.input_thresh}:offset=${measured.target_offset}:linear=true`
+await run([...mixInputs,'-i','promo/output/champions-arena-promo-ko.srt','-filter_complex',`${mix},${normalize}[a]`,'-map','0:v','-map','[a]','-map','2:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-c:s','mov_text','-metadata:s:s:0','language=kor','-disposition:s:0','0','-metadata','title=Pokémon Champions Arena — Break the Limit','-metadata',`comment=Unofficial fan game. In-game Pokemon, trainer and item montage, actual gameplay. ${musicCredit}`,'-metadata',`copyright=${musicCredit}`,'-t',String(totalDuration),'-movflags','+faststart','promo/output/champions-arena-promo-1080p.mp4'])
 await run(['-ss','3','-i','promo/output/champions-arena-promo-1080p.mp4','-frames:v','1','-q:v','2','promo/output/champions-arena-promo-poster.jpg'])
 const probe = await run(['-i','promo/output/champions-arena-promo-1080p.mp4','-af','loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json','-f','null','NUL'])
 await fs.writeFile('promo/generated/final-audio-analysis.txt',probe)

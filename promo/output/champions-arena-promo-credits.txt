@@ -1,0 +1,22 @@
+Pokémon Champions Arena — Break the Limit
+Unofficial fan-game promotional video · 84 seconds
+
+Music: “Face The Champion!”
+Creator: Spring Spring
+Source: https://opengameart.org/content/face-the-champion
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+License URL: https://creativecommons.org/licenses/by/3.0/
+
+This video uses the same battle music file as the web game.
+Edits: the first 84 seconds were excerpted; a 0.25-second fade-in and a
+1.75-second fade-out were applied. Audio was converted to 48 kHz stereo,
+loudness-adjusted, and ducked/mixed with gameplay effects. Music preparation
+targets -18 LUFS; the final video mix targets -16 LUFS.
+
+이 영상은 현재 웹게임의 배틀 BGM을 사용합니다.
+편집: 원음의 첫 84초 발췌, 시작 0.25초 및 끝 1.75초 페이드,
+48 kHz 스테레오 변환, 음량 조정, 게임 효과음에 따른 음악 감쇠 및 혼합.
+
+Please retain this music credit in the video description or alongside the
+video when sharing. The music credit does not imply endorsement by its creator.
+영상 공유 시 설명란 또는 영상과 함께 이 음악 크레딧을 제공해 주세요.
