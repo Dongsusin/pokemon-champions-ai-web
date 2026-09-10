@@ -1719,6 +1719,21 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
 }
 
 function TrainerDialogueScene({ trainer, dialogue, onContinue }) {
+  const continuedRef = useRef(false)
+  const continueDialogue = useCallback(() => {
+    if (continuedRef.current) return
+    continuedRef.current = true
+    onContinue()
+  }, [onContinue])
+
+  useEffect(() => {
+    continuedRef.current = false
+    if (dialogue?.eventId !== TRAINER_DIALOGUE_EVENTS.START) return
+
+    const timer = window.setTimeout(continueDialogue, 3000)
+    return () => window.clearTimeout(timer)
+  }, [dialogue?.id, dialogue?.eventId, continueDialogue])
+
   if (!dialogue) return null
 
   return (
@@ -1733,7 +1748,7 @@ function TrainerDialogueScene({ trainer, dialogue, onContinue }) {
       <div className="battle-trainer-dialogue-stage">
         <TrainerSprite trainer={trainer} className="battle-trainer-dialogue-sprite" />
       </div>
-      <button className="battle-trainer-dialogue-box" type="button" autoFocus onClick={onContinue}>
+      <button className="battle-trainer-dialogue-box" type="button" autoFocus onClick={continueDialogue}>
         <span className="battle-trainer-dialogue-nameplate">
           <small>AI TRAINER</small>
           <strong id="battle-trainer-dialogue-speaker">{dialogue.trainerName}</strong>
@@ -1742,7 +1757,7 @@ function TrainerDialogueScene({ trainer, dialogue, onContinue }) {
           {dialogue.text}
         </span>
         <span className="battle-trainer-dialogue-prompt">
-          계속 <ChevronRight size={18} />
+          {dialogue.eventId === TRAINER_DIALOGUE_EVENTS.START ? '3초 후 자동 진행 · 클릭하여 계속' : '계속'} <ChevronRight size={18} />
         </span>
       </button>
     </section>
@@ -2165,10 +2180,10 @@ function BattleScreen({
     })
   }
 
-  const dismissTrainerDialogue = () => {
+  const dismissTrainerDialogue = useCallback(() => {
     battleAudioRef.current?.playMenu('select')
     setTrainerDialogue(null)
-  }
+  }, [])
 
   const openBattleMenu = (nextMenu) => {
     battleAudioRef.current?.playMenu('select')

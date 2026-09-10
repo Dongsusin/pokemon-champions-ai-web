@@ -91,7 +91,6 @@ html[data-mobile-layout="landscape"] .achievement-embedded-summary small, html[d
 .achievement-card-heading { display: flex; align-items: center; gap: 11px; min-height: 50px; }
 .achievement-card-icon { display: grid; flex: 0 0 47px; width: 47px; height: 47px; place-items: center; border: 1px solid #a9d6ee22; border-radius: 12px; color: var(--achievement-accent); background: linear-gradient(135deg, #9dd1e90f, #6d9fe71a); }
 .achievement-card-title { flex: 1; min-width: 0; }
-.achievement-card-title > span { display: block; margin-bottom: 4px; color: var(--achievement-accent); font-size: 9px; }
 .achievement-card-title h3 { color: #edf6ff; font-size: 14px; line-height: 1.5; font-weight: 800; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .achievement-complete-check { display: grid; flex: 0 0 22px; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #baf7dc; background: #80e6bc26; }
 .achievement-trainer-art { position: relative; display: grid; flex: 0 0 53px; width: 53px; height: 57px; place-items: center; border-bottom: 1px solid #75b7dc38; background: radial-gradient(ellipse at 50% 80%, #73cdff20, transparent 70%); }
@@ -188,7 +187,6 @@ html[data-mobile-layout="landscape"] .achievement-screen { height: calc(100dvh -
 html[data-mobile-layout="landscape"] .achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 html[data-mobile-layout="landscape"] .achievement-card { min-height: 250px; padding: 17px; }
 html[data-mobile-layout="landscape"] .achievement-card-title h3 { font-size: 20px; }
-html[data-mobile-layout="landscape"] .achievement-card-title > span { font-size: 12px; }
 html[data-mobile-layout="landscape"] .achievement-card-description { min-height: 48px; font-size: 16px; line-height: 1.6; }
 html[data-mobile-layout="landscape"] .achievement-card-icon { width: 58px; height: 58px; flex-basis: 58px; }
 html[data-mobile-layout="landscape"] .achievement-card-icon svg { width: 31px; height: 31px; }
@@ -282,7 +280,6 @@ html[data-mobile-layout="landscape"] .achievement-pagination > div > span { font
   .achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .achievement-card { min-height: 145px; padding: 8px 10px; }
   .achievement-card-title h3 { font-size: 12px; }
-  .achievement-card-title > span { font-size: 8px; }
   .achievement-card-heading { gap: 8px; min-height: 34px; }
   .achievement-card-icon { width: 32px; height: 32px; flex-basis: 32px; border-radius: 9px; }
   .achievement-card-icon svg { width: 21px; height: 21px; }

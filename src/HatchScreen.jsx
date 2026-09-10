@@ -131,6 +131,8 @@ function HatchScreen({
   const [revealBurstSlotId, setRevealBurstSlotId] = useState(null)
   const hatchTimerRef = useRef(null)
   const burstTimerRef = useRef(null)
+  const hatchInProgressRef = useRef(false)
+  const tutorialCompletedRef = useRef(false)
   const preloadedImagesRef = useRef([])
   const drawKey = results[0]?.slotId
   const resultBannerId = results[0]?.bannerId
@@ -182,6 +184,8 @@ function HatchScreen({
 
     window.clearTimeout(hatchTimerRef.current)
     window.clearTimeout(burstTimerRef.current)
+    hatchInProgressRef.current = false
+    tutorialCompletedRef.current = false
     const resultBannerIndex = DRAW_BANNER_ORDER.indexOf(resultBannerId)
     if (resultBannerIndex >= 0) setSelectedBannerIndex(resultBannerIndex)
     setSelectedIndex(0)
@@ -229,31 +233,9 @@ function HatchScreen({
     onDraw(isDrawTutorial ? DRAW_BANNER_ORDER[0] : activeBanner.id)
   }
 
-  const hatchSelectedResult = () => {
-    const result = selectedResult
-    if (!result || hatchingSlotId || isHatchingAll || revealedSlotIds.has(result.slotId)) return
-
-    setRevealBurstSlotId(null)
-    setHatchingSlotId(result.slotId)
-    hatchTimerRef.current = window.setTimeout(() => {
-      setRevealedSlotIds((currentSlotIds) => {
-        const nextSlotIds = new Set(currentSlotIds)
-        nextSlotIds.add(result.slotId)
-        return nextSlotIds
-      })
-      setHatchingSlotId(null)
-      setRevealBurstSlotId(result.slotId)
-      if (isHatchTutorial) onTutorialComplete?.(result)
-      burstTimerRef.current = window.setTimeout(() => {
-        setRevealBurstSlotId(null)
-      }, EGG_REVEAL_BURST_MS)
-    }, EGG_HATCH_DURATION_MS)
-  }
-
-  const hatchAllResults = () => {
-    if (isHatchTutorial || hatchingSlotId || isHatchingAll) return
-
-    const unrevealedResults = results.filter((result) => !revealedSlotIds.has(result.slotId))
+  const hatchResults = (requestedResults, hatchAll = false) => {
+    if (hatchInProgressRef.current) return
+    const unrevealedResults = requestedResults.filter((result) => result && !revealedSlotIds.has(result.slotId))
     const firstUnrevealedResult = unrevealedResults[0]
     if (!firstUnrevealedResult) return
 
@@ -262,9 +244,11 @@ function HatchScreen({
     ))
     const unrevealedSlotIds = unrevealedResults.map((result) => result.slotId)
 
+    hatchInProgressRef.current = true
+    window.clearTimeout(burstTimerRef.current)
     if (firstUnrevealedIndex >= 0) setSelectedIndex(firstUnrevealedIndex)
     setRevealBurstSlotId(null)
-    setIsHatchingAll(true)
+    setIsHatchingAll(hatchAll)
     setHatchingSlotId(firstUnrevealedResult.slotId)
     hatchTimerRef.current = window.setTimeout(() => {
       setRevealedSlotIds((currentSlotIds) => new Set([
@@ -274,11 +258,19 @@ function HatchScreen({
       setHatchingSlotId(null)
       setIsHatchingAll(false)
       setRevealBurstSlotId(firstUnrevealedResult.slotId)
+      hatchInProgressRef.current = false
+      if (isHatchTutorial && !tutorialCompletedRef.current) {
+        tutorialCompletedRef.current = true
+        onTutorialComplete?.(firstUnrevealedResult)
+      }
       burstTimerRef.current = window.setTimeout(() => {
         setRevealBurstSlotId(null)
       }, EGG_REVEAL_BURST_MS)
     }, EGG_HATCH_DURATION_MS)
   }
+
+  const hatchSelectedResult = () => hatchResults([selectedResult])
+  const hatchAllResults = () => hatchResults(results, true)
 
   return (
     <main className={`draw-screen${showingResults ? ' showing-results' : ' showing-banner'}${tutorialStep ? ' tutorial-active' : ''}`}>
@@ -508,23 +500,21 @@ function HatchScreen({
                 <span>
                   {isHatchTutorial && <b>STEP 2 / 2</b>}
                   {isHatchTutorial
-                    ? '중앙 알을 클릭해 첫 파트너를 만나세요.'
+                    ? '알을 클릭하거나 전체 부화로 첫 파트너를 만나세요.'
                     : selectedIsRevealed
                       ? `${selectedRarity.label} · ${activeBanner.title}`
                       : `${selectedRarity.label} 알 · 중앙 알을 클릭해 부화`}
                 </span>
               </div>
               <div className="draw-actions">
-                {!isHatchTutorial && (
-                  <button
-                    className="draw-hatch-all-button"
-                    type="button"
-                    disabled={!hasUnrevealedResults || Boolean(hatchingSlotId)}
-                    onClick={hatchAllResults}
-                  >
-                    <Sparkles size={16} /> 모두 부화
-                  </button>
-                )}
+                <button
+                  className="draw-hatch-all-button"
+                  type="button"
+                  disabled={!hasUnrevealedResults || Boolean(hatchingSlotId)}
+                  onClick={hatchAllResults}
+                >
+                  <Sparkles size={16} /> 전체 부화
+                </button>
                 <button type="button" disabled={Boolean(hatchingSlotId)} onClick={() => setView('banner')}><Sparkles size={16} /> 배너 선택</button>
                 <button type="button" disabled={Boolean(hatchingSlotId)} onClick={onOpenBox}><Boxes size={16} /> 박스</button>
                 <button type="button" disabled={!canAfford || Boolean(hatchingSlotId)} onClick={requestDraw}>

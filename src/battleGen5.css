@@ -4254,72 +4254,41 @@
 
 .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-grade {
   background:
-    linear-gradient(115deg, rgba(255, 207, 84, 0.2), transparent 44%),
-    radial-gradient(circle at 73% 8%, rgba(255, 246, 169, 0.35), rgba(255, 167, 49, 0.08) 20%, transparent 46%);
+    linear-gradient(180deg, rgba(255, 215, 145, 0.09), transparent 64%),
+    radial-gradient(ellipse at 73% 8%, rgba(255, 237, 181, 0.16), rgba(255, 196, 109, 0.04) 38%, transparent 72%);
   mix-blend-mode: screen;
 }
 
 .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-loop {
-  opacity: 0.2;
-  background:
-    repeating-linear-gradient(116deg, transparent 0 62px, rgba(255, 235, 139, 0.34) 70px 74px, transparent 84px 132px),
-    linear-gradient(90deg, transparent, rgba(255, 201, 84, 0.2), transparent);
-  background-position: 120% 0, 160% 0;
-  background-size: 220% 100%, 260% 100%;
+  inset: 0;
+  opacity: 0.3;
+  background: radial-gradient(ellipse at 74% 0%, rgba(255, 220, 158, 0.22), transparent 68%);
   mix-blend-mode: screen;
-  animation: battle-sun-loop 8s linear infinite;
+  animation: none;
+  will-change: auto;
 }
 
 .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-celestial {
-  top: -16%;
-  right: 13%;
+  top: -24%;
+  right: 9%;
   display: block;
-  width: clamp(132px, 18vw, 300px);
+  width: clamp(180px, 24vw, 400px);
   aspect-ratio: 1;
   border-radius: 50%;
-  background:
-    radial-gradient(circle, #fffbd0 0 8%, rgba(255, 222, 112, 0.96) 9% 17%, rgba(255, 173, 47, 0.34) 35%, transparent 68%);
-  box-shadow: 0 0 54px rgba(255, 208, 82, 0.46);
+  opacity: 0.55;
+  background: radial-gradient(circle, rgba(255, 245, 206, 0.32), rgba(255, 222, 158, 0.14) 32%, transparent 70%);
   mix-blend-mode: screen;
-  animation: battle-sun-breathe 3.4s ease-in-out infinite;
+  animation: none;
 }
 
 .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-celestial::before {
-  position: absolute;
-  inset: -32%;
-  border-radius: 50%;
-  background: repeating-conic-gradient(from 8deg, rgba(255, 232, 122, 0.25) 0 3deg, transparent 3deg 20deg);
-  content: "";
-  animation: battle-sun-rays 18s linear infinite;
+  content: none;
 }
 
-.app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-particles > i {
-  top: var(--weather-y);
-  left: var(--weather-x);
-  width: 4px;
-  aspect-ratio: 1;
-  border-radius: 1px;
-  background: #fff7b7;
-  box-shadow: 0 0 8px rgba(255, 221, 95, 0.82);
-  animation: battle-sun-glint var(--weather-duration) ease-in-out var(--weather-delay) infinite;
-}
-
-.app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-ground > i {
-  bottom: -14%;
-  left: var(--weather-x);
-  width: 8px;
-  height: 72%;
-  border-radius: 50%;
-  background: linear-gradient(180deg, transparent, rgba(255, 237, 157, 0.24) 52%, transparent);
-  filter: blur(3px);
-  mix-blend-mode: screen;
-  animation: battle-heat-rise var(--weather-duration) ease-in-out var(--weather-delay) infinite;
-}
-
+.app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-particles,
+.app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-ground,
 .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-transition {
-  background: radial-gradient(circle at 72% 12%, rgba(255, 255, 219, 0.92), rgba(255, 202, 86, 0.25) 24%, transparent 59%);
-  mix-blend-mode: screen;
-  animation: battle-sun-arrive 1050ms ease-out both;
+  display: none;
 }
 
 .app-shell.battle-view :is(.weather-effect-rain, .weather-effect-primordialsea) .battle-weather-grade {
@@ -4398,18 +4367,16 @@
 
 .app-shell.battle-view .weather-effect-desolateland .battle-weather-grade {
   background:
-    linear-gradient(118deg, rgba(255, 90, 16, 0.34), rgba(255, 195, 56, 0.1) 54%, rgba(120, 24, 10, 0.24)),
-    radial-gradient(circle at 73% 8%, rgba(255, 252, 186, 0.62), rgba(255, 112, 24, 0.16) 28%, transparent 58%);
+    linear-gradient(180deg, rgba(255, 167, 92, 0.14), rgba(255, 195, 125, 0.04) 58%, transparent),
+    radial-gradient(ellipse at 73% 8%, rgba(255, 224, 166, 0.22), rgba(255, 158, 81, 0.06) 38%, transparent 72%);
 }
 
 .app-shell.battle-view .weather-effect-desolateland .battle-weather-loop {
-  opacity: 0.38;
-  animation-duration: 5.4s;
+  opacity: 0.4;
 }
 
 .app-shell.battle-view .weather-effect-desolateland .battle-weather-celestial {
-  filter: saturate(1.35) contrast(1.08);
-  box-shadow: 0 0 82px rgba(255, 111, 23, 0.72);
+  opacity: 0.68;
 }
 
 .app-shell.battle-view .weather-effect-primordialsea .battle-weather-grade {
@@ -5529,11 +5496,6 @@
   to { background-position: -130% 0; }
 }
 
-@keyframes battle-sun-loop {
-  from { background-position: 120% 0, 160% 0; }
-  to { background-position: -110% 0, -150% 0; }
-}
-
 @keyframes battle-rain-loop {
   from { background-position: 0 -220px, 72px -180px; }
   to { background-position: -54px 0, 18px 0; }
@@ -5563,33 +5525,6 @@
 @keyframes battle-clear-arrive {
   0% { opacity: 0.56; transform: translateY(-12%); }
   100% { opacity: 0; transform: translateY(0); }
-}
-
-@keyframes battle-sun-breathe {
-  0%, 100% { opacity: 0.66; transform: scale(0.96); }
-  50% { opacity: 0.92; transform: scale(1.08); }
-}
-
-@keyframes battle-sun-rays {
-  to { transform: rotate(1turn); }
-}
-
-@keyframes battle-sun-glint {
-  0%, 100% { opacity: 0; transform: translate3d(0, 8px, 0) rotate(0deg) scale(0.45); }
-  42% { opacity: var(--weather-opacity); transform: translate3d(var(--weather-drift), -5px, 0) rotate(45deg) scale(var(--weather-scale)); }
-  58% { opacity: 0.18; }
-}
-
-@keyframes battle-heat-rise {
-  0%, 100% { opacity: 0; transform: translate3d(0, 22px, 0) scaleX(var(--weather-scale)); }
-  45% { opacity: var(--weather-opacity); }
-  70% { opacity: 0.12; transform: translate3d(var(--weather-drift), -34px, 0) scaleX(var(--weather-scale)); }
-}
-
-@keyframes battle-sun-arrive {
-  0% { opacity: 0.86; transform: scale(0.6); }
-  54% { opacity: 0.32; }
-  100% { opacity: 0; transform: scale(1.22); }
 }
 
 @keyframes battle-rain-cloud {
@@ -5840,9 +5775,7 @@
     animation-iteration-count: infinite !important;
   }
 
-  .app-shell.battle-view .weather-effect-clear .battle-weather-loop,
-  .app-shell.battle-view .weather-effect-sun .battle-weather-loop,
-  .app-shell.battle-view .weather-effect-desolateland .battle-weather-loop {
+  .app-shell.battle-view .weather-effect-clear .battle-weather-loop {
     animation-duration: 16s !important;
   }
 
@@ -5872,22 +5805,16 @@
     display: none;
   }
 
-  .app-shell.battle-view .weather-effect-clear .battle-weather-particles > i,
-  .app-shell.battle-view .weather-effect-sun .battle-weather-particles > i,
-  .app-shell.battle-view .weather-effect-desolateland .battle-weather-particles > i {
+  .app-shell.battle-view .weather-effect-clear .battle-weather-particles > i {
     animation-duration: 8s !important;
   }
 
-  .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-celestial {
-    animation-duration: 7s !important;
-  }
-
-  .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-celestial::before {
-    animation-duration: 40s !important;
-  }
-
+  .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-loop,
+  .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-celestial,
+  .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-celestial::before,
+  .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-particles > i,
   .app-shell.battle-view :is(.weather-effect-sun, .weather-effect-desolateland) .battle-weather-ground > i {
-    animation-duration: 9s !important;
+    animation: none !important;
   }
 
   .app-shell.battle-view :is(.weather-effect-rain, .weather-effect-primordialsea) .battle-weather-particles > i {

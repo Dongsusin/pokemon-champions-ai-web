@@ -100,7 +100,6 @@ function AchievementCard({ definition, record }) {
           </div>
         ) : <span className="achievement-card-icon" aria-hidden="true"><Icon size={26} /></span>}
         <div className="achievement-card-title">
-          <span>{trainer ? `AI 트레이너 · ${trainer.tier} 티어` : ACHIEVEMENT_CATEGORIES.find((entry) => entry.id === definition.category)?.label}</span>
           <h3>{definition.title}</h3>
         </div>
         {record.completed && <span className="achievement-complete-check" aria-label="달성 완료"><Check size={14} strokeWidth={3} /></span>}
