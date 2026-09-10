@@ -301,6 +301,58 @@ function battleSideAnchor(camera, sideId) {
   }
 }
 
+function useBattleStageEffectAnchor(effectRef, sideId, activeSlot, kind) {
+  useLayoutEffect(() => {
+    const effect = effectRef.current
+    const camera = effect?.closest('.battle-field-camera')
+    if (!effect || !camera) return undefined
+
+    const updatePosition = () => {
+      const anchor = battleStageAnchor(camera, sideId, activeSlot)
+      if (!anchor || anchor.width <= 0 || anchor.height <= 0) {
+        effect.style.visibility = 'hidden'
+        return
+      }
+
+      const width = effect.offsetWidth
+      const height = effect.offsetHeight
+      const ring = kind === 'switch' ? effect.querySelector('.battle-switch-ring') : null
+      // The release ring is the beam endpoint. Opponent effects mirror around
+      // their own center, so its local horizontal offset must mirror as well.
+      const ringX = ring?.offsetLeft ?? width * 0.68
+      const localX = kind === 'switch'
+        ? sideId === 'opponent' ? width - ringX : ringX
+        : width * 0.5
+      const localY = kind === 'switch' ? ring?.offsetTop ?? height * 0.43 : height
+      const targetY = kind === 'switch' ? anchor.y : anchor.y + anchor.height * 0.55
+      effect.style.left = `${anchor.x - localX}px`
+      effect.style.top = `${targetY - localY}px`
+      effect.style.visibility = 'visible'
+    }
+
+    let frameId = null
+    const schedulePosition = () => {
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => {
+        frameId = null
+        updatePosition()
+      })
+    }
+    updatePosition()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedulePosition)
+    observer?.observe(camera)
+    observer?.observe(effect)
+    const stage = camera.querySelector(`.battle-pokemon-stage.${sideId}.slot-${activeSlot ?? 0}`)
+    if (stage) observer?.observe(stage)
+    window.addEventListener('resize', schedulePosition)
+    return () => {
+      if (frameId !== null) cancelAnimationFrame(frameId)
+      observer?.disconnect()
+      window.removeEventListener('resize', schedulePosition)
+    }
+  }, [effectRef, sideId, activeSlot, kind])
+}
+
 function useMoveAnimationAnchors(animationRef, cue, profile, phase = 'attack') {
   const choreographyTarget = getMoveChoreography(profile, cue).target
   useLayoutEffect(() => {
@@ -1097,6 +1149,39 @@ function BattleWeatherEffects({ weatherId, layer }) {
   )
 }
 
+function BattleSwitchEffect({ cue }) {
+  const effectRef = useRef(null)
+  useBattleStageEffectAnchor(effectRef, cue.sideId, cue.actorSlot ?? 0, 'switch')
+  return (
+    <div
+      ref={effectRef}
+      className={`battle-switch-effect side-${cue.sideId} slot-${cue.actorSlot ?? 0} mode-${cue.phase === 'switch-out' ? 'recall' : 'release'}`}
+      style={{ left: 0, top: 0, right: 'auto', bottom: 'auto', visibility: 'hidden' }}
+      aria-hidden="true"
+    >
+      <span className="battle-switch-ball"><i /></span>
+      <span className="battle-switch-beam"><i /></span>
+      <span className="battle-switch-ring" />
+      <b className="spark-one" /><b className="spark-two" /><b className="spark-three" />
+    </div>
+  )
+}
+
+function BattleFaintEffect({ cue }) {
+  const effectRef = useRef(null)
+  useBattleStageEffectAnchor(effectRef, cue.targetSideId, cue.targetSlot ?? 0, 'faint')
+  return (
+    <div
+      ref={effectRef}
+      className={`battle-faint-effect target-${cue.targetSideId} slot-${cue.targetSlot ?? 0}`}
+      style={{ left: 0, top: 0, right: 'auto', bottom: 'auto', visibility: 'hidden' }}
+      aria-hidden="true"
+    >
+      <span /><i /><i /><i /><b />
+    </div>
+  )
+}
+
 function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers = true }) {
   if (!cue) return null
   const presentation = cue.effectiveness == null
@@ -1133,22 +1218,11 @@ function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers =
       )}
 
       {showSwitch && (
-        <div
-          className={`battle-switch-effect side-${cue.sideId} mode-${cue.phase === 'switch-out' ? 'recall' : 'release'}`}
-          key={`switch-${cue.id}`}
-          aria-hidden="true"
-        >
-          <span className="battle-switch-ball"><i /></span>
-          <span className="battle-switch-beam"><i /></span>
-          <span className="battle-switch-ring" />
-          <b className="spark-one" /><b className="spark-two" /><b className="spark-three" />
-        </div>
+        <BattleSwitchEffect cue={cue} key={`switch-${cue.id}`} />
       )}
 
       {showFaint && (
-        <div className={`battle-faint-effect target-${cue.targetSideId} slot-${cue.targetSlot ?? 0}`} key={`faint-${cue.id}`} aria-hidden="true">
-          <span /><i /><i /><i /><b />
-        </div>
+        <BattleFaintEffect cue={cue} key={`faint-${cue.id}`} />
       )}
     </>
   )

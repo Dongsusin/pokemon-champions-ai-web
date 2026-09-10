@@ -65,21 +65,7 @@
 
 .app-shell.battle-view .battle-pokemon-stage {
   z-index: 6;
-  width: clamp(112px, 11vw, 176px);
-  height: clamp(112px, 11vw, 176px);
   transition: none;
-}
-
-.app-shell.battle-view .battle-pokemon-stage.opponent {
-  right: 12%;
-  bottom: 38%;
-}
-
-.app-shell.battle-view .battle-pokemon-stage.player {
-  left: 7%;
-  bottom: 1%;
-  width: clamp(156px, 15vw, 238px);
-  height: clamp(156px, 15vw, 238px);
 }
 
 .app-shell.battle-view .battle-live-sprite-frame :is(img, svg:where(.sprite-image-viewport)).battle-live-sprite {
@@ -499,18 +485,6 @@
     width: min(250px, 52vw);
   }
 
-  .app-shell.battle-view .battle-pokemon-stage.opponent {
-    right: 5%;
-    width: 112px;
-    height: 112px;
-  }
-
-  .app-shell.battle-view .battle-pokemon-stage.player {
-    left: 2%;
-    width: 150px;
-    height: 150px;
-  }
-
   .app-shell.battle-view .battle-turn-playback {
     grid-template-columns: 34px minmax(0, 1fr) minmax(52px, auto);
     gap: 7px;
@@ -536,18 +510,6 @@
 
   .app-shell.battle-view .battle-status-anchor {
     width: min(214px, 64vw);
-  }
-
-  .app-shell.battle-view .battle-pokemon-stage.opponent {
-    right: 0;
-    width: 96px;
-    height: 96px;
-  }
-
-  .app-shell.battle-view .battle-pokemon-stage.player {
-    left: -2%;
-    width: 128px;
-    height: 128px;
   }
 
   .app-shell.battle-view .battle-turn-playback {
@@ -2066,6 +2028,8 @@
 
 .app-shell.battle-view .battle-field-camera {
   inset: 0;
+  /* Size sprites against the battlefield, excluding the command deck/HUD. */
+  container-type: size;
   overflow: hidden;
   transform-origin: 50% 58%;
   will-change: transform, filter;
@@ -2194,14 +2158,28 @@
   bottom: -4%;
 }
 
-.app-shell.battle-view .battle-pokemon-stage.opponent {
-  right: 11%;
-  bottom: 31%;
+/* Bottom-centered composition keeps the opposing teams within one battle shot.
+   Change layout dimensions, not transforms: move trajectories measure these
+   boxes, while recoil, rotation and Dynamax retain their own transforms. */
+.app-shell.battle-view .battle-pokemon-stage:is(.player, .opponent) {
+  top: auto;
+  right: auto;
+  left: calc(var(--battle-stage-center) - var(--battle-stage-size) * 0.5);
+  bottom: var(--battle-stage-floor);
+  width: var(--battle-stage-size);
+  height: var(--battle-stage-size);
 }
 
 .app-shell.battle-view .battle-pokemon-stage.player {
-  left: 6%;
-  bottom: -1%;
+  --battle-stage-center: 31%;
+  --battle-stage-floor: 5%;
+  --battle-stage-size: min(24cqw, 55cqh, 460px);
+}
+
+.app-shell.battle-view .battle-pokemon-stage.opponent {
+  --battle-stage-center: 69%;
+  --battle-stage-floor: 31%;
+  --battle-stage-size: min(20cqw, 44cqh, 368px);
 }
 
 .app-shell.battle-view .battle-pokemon-shadow {
@@ -5226,32 +5204,33 @@
   background: rgba(78, 42, 77, 0.74);
 }
 
-.app-shell.battle-view .format-double .battle-pokemon-stage,
-.app-shell.battle-view .format-triple .battle-pokemon-stage,
-.app-shell.battle-view .format-rotation .battle-pokemon-stage {
-  width: clamp(92px, 9vw, 148px);
-  height: clamp(92px, 9vw, 148px);
+.app-shell.battle-view .format-double .battle-pokemon-stage.player {
+  --battle-stage-size: min(17.5cqw, 46cqh, 360px);
 }
 
-.app-shell.battle-view .format-double .battle-pokemon-stage.player,
-.app-shell.battle-view .format-triple .battle-pokemon-stage.player,
-.app-shell.battle-view .format-rotation .battle-pokemon-stage.player {
-  width: clamp(122px, 12vw, 190px);
-  height: clamp(122px, 12vw, 190px);
-  bottom: -1%;
+.app-shell.battle-view .format-double .battle-pokemon-stage.opponent {
+  --battle-stage-size: min(15cqw, 38cqh, 298px);
 }
 
-.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-0 { left: 3%; }
-.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-1 { left: 22%; }
-.app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-0 { right: 8%; bottom: 31%; }
-.app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-1 { right: 25%; bottom: 42%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-0 { --battle-stage-center: 23%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-1 { --battle-stage-center: 41%; --battle-stage-floor: 10%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-0 { --battle-stage-center: 80%; --battle-stage-floor: 30%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-1 { --battle-stage-center: 62%; --battle-stage-floor: 36%; }
 
-.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-0 { left: 1%; }
-.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-1 { left: 17%; }
-.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-2 { left: 32%; }
-.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-0 { right: 6%; bottom: 29%; }
-.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-1 { right: 21%; bottom: 39%; }
-.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-2 { right: 36%; bottom: 49%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player {
+  --battle-stage-size: min(14cqw, 39cqh, 296px);
+}
+
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent {
+  --battle-stage-size: min(12.5cqw, 32cqh, 244px);
+}
+
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-0 { --battle-stage-center: 16%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-1 { --battle-stage-center: 31%; --battle-stage-floor: 8%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.player.slot-2 { --battle-stage-center: 46%; --battle-stage-floor: 11%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-0 { --battle-stage-center: 88%; --battle-stage-floor: 30%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-1 { --battle-stage-center: 73%; --battle-stage-floor: 40%; }
+.app-shell.battle-view :is(.format-triple, .format-rotation) .battle-pokemon-stage.opponent.slot-2 { --battle-stage-center: 58%; --battle-stage-floor: 50%; }
 
 .app-shell.battle-view .battle-pixel-move-animation.is-slot-anchored .pixel-move-beam {
   width: var(--trajectory-distance);
