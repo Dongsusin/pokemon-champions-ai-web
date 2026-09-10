@@ -1,0 +1,189 @@
+[
+  {
+    "id": "intro",
+    "kind": "title",
+    "url": "/promo/title.html",
+    "duration": 8
+  },
+  {
+    "id": "pokemon",
+    "kind": "showcase",
+    "url": "/promo/showcase.html?scene=pokemon",
+    "duration": 8,
+    "overlay": {
+      "counter": "01 / BUILD YOUR TEAM",
+      "eyebrow": "YOUR PARTNERS, YOUR POSSIBILITIES",
+      "title": "만남은 다양하게. 팀은 나답게.",
+      "description": "다양한 포켓몬을 모으고, 나만의 배틀 팀을 완성하세요.",
+      "tag": "POKÉMON",
+      "accent": "#87edff"
+    }
+  },
+  {
+    "id": "pokemon-detail",
+    "kind": "showcase",
+    "url": "/promo/showcase.html?scene=pokemon&variant=detail",
+    "duration": 8,
+    "overlay": {
+      "counter": "01 / BUILD YOUR TEAM",
+      "eyebrow": "BUILD. TRAIN. CHALLENGE.",
+      "title": "좋아하는 포켓몬이, 승리의 주역으로.",
+      "description": "타입과 특성, 기술의 조합에서 시작되는 나만의 전략.",
+      "tag": "TEAM BUILDING",
+      "accent": "#87edff"
+    }
+  },
+  {
+    "id": "trainers",
+    "kind": "showcase",
+    "url": "/promo/showcase.html?scene=trainers",
+    "duration": 7,
+    "overlay": {
+      "counter": "02 / FACE THE CHALLENGE",
+      "eyebrow": "238 AI TRAINERS",
+      "title": "다음 상대는, 어떤 트레이너?",
+      "description": "다양한 AI 캐릭터와 팀을 상대로 새로운 승부에 도전하세요.",
+      "tag": "AI CHALLENGE",
+      "accent": "#f8cb76",
+      "footage": "게임 데이터·리소스로 구성한 트레이너 소개"
+    }
+  },
+  {
+    "id": "competition",
+    "kind": "showcase",
+    "url": "/promo/showcase.html?scene=competition",
+    "duration": 7,
+    "overlay": {
+      "counter": "02 / FACE THE CHALLENGE",
+      "eyebrow": "EVERY MATCH IS A NEW CHALLENGE",
+      "title": "상대를 읽고, 한 수 앞서라.",
+      "description": "상대의 포켓몬과 배틀 스타일에 맞춰 전략을 바꿔보세요.",
+      "tag": "BATTLE STRATEGY",
+      "accent": "#f8cb76"
+    }
+  },
+  {
+    "id": "items",
+    "kind": "showcase",
+    "url": "/promo/showcase.html?scene=items",
+    "duration": 6,
+    "overlay": {
+      "counter": "03 / FIND YOUR ADVANTAGE",
+      "eyebrow": "344 BATTLE ITEMS",
+      "title": "도구 하나로 달라지는 승부.",
+      "description": "공격을 강화하고, 위기를 버티고, 새로운 가능성을 여세요.",
+      "tag": "BATTLE ITEMS",
+      "accent": "#a9ef8c"
+    }
+  },
+  {
+    "id": "items-detail",
+    "kind": "showcase",
+    "url": "/promo/showcase.html?scene=items&variant=detail",
+    "duration": 6,
+    "overlay": {
+      "counter": "03 / FIND YOUR ADVANTAGE",
+      "eyebrow": "MAKE EVERY CHOICE COUNT",
+      "title": "포켓몬 × 기술 × 아이템",
+      "description": "팀에 맞는 도구를 선택해, 당신만의 전술을 완성하세요.",
+      "tag": "YOUR LOADOUT",
+      "accent": "#a9ef8c"
+    }
+  },
+  {
+    "id": "mega",
+    "kind": "battle",
+    "url": "/promo/capture.html?scene=mega",
+    "duration": 8,
+    "overlay": {
+      "battle": true,
+      "counter": "04 / CHANGE THE BATTLE",
+      "eyebrow": "MEGA EVOLUTION",
+      "title": "한계를 넘어, 메가진화.",
+      "description": "익숙한 파트너가 새로운 모습과 힘으로 깨어납니다.",
+      "tag": "MEGA",
+      "accent": "#f4a0ff"
+    }
+  },
+  {
+    "id": "zmove",
+    "kind": "battle",
+    "url": "/promo/capture.html?scene=zmove",
+    "duration": 8,
+    "overlay": {
+      "battle": true,
+      "counter": "04 / CHANGE THE BATTLE",
+      "eyebrow": "Z-MOVE",
+      "title": "결정적인 순간, Z기술.",
+      "description": "온 힘을 담은 한 방으로 배틀의 흐름을 바꾸세요.",
+      "tag": "Z-MOVE",
+      "accent": "#ffe179"
+    }
+  },
+  {
+    "id": "dynamax",
+    "kind": "battle",
+    "url": "/promo/capture.html?scene=dynamax",
+    "duration": 8,
+    "overlay": {
+      "battle": true,
+      "counter": "04 / CHANGE THE BATTLE",
+      "eyebrow": "GIGANTAMAX",
+      "title": "전장을 압도하는 존재감.",
+      "description": "거다이맥스 포켓몬과 전용 기술로 승부를 압도하세요.",
+      "tag": "GIGANTAMAX",
+      "accent": "#ff8aad"
+    }
+  },
+  {
+    "id": "tera",
+    "kind": "battle",
+    "url": "/promo/capture.html?scene=tera",
+    "duration": 6,
+    "overlay": {
+      "battle": true,
+      "counter": "04 / CHANGE THE BATTLE",
+      "eyebrow": "TERASTALLIZATION",
+      "title": "타입이 바뀌면, 전략도 바뀐다.",
+      "description": "테라스탈로 숨겨둔 승리의 수를 꺼내세요.",
+      "tag": "TERA",
+      "accent": "#94ecff"
+    }
+  },
+  {
+    "id": "double",
+    "kind": "battle",
+    "url": "/promo/capture.html?scene=double",
+    "duration": 6,
+    "overlay": {
+      "battle": true,
+      "counter": "05 / TAKE THE ARENA",
+      "eyebrow": "REAL BATTLES. YOUR DECISIONS.",
+      "title": "함께할 때, 더 넓어지는 전략.",
+      "description": "싱글부터 더블 배틀까지, 매 순간을 직접 선택하세요.",
+      "tag": "DOUBLE BATTLE",
+      "accent": "#b6a6ff"
+    }
+  },
+  {
+    "id": "battle",
+    "kind": "battle",
+    "url": "/promo/capture.html?scene=battle",
+    "duration": 4,
+    "overlay": {
+      "battle": true,
+      "counter": "05 / TAKE THE ARENA",
+      "eyebrow": "YOUR NEXT MOVE",
+      "title": "이제, 당신의 한 수.",
+      "description": "당신의 팀으로, 아레나에.",
+      "tag": "CHALLENGE",
+      "accent": "#87edff"
+    }
+  },
+  {
+    "id": "outro",
+    "kind": "title",
+    "url": "/promo/title.html?outro=1",
+    "duration": 6
+  }
+]

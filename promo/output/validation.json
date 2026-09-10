@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-10",
+  "durationSeconds": 96.021355,
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "frames": 2880,
+    "codec": "H.264",
+    "pixelFormat": "yuv420p"
+  },
+  "audio": {
+    "codec": "AAC",
+    "sampleRate": 48000,
+    "channels": 2,
+    "integratedLUFS": -15.31,
+    "truePeakDbTP": -1.49
+  },
+  "bytes": 40023706,
+  "sha256": "1aca11c0b2312e828c7cf179ddc236d506f9310fe637d9969362256240e41863",
+  "verification": {
+    "fullAudioVideoDecode": true,
+    "visibleSyncMarkerFrames": 0,
+    "browserPlayback": {
+      "readyState": 4,
+      "error": null,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "battleCaptureSyncMarkers": 6,
+    "capturePageErrors": 0,
+    "productionBuild": "passed",
+    "buildNote": "Existing Vite chunk-size warning remains."
+  }
+}

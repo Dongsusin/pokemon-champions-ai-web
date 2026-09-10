@@ -1,0 +1,54 @@
+/* Capture-only composition. Production UI and save data are untouched. */
+html, body, #root { width:100%; height:100%; overflow:hidden; }
+.promo-showcase {width:100%; height:100vh; min-height:100vh; padding:44px 42px 40px;}
+.promo-showcase::before {background:linear-gradient(115deg,rgba(4,9,28,.86),rgba(9,20,57,.45) 65%,rgba(4,9,28,.8));}
+.promo-showcase > .pc-screen, .promo-showcase > .shop-screen, .promo-showcase > .competition-screen, .promo-showcase > .battle-select-screen {width:100%; max-width:1800px; height:100%; min-height:0; padding:0;}
+.promo-showcase .pc-header,.promo-showcase .shop-header {min-height:102px;}
+.promo-showcase .team-box-grid {grid-template-columns:repeat(8,minmax(0,1fr));grid-auto-rows:132px;}
+.promo-showcase .team-box-card {min-height:128px;}
+.promo-showcase .team-box-card-select {min-height:108px;}
+.promo-showcase .team-box-card-sprite {height:68px;}
+.promo-showcase .team-box-card-select > strong {font-size:15px;}
+.promo-showcase .shop-item-grid {gap:15px;}
+.promo-showcase .shop-item-card {min-height:0;padding:20px 18px;}
+.promo-showcase .shop-item-card h3 {font-size:22px;}
+.promo-showcase .shop-item-card p {font-size:15px;}
+.promo-showcase .shop-item-icon {width:72px;height:72px;}
+.promo-showcase .shop-item-icon img {width:52px;height:52px;image-rendering:pixelated;}
+.promo-showcase button {cursor:default;}
+.promo-trainers {max-width:1788px;height:100%;margin:auto;display:flex;flex-direction:column;position:relative;z-index:2;}
+.promo-trainer-heading {display:flex;align-items:baseline;gap:32px;height:136px;position:relative;flex:none;}
+.promo-trainer-heading > span {position:absolute;top:5px;left:0;font-size:15px;letter-spacing:4px;font-weight:800;color:#94cbf5;}
+.promo-trainer-heading > strong {margin-top:42px;font-size:38px;letter-spacing:-1.5px;}
+.promo-trainer-heading > strong b {font-size:58px;color:#c5fb79;margin-right:6px;font-variant-numeric:tabular-nums;}
+.promo-trainer-heading > p {font-size:20px;letter-spacing:-.5px;color:#c4d2ee;}
+.promo-trainer-stage {height:600px;flex:1;min-height:380px;overflow:hidden;position:relative;border:1px solid rgba(159,190,238,.3);border-radius:24px;background:radial-gradient(ellipse at 74% 55%,rgba(71,112,203,.45),transparent 46%),linear-gradient(115deg,#101a35,#18274d 60%,#121c39);box-shadow:0 35px 75px rgba(0,0,0,.35);}
+.promo-stage-grid {position:absolute;inset:0;background-image:linear-gradient(rgba(144,181,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(144,181,255,.06) 1px,transparent 1px);background-size:50px 50px;transform:perspective(600px) rotateX(48deg) scale(1.6);transform-origin:center bottom;}
+.promo-stage-number {position:absolute;right:48px;top:0;line-height:1;font-size:350px;font-weight:950;color:rgba(133,167,255,.07);letter-spacing:-30px;}
+.promo-trainer-identity {position:absolute;top:76px;left:72px;z-index:4;}
+.promo-tier {display:flex;align-items:center;gap:14px;font-size:18px;letter-spacing:3px;color:#b1cdff;font-weight:800;}
+.promo-tier i {display:block;width:34px;height:2px;background:#96b7eb;}
+.promo-trainer-identity h1 {font-size:94px;letter-spacing:-4px;line-height:1.05;margin:28px 0 26px;}
+.promo-trainer-identity p {font-size:21px;color:#bacbe6;margin:0 0 42px;}
+.promo-trainer-identity p strong {color:#eaf3ff;margin-left:14px;}
+.promo-trainer-team {display:flex;gap:12px;}
+.promo-trainer-team > span {width:92px;height:92px;border:1px solid rgba(146,180,239,.26);border-radius:12px;background:rgba(14,25,52,.7);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;}
+.promo-trainer-team img {width:64px;height:44px;object-fit:contain;image-rendering:pixelated;}
+.promo-trainer-team small {font-size:12px;font-weight:700;color:#d3def0;}
+.promo-team-note {display:block;margin-top:19px;font-size:15px;letter-spacing:1px;color:#93abd2;}
+.promo-trainer-art {position:absolute;inset:0 25px 0 auto;width:770px;}
+.promo-trainer-halo {position:absolute;width:570px;height:570px;top:2%;left:70px;border:1px solid rgba(143,180,255,.24);border-radius:50%;box-shadow:0 0 0 35px rgba(102,155,255,.035),0 0 0 90px rgba(102,155,255,.025),inset 0 0 70px rgba(127,180,255,.12);}
+.promo-featured-trainer.trainer-sprite-frame {position:absolute;width:290px;height:380px;left:90px;bottom:46px;z-index:3;filter:drop-shadow(0 28px 15px rgba(0,0,0,.6));}
+.promo-featured-trainer.trainer-sprite-frame img {width:100%;height:100%;object-fit:contain;image-rendering:pixelated;object-position:bottom;}
+.promo-ace.pokemon-sprite-frame {position:absolute;right:0;bottom:65px;width:420px;height:350px;filter:drop-shadow(0 25px 15px rgba(0,0,0,.5));}
+.promo-ace > .pokemon-sprite-layer {object-fit:contain;image-rendering:pixelated;}
+.promo-trainer-lineup {display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:25px;height:147px;flex:none;}
+.promo-trainer-lineup > button {position:relative;display:flex;align-items:center;gap:12px;color:#e7f0ff;padding:16px 16px 10px 10px;border:1px solid #405474;background:rgba(12,23,48,.9);border-radius:15px;overflow:hidden;transition:border-color .22s,background .22s,transform .22s;}
+.promo-trainer-lineup > button.selected {border-color:#bafa74;background:linear-gradient(130deg,rgba(61,91,69,.95),rgba(17,33,41,.95));box-shadow:inset 0 0 0 1px #bafa74;transform:translateY(-4px);}
+.promo-trainer-lineup .trainer-sprite-frame {width:108px;height:124px;align-self:flex-end;flex:none;}
+.promo-trainer-lineup .trainer-sprite-frame img {width:100%;height:100%;object-fit:contain;object-position:bottom;image-rendering:pixelated;}
+.promo-trainer-lineup > button > span:not(.trainer-sprite-frame) {display:flex;flex-direction:column;gap:8px;text-align:left;}
+.promo-trainer-lineup small {font-size:12px;color:#aabfe0;}
+.promo-trainer-lineup strong {font-size:25px;letter-spacing:-1px;}
+.promo-trainer-lineup > button > b {position:absolute;right:12px;top:10px;font-size:13px;color:#a8bee5;}
+@media(max-width:1600px) {.promo-showcase{padding:25px;} .promo-trainer-art{transform:scale(.85);transform-origin:right bottom;} .promo-trainer-identity{left:48px;top:55px;} .promo-trainer-lineup{height:125px;} .promo-trainer-lineup .trainer-sprite-frame{width:75px;height:105px;} .promo-trainer-heading{height:118px;} .promo-trainer-team > span{width:78px;} }

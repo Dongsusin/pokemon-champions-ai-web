@@ -1,0 +1,8 @@
+/* Recording viewport only. Actual battle layout, sprites and effects come from
+   the game styles above; no scene is reconstructed for the trailer. */
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: #061120; }
+.promo-capture.app-shell { width: 100%; min-height: 100%; padding: 0; margin: 0; }
+.promo-capture.app-shell.battle-view .battle-game-screen { height: 100vh; min-height: 0; }
+.promo-capture .battle-header-actions { pointer-events: none; }
+.promo-capture button { cursor: default; }
