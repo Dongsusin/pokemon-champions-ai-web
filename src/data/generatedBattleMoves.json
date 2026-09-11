@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T03:27:39.004Z",
+  "generatedAt": "2026-09-11T03:45:00.792Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
@@ -16056,6 +16056,10 @@
       "selfSwitch": true,
       "zMove": {
         "effect": "healreplacement"
+      },
+      "boosts": {
+        "atk": -1,
+        "spa": -1
       }
     },
     {

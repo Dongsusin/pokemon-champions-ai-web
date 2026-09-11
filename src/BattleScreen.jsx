@@ -44,7 +44,7 @@ import TrainerSprite from './TrainerSprite'
 import {
   createBattle,
   createBattleTurnTimeline,
-  forcePlayerSwitch,
+  resumeBattleTurnTimeline,
   getActivePokemon,
   getActivePokemonList,
   getAvailableBattleMechanics,
@@ -1360,13 +1360,20 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
 function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, onPreview }) {
   const activeIndexes = battle.player.activeIndexes ?? [battle.player.activeIndex]
   const activeIndex = activeIndexes[activeSlot] ?? battle.player.activeIndex
+  const switchRequest = forced ? battle.pendingPlayerSwitch : null
+  const switchSource = switchRequest?.kind !== 'faint' ? switchRequest?.moveName : null
+  const choosingRevival = switchRequest?.kind === 'revival'
 
   return (
     <section className="battle-party-menu">
       <header>
-        <div>
-          <small>{forced ? 'CHOOSE NEXT POKÉMON' : 'POKÉMON'}</small>
-          <strong>{forced ? '다음 포켓몬을 선택하세요' : '교대할 포켓몬 선택'}</strong>
+        <div aria-live={forced ? 'polite' : undefined}>
+          <small>{choosingRevival ? 'REVIVE POKÉMON' : forced ? 'CHOOSE NEXT POKÉMON' : 'POKÉMON'}</small>
+          <strong>{choosingRevival
+            ? `${switchSource || '회생의기도'} · 되살릴 포켓몬을 선택하세요`
+            : switchSource
+            ? `${switchSource} · 교대할 포켓몬을 선택하세요`
+            : forced ? '다음 포켓몬을 선택하세요' : '교대할 포켓몬 선택'}</strong>
         </div>
         {!forced && <button type="button" onPointerEnter={onPreview} onClick={onBack}><ChevronLeft size={17} /> 돌아가기</button>}
       </header>
@@ -1374,10 +1381,12 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
         {battle.player.team.map((pokemon, index) => {
           const isActive = activeIndexes.includes(index)
           const isSelectedSlot = index === activeIndex
-          const isDisabled = pokemon.fainted || pokemon.hp <= 0 || isActive
+          const isDisabled = choosingRevival
+            ? !pokemon.fainted && pokemon.hp > 0
+            : isActive || pokemon.fainted || pokemon.hp <= 0
           return (
             <button
-              className={`${isActive ? 'active' : ''}${isSelectedSlot ? ' selected-slot' : ''}${pokemon.fainted ? ' fainted' : ''}`}
+              className={`${isActive && !choosingRevival ? 'active' : ''}${isSelectedSlot ? ' selected-slot' : ''}${pokemon.fainted ? ' fainted' : ''}`}
               type="button"
               disabled={isDisabled}
               key={pokemon.battleId}
@@ -2023,12 +2032,10 @@ function BattleScreen({
     })
   }
 
-  const startAnimatedTurn = (playerAction) => {
-    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
+  const playBattleResolution = (resolution) => {
     turnLockedRef.current = true
     const playbackToken = playbackTokenRef.current + 1
     playbackTokenRef.current = playbackToken
-    const resolution = createBattleTurnTimeline(battle, playerAction)
     const steps = resolution.timeline
 
     setMenu('command')
@@ -2065,6 +2072,11 @@ function BattleScreen({
       setIsTurnAnimating(false)
       turnLockedRef.current = false
     }
+  }
+
+  const startAnimatedTurn = (playerAction) => {
+    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
+    playBattleResolution(createBattleTurnTimeline(battle, playerAction))
   }
 
   const livingPlayerActionSlots = playerActivePokemon
@@ -2220,38 +2232,9 @@ function BattleScreen({
     if (turnLockedRef.current || activeTrainerDialogue) return
     battleAudioRef.current?.playMenu('select')
     if (battle.awaitingPlayerSwitch) {
-      const activeSlot = battle.awaitingPlayerSwitchSlots?.[0] ?? 0
-      const nextBattle = forcePlayerSwitch(battle, targetIndex)
-      if (nextBattle === battle) return
-      const target = nextBattle.player.team[targetIndex]
-      const playbackToken = playbackTokenRef.current + 1
-      playbackTokenRef.current = playbackToken
-      const forcedSwitchCue = {
-        id: `${battle.turn}-forced-switch-${playbackToken}-${target.battleId}`,
-        phase: 'switch',
-        sideId: 'player',
-        targetSideId: 'player',
-        actorSlot: activeSlot,
-        targetSlot: activeSlot,
-        actorName: target.name,
-        actorSpeciesId: target.speciesId,
-        actorOriginalSpeciesId: target.originalSpeciesId,
-        message: `${target.name}! 부탁해!`,
-        state: nextBattle,
-      }
-
-      turnLockedRef.current = true
-      setBattle(nextBattle)
-      setTurnCue(forcedSwitchCue)
-      setIsTurnAnimating(true)
-      playBattleCue(forcedSwitchCue)
-      playbackTimerRef.current = setTimeout(() => {
-        if (playbackTokenRef.current !== playbackToken) return
-        setTurnCue(null)
-        setIsTurnAnimating(false)
-        turnLockedRef.current = false
-        playbackTimerRef.current = null
-      }, turnStepDuration(forcedSwitchCue, attackAnimationMode))
+      const resolution = resumeBattleTurnTimeline(battle, targetIndex)
+      if (resolution.state === battle && resolution.timeline.length === 0) return
+      playBattleResolution(resolution)
     } else {
       submitPlayerAction({ type: 'switch', targetIndex })
     }

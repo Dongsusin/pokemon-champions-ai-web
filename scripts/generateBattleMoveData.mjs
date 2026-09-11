@@ -270,6 +270,8 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     description: resolvedDescription(showdownId, showdownMove, localized),
     flags: Object.keys(showdownMove.flags ?? {}),
     ...battleMechanics(showdownMove),
+    // The source implements these drops in onHit rather than a JSON boost field.
+    ...(showdownId === 'partingshot' ? { boosts: { atk: -1, spa: -1 } } : {}),
     ...(CURRENT_HP_FRACTION_MOVE_IDS.has(showdownId) ? { currentHpFraction: [1, 2] } : {}),
     ...(FIRST_TURN_ONLY_MOVE_IDS.has(showdownId) ? { firstTurnOnly: true } : {}),
   }]

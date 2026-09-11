@@ -1615,6 +1615,9 @@ function cloneBattle(state) {
     opponent: cloneSide(state.opponent),
     log: [...state.log],
     awaitingPlayerSwitchSlots: [...(state.awaitingPlayerSwitchSlots ?? [])],
+    pendingPlayerSwitch: state.pendingPlayerSwitch ? structuredClone(state.pendingPlayerSwitch) : null,
+    pendingSwitches: (state.pendingSwitches ?? []).map((request) => structuredClone(request)),
+    pendingTurn: state.pendingTurn ? structuredClone(state.pendingTurn) : null,
     lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
     lastConsumedItem: state.lastConsumedItem ? { ...state.lastConsumedItem } : null,
     lastUsedMove: state.lastUsedMove ? { ...state.lastUsedMove } : null,
@@ -2141,8 +2144,8 @@ function variableMovePower(state, attacker, defender, move) {
     && ['bodyslam', 'dragonrush', 'flyingpress', 'heatcrash', 'heavyslam', 'steamroller', 'stomp'].includes(move.id)
   ) return Math.max(1, Number(move.power) || 1) * 2
   if (move.id === 'beatup') return 10
-  if (move.id === 'magnitude') return 70
-  if (move.id === 'present') return 80
+  if (move.id === 'magnitude') return move.rolledPower ?? 70
+  if (move.id === 'present') return move.rolledPower ?? 80
   if (move.id === 'naturalgift') {
     return heldItemEffectsActive(attacker)
       ? Number(getBattleItem(attacker.heldItemId)?.naturalGiftPower) || 1
@@ -2717,6 +2720,7 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   const randomFactor = 0.85 + random() * 0.15
   let modifier = getMoveStab(attacker, move.type, move.pledgeStabOverride, move.stellarBoosted)
     * effectiveness
+    * (move.spreadModifier ?? 1)
     * environmentMoveMultiplier(state, attacker, defender, move)
     * randomFactor
     * (critical ? 1.5 : 1)
@@ -3162,6 +3166,7 @@ function changeStages(
   let blockedByItem = false
   let blockedByMist = false
   let loweredByOpponent = false
+  let reflectedApplied = false
 
   Object.entries(normalizedStageChanges(changes)).forEach(([statKey, baseAmount]) => {
     const amount = baseAmount * abilityMultiplier * abilityDirection
@@ -3208,7 +3213,7 @@ function changeStages(
   else if (blockedByAbility) appendLog(state, `${pokemon.name}의 ${pokemon.ability}! 능력이 떨어지지 않는다!`, 'ability')
   if (Object.keys(reflectedChanges).length > 0) {
     appendLog(state, `${pokemon.name}의 미러아머가 능력 하락을 되받아쳤다!`, 'ability')
-    changeStages(state, source, reflectedChanges, { source: pokemon, reflectStatDrops: false })
+    reflectedApplied = changeStages(state, source, reflectedChanges, { source: pokemon, reflectStatDrops: false })
   }
   if (triggerOpportunist && Object.keys(appliedBoosts).length > 0) {
     const opposingSide = getOtherSide(state, targetSide.id)
@@ -3264,7 +3269,7 @@ function changeStages(
     changeStages(state, pokemon, { speed: 1 })
   }
   activateWhiteHerb(state, pokemon)
-  return messages.length > 0
+  return messages.length > 0 || reflectedApplied
 }
 
 function baseMaxHp(pokemon) {
@@ -4340,9 +4345,9 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
 
   if (move.id === 'shedtail') {
     const side = getPokemonSide(state, attacker)
-    const cost = Math.floor(attacker.maxHp / 2)
-    if (attacker.hp <= cost || availableBenchIndexes(side).length === 0) {
-      appendLog(state, 'HP가 부족하거나 교대할 포켓몬이 없어 꼬리자르기는 실패했다!', 'muted')
+    const cost = Math.ceil(attacker.maxHp / 2)
+    if (attacker.hp <= cost || attacker.substituteHp > 0 || attacker.commandedByBattleId || availableBenchIndexes(side).length === 0) {
+      appendLog(state, 'HP·대타 상태 또는 교대 조건 때문에 꼬리자르기는 실패했다!', 'muted')
       attacker.moveFailedThisTurn = true
       return true
     }
@@ -4390,7 +4395,7 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
   }
   if (move.id === 'curse') {
     if (attacker.types.includes('고스트')) {
-      if (defender.cursedActive || attacker.hp <= Math.floor(attacker.maxHp / 2)) {
+      if (defender.cursedActive) {
         appendLog(state, '그러나 저주는 실패했다!', 'muted')
         return true
       }
@@ -4690,7 +4695,9 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
       appendLog(state, `${defender.name}의 공격은 더 이상 떨어지지 않는다!`, 'muted')
       return true
     }
-    const drainAmount = effectiveStat(state, defender, 'attack')
+    // Strength Sap uses the target's Attack stat and stages, without battle
+    // modifiers such as Huge Power, Choice Band, or the Ruin abilities.
+    const drainAmount = Math.max(1, Math.floor(defender.stats.attack * stageMultiplier(defender.statStages.attack ?? 0)))
     changeStages(state, defender, { attack: -1 }, {
       source: attacker,
       ignoreAbility: Boolean(move.ignoreAbility),
@@ -4921,6 +4928,13 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
 
   if (move.id === 'revivalblessing') {
     const side = getPokemonSide(state, attacker)
+    const fainted = side.team.filter((pokemon) => pokemon.fainted || pokemon.hp <= 0)
+    if (side.id === 'player' && !state.aiSimulation && fainted.length > 0) {
+      requestBattleSwitch(state, side.id, context.actorSlot ?? 0, {
+        kind: 'revival', moveName: move.name, actionOrder: context.actionOrder,
+      }, context.timeline)
+      return true
+    }
     const target = side.team
       .filter((pokemon) => pokemon.fainted || pokemon.hp <= 0)
       .sort((first, second) => {
@@ -4932,11 +4946,7 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
       appendLog(state, '그러나 되살릴 포켓몬이 없었다!', 'muted')
       return true
     }
-    target.fainted = false
-    target.hp = Math.max(1, Math.floor(target.maxHp / 2))
-    target.status = null
-    clearSwitchVolatiles(target)
-    appendLog(state, `${target.name}은(는) 회생의기도로 다시 일어났다!`, 'heal')
+    reviveBattlePokemon(state, side.id, target, context.timeline, context.actionOrder)
     return true
   }
 
@@ -4981,6 +4991,17 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
   if (move.id === 'autotomize') {
     attacker.weightReduction = Math.min(10000, (attacker.weightReduction ?? 0) + 1000)
     appendLog(state, `${attacker.name}은(는) 몸을 깎아 무게가 100kg 줄었다!`, 'status')
+  }
+
+  if (move.id === 'partingshot') {
+    const changed = changeStages(state, defender, { attack: -1, specialAttack: -1 }, {
+      source: attacker, ignoreAbility: Boolean(move.ignoreAbility),
+    })
+    if (!changed && defender.ability !== '미러아머') {
+      attacker.moveFailedThisTurn = true
+      appendLog(state, '능력을 낮출 수 없어 막말내뱉기는 실패했다!', 'muted')
+    }
+    return true
   }
 
   if (applyAdvancedStatusMove(state, attacker, defender, move, random, context)) return true
@@ -6743,15 +6764,10 @@ function applyDamagingHitItemEffects(
     const replacements = availableBenchIndexes(defenderSide)
     if (replacements.length > 0) {
       consumeHeldItem(state, defender)
-      performSwitch(
-        state,
-        defenderSide.id,
-        replacements[Math.floor(random() * replacements.length)],
-        true,
-        timeline,
-        actionOrder,
-        targetSlot,
-      )
+      requestBattleSwitch(state, defenderSide.id, targetSlot, {
+        kind: 'item', moveName: '탈출버튼', actionOrder,
+      }, timeline)
+      move.suppressSelfSwitch = true
       appendLog(state, `${defender.name}의 탈출버튼이 작동했다!`, 'item')
       applied = true
     }
@@ -6968,17 +6984,113 @@ function applyBatonPassSnapshot(pokemon, snapshot) {
   Object.assign(pokemon, snapshot, { statStages: { ...snapshot.statStages } })
 }
 
-function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot = 0, targetSlot = 0) {
+function requestBattleSwitch(state, sideId, actorSlot, details, timeline = null) {
+  const actor = getActivePokemon(state, sideId, actorSlot)
+  if (!actor || actor.hp <= 0 || actor.commanding || actor.commandedByBattleId
+    || details.kind !== 'revival' && availableBenchIndexes(getSide(state, sideId)).length === 0) return false
+  const request = { ...details, sideId, actorSlot, actorBattleId: actor.battleId }
+  if (state.aiSimulation) {
+    const index = chooseAiReplacementIndex(state, sideId, actorSlot)
+    return index != null && performSwitch(state, sideId, index, true, timeline, details.actionOrder, actorSlot, request)
+  }
+  state.pendingSwitches ??= []
+  if (state.pendingSwitches.some((entry) => entry.actorBattleId === actor.battleId)) return false
+  state.pendingSwitches.push(request)
+  return true
+}
+
+function reviveBattlePokemon(state, sideId, target, timeline, actionOrder) {
+  target.fainted = false
+  target.hp = Math.max(1, Math.floor(target.maxHp / 2))
+  target.status = null
+  clearSwitchVolatiles(target)
+  target.revivedThisTurn = true
+  const message = `${target.name}은(는) 회생의기도로 다시 일어났다!`
+  appendLog(state, message, 'heal')
+  pushTimelineStep(timeline, state, { phase: 'status', sideId, targetSideId: sideId, message })
+  const side = getSide(state, sideId)
+  const slot = side.activeIndexes.findIndex((index) => side.team[index].battleId === target.battleId)
+  if (slot >= 0) {
+    // A fainted active ally re-enters, including hazards and its entry ability.
+    // Its action from before fainting remains cancelled for this turn.
+    target.switchedInThisTurn = true
+    applyPendingDifficultyBoost(target)
+    activateIllusion(state, sideId, target)
+    applyEntryHazards(state, side, target)
+    pushTimelineStep(timeline, state, {
+      phase: 'switch', sideId, targetSideId: sideId, actorSlot: slot, targetSlot: slot,
+      actorName: target.name, actorSpeciesId: target.speciesId,
+      actorOriginalSpeciesId: target.originalSpeciesId, message: `${target.name}이(가) 다시 배틀에 나왔다!`,
+    })
+    activateEntryAbility(state, sideId, slot)
+    markActiveFaints(state, timeline, actionOrder)
+    resolvePendingEjectPacks(state, timeline, actionOrder)
+  }
+}
+
+function finishRequestedSwitch(state, request, targetIndex, timeline) {
+  if (request.kind === 'revival') {
+    const target = getSide(state, request.sideId).team[targetIndex]
+    if (!target || target.hp > 0 && !target.fainted) return false
+    reviveBattlePokemon(state, request.sideId, target, timeline, request.actionOrder)
+    return true
+  }
+  if (!performSwitch(state, request.sideId, targetIndex, true, timeline, request.actionOrder, request.actorSlot, request)) return false
+  markActiveFaints(state, timeline, request.actionOrder)
+  const incoming = getActivePokemon(state, request.sideId, request.actorSlot)
+  if (incoming.hp <= 0 && availableBenchIndexes(getSide(state, request.sideId)).length > 0) {
+    state.pendingSwitches.unshift({
+      kind: 'faint', sideId: request.sideId, actorSlot: request.actorSlot,
+      actorBattleId: incoming.battleId, actionOrder: request.actionOrder,
+    })
+  }
+  resolvePendingEjectPacks(state, timeline, request.actionOrder)
+  return true
+}
+
+function resolveRequestedSwitches(state, timeline = null) {
+  if (remainingCount(state.player) === 0 || remainingCount(state.opponent) === 0) {
+    state.pendingSwitches = []
+    return false
+  }
+  while (state.pendingSwitches?.length) {
+    const request = state.pendingSwitches.shift()
+    const actor = getActivePokemon(state, request.sideId, request.actorSlot)
+    if (!actor || actor.battleId !== request.actorBattleId
+      || request.kind !== 'faint' && (actor.hp <= 0 || actor.fainted)
+      || request.kind !== 'revival' && availableBenchIndexes(getSide(state, request.sideId)).length === 0) continue
+    if (request.sideId === 'player') {
+      state.pendingPlayerSwitch = request
+      state.awaitingPlayerSwitch = true
+      state.awaitingPlayerSwitchSlots = [request.actorSlot, ...state.awaitingPlayerSwitchSlots.filter((slot) => slot !== request.actorSlot)]
+      const message = request.kind === 'revival'
+        ? '회생의기도! 되살릴 포켓몬을 선택해 주세요.'
+        : request.moveName
+        ? `${request.moveName}! 교대할 포켓몬을 선택해 주세요.`
+        : '다음 포켓몬을 선택해 주세요.'
+      appendLog(state, message, 'prompt')
+      pushTimelineStep(timeline, state, { phase: 'prompt', sideId: 'player', targetSideId: 'player', message })
+      return true
+    }
+    const index = chooseAiReplacementIndex(state, request.sideId, request.actorSlot)
+    if (index != null) finishRequestedSwitch(state, request, index, timeline)
+  }
+  return false
+}
+
+function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot = 0, targetSlot = 0, source = null) {
   const side = getSide(state, sideId)
   const targetSide = getOtherSide(state, sideId)
   const attacker = getActivePokemon(state, sideId, actorSlot)
   const defender = getActivePokemon(state, targetSide.id, targetSlot)
 
   if (move.forceSwitch && defender?.hp > 0) {
-    const forcedSwitchBlocked = defender.commandedByBattleId
+    const forcedSwitchBlocked = defender.commandedByBattleId || defender.dynamaxActive || defender.ingrainActive
       || !moveIgnoresAbility(move, defender) && FORCED_SWITCH_IMMUNE_ABILITIES.has(defender.ability)
     if (forcedSwitchBlocked) {
-      appendLog(state, `${defender.name}의 ${defender.commandedByBattleId ? '사령탑' : defender.ability}! 강제 교체를 막아냈다!`, 'ability')
+      const sourceName = defender.commandedByBattleId ? '사령탑'
+        : defender.dynamaxActive ? '다이맥스' : defender.ingrainActive ? '뿌리박기' : defender.ability
+      appendLog(state, `${defender.name}의 ${sourceName}! 강제 교체를 막아냈다!`, 'ability')
     } else {
       const switchOptions = availableBenchIndexes(targetSide)
       if (switchOptions.length > 0) {
@@ -6992,24 +7104,17 @@ function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, 
     move.selfSwitch
     && move.id !== 'revivalblessing'
     && attacker?.hp > 0
+    && (!source || attacker.battleId === source.battleId)
+    && !move.suppressSelfSwitch
     && !attacker.moveFailedThisTurn
   ) {
     const switchOptions = availableBenchIndexes(side)
     if (switchOptions.length > 0) {
       const passSnapshot = move.id === 'batonpass' ? batonPassSnapshot(attacker) : null
       const shedTailHp = move.id === 'shedtail' ? attacker.pendingShedTailHp : 0
-      const targetIndex = switchOptions[Math.floor(random() * switchOptions.length)]
-      if (performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, actorSlot)) {
-        const replacement = getActivePokemon(state, sideId, actorSlot)
-        if (passSnapshot) {
-          applyBatonPassSnapshot(replacement, passSnapshot)
-          appendLog(state, `${replacement.name}은(는) 배턴터치로 능력 변화를 이어받았다!`, 'status')
-        }
-        if (shedTailHp > 0) {
-          replacement.substituteHp = shedTailHp
-          appendLog(state, `${replacement.name}의 앞에 대타가 이어졌다!`, 'status')
-        }
-      }
+      requestBattleSwitch(state, sideId, actorSlot, {
+        kind: 'pivot', moveName: move.name, passSnapshot, shedTailHp, actionOrder,
+      }, timeline)
     }
   }
 }
@@ -7586,10 +7691,23 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       ?? (move.category === '물리' ? 'physical' : move.category === '변화' ? 'status' : 'special')
     appendLog(state, '두 맹세가 하나로 합쳐졌다!', 'field')
   }
+  // Resolve random-power moves once per action, after Max/Z conversion and
+  // before target resolution. Every spread target receives the same roll.
+  if (move.id === 'magnitude') {
+    const roll = random() * 100
+    const magnitudes = [[5, 4, 10], [15, 5, 30], [35, 6, 50], [65, 7, 70], [85, 8, 90], [95, 9, 110], [100, 10, 150]]
+    const [, magnitudeLevel, rolledPower] = magnitudes.find(([limit]) => roll < limit) ?? magnitudes.at(-1)
+    move = { ...move, magnitudeLevel, rolledPower, power: rolledPower }
+  } else if (move.id === 'present') {
+    const roll = random()
+    const rolledPower = roll < 0.2 ? 0 : roll < 0.6 ? 40 : roll < 0.9 ? 80 : 120
+    move = { ...move, rolledPower, power: rolledPower, presentHeal: rolledPower === 0 }
+  }
   if (move.id === 'round') side.roundUsedThisTurn = true
   if (action.quickDrawActivated) appendLog(state, `${attacker.name}의 퀵드로!`, 'ability')
   if (action.quickClawActivated) appendLog(state, `${attacker.name}의 선제공격손톱이 발동했다!`, 'item')
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
+  if (move.magnitudeLevel) appendLog(state, `매그니튜드 ${move.magnitudeLevel}!`, 'status')
   attacker.lastMoveId = move.id
   state.lastUsedMove = {
     moveId: move.id,
@@ -7805,7 +7923,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   if (DAMP_BLOCKED_MOVE_IDS.has(move.id)) {
-    const dampPokemon = [attacker, defender].find((pokemon) => pokemon.ability === '습기')
+    const dampPokemon = [...getActivePokemonList(state, 'player'), ...getActivePokemonList(state, 'opponent')]
+      .find((pokemon) => isAvailableFieldPokemon(pokemon) && pokemon.ability === '습기')
     if (dampPokemon) {
       appendLog(state, `${dampPokemon.name}의 습기 때문에 ${move.name}은(는) 실패했다!`, 'ability')
       pushTimelineStep(timeline, state, {
@@ -7829,729 +7948,857 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
-  if (
-    targetSide.id !== sideId
-    &&
-    state.rules?.terrain?.id === 'psychic'
-    && move.target !== 'self'
-    && environmentMovePriority(state, attacker, move) > 0
-    && isGrounded(defender, state)
-  ) {
-    appendLog(state, `사이코필드가 ${defender.name}을(를) 우선도 기술로부터 지켰다!`, 'field')
-    pushTimelineStep(timeline, state, {
-      phase: 'resolve',
-      ...moveStep,
-      result: 'blocked',
-      message: latestLogMessage(state, `${move.name}은(는) 사이코필드에 막혔다!`),
-    })
-    return
-  }
 
-  const priorityBlocked = targetSide.quickGuardTurns > 0
-    && targetSide.id !== sideId
-    && environmentMovePriority(state, attacker, move) > 0
-    && move.target !== 'self'
-  const spreadBlocked = targetSide.wideGuardTurns > 0
-    && ['all', 'allAdjacent', 'allAdjacentFoes'].includes(move.target)
-  const matBlocked = targetSide.matBlockTurns > 0 && !isStatusMove(move) && move.flags?.includes('protect')
-  const craftyBlocked = targetSide.craftyShieldTurns > 0 && isStatusMove(move) && move.target !== 'self'
-  if (priorityBlocked || spreadBlocked || matBlocked || craftyBlocked) {
-    appendLog(state, `${targetSide.name} 진영이 ${move.name}을(를) 막아냈다!`, 'status')
-    attacker.moveFailedThisTurn = true
-    return
-  }
-
-  if (
-    move.target !== 'self'
-    && targetSide.id !== sideId
-    && environmentMovePriority(state, attacker, move) > 0
-    && getActivePokemonList(state, targetSide.id).some((pokemon) => (
-      pokemon
-      && !pokemon.fainted
-      && pokemon.hp > 0
-      && !moveIgnoresAbility(move, pokemon)
-      && ['비비드바디', '여왕의위엄', '테일아머'].includes(pokemon.ability)
-    ))
-  ) {
-    appendLog(state, `${defender.name} 진영의 특성이 선제 기술을 막아냈다!`, 'ability')
-    pushTimelineStep(timeline, state, {
-      phase: 'resolve',
-      ...moveStep,
-      result: 'blocked',
-      message: latestLogMessage(state, `${move.name}은(는) 특성에 막혔다!`),
-    })
-    return
-  }
-
-  const semiInvulnerable = semiInvulnerableInteraction(defender, move, attacker)
-  if (semiInvulnerable.avoided) {
-    appendLog(state, `${defender.name}은(는) 공격이 닿지 않는 곳에 있다!`, 'muted')
-    applyFailedMoveConsequences(state, attacker, move)
-    pushTimelineStep(timeline, state, {
-      phase: 'resolve',
-      ...moveStep,
-      result: 'miss',
-      message: `${defender.name}은(는) 공격을 피했다!`,
-    })
-    return
-  }
-
-  const moveConnected = moveHits(state, attacker, defender, move, random)
-  if (attacker.micleActive) attacker.micleActive = false
-  if (!moveConnected) {
-    appendLog(state, `${attacker.name}의 공격은 빗나갔다!`, 'muted')
-    applyFailedMoveConsequences(state, attacker, move)
-    activateBlunderPolicy(state, attacker)
-    pushTimelineStep(timeline, state, {
-      phase: 'resolve',
-      ...moveStep,
-      result: 'miss',
-      message: `${attacker.name}의 공격은 빗나갔다!`,
-    })
-    return
-  }
-
-  if (allyTarget && move.id === 'pollenpuff') {
-    const immunity = abilityImmunity(state, attacker, defender, move)
-    const blocked = attacker.healBlockTurns > 0
-      || defender.protected && !moveBypassesProtection(attacker, defender, move)
-      || Boolean(immunity)
-    if (blocked) {
-      attacker.moveFailedThisTurn = true
-      appendLog(state, `${defender.name}에게 ${move.name}이(가) 통하지 않았다!`, 'status')
-    } else {
-      healPokemon(state, defender, Math.floor(baseMaxHp(defender) / 2), move.name)
-    }
-    pushTimelineStep(timeline, state, {
-      phase: blocked ? 'resolve' : 'status',
-      ...moveStep,
-      result: blocked ? 'blocked' : 'heal',
-      message: latestLogMessage(state, `${defender.name}의 HP가 회복되었다!`),
-    })
-    return
-  }
-
-  if (isStatusMove(move)) {
-    if (
-      move.target !== 'self'
-      && defender !== attacker
-      && defender.substituteHp > 0
-      && attacker.ability !== '틈새포착'
-      && !move.flags?.includes('bypasssub')
-      && !move.flags?.includes('sound')
-    ) {
-      appendLog(state, `${defender.name}의 대타가 변화 기술을 막아냈다!`, 'status')
-      pushTimelineStep(timeline, state, {
-        phase: 'resolve',
-        ...moveStep,
-        result: 'blocked',
-        message: latestLogMessage(state, `${defender.name}의 대타가 기술을 막았다!`),
-      })
-      return
-    }
-    const statusMoveImmunity = abilityImmunity(state, attacker, defender, move)
-    if (move.target !== 'self' && statusMoveImmunity) {
-      appendLog(state, `${defender.name}의 ${statusMoveImmunity}! 기술을 무효화했다.`, 'ability')
-      applyAbilityImmunityEffect(state, defender, statusMoveImmunity)
-      pushTimelineStep(timeline, state, {
-        phase: 'resolve',
-        ...moveStep,
-        result: 'immune',
-        message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
-      })
-      return
-    }
-    if (
-      move.target !== 'self'
-      && targetSide.id !== sideId
-      && attacker.ability === '짓궂은마음'
-      && defender.types.includes('악')
-    ) {
-      appendLog(state, `${defender.name}에게는 짓궂은마음으로 강화된 기술이 통하지 않는다!`, 'ability')
-      pushTimelineStep(timeline, state, {
-        phase: 'resolve',
-        ...moveStep,
-        result: 'immune',
-        message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
-      })
-      return
-    }
-    if (move.target !== 'self' && !moveIgnoresAbility(move, defender) && defender.ability === '황금몸') {
-      appendLog(state, `${defender.name}의 황금몸! 변화 기술을 막아냈다!`, 'ability')
-      pushTimelineStep(timeline, state, {
-        phase: 'resolve',
-        ...moveStep,
-        result: 'immune',
-        message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
-      })
-      return
-    }
-    if (
-      move.target !== 'self'
-      && !moveIgnoresAbility(move, defender)
-      && !move.reflectedByMagicBounce
-      && (defender.ability === '매직미러' || defender.magicCoatActive)
-      && move.flags?.includes('reflectable')
-    ) {
-      const reflector = defender.ability === '매직미러' ? '매직미러' : '매직코트'
-      defender.magicCoatActive = false
-      appendLog(state, `${defender.name}의 ${reflector}가 ${move.name}을(를) 되받아쳤다!`, defender.ability === '매직미러' ? 'ability' : 'status')
-      applyStatusMove(state, defender, attacker, { ...move, reflectedByMagicBounce: true }, random)
-      pushTimelineStep(timeline, state, {
-        phase: 'status',
-        ...moveStep,
-        sideId: targetSide.id,
-        targetSideId: sideId,
-        actorName: defender.name,
-        targetName: attacker.name,
-        result: 'reflected',
-        message: latestLogMessage(state, `${move.name}이(가) 되받아쳐졌다!`),
-      })
-      return
-    }
-    if (CALL_MOVE_IDS.has(move.id)) {
-      const called = resolveCalledMove(state, attacker, defender, move, random, previousBattleMove)
-      if (!called) appendLog(state, `${move.name}으로 불러낼 기술이 없어 실패했다!`, 'muted')
-      else executeMove(state, called.sideId, called.action, random, timeline, actionOrder)
-      return
-    }
-    const snatcher = getActivePokemonList(state, getOtherSide(state, sideId).id).find((pokemon) => (
-      pokemon?.snatchActive && move.flags?.includes('snatch')
-    ))
-    if (snatcher) {
-      snatcher.snatchActive = false
-      appendLog(state, `${snatcher.name}은(는) ${move.name}을(를) 가로챘다!`, 'status')
-      applyStatusMove(state, snatcher, attacker, move, random, {
-        sideId: getPokemonSide(state, snatcher).id,
-        actorSlot: getActivePokemonList(state, getPokemonSide(state, snatcher).id).indexOf(snatcher),
-        targetSlot: actorSlot,
-        timeline,
-        actionOrder,
-      })
-      return
-    }
-    if (
-      move.target !== 'self'
-      && defender.protected
-      && move.flags?.includes('protect')
-      && !moveBypassesProtection(attacker, defender, move)
-    ) {
-      appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
-      applyFailedMoveConsequences(state, attacker, move)
-      pushTimelineStep(timeline, state, {
-        phase: 'resolve',
-        ...moveStep,
-        result: 'blocked',
-        message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
-      })
-      return
-    }
-    if (
-      move.target !== 'self'
-      && !moveIgnoresAbility(move, defender)
-      && defender.ability === '풍력발전'
-      && move.flags?.includes('wind')
-    ) {
-      defender.chargeActive = true
-      appendLog(state, `${defender.name}의 풍력발전! 전기를 충전했다!`, 'ability')
-    }
-    applyStatusMove(state, attacker, defender, move, random, {
-      sideId,
-      actorSlot,
-      targetSlot,
-      timeline,
-      actionOrder,
-    })
+  // PP, preparation, charge turns and the attack animation have already run
+  // once. Only target-specific resolution is repeated for a spread move.
+  const fieldStatus = isStatusMove(move) && move.target === 'all'
+  if (fieldStatus) {
+    if (move.id === 'perishsong') {
+      const listeners = [...getActivePokemonList(state, 'player'), ...getActivePokemonList(state, 'opponent')]
+      for (const listener of listeners) {
+        if (!isAvailableFieldPokemon(listener)) continue
+        if (listener.ability === '방음' && !moveIgnoresAbility(move, listener)) {
+          appendLog(state, `${listener.name}의 방음! 멸망의노래를 듣지 않았다!`, 'ability')
+        } else if (listener.perishCount == null) listener.perishCount = 4
+      }
+      appendLog(state, '필드의 포켓몬에게 멸망의노래가 울려 퍼졌다!', 'status')
+    } else applyStatusMove(state, attacker, attacker, move, random, { sideId, actorSlot, targetSlot: actorSlot, timeline, actionOrder })
     activateThroatSpray(state, attacker, move)
-    applyMindBlownRecoil(state, attacker, move)
-    applySelfDestruct(state, attacker, move, true)
-    pushTimelineStep(timeline, state, {
-      phase: 'status',
-      ...moveStep,
-      message: latestLogMessage(state, `${move.name}의 효과가 발동했다!`),
-    })
-    markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
-    markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+    pushTimelineStep(timeline, state, { phase: 'status', ...moveStep, message: latestLogMessage(state, `${move.name}의 효과가 발동했다!`) })
     markActiveFaints(state, timeline, actionOrder)
-    applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
+    applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot, attacker)
     activateDancerCopies(state, sideId, attacker, move, random, timeline, actionOrder, targetSlot)
     return
   }
 
-  attacker.protectChain = 0
-
-  if (move.breaksProtect && defender.protected) {
-    defender.protected = false
-    defender.protectMode = null
-    appendLog(state, `${move.name}이(가) 방어를 깨뜨렸다!`, 'status')
-  }
-
-  let protectionMultiplier = 1
-  if (
-    defender.protected
-    && move.flags?.includes('protect')
-    && !move.bypassesMaxGuard
-    && !moveBypassesProtection(attacker, defender, move)
-  ) {
-    const piercingDrill = defender.protectMode !== 'maxguard'
-      && attacker.ability === '관통드릴'
-      && moveMakesContact(attacker, move)
-    if (defender.protectMode === 'maxguard' || !move.isMaxMove && !move.isZMove && !piercingDrill) {
-      appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
+  const preparedMove = move
+  const announcedMoveStep = moveStep
+  const spreadTargeting = ['allAdjacent', 'allAdjacentFoes'].includes(move.target) && move.id !== 'corrosivegas'
+  const targetEntries = spreadTargeting
+    ? battleMoveTargetOptions(state, sideId, actorSlot, { ...move, target: move.target === 'allAdjacentFoes' ? 'adjacentFoe' : 'normal' })
+    : [{ target: defender, sideId: targetSide.id, slot: targetSlot }]
+  const spreading = spreadTargeting && !isStatusMove(move) && targetEntries.length > 1
+  const statusSpread = spreadTargeting && isStatusMove(move)
+  // Keep damage stats stable across simultaneous targets even if an earlier
+  // hit triggers a knockout boost, drains HP, or removes a field ability.
+  const spreadDamageState = spreading ? cloneBattle(state) : null
+  const spreadSummary = { damage: 0, connected: false, statusSucceeded: false, primary: null, finish: null, lastHit: null, destinyBondSource: null }
+  const resolvePreparedTarget = (entry) => {
+    const defender = entry.target
+    const targetSide = getSide(state, entry.sideId)
+    const targetSlot = entry.slot
+    const allyTarget = targetSide.id === sideId
+    const move = { ...preparedMove, spreadModifier: spreading ? 0.75 : 1 }
+    const moveStep = { ...announcedMoveStep, targetSideId: entry.sideId, targetSlot,
+      targetName: defender.name, targetSpeciesId: defender.speciesId, targetOriginalSpeciesId: defender.originalSpeciesId }
+    if (statusSpread) attacker.moveFailedThisTurn = false
+    if (
+      targetSide.id !== sideId
+      &&
+      state.rules?.terrain?.id === 'psychic'
+      && move.target !== 'self'
+      && environmentMovePriority(state, attacker, move) > 0
+      && isGrounded(defender, state)
+    ) {
+      appendLog(state, `사이코필드가 ${defender.name}을(를) 우선도 기술로부터 지켰다!`, 'field')
       pushTimelineStep(timeline, state, {
         phase: 'resolve',
         ...moveStep,
         result: 'blocked',
-        message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
+        message: latestLogMessage(state, `${move.name}은(는) 사이코필드에 막혔다!`),
       })
-      if (applyProtectContactEffect(state, attacker, defender, move)) {
+      return
+    }
+
+    const priorityBlocked = targetSide.quickGuardTurns > 0
+      && targetSide.id !== sideId
+      && environmentMovePriority(state, attacker, move) > 0
+      && move.target !== 'self'
+    const spreadBlocked = targetSide.wideGuardTurns > 0
+      && ['all', 'allAdjacent', 'allAdjacentFoes'].includes(move.target)
+    const matBlocked = targetSide.matBlockTurns > 0 && !isStatusMove(move) && move.flags?.includes('protect')
+    const craftyBlocked = targetSide.craftyShieldTurns > 0 && isStatusMove(move) && move.target !== 'self'
+    if (priorityBlocked || spreadBlocked || matBlocked || craftyBlocked) {
+      appendLog(state, `${targetSide.name} 진영이 ${move.name}을(를) 막아냈다!`, 'status')
+      attacker.moveFailedThisTurn = true
+      return
+    }
+
+    if (
+      move.target !== 'self'
+      && targetSide.id !== sideId
+      && environmentMovePriority(state, attacker, move) > 0
+      && getActivePokemonList(state, targetSide.id).some((pokemon) => (
+        pokemon
+        && !pokemon.fainted
+        && pokemon.hp > 0
+        && !moveIgnoresAbility(move, pokemon)
+        && ['비비드바디', '여왕의위엄', '테일아머'].includes(pokemon.ability)
+      ))
+    ) {
+      appendLog(state, `${defender.name} 진영의 특성이 선제 기술을 막아냈다!`, 'ability')
+      pushTimelineStep(timeline, state, {
+        phase: 'resolve',
+        ...moveStep,
+        result: 'blocked',
+        message: latestLogMessage(state, `${move.name}은(는) 특성에 막혔다!`),
+      })
+      return
+    }
+
+    const semiInvulnerable = semiInvulnerableInteraction(defender, move, attacker)
+    if (semiInvulnerable.avoided) {
+      appendLog(state, `${defender.name}은(는) 공격이 닿지 않는 곳에 있다!`, 'muted')
+      spreading ? (attacker.moveFailedThisTurn = true) : applyFailedMoveConsequences(state, attacker, move)
+      pushTimelineStep(timeline, state, {
+        phase: 'resolve',
+        ...moveStep,
+        result: 'miss',
+        message: `${defender.name}은(는) 공격을 피했다!`,
+      })
+      return
+    }
+
+    const moveConnected = moveHits(state, attacker, defender, move, random)
+    if (!spreading && attacker.micleActive) attacker.micleActive = false
+    if (!moveConnected) {
+      appendLog(state, `${attacker.name}의 공격은 빗나갔다!`, 'muted')
+      spreading ? (attacker.moveFailedThisTurn = true) : applyFailedMoveConsequences(state, attacker, move)
+      activateBlunderPolicy(state, attacker)
+      pushTimelineStep(timeline, state, {
+        phase: 'resolve',
+        ...moveStep,
+        result: 'miss',
+        message: `${attacker.name}의 공격은 빗나갔다!`,
+      })
+      return
+    }
+
+    if (allyTarget && move.id === 'pollenpuff') {
+      const immunity = abilityImmunity(state, attacker, defender, move)
+      const blocked = attacker.healBlockTurns > 0
+        || defender.protected && !moveBypassesProtection(attacker, defender, move)
+        || Boolean(immunity)
+      if (blocked) {
+        attacker.moveFailedThisTurn = true
+        appendLog(state, `${defender.name}에게 ${move.name}이(가) 통하지 않았다!`, 'status')
+      } else {
+        healPokemon(state, defender, Math.floor(baseMaxHp(defender) / 2), move.name)
+      }
+      pushTimelineStep(timeline, state, {
+        phase: blocked ? 'resolve' : 'status',
+        ...moveStep,
+        result: blocked ? 'blocked' : 'heal',
+        message: latestLogMessage(state, `${defender.name}의 HP가 회복되었다!`),
+      })
+      return
+    }
+
+    if (isStatusMove(move)) {
+      if (
+        move.target !== 'self'
+        && defender !== attacker
+        && defender.substituteHp > 0
+        && attacker.ability !== '틈새포착'
+        && !move.flags?.includes('bypasssub')
+        && !move.flags?.includes('sound')
+      ) {
+        appendLog(state, `${defender.name}의 대타가 변화 기술을 막아냈다!`, 'status')
+        pushTimelineStep(timeline, state, {
+          phase: 'resolve',
+          ...moveStep,
+          result: 'blocked',
+          message: latestLogMessage(state, `${defender.name}의 대타가 기술을 막았다!`),
+        })
+        return
+      }
+      const statusMoveImmunity = abilityImmunity(state, attacker, defender, move)
+      if (move.target !== 'self' && statusMoveImmunity) {
+        appendLog(state, `${defender.name}의 ${statusMoveImmunity}! 기술을 무효화했다.`, 'ability')
+        applyAbilityImmunityEffect(state, defender, statusMoveImmunity)
+        pushTimelineStep(timeline, state, {
+          phase: 'resolve',
+          ...moveStep,
+          result: 'immune',
+          message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
+        })
+        return
+      }
+      if (
+        move.target !== 'self'
+        && targetSide.id !== sideId
+        && attacker.ability === '짓궂은마음'
+        && defender.types.includes('악')
+      ) {
+        appendLog(state, `${defender.name}에게는 짓궂은마음으로 강화된 기술이 통하지 않는다!`, 'ability')
+        pushTimelineStep(timeline, state, {
+          phase: 'resolve',
+          ...moveStep,
+          result: 'immune',
+          message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
+        })
+        return
+      }
+      if (move.target !== 'self' && !moveIgnoresAbility(move, defender) && defender.ability === '황금몸') {
+        appendLog(state, `${defender.name}의 황금몸! 변화 기술을 막아냈다!`, 'ability')
+        pushTimelineStep(timeline, state, {
+          phase: 'resolve',
+          ...moveStep,
+          result: 'immune',
+          message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
+        })
+        return
+      }
+      if (
+        move.target !== 'self'
+        && !moveIgnoresAbility(move, defender)
+        && !move.reflectedByMagicBounce
+        && (defender.ability === '매직미러' || defender.magicCoatActive)
+        && move.flags?.includes('reflectable')
+      ) {
+        const reflector = defender.ability === '매직미러' ? '매직미러' : '매직코트'
+        defender.magicCoatActive = false
+        appendLog(state, `${defender.name}의 ${reflector}가 ${move.name}을(를) 되받아쳤다!`, defender.ability === '매직미러' ? 'ability' : 'status')
+        const reflectedMove = { ...move, reflectedByMagicBounce: true }
+        applyStatusMove(state, defender, attacker, reflectedMove, random)
         pushTimelineStep(timeline, state, {
           phase: 'status',
           ...moveStep,
-          result: 'protect-contact',
-          message: latestLogMessage(state, `${attacker.name}에게 방어의 접촉 효과가 발동했다!`),
+          sideId: targetSide.id,
+          targetSideId: sideId,
+          actorName: defender.name,
+          targetName: attacker.name,
+          result: 'reflected',
+          message: latestLogMessage(state, `${move.name}이(가) 되받아쳐졌다!`),
         })
+        applyMoveSwitching(state, targetSide.id, reflectedMove, random, timeline, actionOrder, targetSlot, actorSlot, defender)
+        return
       }
-      applyFailedMoveConsequences(state, attacker, move)
-      markActiveFaints(state, timeline, actionOrder)
-      return
-    }
-    protectionMultiplier = 0.25
-    appendLog(
-      state,
-      `${defender.name}은(는) 방어했지만 ${piercingDrill ? '관통드릴' : move.isZMove ? 'Z기술' : '맥스 기술'}의 충격을 완전히 막지 못했다!`,
-      'muted',
-    )
-  }
-
-  const immunity = abilityImmunity(state, attacker, defender, move)
-  if (immunity) {
-    appendLog(state, `${defender.name}의 ${immunity}! 공격을 무효화했다.`, 'ability')
-    applyAbilityImmunityEffect(state, defender, immunity)
-    applyFailedMoveConsequences(state, attacker, move)
-    pushTimelineStep(timeline, state, {
-      phase: 'resolve',
-      ...moveStep,
-      result: 'immune',
-      effectiveness: 0,
-      message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
-    })
-    return
-  }
-
-  const parentalBondActive = parentalBondApplies(attacker, move)
-  const hitCount = chooseMultiHitCount(attacker, move, random)
-  const defenderHpBeforeMove = defender.hp
-  let damage = 0
-  let directDamage = 0
-  let directLandedHits = 0
-  let substituteLandedHits = 0
-  let lastDirectHitDamage = 0
-  let landedHits = 0
-  let hitSubstitute = false
-  let multiHitMissed = false
-  let result = null
-
-  // Screen-breaking attacks remove the barriers before their own damage is
-  // calculated, including when the target is behind a Substitute.
-  if (['brickbreak', 'psychicfangs', 'ragingbull'].includes(move.id)) {
-    const sideToBreak = getPokemonSide(state, defender)
-    if (sideToBreak.auroraVeilTurns > 0 || sideToBreak.lightScreenTurns > 0 || sideToBreak.reflectTurns > 0) {
-      sideToBreak.auroraVeilTurns = 0
-      sideToBreak.lightScreenTurns = 0
-      sideToBreak.reflectTurns = 0
-      appendLog(state, `${defender.name} 진영의 장벽이 깨졌다!`, 'field')
-    }
-  }
-
-  if (move.stealsBoosts && getMoveTypeEffectiveness(state, attacker, defender, move) > 0) {
-    const stolenBoosts = Object.fromEntries(Object.entries(defender.statStages)
-      .filter(([, stage]) => stage > 0))
-    if (Object.keys(stolenBoosts).length > 0) {
-      Object.keys(stolenBoosts).forEach((statKey) => { defender.statStages[statKey] = 0 })
-      appendLog(state, `${attacker.name}은(는) ${defender.name}의 올라간 능력을 훔쳤다!`, 'status')
-      changeStages(state, attacker, stolenBoosts, { source: attacker })
-    }
-  }
-
-  for (let hitIndex = 0; hitIndex < hitCount && defender.hp > 0 && attacker.hp > 0; hitIndex += 1) {
-    if (
-      hitIndex > 0
-      && move.multiaccuracy
-      && !hasActiveHeldItem(attacker, 'loaded-dice')
-      && !moveHits(state, attacker, defender, move, random)
-    ) {
-      multiHitMissed = true
-      break
-    }
-    const hitMove = ['tripleaxel', 'triplekick'].includes(move.id)
-      ? { ...move, power: Math.max(1, Number(move.power) || 1) * (hitIndex + 1) }
-      : move
-    const hitResult = fixedDamageResult(state, attacker, defender, hitMove, random)
-      ?? calculateDamage(
-        state,
-        attacker,
-        defender,
-        hitMove,
-        random,
-        powerMultiplier
-          * semiInvulnerable.powerMultiplier
-          * protectionMultiplier
-          * helpingHandMultiplier
-          * (parentalBondActive && hitIndex === 1 ? 0.25 : 1),
-      )
-    if (hitMove.stellarBoosted) move.stellarBoosted = true
-    const substituteBlocks = defender.substituteHp > 0
-      && attacker.ability !== '틈새포착'
-      && !move.flags?.includes('bypasssub')
-      && !move.flags?.includes('sound')
-    const formShield = !substituteBlocks && applyFormDamageShield(state, defender, hitMove, hitResult.damage)
-    if (formShield) {
-      hitResult.effectiveness = formShield.effectiveness
-      hitResult.critical = false
-    }
-    if (!result) result = hitResult
-    const requestedHitDamage = substituteBlocks
-      ? Math.max(0, Math.floor(hitResult.damage))
-      : formShield
-      ? formShield.damage
-      : applySurvivalEffects(state, defender, hitResult.damage, hitMove, random)
-    let adjustedHitDamage = requestedHitDamage
-    const resistBerryType = TYPE_RESIST_BERRY_TYPES[defender.heldItemId]
-    if (
-      !substituteBlocks
-      && adjustedHitDamage > 0
-      && heldItemEffectsActive(defender)
-      && resistBerryType === move.type
-      && (move.type === '노말' || hitResult.effectiveness > 1)
-    ) {
-      adjustedHitDamage = Math.max(1, Math.floor(adjustedHitDamage / 2))
-      consumeHeldItem(state, defender, { berry: true })
-      appendLog(state, `${defender.name}의 ${defender.heldItemName || defender.heldItemId}이(가) 데미지를 줄였다!`, 'item')
-      applyCheekPouch(state, defender)
-    }
-    const defenderHpBeforeHit = defender.hp
-    const hitDamage = substituteBlocks
-      ? Math.min(defender.substituteHp, adjustedHitDamage)
-      : Math.min(defender.hp, adjustedHitDamage)
-    if (substituteBlocks) {
-      defender.substituteHp = Math.max(0, defender.substituteHp - hitDamage)
-      hitSubstitute = true
-      substituteLandedHits += 1
-      if (defender.substituteHp === 0) appendLog(state, `${defender.name}의 대타는 사라졌다!`, 'status')
-    } else {
-      defender.hp = Math.max(0, defender.hp - hitDamage)
-      directDamage += hitDamage
-      directLandedHits += 1
-      lastDirectHitDamage = hitDamage
-    }
-    damage += hitDamage
-    landedHits += 1
-    result.critical = result.critical || hitResult.critical
-    if (hitCount > 1) {
-      pushTimelineStep(timeline, state, {
-        phase: 'impact',
-        ...moveStep,
-        damage: hitDamage,
-        effectiveness: hitResult.effectiveness,
-        critical: hitResult.critical,
-        message: `${defender.name}에게 ${hitDamage}의 데미지!`,
+      if (CALL_MOVE_IDS.has(move.id)) {
+        const called = resolveCalledMove(state, attacker, defender, move, random, previousBattleMove)
+        if (!called) appendLog(state, `${move.name}으로 불러낼 기술이 없어 실패했다!`, 'muted')
+        else executeMove(state, called.sideId, called.action, random, timeline, actionOrder)
+        return
+      }
+      const snatcher = getActivePokemonList(state, getOtherSide(state, sideId).id).find((pokemon) => (
+        pokemon?.snatchActive && move.flags?.includes('snatch')
+      ))
+      if (snatcher) {
+        snatcher.snatchActive = false
+        appendLog(state, `${snatcher.name}은(는) ${move.name}을(를) 가로챘다!`, 'status')
+        applyStatusMove(state, snatcher, attacker, move, random, {
+          sideId: getPokemonSide(state, snatcher).id,
+          actorSlot: getActivePokemonList(state, getPokemonSide(state, snatcher).id).indexOf(snatcher),
+          targetSlot: actorSlot,
+          timeline,
+          actionOrder,
+        })
+        return
+      }
+      if (
+        move.target !== 'self'
+        && defender.protected
+        && move.flags?.includes('protect')
+        && !moveBypassesProtection(attacker, defender, move)
+      ) {
+        appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
+        spreading ? (attacker.moveFailedThisTurn = true) : applyFailedMoveConsequences(state, attacker, move)
+        pushTimelineStep(timeline, state, {
+          phase: 'resolve',
+          ...moveStep,
+          result: 'blocked',
+          message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
+        })
+        return
+      }
+      if (
+        move.target !== 'self'
+        && !moveIgnoresAbility(move, defender)
+        && defender.ability === '풍력발전'
+        && move.flags?.includes('wind')
+      ) {
+        defender.chargeActive = true
+        appendLog(state, `${defender.name}의 풍력발전! 전기를 충전했다!`, 'ability')
+      }
+      const statusResult = applyStatusMove(state, attacker, defender, move, random, {
+        sideId,
+        actorSlot,
+        targetSlot,
+        timeline,
+        actionOrder,
       })
-      flushDeferredFormTimeline(state)
-    }
-    const hitEffectLogLength = state.log.length
-    if (hitDamage > 0 && move.drain) {
-      const [numerator, denominator] = move.drain
-      applyDrainingRecovery(state, attacker, defender, Math.ceil(hitDamage * numerator / denominator), move.name, {
-        ignoreDrainedAbility: moveIgnoresAbility(move, defender),
-      })
-    }
-    if (!substituteBlocks && hitDamage > 0) {
-      applyDamagingHitAbilityEffects(state, attacker, defender, hitMove, hitDamage, defenderHpBeforeHit, 1, hitResult.critical, random)
-      applyDamagingHitItemEffects(state, sideId, actorSlot, targetSlot, attacker, defender, hitMove,
-        hitDamage, hitResult.effectiveness, random, timeline, actionOrder, 'hit')
-      applyReactiveFormAbility(state, attacker, defender, hitMove, hitDamage)
-      consumeLowHpBerry(state, defender, random)
-      consumeLowHpBerry(state, attacker, random)
-    }
-    if (hitCount > 1 && state.log.length > hitEffectLogLength) {
+      if (statusSpread && statusResult !== false && !attacker.moveFailedThisTurn) spreadSummary.statusSucceeded = true
+      activateThroatSpray(state, attacker, move)
+      applyMindBlownRecoil(state, attacker, move)
+      applySelfDestruct(state, attacker, move, true)
       pushTimelineStep(timeline, state, {
         phase: 'status',
         ...moveStep,
-        message: latestLogMessage(state, '명중 후 효과가 발동했다!'),
+        message: latestLogMessage(state, `${move.name}의 효과가 발동했다!`),
       })
+      markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
+      markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+      markActiveFaints(state, timeline, actionOrder)
+      applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot, attacker)
+      if (!statusSpread) activateDancerCopies(state, sideId, attacker, move, random, timeline, actionOrder, targetSlot)
+      return
     }
-    if (hitResult.effectiveness === 0 || hitDamage === 0 && move.ohko) break
-  }
 
-  if (multiHitMissed) activateBlunderPolicy(state, attacker)
+    attacker.protectChain = 0
 
-  result ??= { damage: 0, effectiveness: getMoveTypeEffectiveness(state, attacker, defender, move), critical: false }
-  const connectedDamagingMove = landedHits > 0 && result.effectiveness > 0 && !result.failed
-  if (landedHits > 0 && result.effectiveness > 0) {
-    attacker.consecutiveMoveCount = attacker.consecutiveMoveId === move.id
-      ? (attacker.consecutiveMoveCount ?? 0) + 1
-      : 1
-    attacker.consecutiveMoveId = move.id
-    attacker.moveFailedThisTurn = false
-    activateThroatSpray(state, attacker, move)
-  } else {
-    attacker.consecutiveMoveId = null
-    attacker.consecutiveMoveCount = 0
-    attacker.moveFailedThisTurn = true
-  }
-  if (result.failed) appendLog(state, `${move.name}은(는) 되받아칠 공격이 없어 실패했다!`, 'muted')
-  state.lastEvent = {
-    kind: 'hit',
-    sideId,
-    targetSideId: targetSide.id,
-    damage,
-    hitCount: landedHits,
-    effectiveness: result.effectiveness,
-    nonce: state.eventNonce += 1,
-  }
-
-  if (result.critical) appendLog(state, '급소에 맞았다!', 'critical')
-  if (result.effectiveness > 1) appendLog(state, '효과가 굉장했다!', 'super')
-  if (result.effectiveness === 0) appendLog(state, `${defender.name}에게는 효과가 없는 것 같다…`, 'muted')
-  else if (result.effectiveness < 1) appendLog(state, '효과가 별로인 듯하다…', 'muted')
-
-  if (landedHits > 1) appendLog(state, `${landedHits}번 맞았다!`, 'damage')
-
-  if (hitCount <= 1 || landedHits === 0) pushTimelineStep(timeline, state, {
-    phase: 'impact',
-    ...moveStep,
-    damage,
-    effectiveness: result.effectiveness,
-    critical: result.critical,
-    message: damage > 0
-      ? `${defender.name}에게 ${damage}의 데미지!`
-      : `${defender.name}에게는 효과가 없는 것 같다…`,
-  })
-  flushDeferredFormTimeline(state)
-
-  const postEffectLogLength = state.log.length
-  if (landedHits > 0 && result.effectiveness > 0) {
-    applyEnvironmentAfterDamagingMove(state, sideId, attacker, defender, move, random)
-  }
-  if (landedHits > 0 && !attacker.dynamaxActive && TERRAIN_CLEARING_MOVE_IDS.has(move.id)) {
-    const environmentState = ensureEnvironmentState(state)
-    if (state.rules?.terrain?.id !== 'neutral' || environmentState.terrainTurns != null) {
-      restoreBaseEnvironment(state, 'terrain', move.name)
+    if (move.breaksProtect && defender.protected) {
+      defender.protected = false
+      defender.protectMode = null
+      appendLog(state, `${move.name}이(가) 방어를 깨뜨렸다!`, 'status')
     }
-  }
-  if (connectedDamagingMove) {
-    if (attacker.laserFocusActive) attacker.laserFocusActive = false
-    if (attacker.chargeActive && move.type === '전기') attacker.chargeActive = false
-    applyPrimaryMoveEffects(state, attacker, defender, move, random, { targetEffects: false })
-    if (substituteLandedHits > 0) {
-      applyMoveSecondaries(state, attacker, defender, move, random, substituteLandedHits, { targetEffects: false })
-    }
-  }
 
-  if (directDamage > 0) {
-    defender.lastDamageTaken = lastDirectHitDamage
-    defender.lastDamageCategory = moveCategory
-    defender.lastAttackerBattleId = attacker.battleId
-    defender.damagedThisTurn = true
-    if (moveCategory === 'physical') defender.hitByPhysicalThisTurn = true
-    defender.hitCountTaken = (defender.hitCountTaken ?? 0) + directLandedHits
-    if (defender.bideState) {
-      defender.bideState.storedDamage += directDamage
-      defender.bideState.lastAttackerBattleId = attacker.battleId
-    }
-    if (defender.rageActive && defender.hp > 0) {
-      changeStages(state, defender, { attack: directLandedHits }, { source: defender })
-    }
-    breakIllusion(state, defender)
-    applyPrimaryMoveEffects(state, attacker, defender, move, random, { selfEffects: false })
-    if (move.id === 'fling') applyFlingItemEffect(state, attacker, defender, move, random)
-    applyMoveSecondaries(state, attacker, defender, move, random, directLandedHits)
-    applyDamagingHitAbilityEffects(
-      state,
-      attacker,
-      defender,
-      move,
-      directDamage,
-      defenderHpBeforeMove,
-      directLandedHits,
-      result.critical,
-      random,
-      'move',
-    )
-    applyDamagingHitItemEffects(
-      state,
-      sideId,
-      actorSlot,
-      targetSlot,
-      attacker,
-      defender,
-      move,
-      directDamage,
-      result.effectiveness,
-      random,
-      timeline,
-      actionOrder,
-      'move',
-    )
-    applyHpCrossingAbility(state, defender, defenderHpBeforeMove)
-    applyEmergencySwitch(
-      state,
-      targetSide.id,
-      defender,
-      defenderHpBeforeMove,
-      targetSlot,
-      timeline,
-      actionOrder,
-    )
-
-    if ((move.thawsTarget || move.type === '불꽃' && move.id !== 'polarflare') && defender.status?.id === 'freeze') {
-      defender.status = null
-      appendLog(state, `${defender.name}의 얼음이 녹았다!`, 'heal')
-    }
-    if (move.id === 'smellingsalts' && defender.status?.id === 'paralysis') defender.status = null
-    if (move.id === 'wakeupslap' && defender.status?.id === 'sleep') defender.status = null
-    if (move.id === 'clearsmog') resetPokemonStatStages(defender)
-    if (move.id === 'knockoff' && canRemoveHeldItem(defender, attacker, {
-      ignoreHolderAbility: moveIgnoresAbility(move, defender),
-    })) {
-      const removedItem = defender.heldItemName || defender.heldItemId
-      clearHeldItem(defender)
-      appendLog(state, `${defender.name}의 ${removedItem}을(를) 떨어뜨렸다!`, 'item')
-    }
-    if (['thief', 'covet'].includes(move.id)) stealHeldItem(state, attacker, defender, move.name)
+    let protectionMultiplier = 1
     if (
-      move.id === 'incinerate'
-      && (
-        defender.heldItemId?.endsWith('-berry')
-        || GEM_ITEM_TYPES[defender.heldItemId]
+      defender.protected
+      && move.flags?.includes('protect')
+      && !move.bypassesMaxGuard
+      && !moveBypassesProtection(attacker, defender, move)
+    ) {
+      const piercingDrill = defender.protectMode !== 'maxguard'
+        && attacker.ability === '관통드릴'
+        && moveMakesContact(attacker, move)
+      if (defender.protectMode === 'maxguard' || !move.isMaxMove && !move.isZMove && !piercingDrill) {
+        appendLog(state, `${defender.name}은(는) 공격을 막아냈다!`, 'muted')
+        pushTimelineStep(timeline, state, {
+          phase: 'resolve',
+          ...moveStep,
+          result: 'blocked',
+          message: latestLogMessage(state, `${defender.name}은(는) 공격을 막아냈다!`),
+        })
+        if (applyProtectContactEffect(state, attacker, defender, move)) {
+          pushTimelineStep(timeline, state, {
+            phase: 'status',
+            ...moveStep,
+            result: 'protect-contact',
+            message: latestLogMessage(state, `${attacker.name}에게 방어의 접촉 효과가 발동했다!`),
+          })
+        }
+        spreading ? (attacker.moveFailedThisTurn = true) : applyFailedMoveConsequences(state, attacker, move)
+        markActiveFaints(state, timeline, actionOrder)
+        return
+      }
+      protectionMultiplier = 0.25
+      appendLog(
+        state,
+        `${defender.name}은(는) 방어했지만 ${piercingDrill ? '관통드릴' : move.isZMove ? 'Z기술' : '맥스 기술'}의 충격을 완전히 막지 못했다!`,
+        'muted',
       )
-      && canRemoveHeldItem(defender, attacker, {
-        ignoreHolderAbility: moveIgnoresAbility(move, defender),
-      })
-    ) {
-      const itemName = defender.heldItemName || defender.heldItemId
-      clearHeldItem(defender)
-      appendLog(state, `${defender.name}의 ${itemName}이(가) 타버렸다!`, 'item')
-    }
-    if (
-      attacker.hp > 0
-      && ['bugbite', 'pluck'].includes(move.id)
-      && defender.heldItemId?.endsWith('-berry')
-      && canRemoveHeldItem(defender, attacker, {
-        ignoreHolderAbility: moveIgnoresAbility(move, defender),
-      })
-    ) {
-      const stolenBerryId = defender.heldItemId
-      const stolenBerryName = defender.heldItemName || stolenBerryId
-      clearHeldItem(defender)
-      consumeStolenBerry(state, attacker, stolenBerryId, stolenBerryName, random)
     }
 
-    if (defender.hp <= 0 && defender.grudgeActive) {
-      const grudgeMove = attacker.moves[action.moveIndex]
-        ?? attacker.moves.find((candidate) => candidate.id === moveSlot.id)
-      if (grudgeMove) {
-        grudgeMove.currentPp = 0
-        appendLog(state, `${defender.name}의 원념으로 ${grudgeMove.name}의 PP가 0이 되었다!`, 'status')
-        restoreLeppaBerryPp(state, attacker, grudgeMove)
+    const immunity = abilityImmunity(state, attacker, defender, move)
+    if (immunity) {
+      appendLog(state, `${defender.name}의 ${immunity}! 공격을 무효화했다.`, 'ability')
+      applyAbilityImmunityEffect(state, defender, immunity)
+      spreading ? (attacker.moveFailedThisTurn = true) : applyFailedMoveConsequences(state, attacker, move)
+      pushTimelineStep(timeline, state, {
+        phase: 'resolve',
+        ...moveStep,
+        result: 'immune',
+        effectiveness: 0,
+        message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`),
+      })
+      return
+    }
+
+    if (move.presentHeal) {
+      const immune = getMoveTypeEffectiveness(state, attacker, defender, move) === 0
+      const healed = immune ? 0 : healPokemon(state, defender, Math.floor(baseMaxHp(defender) / 4), move.name)
+      attacker.moveFailedThisTurn = healed <= 0
+      if (!healed) appendLog(state, `${defender.name}에게는 ${move.name}의 회복 선물이 통하지 않았다!`, 'muted')
+      pushTimelineStep(timeline, state, {
+        phase: healed > 0 ? 'status' : 'resolve', ...moveStep,
+        result: healed > 0 ? 'heal' : 'failed',
+        message: latestLogMessage(state, `${defender.name}에게 회복 선물이 도착했다!`),
+      })
+      return
+    }
+
+    const parentalBondActive = parentalBondApplies(attacker, move)
+    const hitCount = chooseMultiHitCount(attacker, move, random)
+    const defenderHpBeforeMove = defender.hp
+    let damage = 0
+    let directDamage = 0
+    let directLandedHits = 0
+    let substituteLandedHits = 0
+    let lastDirectHitDamage = 0
+    let landedHits = 0
+    let hitSubstitute = false
+    let multiHitMissed = false
+    let result = null
+
+    // Screen-breaking attacks remove the barriers before their own damage is
+    // calculated, including when the target is behind a Substitute.
+    if (['brickbreak', 'psychicfangs', 'ragingbull'].includes(move.id)) {
+      const sideToBreak = getPokemonSide(state, defender)
+      if (sideToBreak.auroraVeilTurns > 0 || sideToBreak.lightScreenTurns > 0 || sideToBreak.reflectTurns > 0) {
+        sideToBreak.auroraVeilTurns = 0
+        sideToBreak.lightScreenTurns = 0
+        sideToBreak.reflectTurns = 0
+        appendLog(state, `${defender.name} 진영의 장벽이 깨졌다!`, 'field')
       }
-      defender.grudgeActive = false
     }
-    if (defender.hp <= 0) applyKnockoutAbility(state, attacker)
-  } else if (result.effectiveness === 0 && !hitSubstitute) {
-    applyCrashDamage(state, attacker, move)
-  }
 
-  // A Substitute absorbs the target effects, not the user's costs, boosts,
-  // item consumption, recharge, or locked-action state.
-  if (connectedDamagingMove) {
-    applyUniqueDamagingMoveEffects(state, attacker, defender, move, random, { hitTarget: directDamage > 0 })
-    applyMoveRecoil(state, attacker, move, damage)
-    if (attacker.hp > 0 && attacker.ability !== '우격다짐' && ['rapidspin', 'mortalspin'].includes(move.id)) {
-      const ownSide = getPokemonSide(state, attacker)
-      ownSide.hazards = {
-        ...ownSide.hazards,
-        spikes: 0,
-        stealthRock: false,
-        stickyWeb: false,
-        toxicSpikes: 0,
+    if (move.stealsBoosts && getMoveTypeEffectiveness(state, attacker, defender, move) > 0) {
+      const stolenBoosts = Object.fromEntries(Object.entries(defender.statStages)
+        .filter(([, stage]) => stage > 0))
+      if (Object.keys(stolenBoosts).length > 0) {
+        Object.keys(stolenBoosts).forEach((statKey) => { defender.statStages[statKey] = 0 })
+        appendLog(state, `${attacker.name}은(는) ${defender.name}의 올라간 능력을 훔쳤다!`, 'status')
+        changeStages(state, attacker, stolenBoosts, { source: attacker })
       }
-      attacker.leechSeedSourceSideId = null
-      attacker.trappedTurns = 0
-      attacker.trapSourceName = null
-      attacker.trapSourceBattleId = null
-      attacker.trapDamages = false
-      appendLog(state, `${attacker.name} 진영의 함정이 제거되었다!`, 'field')
-    }
-    if (move.id === 'spitup') {
-      changeStages(state, attacker, {
-        defense: -attacker.stockpileBoosts.defense,
-        specialDefense: -attacker.stockpileBoosts.specialDefense,
-      })
-      attacker.stockpileCount = 0
-      attacker.stockpileBoosts = { defense: 0, specialDefense: 0 }
-    }
-    if (move.id === 'naturalgift' && heldItemEffectsActive(attacker)) {
-      consumeHeldItem(state, attacker, { berry: true })
-      appendLog(state, `${attacker.name}은(는) ${move.name}에 지닌물건을 사용했다!`, 'item')
-    }
-    if (move.id === 'fling' && directDamage === 0) {
-      applyFlingItemEffect(state, attacker, null, move, random)
     }
 
-    if (
-      hasActiveHeldItem(attacker, 'life-orb')
-      && attacker.ability !== '매직가드'
-      && !(attacker.ability === '우격다짐' && hasSheerForceEffect(move))
-      && attacker.hp > 0
-    ) {
-      loseHp(state, attacker, baseMaxHp(attacker) / 10, `${attacker.name}은(는) 생명의구슬로 HP가 줄었다.`, 'item')
+    for (let hitIndex = 0; hitIndex < hitCount && defender.hp > 0 && (spreading || attacker.hp > 0); hitIndex += 1) {
+      if (
+        hitIndex > 0
+        && move.multiaccuracy
+        && !hasActiveHeldItem(attacker, 'loaded-dice')
+        && !moveHits(state, attacker, defender, move, random)
+      ) {
+        multiHitMissed = true
+        break
+      }
+      const hitMove = ['tripleaxel', 'triplekick'].includes(move.id)
+        ? { ...move, power: Math.max(1, Number(move.power) || 1) * (hitIndex + 1) }
+        : move
+      const hitResult = fixedDamageResult(state, attacker, defender, hitMove, random)
+        ?? calculateDamage(
+          spreadDamageState ?? state,
+          spreadDamageState ? battlePokemonById(spreadDamageState, attacker.battleId) : attacker,
+          spreadDamageState ? battlePokemonById(spreadDamageState, defender.battleId) : defender,
+          hitMove,
+          random,
+          powerMultiplier
+            * semiInvulnerable.powerMultiplier
+            * protectionMultiplier
+            * helpingHandMultiplier
+            * (parentalBondActive && hitIndex === 1 ? 0.25 : 1),
+        )
+      if (hitMove.stellarBoosted) {
+        move.stellarBoosted = true
+        preparedMove.stellarBoosted = true
+        if (spreadDamageState) attacker.stellarBoostedTypes = [...battlePokemonById(spreadDamageState, attacker.battleId).stellarBoostedTypes]
+      }
+      const substituteBlocks = defender.substituteHp > 0
+        && attacker.ability !== '틈새포착'
+        && !move.flags?.includes('bypasssub')
+        && !move.flags?.includes('sound')
+      const formShield = !substituteBlocks && applyFormDamageShield(state, defender, hitMove, hitResult.damage)
+      if (formShield) {
+        hitResult.effectiveness = formShield.effectiveness
+        hitResult.critical = false
+      }
+      if (!result) result = hitResult
+      const requestedHitDamage = substituteBlocks
+        ? Math.max(0, Math.floor(hitResult.damage))
+        : formShield
+        ? formShield.damage
+        : applySurvivalEffects(state, defender, hitResult.damage, hitMove, random)
+      let adjustedHitDamage = requestedHitDamage
+      const resistBerryType = TYPE_RESIST_BERRY_TYPES[defender.heldItemId]
+      if (
+        !substituteBlocks
+        && adjustedHitDamage > 0
+        && heldItemEffectsActive(defender)
+        && resistBerryType === move.type
+        && (move.type === '노말' || hitResult.effectiveness > 1)
+      ) {
+        adjustedHitDamage = Math.max(1, Math.floor(adjustedHitDamage / 2))
+        consumeHeldItem(state, defender, { berry: true })
+        appendLog(state, `${defender.name}의 ${defender.heldItemName || defender.heldItemId}이(가) 데미지를 줄였다!`, 'item')
+        applyCheekPouch(state, defender)
+      }
+      const defenderHpBeforeHit = defender.hp
+      const hitDamage = substituteBlocks
+        ? Math.min(defender.substituteHp, adjustedHitDamage)
+        : Math.min(defender.hp, adjustedHitDamage)
+      if (substituteBlocks) {
+        defender.substituteHp = Math.max(0, defender.substituteHp - hitDamage)
+        hitSubstitute = true
+        substituteLandedHits += 1
+        if (defender.substituteHp === 0) appendLog(state, `${defender.name}의 대타는 사라졌다!`, 'status')
+      } else {
+        defender.hp = Math.max(0, defender.hp - hitDamage)
+        directDamage += hitDamage
+        directLandedHits += 1
+        lastDirectHitDamage = hitDamage
+      }
+      damage += hitDamage
+      landedHits += 1
+      result.critical = result.critical || hitResult.critical
+      if (hitCount > 1) {
+        pushTimelineStep(timeline, state, {
+          phase: 'impact',
+          ...moveStep,
+          damage: hitDamage,
+          effectiveness: hitResult.effectiveness,
+          critical: hitResult.critical,
+          message: `${defender.name}에게 ${hitDamage}의 데미지!`,
+        })
+        flushDeferredFormTimeline(state)
+      }
+      const hitEffectLogLength = state.log.length
+      if (hitDamage > 0 && move.drain) {
+        const [numerator, denominator] = move.drain
+        applyDrainingRecovery(state, attacker, defender, Math.ceil(hitDamage * numerator / denominator), move.name, {
+          ignoreDrainedAbility: moveIgnoresAbility(move, defender),
+        })
+      }
+      if (!substituteBlocks && hitDamage > 0) {
+        applyDamagingHitAbilityEffects(state, attacker, defender, hitMove, hitDamage, defenderHpBeforeHit, 1, hitResult.critical, random)
+        applyDamagingHitItemEffects(state, sideId, actorSlot, targetSlot, attacker, defender, hitMove,
+          hitDamage, hitResult.effectiveness, random, timeline, actionOrder, 'hit')
+        applyReactiveFormAbility(state, attacker, defender, hitMove, hitDamage)
+        consumeLowHpBerry(state, defender, random)
+        consumeLowHpBerry(state, attacker, random)
+      }
+      if (hitCount > 1 && state.log.length > hitEffectLogLength) {
+        pushTimelineStep(timeline, state, {
+          phase: 'status',
+          ...moveStep,
+          message: latestLogMessage(state, '명중 후 효과가 발동했다!'),
+        })
+      }
+      if (hitResult.effectiveness === 0 || hitDamage === 0 && move.ohko) break
     }
 
-    if (GEM_ITEM_TYPES[attacker.heldItemId] === move.type && heldItemEffectsActive(attacker)) {
-      consumeHeldItem(state, attacker)
-      appendLog(state, `${attacker.name}의 ${attacker.heldItemName || attacker.heldItemId}이(가) 힘을 다했다!`, 'item')
+    if (multiHitMissed) activateBlunderPolicy(state, attacker)
+
+    result ??= { damage: 0, effectiveness: getMoveTypeEffectiveness(state, attacker, defender, move), critical: false }
+    const connectedDamagingMove = landedHits > 0 && result.effectiveness > 0 && !result.failed
+    if (spreading) {
+      spreadSummary.damage += damage
+      spreadSummary.connected ||= connectedDamagingMove
+      spreadSummary.lastHit = { defender, targetSide, targetSlot, moveStep, move }
+    }
+    if (!spreading) {
+      if (landedHits > 0 && result.effectiveness > 0) {
+        attacker.consecutiveMoveCount = attacker.consecutiveMoveId === move.id
+          ? (attacker.consecutiveMoveCount ?? 0) + 1
+          : 1
+        attacker.consecutiveMoveId = move.id
+        attacker.moveFailedThisTurn = false
+        activateThroatSpray(state, attacker, move)
+      } else {
+        attacker.consecutiveMoveId = null
+        attacker.consecutiveMoveCount = 0
+        attacker.moveFailedThisTurn = true
+      }
+    }
+    if (result.failed) appendLog(state, `${move.name}은(는) 되받아칠 공격이 없어 실패했다!`, 'muted')
+    state.lastEvent = {
+      kind: 'hit',
+      sideId,
+      targetSideId: targetSide.id,
+      damage,
+      hitCount: landedHits,
+      effectiveness: result.effectiveness,
+      nonce: state.eventNonce += 1,
     }
 
-    if (move.flags?.includes('recharge') && attacker.hp > 0) {
-      attacker.rechargeTurns = 1
-      appendLog(state, `${attacker.name}은(는) 다음 턴에 반동으로 움직일 수 없다!`, 'status')
-    }
-    if (!action.dancerCopy) handleLockedMove(state, attacker, move, action.moveIndex, action, random)
-    applyMoveTriggeredFormAfterHit(state, attacker, defender, move, damage)
-  }
+    if (result.critical) appendLog(state, '급소에 맞았다!', 'critical')
+    if (result.effectiveness > 1) appendLog(state, '효과가 굉장했다!', 'super')
+    if (result.effectiveness === 0) appendLog(state, `${defender.name}에게는 효과가 없는 것 같다…`, 'muted')
+    else if (result.effectiveness < 1) appendLog(state, '효과가 별로인 듯하다…', 'muted')
 
-  applyMindBlownRecoil(state, attacker, move)
+    if (landedHits > 1) appendLog(state, `${landedHits}번 맞았다!`, 'damage')
 
-  if (defender.hp <= 0 && defender.destinyBondActive && attacker.hp > 0 && directDamage > 0) {
-    attacker.hp = 0
-    appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
-  }
-
-  applySelfDestruct(state, attacker, move, damage > 0)
-
-  const hasPostEffectLog = state.log.length > postEffectLogLength
-  const postEffectMessage = latestLogMessage(state, `${move.name}의 추가 효과가 발동했다!`)
-  const targetFainted = markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
-
-  if (hasPostEffectLog) {
-    pushTimelineStep(timeline, state, {
-      phase: 'status',
+    if (hitCount <= 1 || landedHits === 0) pushTimelineStep(timeline, state, {
+      phase: 'impact',
       ...moveStep,
-      targetSideId: sideId,
-      message: postEffectMessage,
+      damage,
+      effectiveness: result.effectiveness,
+      critical: result.critical,
+      message: damage > 0
+        ? `${defender.name}에게 ${damage}의 데미지!`
+        : `${defender.name}에게는 효과가 없는 것 같다…`,
     })
-  }
+    flushDeferredFormTimeline(state)
 
-  markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
-  if (targetFainted) {
-    applyKnockoutTriggeredFormAfterFaint(state, attacker, defender, directDamage)
-  }
-  markActiveFaints(state, timeline, actionOrder)
+    const postEffectLogLength = state.log.length
+    const applyUserPrimaryEffects = () => {
+      if (landedHits > 0 && result.effectiveness > 0) {
+        applyEnvironmentAfterDamagingMove(state, sideId, attacker, defender, move, random)
+      }
+      if (landedHits > 0 && !attacker.dynamaxActive && TERRAIN_CLEARING_MOVE_IDS.has(move.id)) {
+        const environmentState = ensureEnvironmentState(state)
+        if (state.rules?.terrain?.id !== 'neutral' || environmentState.terrainTurns != null) {
+          restoreBaseEnvironment(state, 'terrain', move.name)
+        }
+      }
+      if (connectedDamagingMove) {
+        if (attacker.laserFocusActive) attacker.laserFocusActive = false
+        if (attacker.chargeActive && move.type === '전기') attacker.chargeActive = false
+        applyPrimaryMoveEffects(state, attacker, defender, move, random, { targetEffects: false })
+        if (substituteLandedHits > 0) {
+          applyMoveSecondaries(state, attacker, defender, move, random, substituteLandedHits, { targetEffects: false })
+        }
+      }
 
-  if (damage > 0) applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, actorSlot, targetSlot)
-  activateDancerCopies(state, sideId, attacker, move, random, timeline, actionOrder, targetSlot)
+    }
+    if (spreading) {
+      if (connectedDamagingMove) spreadSummary.primary ??= applyUserPrimaryEffects
+    } else applyUserPrimaryEffects()
+
+    if (directDamage > 0) {
+      defender.lastDamageTaken = lastDirectHitDamage
+      defender.lastDamageCategory = moveCategory
+      defender.lastAttackerBattleId = attacker.battleId
+      defender.damagedThisTurn = true
+      if (moveCategory === 'physical') defender.hitByPhysicalThisTurn = true
+      defender.hitCountTaken = (defender.hitCountTaken ?? 0) + directLandedHits
+      if (defender.bideState) {
+        defender.bideState.storedDamage += directDamage
+        defender.bideState.lastAttackerBattleId = attacker.battleId
+      }
+      if (defender.rageActive && defender.hp > 0) {
+        changeStages(state, defender, { attack: directLandedHits }, { source: defender })
+      }
+      breakIllusion(state, defender)
+      applyPrimaryMoveEffects(state, attacker, defender, move, random, { selfEffects: false })
+      if (move.id === 'fling') applyFlingItemEffect(state, attacker, defender, move, random)
+      applyMoveSecondaries(state, attacker, defender, move, random, directLandedHits)
+      applyDamagingHitAbilityEffects(
+        state,
+        attacker,
+        defender,
+        move,
+        directDamage,
+        defenderHpBeforeMove,
+        directLandedHits,
+        result.critical,
+        random,
+        'move',
+      )
+      applyDamagingHitItemEffects(
+        state,
+        sideId,
+        actorSlot,
+        targetSlot,
+        attacker,
+        defender,
+        move,
+        directDamage,
+        result.effectiveness,
+        random,
+        timeline,
+        actionOrder,
+        'move',
+      )
+      applyHpCrossingAbility(state, defender, defenderHpBeforeMove)
+      const emergencySwitched = applyEmergencySwitch(
+        state,
+        targetSide.id,
+        defender,
+        defenderHpBeforeMove,
+        targetSlot,
+        timeline,
+        actionOrder,
+      )
+      if (emergencySwitched) move.suppressSelfSwitch = true
+
+      if ((move.thawsTarget || move.type === '불꽃' && move.id !== 'polarflare') && defender.status?.id === 'freeze') {
+        defender.status = null
+        appendLog(state, `${defender.name}의 얼음이 녹았다!`, 'heal')
+      }
+      if (move.id === 'smellingsalts' && defender.status?.id === 'paralysis') defender.status = null
+      if (move.id === 'wakeupslap' && defender.status?.id === 'sleep') defender.status = null
+      if (move.id === 'clearsmog') resetPokemonStatStages(defender)
+      if (move.id === 'knockoff' && canRemoveHeldItem(defender, attacker, {
+        ignoreHolderAbility: moveIgnoresAbility(move, defender),
+      })) {
+        const removedItem = defender.heldItemName || defender.heldItemId
+        clearHeldItem(defender)
+        appendLog(state, `${defender.name}의 ${removedItem}을(를) 떨어뜨렸다!`, 'item')
+      }
+      if (['thief', 'covet'].includes(move.id)) stealHeldItem(state, attacker, defender, move.name)
+      if (
+        move.id === 'incinerate'
+        && (
+          defender.heldItemId?.endsWith('-berry')
+          || GEM_ITEM_TYPES[defender.heldItemId]
+        )
+        && canRemoveHeldItem(defender, attacker, {
+          ignoreHolderAbility: moveIgnoresAbility(move, defender),
+        })
+      ) {
+        const itemName = defender.heldItemName || defender.heldItemId
+        clearHeldItem(defender)
+        appendLog(state, `${defender.name}의 ${itemName}이(가) 타버렸다!`, 'item')
+      }
+      if (
+        attacker.hp > 0
+        && ['bugbite', 'pluck'].includes(move.id)
+        && defender.heldItemId?.endsWith('-berry')
+        && canRemoveHeldItem(defender, attacker, {
+          ignoreHolderAbility: moveIgnoresAbility(move, defender),
+        })
+      ) {
+        const stolenBerryId = defender.heldItemId
+        const stolenBerryName = defender.heldItemName || stolenBerryId
+        clearHeldItem(defender)
+        consumeStolenBerry(state, attacker, stolenBerryId, stolenBerryName, random)
+      }
+
+      if (defender.hp <= 0 && defender.grudgeActive) {
+        const grudgeMove = attacker.moves[action.moveIndex]
+          ?? attacker.moves.find((candidate) => candidate.id === moveSlot.id)
+        if (grudgeMove) {
+          grudgeMove.currentPp = 0
+          appendLog(state, `${defender.name}의 원념으로 ${grudgeMove.name}의 PP가 0이 되었다!`, 'status')
+          restoreLeppaBerryPp(state, attacker, grudgeMove)
+        }
+        defender.grudgeActive = false
+      }
+      if (defender.hp <= 0) applyKnockoutAbility(state, attacker)
+    } else if (result.effectiveness === 0 && !hitSubstitute) {
+      applyCrashDamage(state, attacker, move)
+    }
+
+    const applyUserMoveCosts = () => {
+      // A Substitute absorbs the target effects, not the user's costs, boosts,
+      // item consumption, recharge, or locked-action state.
+      if (connectedDamagingMove) {
+        if (!spreading || !['thousandwaves', 'coreenforcer'].includes(move.id)) applyUniqueDamagingMoveEffects(state, attacker, defender, move, random, { hitTarget: directDamage > 0 })
+        applyMoveRecoil(state, attacker, move, spreading ? spreadSummary.damage : damage)
+        if (attacker.hp > 0 && attacker.ability !== '우격다짐' && ['rapidspin', 'mortalspin'].includes(move.id)) {
+          const ownSide = getPokemonSide(state, attacker)
+          ownSide.hazards = {
+            ...ownSide.hazards,
+            spikes: 0,
+            stealthRock: false,
+            stickyWeb: false,
+            toxicSpikes: 0,
+          }
+          attacker.leechSeedSourceSideId = null
+          attacker.trappedTurns = 0
+          attacker.trapSourceName = null
+          attacker.trapSourceBattleId = null
+          attacker.trapDamages = false
+          appendLog(state, `${attacker.name} 진영의 함정이 제거되었다!`, 'field')
+        }
+        if (move.id === 'spitup') {
+          changeStages(state, attacker, {
+            defense: -attacker.stockpileBoosts.defense,
+            specialDefense: -attacker.stockpileBoosts.specialDefense,
+          })
+          attacker.stockpileCount = 0
+          attacker.stockpileBoosts = { defense: 0, specialDefense: 0 }
+        }
+        if (move.id === 'naturalgift' && heldItemEffectsActive(attacker)) {
+          consumeHeldItem(state, attacker, { berry: true })
+          appendLog(state, `${attacker.name}은(는) ${move.name}에 지닌물건을 사용했다!`, 'item')
+        }
+        if (move.id === 'fling' && directDamage === 0) {
+          applyFlingItemEffect(state, attacker, null, move, random)
+        }
+
+        if (
+          hasActiveHeldItem(attacker, 'life-orb')
+          && attacker.ability !== '매직가드'
+          && !(attacker.ability === '우격다짐' && hasSheerForceEffect(move))
+          && attacker.hp > 0
+        ) {
+          loseHp(state, attacker, baseMaxHp(attacker) / 10, `${attacker.name}은(는) 생명의구슬로 HP가 줄었다.`, 'item')
+        }
+
+        if (GEM_ITEM_TYPES[attacker.heldItemId] === move.type && heldItemEffectsActive(attacker)) {
+          consumeHeldItem(state, attacker)
+          appendLog(state, `${attacker.name}의 ${attacker.heldItemName || attacker.heldItemId}이(가) 힘을 다했다!`, 'item')
+        }
+
+        if (move.flags?.includes('recharge') && attacker.hp > 0) {
+          attacker.rechargeTurns = 1
+          appendLog(state, `${attacker.name}은(는) 다음 턴에 반동으로 움직일 수 없다!`, 'status')
+        }
+        if (!action.dancerCopy) handleLockedMove(state, attacker, move, action.moveIndex, action, random)
+        applyMoveTriggeredFormAfterHit(state, attacker, defender, move, damage)
+      }
+
+    }
+    if (spreading) {
+      if (connectedDamagingMove) spreadSummary.finish ??= applyUserMoveCosts
+      if (connectedDamagingMove && ['thousandwaves', 'coreenforcer'].includes(move.id)) {
+        applyUniqueDamagingMoveEffects(state, attacker, defender, move, random, { hitTarget: directDamage > 0 })
+      }
+    } else applyUserMoveCosts()
+
+    if (!spreading) applyMindBlownRecoil(state, attacker, move)
+
+    if (defender.hp <= 0 && defender.destinyBondActive && attacker.hp > 0 && directDamage > 0) {
+      if (spreading) spreadSummary.destinyBondSource = defender.name
+      else {
+        attacker.hp = 0
+        appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
+      }
+    }
+
+    if (!spreading) applySelfDestruct(state, attacker, move, damage > 0)
+
+    const hasPostEffectLog = state.log.length > postEffectLogLength
+    const postEffectMessage = latestLogMessage(state, `${move.name}의 추가 효과가 발동했다!`)
+    const targetFainted = markPokemonFaint(state, targetSide.id, targetSlot, timeline, actionOrder)
+
+    if (hasPostEffectLog) {
+      pushTimelineStep(timeline, state, {
+        phase: 'status',
+        ...moveStep,
+        targetSideId: sideId,
+        message: postEffectMessage,
+      })
+    }
+
+    markPokemonFaint(state, sideId, actorSlot, timeline, actionOrder)
+    if (targetFainted) {
+      applyKnockoutTriggeredFormAfterFaint(state, attacker, defender, directDamage)
+    }
+    markActiveFaints(state, timeline, actionOrder)
+
+    if (!spreading) {
+      const switchingMove = move.forceSwitch && directLandedHits === 0 ? { ...move, forceSwitch: false } : move
+      if (damage > 0) applyMoveSwitching(state, sideId, switchingMove, random, timeline, actionOrder, actorSlot, targetSlot, attacker)
+      activateDancerCopies(state, sideId, attacker, move, random, timeline, actionOrder, targetSlot)
+    }
+  }
+  for (const entry of targetEntries) {
+    if (isAvailableFieldPokemon(entry.target)) resolvePreparedTarget(entry)
+  }
+  if (statusSpread) {
+    attacker.moveFailedThisTurn = !spreadSummary.statusSucceeded
+    if (spreadSummary.statusSucceeded) activateDancerCopies(state, sideId, attacker, preparedMove, random, timeline, actionOrder, targetSlot)
+  }
+  if (spreading) {
+    const postEffectLogLength = state.log.length
+    attacker.moveFailedThisTurn = !spreadSummary.connected
+    if (spreadSummary.connected) {
+      attacker.consecutiveMoveCount = attacker.consecutiveMoveId === preparedMove.id ? (attacker.consecutiveMoveCount ?? 0) + 1 : 1
+      attacker.consecutiveMoveId = preparedMove.id
+      activateThroatSpray(state, attacker, preparedMove)
+      spreadSummary.primary?.()
+      spreadSummary.finish?.()
+    } else {
+      attacker.consecutiveMoveId = null
+      attacker.consecutiveMoveCount = 0
+    }
+    attacker.micleActive = false
+    applyMindBlownRecoil(state, attacker, preparedMove)
+    if (spreadSummary.destinyBondSource && attacker.hp > 0) {
+      attacker.hp = 0
+      appendLog(state, `${spreadSummary.destinyBondSource}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
+    }
+    applySelfDestruct(state, attacker, preparedMove, spreadSummary.damage > 0)
+    if (state.log.length > postEffectLogLength) pushTimelineStep(timeline, state, {
+      phase: 'status', ...announcedMoveStep, targetSideId: sideId, targetSlot: actorSlot,
+      message: latestLogMessage(state, `${preparedMove.name}의 추가 효과가 발동했다!`),
+    })
+    markActiveFaints(state, timeline, actionOrder)
+    activateDancerCopies(state, sideId, attacker, preparedMove, random, timeline, actionOrder, targetSlot)
+  }
 }
 
 function resolveFutureMoves(state, timeline, random) {
@@ -8585,19 +8832,33 @@ function resolveFutureMoves(state, timeline, random) {
 
       const previousHp = defender.hp
       const result = calculateDamage(state, attacker, defender, move, random)
-      const damage = applySurvivalEffects(state, defender, result.damage, move, random)
-      defender.hp = Math.max(0, defender.hp - damage)
-      defender.lastDamageTaken = damage
-      defender.lastDamageCategory = move.categoryId
-      defender.lastAttackerBattleId = attacker.battleId
-      defender.damagedThisTurn = damage > 0
-      defender.hitCountTaken = (defender.hitCountTaken ?? 0) + (damage > 0 ? 1 : 0)
+      const substituteBlocks = defender.substituteHp > 0
+        && attacker.ability !== '틈새포착'
+        && !move.flags?.includes('bypasssub')
+      // A delayed attack reaches the current occupant of this slot. Its
+      // Substitute absorbs damage before the holder's HP or survival items.
+      const damage = substituteBlocks
+        ? Math.min(defender.substituteHp, Math.max(0, Math.floor(result.damage)))
+        : applySurvivalEffects(state, defender, result.damage, move, random)
+      if (substituteBlocks) {
+        defender.substituteHp -= damage
+        if (defender.substituteHp === 0) appendLog(state, `${defender.name}의 대타는 사라졌다!`, 'status')
+      } else {
+        defender.hp = Math.max(0, defender.hp - damage)
+        defender.lastDamageTaken = damage
+        defender.lastDamageCategory = move.categoryId
+        defender.lastAttackerBattleId = attacker.battleId
+        defender.damagedThisTurn = damage > 0
+        defender.hitCountTaken = (defender.hitCountTaken ?? 0) + (damage > 0 ? 1 : 0)
+      }
       appendLog(state, `${move.name}의 미래 공격이 ${defender.name}을(를) 덮쳤다!`, 'damage')
       if (result.critical) appendLog(state, '급소에 맞았다!', 'critical')
       if (result.effectiveness > 1) appendLog(state, '효과가 굉장했다!', 'super')
       else if (result.effectiveness < 1) appendLog(state, '효과가 별로인 듯하다…', 'muted')
-      applyHpCrossingAbility(state, defender, previousHp)
-      breakIllusion(state, defender)
+      if (!substituteBlocks) {
+        applyHpCrossingAbility(state, defender, previousHp)
+        breakIllusion(state, defender)
+      }
       pushTimelineStep(timeline, state, {
         phase: 'impact',
         sideId: futureMove.sourceSideId,
@@ -8614,7 +8875,9 @@ function resolveFutureMoves(state, timeline, random) {
         damage,
         effectiveness: result.effectiveness,
         critical: result.critical,
-        message: `${move.name}이(가) ${defender.name}에게 명중했다!`,
+        message: substituteBlocks
+          ? `${defender.name}의 대타가 ${move.name}의 공격을 대신 받았다!`
+          : `${move.name}이(가) ${defender.name}에게 명중했다!`,
       })
       markPokemonFaint(state, targetSideId, targetSlot, timeline)
     })
@@ -9090,6 +9353,7 @@ function performSwitch(
   timeline = null,
   actionOrder = null,
   activeSlot = null,
+  transfer = null,
 ) {
   const side = getSide(state, sideId)
   const resolvedSlot = activeSlot == null ? activeSlotIndex(state, side) : activeSlot
@@ -9140,6 +9404,14 @@ function performSwitch(
   side.activeIndex = side.activeIndexes[state.rules?.format?.rotation ? side.rotationSlot : 0] ?? targetIndex
   refreshStrongWeatherSource(state)
   clearSwitchVolatiles(target)
+  if (transfer?.passSnapshot) {
+    applyBatonPassSnapshot(target, transfer.passSnapshot)
+    appendLog(state, `${target.name}은(는) 배턴터치로 능력 변화를 이어받았다!`, 'status')
+  }
+  if (transfer?.shedTailHp > 0) {
+    target.substituteHp = transfer.shedTailHp
+    appendLog(state, `${target.name}의 앞에 대타가 이어졌다!`, 'status')
+  }
   refreshNeutralizingGas(state)
   target.switchedInThisTurn = true
   applyPendingDifficultyBoost(target)
@@ -9205,11 +9477,10 @@ function applyEmergencySwitch(
 
   const side = getSide(state, sideId)
   if (availableBenchIndexes(side).length === 0) return false
-  const targetIndex = chooseAiReplacementIndex(state, sideId, activeSlot)
-  if (targetIndex == null) return false
-
   appendLog(state, `${pokemon.name}의 ${pokemon.ability}! 위험을 피해 돌아간다!`, 'ability')
-  return performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, activeSlot)
+  return requestBattleSwitch(state, sideId, activeSlot, {
+    kind: 'ability', moveName: pokemon.ability, actionOrder,
+  }, timeline)
 }
 
 function resolvePendingEjectPacks(state, timeline = null, actionOrder = null) {
@@ -9224,12 +9495,9 @@ function resolvePendingEjectPacks(state, timeline = null, actionOrder = null) {
       if (replacements.length === 0) return
       consumeHeldItem(state, pokemon)
       appendLog(state, `${pokemon.name}의 탈출팩이 작동했다!`, 'item')
-      const targetIndex = sideId === 'opponent'
-        ? chooseAiReplacementIndex(state, sideId, activeSlot)
-        : replacements[0]
-      if (targetIndex != null) {
-        switched = performSwitch(state, sideId, targetIndex, true, timeline, actionOrder, activeSlot) || switched
-      }
+      switched = requestBattleSwitch(state, sideId, activeSlot, {
+        kind: 'item', moveName: '탈출팩', actionOrder,
+      }, timeline) || switched
     })
   })
   return switched
@@ -11922,12 +12190,17 @@ function createSideCandidateGroups(
 
 function prepareAiSimulationState(state) {
   const simulation = cloneBattle(state)
+  simulation.aiSimulation = true
+  simulation.pendingSwitches = []
+  simulation.pendingPlayerSwitch = null
+  simulation.pendingTurn = null
   ;['player', 'opponent'].forEach((sideId) => {
     getActivePokemonList(simulation, sideId).forEach((pokemon) => {
       pokemon.protected = false
       pokemon.protectMode = null
       pokemon.flinched = false
       pokemon.actedThisTurn = false
+      pokemon.revivedThisTurn = false
       pokemon.switchedInThisTurn = false
       pokemon.redirectTurns = 0
       pokemon.redirectMode = null
@@ -11958,7 +12231,7 @@ function simulateAiActionPlans(state, sideId, ownDecisions, responseDecisions) {
 
   actions.forEach(({ sideId, action, actorBattleId }) => {
     const actor = getActivePokemon(simulation, sideId, action.actorSlot)
-    if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0) return
+    if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0 || actor.revivedThisTurn) return
     const actingSide = getSide(simulation, sideId)
     if (simulation.rules?.format?.rotation) {
       actingSide.rotationSlot = action.actorSlot ?? actingSide.rotationSlot
@@ -12246,6 +12519,9 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     environment: createEnvironmentState(resolvedRules),
     awaitingPlayerSwitch: false,
     awaitingPlayerSwitchSlots: [],
+    pendingSwitches: [],
+    pendingPlayerSwitch: null,
+    pendingTurn: null,
     winner: null,
     log: [],
     lastEvent: null,
@@ -12292,6 +12568,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   getActivePokemonList(state, 'opponent').forEach((_, slot) => activateEntryAbility(state, 'opponent', slot))
   getActivePokemonList(state, 'player').forEach((_, slot) => activateEntryAbility(state, 'player', slot))
   resolvePendingEjectPacks(state)
+  resolveRequestedSwitches(state)
   return state
 }
 
@@ -12320,6 +12597,7 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
       pokemon.protectMode = null
       pokemon.flinched = false
       pokemon.actedThisTurn = false
+      pokemon.revivedThisTurn = false
       pokemon.switchedInThisTurn = false
       pokemon.switchingOut = false
       pokemon.redirectTurns = 0
@@ -12373,10 +12651,24 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
     pokemon.custapActive = false
   })
 
-  for (const [actionOrder, { sideId, action, actorBattleId }] of actions.entries()) {
+  nextState.pendingTurn = { actions, nextActionIndex: 0 }
+  return continueBattleTurn(nextState, random, timeline)
+}
+
+function finishBattleResolution(state, timeline) {
+  flushDeferredFormTimeline(state)
+  FORM_TIMELINE_CONTEXTS.delete(state)
+  return { state, timeline: timeline ?? [] }
+}
+
+function continueBattleTurn(nextState, random, timeline) {
+  const { actions } = nextState.pendingTurn
+  for (let actionOrder = nextState.pendingTurn.nextActionIndex; actionOrder < actions.length; actionOrder += 1) {
+    const { sideId, action, actorBattleId } = actions[actionOrder]
+    nextState.pendingTurn.nextActionIndex = actionOrder + 1
     if (nextState.winner) break
     const actor = getActivePokemon(nextState, sideId, action.actorSlot)
-    if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0) continue
+    if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0 || actor.revivedThisTurn) continue
     const actingSide = getSide(nextState, sideId)
     if (nextState.rules?.format?.rotation) {
       actingSide.rotationSlot = action.actorSlot ?? actingSide.rotationSlot
@@ -12392,19 +12684,34 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
     resolvePendingEjectPacks(nextState, timeline, actionOrder)
     markActiveFaints(nextState, timeline, actionOrder)
     refreshNeutralizingGas(nextState)
+    if (remainingCount(nextState.player) === 0 || remainingCount(nextState.opponent) === 0) {
+      settleFaints(nextState, timeline)
+      break
+    }
+    if (resolveRequestedSwitches(nextState, timeline)) return finishBattleResolution(nextState, timeline)
   }
 
-  resolveFutureMoves(nextState, timeline, random)
-  markActiveFaints(nextState, timeline)
+  if (!nextState.winner) {
+    resolveFutureMoves(nextState, timeline, random)
+    markActiveFaints(nextState, timeline)
 
-  runResidualEffects(nextState, timeline, random)
-  advanceSideConditionTimers(nextState)
-  advanceEnvironmentTimers(nextState, timeline)
+    runResidualEffects(nextState, timeline, random)
+    advanceSideConditionTimers(nextState)
+    advanceEnvironmentTimers(nextState, timeline)
+  }
   if (!nextState.winner) settleFaints(nextState, timeline)
-  flushDeferredFormTimeline(nextState)
-  FORM_TIMELINE_CONTEXTS.delete(nextState)
+  nextState.pendingTurn = null
+  if (nextState.winner) {
+    nextState.pendingSwitches = []
+    nextState.pendingPlayerSwitch = null
+    nextState.awaitingPlayerSwitch = false
+    nextState.awaitingPlayerSwitchSlots = []
+  } else if (!nextState.awaitingPlayerSwitch) {
+    resolvePendingEjectPacks(nextState, timeline)
+    resolveRequestedSwitches(nextState, timeline)
+  }
   nextState.turn += 1
-  return { state: nextState, timeline: timeline ?? [] }
+  return finishBattleResolution(nextState, timeline)
 }
 
 export function createBattleTurnTimeline(state, playerAction, random = Math.random) {
@@ -12424,14 +12731,56 @@ export function playBattleTurnWithActions(
   return resolveBattleTurn(state, playerActions, random, false, opponentActions).state
 }
 
-export function forcePlayerSwitch(state, targetIndex) {
-  if (!state || state.winner || !state.awaitingPlayerSwitch) return state
+export function resumeBattleTurnTimeline(state, targetIndex, random = Math.random) {
+  if (!state || state.winner || !state.awaitingPlayerSwitch || !Number.isInteger(targetIndex)) {
+    return { state, timeline: [] }
+  }
+  const revival = state.pendingPlayerSwitch?.kind === 'revival'
+  const selected = state.player.team[targetIndex]
+  if (revival
+    ? !selected || selected.hp > 0 && !selected.fainted
+    : !availableBenchIndexes(state.player).includes(targetIndex)) return { state, timeline: [] }
   const nextState = cloneBattle(state)
+  const timeline = []
+  FORM_TIMELINE_CONTEXTS.set(nextState, { timeline, deferred: [] })
   const activeSlot = nextState.awaitingPlayerSwitchSlots?.[0] ?? 0
-  if (!performSwitch(nextState, 'player', targetIndex, true, null, null, activeSlot)) return state
+  const request = nextState.pendingPlayerSwitch ?? {
+    kind: 'faint', sideId: 'player', actorSlot: activeSlot,
+    actorBattleId: getActivePokemon(nextState, 'player', activeSlot)?.battleId,
+  }
+  nextState.pendingPlayerSwitch = null
   nextState.awaitingPlayerSwitchSlots = nextState.awaitingPlayerSwitchSlots.slice(1)
   nextState.awaitingPlayerSwitch = nextState.awaitingPlayerSwitchSlots.length > 0
-  return nextState
+  if (!finishRequestedSwitch(nextState, request, targetIndex, timeline)) {
+    FORM_TIMELINE_CONTEXTS.delete(nextState)
+    return { state, timeline: [] }
+  }
+  if (remainingCount(nextState.player) === 0 || remainingCount(nextState.opponent) === 0) {
+    settleFaints(nextState, timeline)
+    nextState.pendingPlayerSwitch = null
+    nextState.pendingSwitches = []
+    nextState.awaitingPlayerSwitch = false
+    nextState.awaitingPlayerSwitchSlots = []
+    if (nextState.pendingTurn) nextState.turn += 1
+    nextState.pendingTurn = null
+    return finishBattleResolution(nextState, timeline)
+  }
+  // A replacement can faint to hazards and use up the last bench slot. Keep
+  // only fillable empty slots; otherwise a double battle can wait forever.
+  nextState.awaitingPlayerSwitchSlots = nextState.awaitingPlayerSwitchSlots.filter((slot) => {
+    const pokemon = getActivePokemon(nextState, 'player', slot)
+    return pokemon && (pokemon.hp <= 0 || pokemon.fainted)
+  }).slice(0, availableBenchIndexes(nextState.player).length)
+  nextState.awaitingPlayerSwitch = nextState.awaitingPlayerSwitchSlots.length > 0
+  if (resolveRequestedSwitches(nextState, timeline) || nextState.awaitingPlayerSwitch) {
+    return finishBattleResolution(nextState, timeline)
+  }
+  if (nextState.pendingTurn) return continueBattleTurn(nextState, random, timeline)
+  return finishBattleResolution(nextState, timeline)
+}
+
+export function forcePlayerSwitch(state, targetIndex, random = Math.random) {
+  return resumeBattleTurnTimeline(state, targetIndex, random).state
 }
 
 export function getBattleSummary(state) {

@@ -2869,6 +2869,16 @@
   overflow: hidden;
 }
 
+@media (max-width: 1000px) {
+  .app-shell.battle-view .battle-party-menu-grid button {
+    grid-template-columns: 34px minmax(0, 1fr) 54px;
+  }
+
+  .app-shell.battle-view .battle-party-menu-grid button > em {
+    display: none;
+  }
+}
+
 .app-shell.battle-view .battle-party-menu-icon {
   position: relative;
   width: 34px;

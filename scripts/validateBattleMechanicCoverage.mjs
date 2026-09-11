@@ -5,6 +5,7 @@ import generatedBattleMoves from '../src/data/generatedBattleMoves.json' with { 
 import battleItems from '../src/data/generatedBattleItems.js'
 import {
   createBattle,
+  forcePlayerSwitch,
   getForcedBattleAction,
   getBattleMovePreview,
   getEffectiveBattleStat,
@@ -329,8 +330,23 @@ function preventOpponent(state, slot = 0) {
   preventOpponent(state)
   state = turn(state, [move(0)], [move()])
   preventOpponent(state)
+  const passPpBefore = state.player.team[0].moves[1].currentPp
+  const passTurn = state.turn
   state = turn(state, [move(1)], [move()])
-  assert.equal(state.player.team[state.player.activeIndex].statStages.speed, 2)
+  assert.equal(state.awaitingPlayerSwitch, true)
+  assert.equal(state.pendingPlayerSwitch?.kind, 'pivot')
+  assert.equal(state.player.activeIndex, 0, 'Baton Pass must wait for the player to choose a replacement')
+  assert.equal(state.turn, passTurn)
+  assert.equal(state.player.team[0].moves[1].currentPp, passPpBefore - 1)
+  assert.equal(state.player.team[0].statStages.speed, 2)
+  assert.equal(state.player.team[1].statStages.speed, 0, 'The unselected bench Pokemon must not receive effects early')
+  state = forcePlayerSwitch(state, 1, fixedRandom)
+  assert.equal(state.awaitingPlayerSwitch, false)
+  assert.equal(state.player.activeIndex, 1)
+  assert.equal(state.player.team[1].statStages.speed, 2)
+  assert.equal(state.player.team[0].statStages.speed, 0)
+  assert.equal(state.player.team[0].moves[1].currentPp, passPpBefore - 1)
+  assert.equal(state.turn, passTurn + 1)
 }
 
 {
@@ -339,8 +355,27 @@ function preventOpponent(state, slot = 0) {
     [pokemon('blissey', ['splash'])],
   )
   preventOpponent(state)
+  const source = state.player.team[0]
+  const hpAfterCost = source.hp - Math.ceil(source.maxHp / 2)
+  const substituteHp = Math.floor(source.maxHp / 4)
+  const shedTailPpBefore = source.moves[0].currentPp
+  const shedTailTurn = state.turn
   state = turn(state, [move()], [move()])
-  assert(state.player.team[state.player.activeIndex].substituteHp > 0)
+  assert.equal(state.awaitingPlayerSwitch, true)
+  assert.equal(state.pendingPlayerSwitch?.kind, 'pivot')
+  assert.equal(state.player.activeIndex, 0, 'Shed Tail must wait for the player replacement choice')
+  assert.equal(state.turn, shedTailTurn)
+  assert.equal(state.player.team[0].hp, hpAfterCost)
+  assert.equal(state.player.team[0].moves[0].currentPp, shedTailPpBefore - 1)
+  assert.equal(state.pendingPlayerSwitch.shedTailHp, substituteHp)
+  assert.equal(state.player.team[1].substituteHp, 0)
+  state = forcePlayerSwitch(state, 1, fixedRandom)
+  assert.equal(state.awaitingPlayerSwitch, false)
+  assert.equal(state.player.activeIndex, 1)
+  assert.equal(state.player.team[1].substituteHp, substituteHp)
+  assert.equal(state.player.team[0].hp, hpAfterCost)
+  assert.equal(state.player.team[0].moves[0].currentPp, shedTailPpBefore - 1)
+  assert.equal(state.turn, shedTailTurn + 1)
 }
 
 {
