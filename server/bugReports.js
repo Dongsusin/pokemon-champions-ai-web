@@ -8,6 +8,12 @@ const COOLDOWN_MS = 30_000
 const MAX_ATTEMPTS = 5
 const MAX_REPORTS = 1_000
 const MAX_CLIENTS = 2_000
+const FETCH_FAILURE_CODES = new Set([
+  'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ERR_NETWORK',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET',
+  'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'ERR_TLS_CERT_ALTNAME_INVALID', 'ABORT_ERR',
+])
 const CATEGORIES = Object.freeze({
   battle: '배틀', account: '로그인·저장', collection: '포켓몬·아이템',
   display: '화면·조작', sound: '음악·효과음', other: '기타',
@@ -181,7 +187,20 @@ function messageText(report, reportId, origin) {
   return lines.join('\n')
 }
 
-async function deliver({ report, reportId, origin, config, env, fetchImpl, timeoutMs }) {
+function logDeliveryFailure(logger, provider, context, error) {
+  const causeCode = error instanceof ReportError ? undefined : error?.cause?.code ?? error?.code
+  const transportCode = typeof causeCode !== 'string' ? null
+    : FETCH_FAILURE_CODES.has(causeCode) ? causeCode : 'OTHER'
+  try {
+    // All fields are local enums or a bounded HTTP status. Never log an Error,
+    // provider body, URL, email address, request ID, submitted text, or headers.
+    logger({ event: 'bug_report_delivery_failed', provider, ...context, transportCode })
+  } catch {
+    // A logger failure must not change a send result or trigger another email.
+  }
+}
+
+async function deliver({ report, reportId, origin, config, env, fetchImpl, timeoutMs, logger }) {
   const subject = `[챔피언스 아레나 버그 신고] ${report.title}`
   const text = messageText(report, reportId, origin)
   const resend = config.provider === 'resend'
@@ -195,32 +214,44 @@ async function deliver({ report, reportId, origin, config, env, fetchImpl, timeo
   } else {
     headers.Origin = origin
     headers.Referer = `${origin}/`
-    body = { _subject: subject, _template: 'table', _captcha: 'false', message: text, ...(report.replyTo ? { email: report.replyTo, _replyto: report.replyTo } : {}) }
+    body = { _subject: subject, _template: 'table', _captcha: 'false', _url: `${origin}/`, message: text, ...(report.replyTo ? { email: report.replyTo, _replyto: report.replyTo } : {}) }
   }
   const controller = new AbortController()
+  const failureContext = { stage: 'fetch', httpStatus: null, mediaType: 'missing' }
   let timer
   try {
     const response = await Promise.race([
       (async () => {
         const upstream = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal, redirect: 'error' })
-        const mediaType = upstream.headers.get('content-type')?.toLowerCase() || ''
+        failureContext.httpStatus = Number.isInteger(upstream.status) && upstream.status >= 100 && upstream.status <= 599 ? upstream.status : null
+        const mediaType = (upstream.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+        failureContext.mediaType = !mediaType ? 'missing'
+          : ['application/json', 'text/html', 'text/plain'].includes(mediaType) ? mediaType : 'other'
         // FormSubmit currently returns JSON with text/html on its AJAX endpoint.
         // Parse and validate the body; an HTML page is never a successful send.
-        const supportedType = mediaType.includes('application/json') || (!resend && mediaType.includes('text/html'))
-        if (!upstream.ok || !supportedType) {
+        failureContext.stage = 'http'
+        if (!upstream.ok) {
           throw new ReportError(502, 'DELIVERY_FAILED', '신고를 전송하지 못했습니다. 잠시 후 다시 시도해 주세요.')
         }
+        failureContext.stage = 'content-type'
+        if (mediaType !== 'application/json' && (resend || mediaType !== 'text/html')) {
+          throw new ReportError(502, 'DELIVERY_FAILED', '신고를 전송하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+        }
+        failureContext.stage = 'body'
         const raw = await upstream.text()
         if (raw.length > 65_536) throw new Error('Unexpected response size')
+        failureContext.stage = 'json'
         return JSON.parse(raw)
       })(),
       new Promise((_, reject) => {
         timer = setTimeout(() => {
+          failureContext.stage = 'timeout'
           controller.abort()
           reject(new ReportError(504, 'DELIVERY_TIMEOUT', '전송 시간이 초과됐습니다. 잠시 후 같은 신고를 다시 보내 주세요.'))
         }, timeoutMs)
       }),
     ])
+    failureContext.stage = 'provider-schema'
     if (resend) {
       if (!response || typeof response.id !== 'string' || !response.id || response.error) throw new Error('Email not accepted')
     } else {
@@ -229,11 +260,16 @@ async function deliver({ report, reportId, origin, config, env, fetchImpl, timeo
         || (response.message !== undefined && typeof response.message !== 'string')) throw new Error('Unexpected provider reply')
       const message = typeof response?.message === 'string' ? response.message : ''
       if (/activat|confirm.{0,50}(email|mail|address)|verif.{0,50}(email|mail|address)|check.{0,50}(inbox|mail)/i.test(message)) {
+        failureContext.stage = 'activation'
         throw new ReportError(503, 'ACTIVATION_REQUIRED', '버그 신고 수신함을 준비하고 있습니다. 잠시 후 다시 시도해 주세요.')
       }
-      if (response?.success !== true && response?.success !== 'true') throw new Error('Email not accepted')
+      if (response?.success !== true && response?.success !== 'true') {
+        failureContext.stage = /web server|HTML files/i.test(message) ? 'provider-origin' : 'provider-rejected'
+        throw new Error('Email not accepted')
+      }
     }
   } catch (error) {
+    logDeliveryFailure(logger, config.provider, failureContext, error)
     if (error instanceof ReportError) throw error
     throw new ReportError(502, 'DELIVERY_FAILED', '신고를 전송하지 못했습니다. 잠시 후 다시 시도해 주세요.')
   } finally {
@@ -242,7 +278,10 @@ async function deliver({ report, reportId, origin, config, env, fetchImpl, timeo
 }
 
 /** Node/Vercel handler. Rate limits and duplicate suppression are best effort per server instance. */
-export function createBugReportHandler({ env = process.env, fetch: fetchImpl = globalThis.fetch, now = Date.now, timeoutMs = SEND_TIMEOUT_MS } = {}) {
+export function createBugReportHandler({
+  env = process.env, fetch: fetchImpl = globalThis.fetch, now = Date.now, timeoutMs = SEND_TIMEOUT_MS,
+  logger = entry => console.warn('[bug-report]', JSON.stringify(entry)),
+} = {}) {
   const reports = new Map()
   const clients = new Map()
 
@@ -297,7 +336,7 @@ export function createBugReportHandler({ env = process.env, fetch: fetchImpl = g
       }
       const reportId = prior?.reportId || `BR-${new Date(time).toISOString().slice(0, 10).replaceAll('-', '')}-${report.requestId}`
       const record = { fingerprint, reportId, createdAt: time, pending: true, promise: null }
-      record.promise = deliver({ report, reportId, origin, config, env, fetchImpl, timeoutMs })
+      record.promise = deliver({ report, reportId, origin, config, env, fetchImpl, timeoutMs, logger })
       reports.set(report.requestId, record)
       try {
         await record.promise

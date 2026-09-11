@@ -27,6 +27,8 @@ Vercel 프로젝트의 Production 환경에 아래 값을 설정한 후 배포�
 
 다른 도메인이나 로컬호스트로 보내면 별도 활성화가 필요할 수 있다. 로컬은 `.env.example`처럼 기본 비활성으로 유지한다. FormSubmit은 JSON 본문을 `text/html` Content-Type으로 응답하기도 하므로 응답 본문과 성공 스키마까지 검사한다. 실제 HTML 오류 페이지는 전송 성공으로 처리하지 않는다.
 
+서버 전송에서도 폼 출처를 식별하도록 검증된 요청 출처를 `_url`로 함께 전달한다. [FormSubmit 출처 확인 안내](https://formsubmit.co/help). 발송 실패는 Vercel 로그의 `[bug-report]`에서 실패 단계, HTTP 상태, 제한된 MIME·통신 오류 코드로 확인한다. 이 로그에는 신고 내용, 메일 주소, 요청 번호, 발송 키, 공급자의 응답 원문이 포함되지 않는다.
+
 공식 자료: [FormSubmit AJAX](https://formsubmit.co/ajax-documentation), [FormSubmit 설정](https://formsubmit.co/documentation), [개인정보 처리](https://formsubmit.co/privacy.pdf). 신고 내용은 발송 서비스를 거쳐 이메일로 전달된다.
 
 ### Resend로 변경

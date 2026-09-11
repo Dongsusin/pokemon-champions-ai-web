@@ -18,9 +18,11 @@ const jsonResponse = (body = { success: 'true', message: 'The form was submitted
 function setup(options = {}) {
   let time = BASE_TIME
   const calls = []
+  const logs = []
   let upstream = options.upstream || (() => jsonResponse())
   const handler = createBugReportHandler({
     env: options.env || { ...ENV }, now: () => time, timeoutMs: options.timeoutMs || 1000,
+    logger: options.logger || (entry => logs.push(entry)),
     fetch: async (url, init) => {
       calls.push({ url, ...init, parsedBody: JSON.parse(init.body) })
       return upstream(url, init)
@@ -42,7 +44,7 @@ function setup(options = {}) {
     await handler(req, res)
     return result
   }
-  return { handler, request, calls, advance: value => { time += value }, setUpstream: value => { upstream = value } }
+  return { handler, request, calls, logs, advance: value => { time += value }, setUpstream: value => { upstream = value } }
 }
 
 const results = []
@@ -68,7 +70,7 @@ await check('Availability requires explicit enablement and server-only configura
 
 await check('Valid report goes only to configured recipient with sanitized diagnostics', async () => {
   const app = setup()
-  const report = { ...validReport(), to: 'attacker@example.test', _cc: 'attacker@example.test', authorization: 'PRIVATE_TOKEN' }
+  const report = { ...validReport(), to: 'attacker@example.test', _cc: 'attacker@example.test', _url: 'https://attacker.example.test/private', authorization: 'PRIVATE_TOKEN' }
   Object.assign(report.diagnostics, { token: 'PRIVATE_TOKEN', uid: 'PRIVATE_UID', localStorage: 'PRIVATE_SAVE' })
   const response = await app.request(report)
   assert.equal(response.status, 200)
@@ -77,6 +79,7 @@ await check('Valid report goes only to configured recipient with sanitized diagn
   assert.equal(app.calls[0].url, 'https://formsubmit.co/ajax/owner%40example.test')
   const mail = app.calls[0].parsedBody
   assert.equal(mail._replyto, 'player@example.test')
+  assert.equal(mail._url, `${ORIGIN}/`)
   assert.ok(mail.message.includes('분류: 배틀'))
   assert.ok(mail.message.includes('페이지: /battle\n'))
   assert.ok(mail.message.includes('1440 × 900'))
@@ -289,6 +292,55 @@ await check('Instance cache bounds and expired duplicate IDs do not block new re
   assert.equal((await app.request(report)).status, 200)
   app.advance(31 * 60000)
   assert.equal((await app.request({ ...report, title: '캐시 만료 후 새 내용' })).status, 200)
+})
+
+await check('Delivery logs distinguish HTTP, MIME, JSON, provider, activation and timeout failures', async () => {
+  const scenarios = [
+    { upstream: () => jsonResponse({ message: 'PRIVATE_RESPONSE' }, 403), stage: 'http', status: 403, mime: 'application/json' },
+    { upstream: () => new Response('PRIVATE_RESPONSE', { headers: { 'Content-Type': 'image/PRIVATE_SECRET' } }), stage: 'content-type', status: 200, mime: 'other' },
+    { upstream: () => new Response('PRIVATE_RESPONSE', { headers: { 'Content-Type': 'text/html; PRIVATE_SECRET=recipient@example.test' } }), stage: 'json', status: 200, mime: 'text/html' },
+    { upstream: () => jsonResponse({ success: 'false', message: 'PRIVATE_RESPONSE' }), stage: 'provider-rejected', status: 200, mime: 'application/json' },
+    { upstream: () => jsonResponse({ success: 'false', message: 'Make sure you open this page through a web server. PRIVATE_RESPONSE' }), stage: 'provider-origin', status: 200, mime: 'application/json' },
+    { upstream: () => jsonResponse({ success: 'false', message: 'This form needs Activation. PRIVATE_RESPONSE' }), stage: 'activation', status: 200, mime: 'application/json' },
+    { upstream: () => jsonResponse({ success: {} }), stage: 'provider-schema', status: 200, mime: 'application/json' },
+    { upstream: () => new Promise(() => {}), stage: 'timeout', status: null, mime: 'missing', timeoutMs: 10 },
+  ]
+  for (const scenario of scenarios) {
+    const app = setup(scenario)
+    await app.request({ ...validReport(), title: 'PRIVATE_TITLE', description: 'PRIVATE_DESCRIPTION', replyTo: 'private-player@example.test' })
+    assert.equal(app.logs.length, 1)
+    assert.deepEqual(app.logs[0], {
+      event: 'bug_report_delivery_failed', provider: 'formsubmit', stage: scenario.stage,
+      httpStatus: scenario.status, mediaType: scenario.mime, transportCode: null,
+    })
+    assert.ok(!JSON.stringify(app.logs).includes('PRIVATE_'))
+    assert.ok(!JSON.stringify(app.logs).includes('@'))
+  }
+})
+
+await check('Transport logs allow only known error codes, never error text, stack or secrets', async () => {
+  for (const [code, expected] of [['ECONNRESET', 'ECONNRESET'], ['UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_CONNECT_TIMEOUT'], ['PRIVATE_CODE_owner@example.test', 'OTHER']]) {
+    const app = setup({ upstream: () => {
+      const failure = new Error('PRIVATE_ERROR contains URL and API key', { cause: { code, message: 'PRIVATE_CAUSE' } })
+      throw failure
+    } })
+    const response = await app.request()
+    assert.equal(response.status, 502)
+    assert.deepEqual(app.logs, [{ event: 'bug_report_delivery_failed', provider: 'formsubmit', stage: 'fetch', httpStatus: null, mediaType: 'missing', transportCode: expected }])
+    assert.ok(!JSON.stringify(app.logs).includes('PRIVATE_'))
+  }
+})
+
+await check('Successful sends stay quiet and a broken logger cannot change delivery failure', async () => {
+  const app = setup()
+  assert.equal((await app.request()).status, 200)
+  assert.deepEqual(app.logs, [])
+  const broken = setup({ upstream: () => jsonResponse({ success: false }), logger: () => { throw new Error('PRIVATE_LOGGER_ERROR') } })
+  const response = await broken.request()
+  assert.equal(response.status, 502)
+  assert.equal(response.body.code, 'DELIVERY_FAILED')
+  assert.equal(broken.calls.length, 1)
+  assert.ok(!JSON.stringify(response).includes('PRIVATE_'))
 })
 
 console.log(`\nBug report server: ${results.length} checks passed. No real emails were sent.`)
