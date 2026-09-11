@@ -26,6 +26,47 @@
   mix-blend-mode: soft-light;
 }
 
+.auth-login-card.auth-data-error-card {
+  text-align: center;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.auth-data-error-emblem {
+  width: 76px;
+  height: 76px;
+  justify-self: center;
+  object-fit: contain;
+}
+
+.auth-data-error-card h1 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.auth-data-error-card > p {
+  margin: 0;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.auth-data-error-card :is(.google-login-button, .guest-login-button) {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+@media (max-height: 560px) {
+  .auth-login-card.auth-data-error-card { padding: 18px 24px; gap: 10px; }
+  .auth-data-error-emblem { display: none; }
+  .auth-data-error-card h1 { font-size: 19px; }
+  .auth-data-error-card > p { font-size: 13px; }
+  .auth-data-error-card .auth-error-message { padding: 10px; }
+  .auth-data-error-card :is(.google-login-button, .guest-login-button) { min-height: 44px; padding: 10px; }
+}
+
 .auth-ambient {
   position: absolute;
   z-index: -1;

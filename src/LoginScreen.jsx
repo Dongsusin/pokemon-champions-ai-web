@@ -3,6 +3,7 @@ import {
   Clock3,
   LoaderCircle,
   LockKeyhole,
+  RotateCw,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -28,6 +29,27 @@ export function AuthLoadingScreen() {
         <img src="/assets/brand/champions-arena-emblem.png" alt="" />
         <LoaderCircle className="auth-loading-spinner" size={34} aria-hidden="true" />
       </div>
+    </main>
+  )
+}
+
+export function AccountDataErrorScreen({ message, busy, onRetry, onSignOut }) {
+  return (
+    <main className="auth-shell">
+      <section className="auth-login-card auth-data-error-card" aria-labelledby="account-data-error-title">
+        <img className="auth-data-error-emblem" src="/assets/brand/champions-arena-emblem.png" alt="" />
+        <h1 id="account-data-error-title">저장 데이터를 불러오지 못했습니다</h1>
+        <p className="auth-error-message" role="alert">{message}</p>
+        <p>연결 상태를 확인한 뒤 다시 불러와 주세요.</p>
+        <div className="auth-login-actions">
+          <button className="google-login-button" type="button" disabled={busy} onClick={onRetry}>
+            <RotateCw size={20} aria-hidden="true" /><strong>다시 불러오기</strong>
+          </button>
+          <button className="guest-login-button" type="button" disabled={busy} onClick={onSignOut}>
+            <strong>{busy ? '로그아웃 중' : '로그인 화면으로 돌아가기'}</strong>
+          </button>
+        </div>
+      </section>
     </main>
   )
 }

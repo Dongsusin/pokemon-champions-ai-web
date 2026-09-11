@@ -49,11 +49,13 @@ import {
   getActivePokemonList,
   getAvailableBattleMechanics,
   getBattleMovePreview,
+  getBattleMoveSelectionState,
   getBattleMoveTargets,
   getBattleTypeEffectiveness,
   getBattleSummary,
   getConditionalBattleFormAssets,
   getForcedBattleAction,
+  getBattleStruggleAction,
 } from './data/battleEngine'
 import {
   getMoveAnimationAssets,
@@ -1406,7 +1408,7 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
   )
 }
 
-function BattleMoveTooltip({ id, move, opponent, presentation, visible }) {
+function BattleMoveTooltip({ id, move, opponent, presentation, visible, blockedReason }) {
   const accuracy = move.accuracyLabel ?? move.accuracy ?? '—'
 
   return (
@@ -1419,6 +1421,7 @@ function BattleMoveTooltip({ id, move, opponent, presentation, visible }) {
       <span className="battle-tooltip-eyebrow">{move.type}타입 · {move.category}</span>
       <strong>{move.name}</strong>
       <span className="battle-tooltip-description">{move.description || '등록된 기술 설명이 없습니다.'}</span>
+      {blockedReason && <span className="battle-tooltip-description">{blockedReason}</span>}
       <span className="battle-tooltip-meta">
         <span><small>위력</small><b>{move.power || '—'}</b></span>
         <span><small>명중</small><b>{accuracy}</b></span>
@@ -1454,6 +1457,10 @@ function MoveMenu({
   const playerActive = getActivePokemonList(battle, 'player')
   const mechanics = getAvailableBattleMechanics(battle, 'player', activeSlot)
     .filter((mechanic) => !reservedMechanicIds?.has(mechanic.id))
+  const struggleAction = getBattleStruggleAction(battle, 'player', activeSlot, pendingGimmick)
+  const moveOptions = struggleAction
+    ? [{ moveIndex: -1, move: getBattleMovePreview(battle, 'player', -1, activeSlot, targetSlot) }]
+    : pokemon.moves.map((move, moveIndex) => ({ move, moveIndex }))
 
   return (
     <section className="battle-move-menu">
@@ -1494,14 +1501,14 @@ function MoveMenu({
         </div>
       </header>
       <div className="battle-move-grid">
-        {pokemon.moves.map((move, moveIndex) => {
+        {moveOptions.map(({ move, moveIndex }) => {
           const displayMove = getBattleMovePreview(
             battle,
             'player',
             moveIndex,
             activeSlot,
             targetSlot,
-            pendingGimmick,
+            moveIndex === -1 ? null : pendingGimmick,
           ) ?? move
           const multiplier = moveDealsDirectDamage(displayMove)
             ? getBattleTypeEffectiveness(battle, displayMove.type, opponent.types)
@@ -1509,7 +1516,9 @@ function MoveMenu({
           const presentation = effectivenessPresentation(multiplier)
           const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
           const isTooltipVisible = activeTooltipIndex === moveIndex
-          const isZMoveLocked = pendingGimmick === 'zmove' && displayMove.zMoveCompatible === false
+          const isZMoveLocked = moveIndex !== -1 && pendingGimmick === 'zmove' && displayMove.zMoveCompatible === false
+          const selection = getBattleMoveSelectionState(battle, 'player', moveIndex, activeSlot, pendingGimmick)
+          const blockedReason = isZMoveLocked ? '현재 Z크리스탈과 호환되지 않음' : selection.reason
 
           return (
             <div
@@ -1526,9 +1535,10 @@ function MoveMenu({
               <button
                 className={`battle-move-button type-${typeClassName(displayMove.type)} effectiveness-${presentation.tone}`}
                 type="button"
-                disabled={move.currentPp <= 0 || isZMoveLocked}
+                disabled={selection.disabled || isZMoveLocked}
                 aria-describedby={tooltipId}
-                aria-label={isZMoveLocked ? `${move.name}: 현재 Z크리스탈과 호환되지 않음` : undefined}
+                aria-label={blockedReason ? `${move.name}: ${blockedReason}` : undefined}
+                title={blockedReason || undefined}
                 onFocus={() => setActiveTooltipIndex(moveIndex)}
                 onBlur={() => setActiveTooltipIndex((currentIndex) => (
                   currentIndex === moveIndex ? null : currentIndex
@@ -1542,7 +1552,7 @@ function MoveMenu({
                 </span>
                 <span className="battle-move-pp">
                   <small>PP</small>
-                  <strong>{move.currentPp}/{move.maxPp}</strong>
+                  <strong>{moveIndex === -1 ? '—' : `${move.currentPp}/${move.maxPp}`}</strong>
                 </span>
                 <span className="battle-move-power">
                   <small>위력</small>
@@ -1559,6 +1569,7 @@ function MoveMenu({
                 opponent={opponent}
                 presentation={presentation}
                 visible={isTooltipVisible}
+                blockedReason={blockedReason}
               />
             </div>
           )
@@ -1579,6 +1590,7 @@ function MoveTargetMenu({
 }) {
   const pokemon = getActivePokemon(battle, 'player', activeSlot)
   const move = pokemon?.moves?.[moveIndex]
+    ?? (moveIndex === -1 ? getBattleMovePreview(battle, 'player', -1, activeSlot) : null)
   const targets = getBattleMoveTargets(battle, 'player', moveIndex, activeSlot, pendingGimmick)
   const selectedMechanic = getAvailableBattleMechanics(battle, 'player', activeSlot)
     .find((mechanic) => mechanic.id === pendingGimmick)
@@ -2151,6 +2163,8 @@ function BattleScreen({
   }
 
   const chooseMove = (moveIndex) => {
+    if (getBattleMoveSelectionState(battle, 'player', moveIndex, commandSlot, pendingGimmick).disabled) return
+    const selectedGimmick = moveIndex === -1 ? null : pendingGimmick
     battleAudioRef.current?.playMenu('select')
     const pokemon = getActivePokemon(battle, 'player', commandSlot)
     const move = getBattleMovePreview(
@@ -2159,11 +2173,12 @@ function BattleScreen({
       moveIndex,
       commandSlot,
       targetSlot,
-      pendingGimmick,
+      selectedGimmick,
     ) ?? pokemon?.moves?.[moveIndex]
-    if (pendingGimmick === 'zmove' && move?.zMoveCompatible === false) return
-    const targets = getBattleMoveTargets(battle, 'player', moveIndex, commandSlot, pendingGimmick)
+    if (selectedGimmick === 'zmove' && move?.zMoveCompatible === false) return
+    const targets = getBattleMoveTargets(battle, 'player', moveIndex, commandSlot, selectedGimmick)
     if (targets.length > 1) {
+      setPendingGimmick(selectedGimmick)
       setPendingMoveIndex(moveIndex)
       setTargetSlot((currentSlot) => (
         livingOpponentTargetSlots.includes(currentSlot)
@@ -2177,7 +2192,7 @@ function BattleScreen({
     submitPlayerAction({
       type: 'move',
       moveIndex,
-      gimmick: pendingGimmick,
+      gimmick: selectedGimmick,
       ...(targets[0] ? { targetSideId: targets[0].sideId, targetSlot: targets[0].slot } : {}),
     })
     setPendingMoveIndex(null)

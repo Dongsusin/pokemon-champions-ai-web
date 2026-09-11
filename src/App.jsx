@@ -29,7 +29,7 @@ import LobbyTeamPanel from './LobbyTeamPanel'
 import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
-import LoginScreen, { AuthLoadingScreen } from './LoginScreen'
+import LoginScreen, { AccountDataErrorScreen, AuthLoadingScreen } from './LoginScreen'
 import { useAuth } from './auth/AuthProvider'
 import { useAccountGameData } from './auth/useAccountGameData'
 import { createGameAudio } from './gameAudio'
@@ -1333,13 +1333,36 @@ function App() {
 }
 
 function AccountGameApp({ user, accountError, ...props }) {
+  const [signingOut, setSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState('')
+  const signOutPending = useRef(false)
   const {
     ready: gameDataReady,
     syncError,
     flush,
     scheduleSave,
+    retry,
   } = useAccountGameData(user)
 
+  const leaveAccount = async (saveFirst) => {
+    if (signOutPending.current) return
+    signOutPending.current = true
+    setSigningOut(true)
+    setSignOutError('')
+    try {
+      if (!saveFirst || await flush()) await props.onSignOut?.()
+    } catch {
+      setSignOutError('로그아웃하지 못했습니다. 다시 시도해 주세요.')
+    } finally {
+      signOutPending.current = false
+      setSigningOut(false)
+    }
+  }
+
+  if (!gameDataReady && syncError) {
+    return <AccountDataErrorScreen message={signOutError || accountError || syncError}
+      busy={signingOut || props.authBusy} onRetry={retry} onSignOut={() => leaveAccount(false)} />
+  }
   if (!gameDataReady) return <AuthLoadingScreen />
 
   return (
@@ -1347,12 +1370,10 @@ function AccountGameApp({ user, accountError, ...props }) {
       key={user.uid}
       {...props}
       user={user}
-      accountError={syncError || accountError}
+      accountError={signOutError || syncError || accountError}
+      authBusy={signingOut || props.authBusy}
       onPlayerDataChanged={scheduleSave}
-      onSignOut={async () => {
-        await flush()
-        await props.onSignOut?.()
-      }}
+      onSignOut={() => leaveAccount(true)}
     />
   )
 }

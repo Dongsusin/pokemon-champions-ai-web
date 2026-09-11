@@ -28,9 +28,7 @@ function readJsonStorage(key) {
 
 function writeJsonStorage(key, value) {
   if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value))
-  } catch {}
+  window.localStorage.setItem(key, JSON.stringify(value))
 }
 
 function parseStoredJson(payload, key, fallback) {
@@ -45,28 +43,33 @@ export function readLocalPlayerData() {
   if (typeof window === 'undefined') return {}
 
   return PLAYER_STORAGE_KEYS.reduce((payload, key) => {
-    try {
-      const value = window.localStorage.getItem(key)
-      if (typeof value === 'string') payload[key] = value
-    } catch {}
+    // A partial snapshot must never replace a complete cloud save.
+    const value = window.localStorage.getItem(key)
+    if (typeof value === 'string') payload[key] = value
     return payload
   }, {})
 }
 
 export function replaceLocalPlayerData(payload = {}) {
   if (typeof window === 'undefined') return
-
-  for (const key of PLAYER_STORAGE_KEYS) {
-    try {
-      window.localStorage.removeItem(key)
-    } catch {}
-  }
-
-  for (const [key, value] of Object.entries(payload)) {
-    if (!PLAYER_STORAGE_KEYS.includes(key) || typeof value !== 'string') continue
-    try {
-      window.localStorage.setItem(key, value)
-    } catch {}
+  const storage = window.localStorage
+  const previous = new Map(PLAYER_STORAGE_KEYS.map(key => [key, storage.getItem(key)]))
+  const next = new Map(Object.entries(payload).filter(([key, value]) => (
+    PLAYER_STORAGE_KEYS.includes(key) && typeof value === 'string'
+  )))
+  try {
+    for (const [key, value] of next) storage.setItem(key, value)
+    for (const key of PLAYER_STORAGE_KEYS) if (!next.has(key)) storage.removeItem(key)
+  } catch (cause) {
+    // A replacement may redistribute quota between keys. Free changed values
+    // before restoring the snapshot, which already fit in storage beforehand.
+    for (const [key, value] of previous) {
+      try { if (storage.getItem(key) !== value) storage.removeItem(key) } catch {}
+    }
+    for (const [key, value] of previous) if (value !== null) {
+      try { storage.setItem(key, value) } catch {}
+    }
+    throw new Error('계정 데이터를 이 기기에 저장하지 못했습니다.', { cause })
   }
 }
 

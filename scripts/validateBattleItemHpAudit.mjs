@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createBattle, playBattleTurnWithActions } from '../src/data/battleEngine.js'
-import { SPECIES_PROFILES, getLearnableMoves, getMoveById } from '../src/data/trainingData.js'
+import { SPECIES_PROFILES, calculateStats, getLearnableMoves, getMoveById } from '../src/data/trainingData.js'
 
 // Showdown data/items.ts and data/moves.ts use baseMaxhp for percentage heals;
 // berry activation thresholds still use the current (Dynamaxed) maximum HP.
@@ -12,7 +12,7 @@ function pokemon(slug, moveId = 'protect', overrides = {}) {
   if (overrides.ability) assert(profile.abilities.includes(overrides.ability))
   return { speciesId: profile.id, captureId: `${slug}-${moveId}`, moves: [getMoveById(moveId).name], ...overrides }
 }
-function battle(playerPokemon, opponentPokemon, activeSlots = 1) {
+function battle(playerPokemon, opponentPokemon, activeSlots = 1, ruleOverrides = {}) {
   return createBattle({ playerPokemon, opponent: { name: 'HP AUDIT' },
     opponentTeam: { pokemon: opponentPokemon, battleGimmicks: [] },
     rules: {
@@ -20,6 +20,7 @@ function battle(playerPokemon, opponentPokemon, activeSlots = 1) {
       format: { id: activeSlots === 1 ? 'single' : 'double', label: '검증', activeSlots, actionSlots: activeSlots },
       teamRule: { id: 'full', label: '검증', battleSize: playerPokemon.length },
       disabledGimmickId: null, gimmickRestriction: { id: null, label: '제한 없음' },
+      ...ruleOverrides,
     },
   })
 }
@@ -41,6 +42,59 @@ test('Activating Dynamax preserves the current HP ratio at 1 HP', () => {
   const next = run(state, [moveAction(0, { gimmick: 'dynamax' })])
   assert.equal(next.player.team[0].maxHp, base * 2)
   assert.equal(next.player.team[0].hp, 2)
+})
+
+// Showdown data/pokedex.ts: Shedinja maxHP: 1; data/conditions.ts: Dynamax
+// preserves that HP, while Transform still preserves the user's own HP.
+test('Shedinja keeps its fixed maximum HP regardless of HP training', () => {
+  for (const hp of [0, 32]) {
+    const entry = pokemon('shedinja', 'harden', { trainingPoints: { hp } })
+    assert.equal(calculateStats(entry).find(stat => stat.key === 'hp').value, 1)
+    const state = battle([entry], [pokemon('snorlax')])
+    assert.equal(state.player.team[0].hp, 1)
+    assert.equal(state.player.team[0].maxHp, 1)
+    assert.equal(state.player.team[0].stats.hp, 1)
+  }
+})
+
+test('Shedinja retains 1 HP at every hard difficulty boost and during Dynamax', () => {
+  for (const boostStage of [1, 2, 3]) {
+    const state = battle([pokemon('snorlax')], [pokemon('shedinja', 'harden', { battleMechanics: ['dynamax'] })],
+      1, { aiDifficulty: { id: 'hard', boostStage } })
+    const original = state.opponent.team[0]
+    assert.equal(original.maxHp, 1)
+    assert.equal(original.originalMaxHp, 1)
+    assert.equal(original.statStages.attack, boostStage)
+    const next = run(state, [moveAction()], [moveAction(0, { gimmick: 'dynamax' })])
+    assert(next.opponent.team[0].dynamaxActive)
+    assert.equal(next.opponent.team[0].maxHp, 1)
+    assert.equal(next.opponent.team[0].hp, 1)
+  }
+})
+
+test('Shedinja keeps 1 HP throughout Dynamax and its expiry', () => {
+  let state = battle([pokemon('shedinja', 'harden', { battleMechanics: ['dynamax'] })], [pokemon('snorlax')])
+  state = run(state, [moveAction(0, { gimmick: 'dynamax' })])
+  assert(state.player.team[0].dynamaxActive)
+  for (let remaining = 2; remaining >= 0; remaining--) {
+    assert.equal(state.player.team[0].hp, 1)
+    assert.equal(state.player.team[0].maxHp, 1)
+    assert.equal(state.player.team[0].dynamaxTurns, remaining)
+    if (remaining) state = run(state)
+  }
+  assert.equal(state.player.team[0].dynamaxActive, false)
+})
+
+test('Ditto transformed into Shedinja keeps its own HP when Dynamaxing', () => {
+  let state = battle([pokemon('ditto', 'transform', { battleMechanics: ['dynamax'], ability: '유연' })], [pokemon('shedinja', 'harden')])
+  const baseHp = state.player.team[0].maxHp
+  state = run(state)
+  assert.equal(state.player.team[0].ability, '불가사의부적')
+  assert.equal(state.player.team[0].maxHp, baseHp)
+  state = run(state, [moveAction(0, { gimmick: 'dynamax' })])
+  assert(state.player.team[0].dynamaxActive)
+  assert.equal(state.player.team[0].maxHp, baseHp * 2)
+  assert.equal(state.player.team[0].hp, baseHp * 2)
 })
 for (const [slug, ability, item, fraction, multiplier] of [
   ['snorlax', '면역', 'sitrus-berry', 1 / 4, 1],

@@ -28,7 +28,9 @@ function canTransferLocalData(syncState, migration, userId) {
 function shouldPreferUnsyncedLocalData(syncState, cloudData, userId) {
   return syncState?.ownerUid === userId
     && syncState.dirty
-    && syncState.localUpdatedAt > cloudData.updatedAtMs
+    && (syncState.revision
+      ? syncState.revision === cloudData.revision
+      : syncState.localUpdatedAt > cloudData.updatedAtMs)
 }
 
 export function useAccountGameData(user) {
@@ -36,45 +38,60 @@ export function useAccountGameData(user) {
   const cloudEnabled = Boolean(userId && !user?.isLocalGuest)
   const [ready, setReady] = useState(false)
   const [syncError, setSyncError] = useState('')
+  const [retryVersion, setRetryVersion] = useState(0)
   const timerRef = useRef(null)
-  const savingRef = useRef(false)
+  const savingRef = useRef(null)
+  const bootstrapReadyRef = useRef(false)
   const pendingRef = useRef(false)
   const generationRef = useRef(0)
 
   const flush = useCallback(async () => {
-    if (!cloudEnabled || !userId || !hasActiveAccountSession(userId)) return
+    if (!cloudEnabled) return true
+    if (!userId || !bootstrapReadyRef.current || !hasActiveAccountSession(userId)) return false
+    window.clearTimeout(timerRef.current)
     if (savingRef.current) {
       pendingRef.current = true
-      return
+      return savingRef.current
     }
 
-    savingRef.current = true
     const generation = generationRef.current
     const ownerId = getActiveAccountSessionOwnerId(userId)
     const isCurrent = () => generationRef.current === generation
       && getActiveAccountSessionOwnerId(userId) === ownerId
-    let latestRevision = ''
+    const saving = (async () => {
+      let latestRevision = ''
+      try {
+        do {
+          if (!isCurrent()) return false
+          pendingRef.current = false
+          const payload = readLocalPlayerData()
+          const result = await savePlayerGameData(userId, payload)
+          latestRevision = result.revision
+        } while (pendingRef.current && isCurrent())
+        if (!isCurrent()) return false
+        markLocalPlayerDataSynced(userId, latestRevision)
+        setSyncError('')
+        return true
+      } catch {
+        if (isCurrent()) setSyncError('게임 데이터를 계정에 저장하지 못했습니다. 연결을 확인한 뒤 다시 시도해주세요. 이 기기의 진행 기록은 유지됩니다.')
+        return false
+      }
+    })()
+    savingRef.current = saving
     try {
-      do {
-        if (!isCurrent()) return
-        pendingRef.current = false
-        const payload = readLocalPlayerData()
-        const result = await savePlayerGameData(userId, payload)
-        latestRevision = result.revision
-      } while (pendingRef.current && isCurrent())
-      if (!isCurrent()) return
-      markLocalPlayerDataSynced(userId, latestRevision)
-      setSyncError('')
-    } catch {
-      if (isCurrent()) setSyncError('게임 데이터를 계정에 저장하지 못했습니다. 연결이 복구되면 다시 동기화합니다.')
+      return await saving
     } finally {
-      if (generationRef.current === generation) savingRef.current = false
+      if (savingRef.current === saving) savingRef.current = null
     }
   }, [cloudEnabled, userId])
 
   const scheduleSave = useCallback(() => {
-    if (!cloudEnabled || !userId || !hasActiveAccountSession(userId)) return
-    markLocalPlayerDataDirty(userId)
+    if (!cloudEnabled || !userId || !bootstrapReadyRef.current || !hasActiveAccountSession(userId)) return
+    try {
+      markLocalPlayerDataDirty(userId)
+    } catch {
+      setSyncError('이 기기의 저장 공간이 부족합니다. 저장 공간을 확보한 뒤 다시 시도해주세요.')
+    }
     pendingRef.current = true
     window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => {
@@ -86,7 +103,8 @@ export function useAccountGameData(user) {
     generationRef.current += 1
     window.clearTimeout(timerRef.current)
     pendingRef.current = false
-    savingRef.current = false
+    savingRef.current = null
+    bootstrapReadyRef.current = false
     setSyncError('')
 
     if (!userId) {
@@ -95,16 +113,22 @@ export function useAccountGameData(user) {
     }
 
     if (!cloudEnabled) {
-      const syncState = readPlayerSyncState()
-      if (
-        syncState?.ownerUid
-        && syncState.ownerUid !== userId
-        && !syncState.ownerUid.startsWith('local-guest-')
-      ) {
-        replaceLocalPlayerData({})
+      try {
+        const syncState = readPlayerSyncState()
+        if (
+          syncState?.ownerUid
+          && syncState.ownerUid !== userId
+          && !syncState.ownerUid.startsWith('local-guest-')
+        ) {
+          replaceLocalPlayerData({})
+        }
+        claimLocalPlayerData(userId)
+        bootstrapReadyRef.current = true
+        setReady(true)
+      } catch {
+        setReady(false)
+        setSyncError('이 기기의 저장 공간에 접근하지 못했습니다. 브라우저 저장 설정을 확인한 뒤 다시 시도해주세요.')
       }
-      claimLocalPlayerData(userId)
-      setReady(true)
       return undefined
     }
 
@@ -114,17 +138,17 @@ export function useAccountGameData(user) {
     setReady(false)
 
     const bootstrap = async () => {
-      const syncState = readPlayerSyncState()
-      const migration = readPendingGoogleMigration()
-      const localPayload = readLocalPlayerData()
-
       try {
+        const syncState = readPlayerSyncState()
+        const migration = readPendingGoogleMigration()
+        const localPayload = readLocalPlayerData()
         const cloudData = await loadPlayerGameData(userId)
         if (!isCurrent()) return
 
         if (cloudData) {
           const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
-          const isExplicitGuestMigration = migration?.sourceUid === syncState?.ownerUid
+          const isExplicitGuestMigration = Boolean(migration?.sourceUid)
+            && migration.sourceUid === syncState?.ownerUid
           const isFirstDeviceMigration = !syncState?.ownerUid
             && getPlayerDataProgressScore(localPayload) > getPlayerDataProgressScore(cloudData.payload)
           const keepLocalData = localTransferAllowed && (
@@ -143,24 +167,19 @@ export function useAccountGameData(user) {
           }
         } else {
           const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
-          if (!localTransferAllowed) replaceLocalPlayerData({})
-          const result = await savePlayerGameData(userId, readLocalPlayerData())
+          const result = await savePlayerGameData(userId, localTransferAllowed ? localPayload : {})
           if (!isCurrent()) return
+          if (!localTransferAllowed) replaceLocalPlayerData({})
           markLocalPlayerDataSynced(userId, result.revision)
         }
 
         if (migration) clearPendingGoogleMigration()
-        if (active) setSyncError('')
+        bootstrapReadyRef.current = true
+        setSyncError('')
+        setReady(true)
       } catch {
         if (!isCurrent()) return
-        const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
-        if (!localTransferAllowed) replaceLocalPlayerData({})
-        claimLocalPlayerData(userId)
-        if (active) {
-          setSyncError('계정 데이터를 불러오지 못해 이 기기의 저장 데이터를 사용합니다.')
-        }
-      } finally {
-        if (active) setReady(true)
+        setSyncError('계정 데이터를 불러오지 못했습니다. 저장 기록을 보호하기 위해 게임을 잠시 중단했습니다. 연결을 확인한 뒤 다시 시도해주세요.')
       }
     }
 
@@ -168,11 +187,20 @@ export function useAccountGameData(user) {
 
     return () => {
       active = false
+      bootstrapReadyRef.current = false
       generationRef.current += 1
       pendingRef.current = false
       window.clearTimeout(timerRef.current)
     }
-  }, [cloudEnabled, userId])
+  }, [cloudEnabled, userId, retryVersion])
+
+  const retry = useCallback(() => setRetryVersion(value => value + 1), [])
+
+  useEffect(() => {
+    if (!cloudEnabled || ready || !syncError) return undefined
+    window.addEventListener('online', retry)
+    return () => window.removeEventListener('online', retry)
+  }, [cloudEnabled, ready, retry, syncError])
 
   useEffect(() => {
     if (!cloudEnabled || !ready) return undefined
@@ -203,6 +231,7 @@ export function useAccountGameData(user) {
   return {
     ready,
     syncError,
+    retry,
     flush,
     scheduleSave,
   }

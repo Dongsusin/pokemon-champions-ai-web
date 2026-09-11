@@ -353,7 +353,12 @@ export function AuthProvider({ children }) {
   const connectGuestToGoogle = useCallback(async () => {
     const currentGuest = userRef.current
     if (!currentGuest?.isLocalGuest) return false
-    markPendingGoogleMigration(currentGuest.uid)
+    try {
+      markPendingGoogleMigration(currentGuest.uid)
+    } catch {
+      setError('게스트 진행 기록의 이전 설정을 저장하지 못했습니다. 브라우저 저장 공간을 확인해주세요.')
+      return false
+    }
     const connected = await signInWithGoogle()
     if (!connected) clearPendingGoogleMigration()
     return connected

@@ -752,9 +752,11 @@ function preventOpponent(state, slot = 0) {
   assert(state.log.some((entry) => entry.message.includes('너무 무거워')))
 
   state = battle(
-    [pokemon('hawlucha', ['skydrop'])],
+    [pokemon('hawlucha', ['skydrop', 'honeclaws'])],
     [pokemon('pikachu', ['splash'])],
   )
+  // Keep a legal alternative available: this scenario checks the rejected
+  // Sky Drop request, while an entirely blocked moveset must use Struggle.
   state.environment.gravityTurns = 3
   preventOpponent(state)
   state = turn(state, [move()], [move()])

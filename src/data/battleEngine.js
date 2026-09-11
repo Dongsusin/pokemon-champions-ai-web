@@ -837,7 +837,8 @@ function applyOpponentAiDifficulty(side, difficultyValue) {
 
   if (difficulty.id === 'hard') {
     side.team.forEach((pokemon) => {
-      const hpMultiplier = stageMultiplier(difficulty.boostStage)
+      // Shedinja's fixed maximum HP also survives the optional difficulty boost.
+      const hpMultiplier = pokemon.maxHp === 1 ? 1 : stageMultiplier(difficulty.boostStage)
       const boostedMaxHp = Math.max(1, Math.floor(pokemon.maxHp * hpMultiplier))
       pokemon.difficultyHpMultiplier = hpMultiplier
       pokemon.stats.hp = boostedMaxHp
@@ -2151,6 +2152,9 @@ function variableMovePower(state, attacker, defender, move) {
 }
 
 function resolveEnvironmentMove(state, attacker, defender, move) {
+  // Struggle is typeless during execution: no STAB, conversion ability, plate,
+  // terrain or weather type bonus applies to the fallback attack.
+  if (move?.id === 'struggle') return { ...move, type: '???' }
   const resolvedMove = { ...move }
   const activeWeatherId = effectiveMoveWeatherId(state, attacker)
   const weatherId = weatherFamilyId(activeWeatherId)
@@ -2269,6 +2273,7 @@ function maxMoveSpeciesSlug(pokemon) {
 }
 
 function resolveBattleMaxMove(pokemon, move, forceDynamax = false, powerSourceMove = move) {
+  if (move?.id === 'struggle') return move
   if (!pokemon?.dynamaxActive && !forceDynamax) return move
   return resolveMaxMove(move, {
     gigantamax: pokemon.dynamaxMode === 'gigantamax',
@@ -2357,6 +2362,7 @@ function getMoveStab(pokemon, moveType, forceStab = false) {
 }
 
 function abilityImmunity(state, attacker, defender, move) {
+  if (move.id === 'struggle') return null
   if (moveIgnoresAbility(move, defender)) return null
   if (
     ALLY_DAMAGE_IMMUNITY_ABILITIES.has(defender.ability)
@@ -3332,11 +3338,15 @@ function applyVolatileEffect(
     const lastMove = target.moves[target.lastMoveIndex]
     if (
       target.lastMoveIndex == null
+      || !lastMove || lastMove.currentPp <= 0
+      || target.dynamaxActive
       || target.encoreTurns > 0
       || lastMove?.flags?.includes('failencore')
     ) return false
     target.encoredMoveIndex = target.lastMoveIndex
-    target.encoreTurns = 3
+    // If its action has already happened, all three forced move selections
+    // belong to future turns. Residual expiry still runs on this turn.
+    target.encoreTurns = target.actedThisTurn ? 4 : 3
     appendLog(state, `${target.name}은(는) 앵콜을 받아 같은 기술만 쓰게 되었다!`, 'status')
     activateMentalHerb(state, target)
     return true
@@ -5149,7 +5159,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
     Math.floor(nextStats.hp * (pokemon.difficultyHpMultiplier ?? 1)),
   )
   nextStats.hp = nextBaseMaxHp
-  const nextMaxHp = pokemon.dynamaxActive ? nextBaseMaxHp * 2 : nextBaseMaxHp
+  const nextMaxHp = pokemon.dynamaxActive && nextBaseMaxHp > 1 ? nextBaseMaxHp * 2 : nextBaseMaxHp
   const preservedHp = options.hpMode === 'damage'
     ? nextMaxHp - Math.max(0, previousMaxHp - previousHp)
     : nextMaxHp * (previousHp / Math.max(1, previousMaxHp))
@@ -5797,8 +5807,10 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
     side.usedMechanics.dynamax = true
     pokemon.dynamaxActive = true
     pokemon.dynamaxTurns = 3
-    pokemon.hp *= 2
-    pokemon.maxHp *= 2
+    if (pokemon.maxHp > 1) {
+      pokemon.hp *= 2
+      pokemon.maxHp *= 2
+    }
     appendLog(
       state,
       `${trainerName}의 ${originalName}이(가) ${pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}했다!`,
@@ -5861,15 +5873,75 @@ function forcedActionForPokemon(pokemon) {
       forcedReason: 'locked',
     }
   }
-  if (pokemon.encoreTurns > 0 && pokemon.moves[pokemon.encoredMoveIndex]?.currentPp > 0) {
-    return {
-      type: 'move',
-      moveIndex: pokemon.encoredMoveIndex,
-      gimmick: null,
-      forcedReason: 'encore',
-    }
-  }
   return null
+}
+
+function battleActionMove(pokemon, moveIndex) {
+  return moveIndex === -1
+    ? { ...getMoveById('struggle'), maxPp: 1, currentPp: 1 }
+    : pokemon?.moves?.[moveIndex]
+}
+
+function encoredMoveIndex(pokemon, gimmick = null) {
+  return pokemon?.encoreTurns > 0
+    && pokemon.moves[pokemon.encoredMoveIndex]?.currentPp > 0
+    && !pokemon.dynamaxActive && !['dynamax', 'zmove'].includes(gimmick)
+    ? pokemon.encoredMoveIndex : null
+}
+
+// Selection restrictions are separate from charge/recharge turn commitments:
+// Encore, Disable and Choice items restrict moves but never prohibit switching.
+export function getBattleMoveSelectionState(state, sideId = 'player', moveIndex = 0, activeSlot = 0, gimmick = null) {
+  const pokemon = state && getActivePokemon(state, sideId, activeSlot)
+  const blocked = reason => ({ disabled: true, reason })
+  if (!isAvailableFieldPokemon(pokemon)) return blocked('행동할 수 있는 포켓몬이 없습니다.')
+  if (moveIndex === -1) return getBattleStruggleAction(state, sideId, activeSlot, gimmick)
+    ? { disabled: false, reason: null } : blocked('사용할 수 있는 기술이 남아 있습니다.')
+  const move = pokemon.moves[moveIndex]
+  if (!move) return blocked('선택할 수 없는 기술입니다.')
+  const forced = forcedActionForPokemon(pokemon)
+  if (forced && forced.moveIndex !== moveIndex) return blocked('진행 중인 행동을 마쳐야 합니다.')
+  if (forced) return { disabled: false, reason: null }
+  if (move.currentPp <= 0) return blocked('PP가 남아 있지 않습니다.')
+  const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, activeSlot, gimmick)
+  const bypassLock = pokemon.dynamaxActive || ['dynamax', 'zmove'].includes(resolvedGimmick)
+  const encoreIndex = encoredMoveIndex(pokemon, resolvedGimmick)
+  if (encoreIndex != null && encoreIndex !== moveIndex) return blocked('앵콜로 같은 기술만 사용할 수 있습니다.')
+  if (!bypassLock && pokemon.disabledMoveTurns > 0 && pokemon.disabledMoveIndex === moveIndex) return blocked('사슬묶기로 봉인된 기술입니다.')
+  if (!bypassLock && pokemon.ability === '무아지경' && pokemon.gorillaLockedMoveIndex != null && pokemon.gorillaLockedMoveIndex !== moveIndex) return blocked('무아지경으로 같은 기술만 사용할 수 있습니다.')
+  if (!bypassLock && CHOICE_ITEM_IDS.has(pokemon.heldItemId) && heldItemEffectsActive(pokemon) && pokemon.choiceLockedMoveIndex != null && pokemon.choiceLockedMoveIndex !== moveIndex) return blocked('구애 도구로 같은 기술만 사용할 수 있습니다.')
+  if (!bypassLock && pokemon.tormented && pokemon.lastMoveIndex === moveIndex) return blocked('트집으로 같은 기술을 연속해서 사용할 수 없습니다.')
+  const preview = getBattleMovePreview(state, sideId, moveIndex, activeSlot, 0, resolvedGimmick) ?? move
+  if (resolvedGimmick === 'zmove' && preview.zMoveCompatible === false) return blocked('현재 Z크리스탈과 호환되지 않습니다.')
+  if (hasActiveHeldItem(pokemon, 'assault-vest') && isStatusMove(move)) return blocked('돌격조끼 때문에 변화 기술을 사용할 수 없습니다.')
+  if (pokemon.tauntTurns > 0 && isStatusMove(preview)) return blocked('도발 때문에 변화 기술을 사용할 수 없습니다.')
+  if (pokemon.healBlockTurns > 0 && isHealingMove(preview)) return blocked('회복봉인 때문에 회복 기술을 사용할 수 없습니다.')
+  if (move.flags?.includes('cantusetwice') && pokemon.lastMoveId === preview.id) return blocked('이 기술은 연속해서 사용할 수 없습니다.')
+  if (state.environment?.gravityTurns > 0 && preview.flags?.includes('gravity')) return blocked('중력이 강해 사용할 수 없는 기술입니다.')
+  if (getActivePokemonList(state, getOtherSide(state, sideId).id).some(foe => isAvailableFieldPokemon(foe) && foe.imprisonActive && foe.moves.some(known => known.id === preview.id))) return blocked('상대의 봉인 때문에 사용할 수 없습니다.')
+  return { disabled: false, reason: null }
+}
+
+export function getBattleStruggleAction(state, sideId = 'player', activeSlot = 0, gimmick = null) {
+  const pokemon = state && getActivePokemon(state, sideId, activeSlot)
+  if (!isAvailableFieldPokemon(pokemon) || forcedActionForPokemon(pokemon)) return null
+  // An incompatible selected Z-Move cannot create a right to use Struggle.
+  // Conversely, a valid gimmick can lift an otherwise complete move lock.
+  if (pokemon.moves.some((move, moveIndex) => !getBattleMoveSelectionState(state, sideId, moveIndex, activeSlot).disabled)) return null
+  if (gimmick && pokemon.moves.some((move, moveIndex) => !getBattleMoveSelectionState(state, sideId, moveIndex, activeSlot, gimmick).disabled)) return null
+  return { type: 'move', actorSlot: activeSlot, moveIndex: -1, targetSlot: 0, gimmick: null }
+}
+
+function resolveSelectedBattleAction(state, sideId, action, actorSlot) {
+  const pokemon = getActivePokemon(state, sideId, actorSlot)
+  const forced = forcedActionForPokemon(pokemon)
+  if (forced) return { ...action, ...forced, actorSlot }
+  if (action.type === 'switch') return { ...action, actorSlot }
+  const struggle = getBattleStruggleAction(state, sideId, actorSlot, action.gimmick)
+  if (struggle) return { ...action, ...struggle, actorSlot, targetSideId: getOtherSide(state, sideId).id, targetAllySlot: undefined }
+  if (action.moveIndex === -1) return { ...action, moveIndex: -2, actorSlot }
+  const encoreIndex = encoredMoveIndex(pokemon, resolveAvailableActionGimmick(state, sideId, actorSlot, action.gimmick))
+  return { ...action, ...(encoreIndex != null ? { moveIndex: encoreIndex } : {}), actorSlot }
 }
 
 export function getForcedBattleAction(state, sideId = 'player', activeSlot = null) {
@@ -5889,9 +5961,9 @@ export function getBattleMovePreview(
   if (!state) return null
   const attacker = getActivePokemon(state, sideId, activeSlot)
   const defender = getActivePokemon(state, targetSideId, targetSlot)
-  const move = attacker?.moves?.[moveIndex]
+  const move = battleActionMove(attacker, moveIndex)
   if (!attacker || !defender || !move) return move ?? null
-  const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, activeSlot, gimmick)
+  const resolvedGimmick = moveIndex === -1 ? null : resolveAvailableActionGimmick(state, sideId, activeSlot, gimmick)
   const environmentMove = resolveEnvironmentMove(state, attacker, defender, move)
   const zMove = resolvedGimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
   const resolvedMove = resolvedGimmick === 'zmove'
@@ -6404,7 +6476,7 @@ function applyDamagingHitAbilityEffects(
       })
       applied = true
     }
-    if (defender.ability === '변색' && defender.hp > 0 && !defender.teraActive && !defender.types.includes(move.type)) {
+    if (defender.ability === '변색' && defender.hp > 0 && !defender.teraActive && move.type !== '???' && !defender.types.includes(move.type)) {
       defender.types = [move.type]
       appendLog(state, `${defender.name}의 변색! ${move.type}타입으로 변했다!`, 'ability')
       applied = true
@@ -7089,11 +7161,18 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   const actorSlot = Math.max(0, Math.min(side.activeIndexes.length - 1, Number(action.actorSlot) || 0))
   let targetSlot = Math.max(0, Math.min(targetSide.activeIndexes.length - 1, Number(action.targetSlot) || 0))
   const attacker = getActivePokemon(state, sideId, actorSlot)
+  // A faster Encore user can change the selected move during this very turn.
+  // Preserve the existing queue position, just as an action override does.
+  const encoreIndex = !action.dancerCopy && !action.forcedReason && action.moveIndex !== -1
+    ? encoredMoveIndex(attacker, resolveAvailableActionGimmick(state, sideId, actorSlot, action.gimmick)) : null
+  if (encoreIndex != null) action = { ...action, moveIndex: encoreIndex }
   let defender = getActivePokemon(state, targetSide.id, targetSlot)
   let moveSlot = action.dancerCopy
     ? { ...action.copiedMove, maxPp: 1, currentPp: 1 }
-    : attacker?.moves?.[action.moveIndex]
+    : battleActionMove(attacker, action.moveIndex)
   if (!moveSlot || !isAvailableFieldPokemon(attacker)) return
+  const isStruggle = moveSlot.id === 'struggle'
+  const bypassMoveLock = attacker.dynamaxActive || ['dynamax', 'zmove'].includes(resolveAvailableActionGimmick(state, sideId, actorSlot, action.gimmick))
   const isChargeContinuation = action.forcedReason === 'charge'
   const isSkyDropContinuation = isChargeContinuation && moveSlot.id === 'skydrop'
   if (isSkyDropContinuation && attacker.chargingMove?.targetBattleId) {
@@ -7111,6 +7190,14 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   const targetingMove = action.dancerCopy
     ? moveSlot
     : getBattleMovePreview(state, sideId, action.moveIndex, actorSlot, targetSlot, action.gimmick) ?? moveSlot
+  if (isStruggle) {
+    const options = battleMoveTargetOptions(state, sideId, actorSlot, { ...targetingMove, target: 'adjacentFoe' })
+    const selected = options.length > 1 ? options[Math.floor(random() * options.length)] : options[0]
+    if (selected) {
+      targetSlot = selected.slot
+      defender = selected.target
+    }
+  }
   if (!isSkyDropContinuation && SELECTABLE_MOVE_TARGETS.has(targetingMove.target)) {
     const options = battleMoveTargetOptions(state, sideId, actorSlot, targetingMove)
     const requestedSideId = action.targetAllySlot != null ? sideId : action.targetSideId
@@ -7180,6 +7267,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   const isLockedContinuation = action.forcedReason === 'locked'
   if (
     attacker.ability === '무아지경'
+    && !isStruggle
     && !action.dancerCopy
     && !attacker.dynamaxActive
     && attacker.gorillaLockedMoveIndex != null
@@ -7191,6 +7279,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
   if (
     CHOICE_ITEM_IDS.has(attacker.heldItemId)
+    && !isStruggle
     && heldItemEffectsActive(attacker)
     && !action.dancerCopy
     && !attacker.dynamaxActive
@@ -7204,6 +7293,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
   if (
     attacker.disabledMoveTurns > 0
+    && !isStruggle && !bypassMoveLock
     && !action.dancerCopy
     && attacker.disabledMoveIndex === action.moveIndex
     && !isChargeContinuation
@@ -7226,6 +7316,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
   if (
     !action.dancerCopy
+    && !isStruggle && !bypassMoveLock
     && attacker.tormented
     && attacker.lastMoveIndex === action.moveIndex
     && !isChargeContinuation
@@ -7402,7 +7493,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     if (isSkyDropContinuation) releaseSkyDropTarget(state, attacker)
     clearChargeState(attacker)
   }
-  if (!action.dancerCopy && !isChargeContinuation && !isLockedContinuation && !isBideContinuation) {
+  if (!action.dancerCopy && !isChargeContinuation && !isLockedContinuation && !isBideContinuation && !isStruggle) {
     moveSlot.currentPp = Math.max(0, moveSlot.currentPp - movePpCost(state, attacker, defender, move))
     restoreLeppaBerryPp(state, attacker, moveSlot)
   }
@@ -9334,6 +9425,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
   if (phase === 'encore') {
     if (pokemon.encoreTurns > 0) {
       pokemon.encoreTurns -= 1
+      if (!pokemon.moves[pokemon.encoredMoveIndex]?.currentPp) pokemon.encoreTurns = 0
       if (pokemon.encoreTurns <= 0) {
         pokemon.encoredMoveIndex = null
         appendLog(state, `${pokemon.name}의 앵콜 효과가 끝났다.`, 'heal')
@@ -9757,7 +9849,8 @@ function actionPriority(state, sideId, action) {
     sideId === 'player' ? 'opponent' : 'player',
     action.targetSlot,
   )
-  const move = pokemon.moves[action.moveIndex]
+  const move = battleActionMove(pokemon, action.moveIndex)
+  if (!move) return 0
   if (move?.id === 'pursuit' && defender?.switchingOut) return 11
   const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
   const environmentMove = defender ? resolveEnvironmentMove(state, pokemon, defender, move) : move
@@ -9777,7 +9870,7 @@ function recordPlannedActions(state, sideId, actions) {
       sideId === 'player' ? 'opponent' : 'player',
       action.targetSlot,
     )
-    const move = pokemon.moves[action.moveIndex]
+    const move = battleActionMove(pokemon, action.moveIndex)
     if (!move || !defender) return
     const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
     const environmentMove = resolveEnvironmentMove(state, pokemon, defender, move)
@@ -10639,11 +10732,14 @@ function aiMechanicUtility(state, attacker, defender, move, gimmick, evaluation)
 
 function evaluateAiMove(state, attacker, defender, move, gimmick = null, context = {}) {
   if (!move || move.currentPp <= 0) return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
-  if (attacker.disabledMoveTurns > 0 && attacker.moves[attacker.disabledMoveIndex] === move) {
+  const isStruggle = move.id === 'struggle'
+  const bypassMoveLock = attacker.dynamaxActive || ['dynamax', 'zmove'].includes(gimmick)
+  if (!isStruggle && !bypassMoveLock && attacker.disabledMoveTurns > 0 && attacker.moves[attacker.disabledMoveIndex] === move) {
     return { score: -Infinity, estimatedDamage: 0, rawDamage: 0 }
   }
   if (
     attacker.ability === '무아지경'
+    && !isStruggle
     && !attacker.dynamaxActive
     && attacker.gorillaLockedMoveIndex != null
     && attacker.moves[attacker.gorillaLockedMoveIndex] !== move
@@ -10653,6 +10749,7 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   }
   if (
     CHOICE_ITEM_IDS.has(attacker.heldItemId)
+    && !isStruggle
     && heldItemEffectsActive(attacker)
     && !attacker.dynamaxActive
     && attacker.choiceLockedMoveIndex != null
@@ -11527,8 +11624,6 @@ function rankSideDecisions(
 
   moveEntries.forEach(({ move, moveIndex }) => {
     if (!move) return
-    if (attacker.tormented && attacker.lastMoveIndex === moveIndex && !forcedAction) return
-    if (move.flags?.includes('cantusetwice') && attacker.lastMoveId === move.id && !forcedAction) return
     const allyOnlyChoice = ['adjacentAlly', 'adjacentAllyOrSelf'].includes(move.target)
       || ['healpulse', 'floralhealing'].includes(move.id)
     const moveTargetSlots = forcedAction?.targetSlot != null ? [forcedAction.targetSlot]
@@ -11542,6 +11637,7 @@ function rankSideDecisions(
         : planning.projectedTargetHp?.get(targetSlot) ?? defender.hp
       const targetReserved = decisionTargetSideId !== sideId && targetSlots.length > 1 && projectedHp <= 0
       gimmicks.forEach((gimmick) => {
+        if (!forcedAction && getBattleMoveSelectionState(state, sideId, moveIndex, activeSlot, gimmick).disabled) return
         const evaluation = evaluateAiMove(state, attacker, defender, move, gimmick, {
           targetHp: Math.max(1, projectedHp),
           targetReserved,
@@ -11564,6 +11660,7 @@ function rankSideDecisions(
     })
     if (ALLY_SUPPORT_MOVE_IDS.has(move.id)) {
       gimmicks.forEach((gimmick) => {
+        if (!forcedAction && getBattleMoveSelectionState(state, sideId, moveIndex, activeSlot, gimmick).disabled) return
         getBattleMoveTargets(state, sideId, moveIndex, activeSlot, gimmick)
           .filter((option) => option.sideId === sideId)
           .forEach(({ slot, target }) => {
@@ -11578,6 +11675,17 @@ function rankSideDecisions(
     }
   })
 
+  if (!candidates.length && getBattleStruggleAction(state, sideId, activeSlot)) {
+    const struggle = battleActionMove(attacker, -1)
+    for (const targetSlot of targetSlots) {
+      const defender = getActivePokemon(state, targetSideId, targetSlot)
+      if (!defender) continue
+      candidates.push({
+        action: { type: 'move', actorSlot: activeSlot, targetSlot, targetSideId, moveIndex: -1, gimmick: null },
+        ...evaluateAiMove(state, attacker, defender, struggle),
+      })
+    }
+  }
   candidates.sort((first, second) => second.score - first.score)
   const moveDecision = candidates[0] ?? {
     action: { type: 'move', actorSlot: activeSlot, targetSlot: targetSlots[0] ?? 0, moveIndex: 0, gimmick: null },
@@ -12146,16 +12254,14 @@ function resolveBattleTurn(state, playerAction, random, captureTimeline, opponen
     ? [requestedPlayerActions[0]?.actorSlot ?? nextState.player.rotationSlot ?? 0]
     : livingPlayerSlots
   const resolvedPlayerActions = playerActorSlots.map((actorSlot) => {
-    const forcedAction = forcedActionForPokemon(getActivePokemon(nextState, 'player', actorSlot))
     const requestedAction = requestedPlayerActions.find((action) => (action.actorSlot ?? 0) === actorSlot)
-    return { ...(forcedAction ?? requestedAction ?? { type: 'move', moveIndex: 0 }), actorSlot }
+    return resolveSelectedBattleAction(nextState, 'player', requestedAction ?? { type: 'move', moveIndex: 0 }, actorSlot)
   })
   const requestedOpponentActions = opponentActionOverride == null
     ? chooseAiActions(nextState, random)
     : (Array.isArray(opponentActionOverride) ? opponentActionOverride : [opponentActionOverride]).filter(Boolean)
   const opponentActions = requestedOpponentActions.map((action) => {
-    const forcedAction = forcedActionForPokemon(getActivePokemon(nextState, 'opponent', action.actorSlot))
-    return forcedAction ? { ...forcedAction, actorSlot: action.actorSlot, targetSlot: action.targetSlot } : action
+    return resolveSelectedBattleAction(nextState, 'opponent', action, action.actorSlot ?? 0)
   })
   prepareSideMoveCombinations(nextState, 'player', resolvedPlayerActions)
   prepareSideMoveCombinations(nextState, 'opponent', opponentActions)

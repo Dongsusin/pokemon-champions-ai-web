@@ -947,7 +947,7 @@ export function calculateStats(pokemon) {
     const trainingPoint = normalizedPokemon.trainingPoints[stat.key]
     const natureMultiplier = nature.up === stat.key ? 1.1 : nature.down === stat.key ? 0.9 : 1
     const value = stat.key === 'hp'
-      ? baseStat + trainingPoint + 75
+      ? Number(species.id) === 292 ? 1 : baseStat + trainingPoint + 75
       : Math.floor((baseStat + trainingPoint + 20) * natureMultiplier)
 
     return {

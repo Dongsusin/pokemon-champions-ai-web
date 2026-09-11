@@ -47,6 +47,10 @@ npx firebase-tools deploy --only firestore:rules
 
 기존 버전에서 브라우저에만 저장했던 데이터는 해당 기기에서 Google 계정으로 처음 접속할 때 자동으로 Firestore에 이전됩니다. 게스트 설정 화면에서 Google 계정 연결을 선택한 경우에도 현재 게스트 진행 상황을 연결된 계정으로 이전합니다. 이후 다른 PC나 모바일에서 같은 Google 계정으로 로그인하면 서버 데이터를 먼저 불러온 뒤 게임을 시작합니다.
 
+서버 데이터를 처음 불러오지 못하면 게임 시작과 업로드를 중단하고 재시도 화면을 표시합니다. 이 상태에서는 기존 로컬 기록을 유지하며, `다시 불러오기` 또는 네트워크 복구 후 재시도로 서버 기록을 확인합니다. 로그인 화면으로 돌아갈 때에는 아직 확인하지 않은 로컬 데이터를 업로드하지 않습니다. 새 브라우저에 이전 설정이 없으면 이를 게스트 이전으로 취급하지 않습니다.
+
+게임 중 로그아웃은 진행 중인 저장과 그동안 추가된 변경의 업로드가 모두 성공한 뒤 실행합니다. 저장에 실패하면 현재 게임을 유지하고 계정 탭에 오류를 표시하므로 연결을 복구한 뒤 다시 로그아웃할 수 있습니다. 저장 충돌 판단에는 마지막으로 동기화한 서버 revision을 우선 사용합니다. 로컬 저장소 읽기 실패는 부분 업로드를 중단하며, 데이터 교체 중 저장 공간 오류가 발생하면 교체 전 기록의 복원을 시도하고 게임 진입을 차단합니다.
+
 ## 4. 동시 로그인 방지
 
 Google 로그인 인증과 게임 접속 권한을 분리합니다. 게임 화면이나 계정 데이터 동기화를 시작하기 전에 `accountSessions/{uid}`의 접속 권한을 확보합니다. 다른 창이나 기기에서 같은 계정으로 접속 중이면 기존 접속을 유지하고 새 창에 안내를 표시합니다. 안내를 받은 창에서는 사용 중인 창을 닫은 뒤 Google 로그인 버튼을 다시 누르면 됩니다. 자동 로그인에도 같은 검사가 적용됩니다.
@@ -77,5 +81,7 @@ npm install --prefix "$env:TEMP/champions-auth-provider-validation" --no-package
 node scripts/validateAuthProvider.mjs
 node scripts/validateAccountSessionSync.mjs
 ```
+
+저장 실패와 재시도, 저장 중 로그아웃 차단, 가로 화면의 복구 UI는 `npm run validate:account-recovery-ui`로 확인합니다. 이 브라우저 검증은 `promo`의 Playwright와 설치된 Chromium을 사용하며, 계정 데이터 훅을 로컬 모형으로 대체합니다. 운영 계정에는 접속하지 않습니다.
 
 관련 Firebase 문서: [인증 정보의 탭 간 공유](https://firebase.google.com/docs/auth/web/auth-state-persistence), [Firestore REST API](https://firebase.google.com/docs/firestore/use-rest-api), [Firestore의 접속 상태 처리 제약](https://firebase.google.com/docs/firestore/solutions/presence).

@@ -65,7 +65,7 @@ const storage = () => {
 const googleUser = { uid: 'google-user', displayName: 'Trainer', email: 'trainer@example.invalid' }
 const guestUser = { version: 1, uid: 'local-guest-remembered', displayName: 'Guest' }
 
-function environment({ initialUser = null, rememberedGuest = null, acquireGate = null, rejectAll = false } = {}) {
+function environment({ initialUser = null, rememberedGuest = null, acquireGate = null, rejectAll = false, migrationError = null } = {}) {
   const windowObject = Object.assign(new EventTarget(), { localStorage: storage(), sessionStorage: storage() })
   const pageshowCallbacks = new Set()
   const addListener = windowObject.addEventListener.bind(windowObject)
@@ -104,7 +104,7 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
     },
     async reauthenticateWithPopup() {}, async deleteUser() {}, async deletePlayerProfile() {},
     async ensurePlayerProfile(user) { calls.profiles.push(user.uid); calls.order.push('profile') },
-    clearLocalPlayerData() {}, clearPendingGoogleMigration() {}, markPendingGoogleMigration() {},
+    clearLocalPlayerData() {}, clearPendingGoogleMigration() {}, markPendingGoogleMigration() { if (migrationError) throw migrationError },
     async acquireAccountSession(user, options) {
       calls.acquire.push(user.uid)
       calls.order.push('acquire')
@@ -378,6 +378,19 @@ await check('BFCache restoration stays logged out if another window took ownersh
   assert.ok(previous.current.error)
   assert.equal(nextOwner.current.user, googleUser)
   assert.equal(env.calls.signOut, 0)
+  await env.cleanup()
+})
+
+await check('guest conversion stops before authentication if migration storage cannot be persisted', async () => {
+  const env = environment({ rememberedGuest: guestUser, migrationError: new Error('quota exceeded') })
+  const app = await env.mount()
+  let result
+  await act(async () => { result = await app.current.connectGuestToGoogle() })
+  assert.equal(result, false)
+  assert.equal(app.current.user.uid, guestUser.uid)
+  assert.ok(app.current.error)
+  assert.equal(env.calls.popups, 0)
+  assert.equal(env.active().isActive(), true)
   await env.cleanup()
 })
 
