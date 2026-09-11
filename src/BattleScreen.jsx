@@ -51,6 +51,7 @@ import {
   getBattleMovePreview,
   getBattleMoveSelectionState,
   getBattleMoveTargets,
+  getBattleTeraType,
   getBattleTypeEffectiveness,
   getBattleSummary,
   getConditionalBattleFormAssets,
@@ -1330,19 +1331,39 @@ function BattleRuleBadge({ id, category, label, description }) {
   )
 }
 
+function BattleTeraBadge({ pokemon }) {
+  const teraType = getBattleTeraType(pokemon)
+  return (
+    <span
+      className={`battle-tera-badge type-${typeClassName(teraType)}${pokemon.teraActive ? ' is-active' : ''}`}
+      aria-label={`테라타입 ${teraType}${pokemon.teraActive ? ', 테라스탈 중' : ''}`}
+      title={`테라타입: ${teraType}${pokemon.teraActive ? ' · 테라스탈 중' : ''}`}
+    >
+      <Gem size={10} aria-hidden="true" />
+      <small>{pokemon.teraActive ? '테라 중' : '테라'}</small>
+      <b>{teraType}</b>
+    </span>
+  )
+}
+
 function BattleStatusPanel({ pokemon, side, trainerName }) {
   return (
     <section className={`battle-hp-panel side-${side}`}>
       <header>
         <div>
           <strong>{pokemon.name}</strong>
-          {pokemon.teraActive && <span className={`type-${typeClassName(pokemon.teraType)}`}><Gem size={10} /> {pokemon.teraType}</span>}
           {pokemon.dynamaxActive && <span className="dynamax-state">MAX</span>}
           {pokemon.megaActive && <span className="mega-state">MEGA</span>}
           {pokemon.primalActive && <span className="primal-state">PRIMAL</span>}
         </div>
         <span>Lv.50</span>
       </header>
+      <div className="battle-hp-type-row">
+        <span className="battle-current-types" title={`현재 타입: ${pokemon.types.join(' / ')}`}>
+          <small>현재</small><b>{pokemon.types.join(' / ')}</b>
+        </span>
+        {(side === 'player' || pokemon.teraActive) && <BattleTeraBadge pokemon={pokemon} />}
+      </div>
       <div className="battle-hp-meter-row">
         <small>HP</small>
         <span className={`battle-hp-meter tone-${hpTone(pokemon)}`}>
@@ -1403,7 +1424,10 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
               </span>
               <span>
                 <strong>{pokemon.name}</strong>
-                <small>{pokemon.fainted ? '기절' : isSelectedSlot ? '교대 대상' : isActive ? '배틀 중' : pokemon.status?.label ?? '정상'}</small>
+                <span className="battle-party-meta">
+                  <small>{pokemon.fainted ? '기절' : isSelectedSlot ? '교대 대상' : isActive ? '배틀 중' : pokemon.status?.label ?? '정상'}</small>
+                  <BattleTeraBadge pokemon={pokemon} />
+                </span>
               </span>
               <span className={`battle-party-mini-hp tone-${hpTone(pokemon)}`}>
                 <i style={{ width: `${hpRatio(pokemon)}%` }} />
@@ -1497,6 +1521,7 @@ function MoveMenu({
               className={`${pendingGimmick === mechanic.id ? 'selected' : ''} mechanic-${mechanic.id}`}
               type="button"
               aria-pressed={pendingGimmick === mechanic.id}
+              aria-label={mechanic.id === 'tera' ? `테라스탈 · ${getBattleTeraType(pokemon)}타입` : undefined}
               key={mechanic.id}
               onPointerEnter={onPreview}
               onClick={() => onGimmick(pendingGimmick === mechanic.id ? null : mechanic.id)}
@@ -1504,7 +1529,7 @@ function MoveMenu({
               <span className="battle-gimmick-button-symbol" aria-hidden="true">
                 {mechanic.id === 'tera' ? '◇' : mechanic.id === 'dynamax' ? 'MAX' : mechanic.id === 'zmove' ? 'Z' : 'M'}
               </span>
-              {mechanic.shortLabel}
+              {mechanic.id === 'tera' ? `TERA · ${getBattleTeraType(pokemon)}` : mechanic.shortLabel}
             </button>
           ))}
         </div>

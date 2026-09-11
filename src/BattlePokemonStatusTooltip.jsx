@@ -3,6 +3,7 @@ import BattleItemSprite from './BattleItemSprite'
 import PokemonSprite from './PokemonSprite'
 import { getBattleItem } from './data/shopData'
 import { typeClassName } from './data/trainingData'
+import { getBattleTeraType } from './data/battleEngine'
 
 const TOOLTIP_VIEWPORT_MARGIN = 12
 const TOOLTIP_ANCHOR_GAP = 12
@@ -86,6 +87,7 @@ function BattlePokemonStatusTooltip({
   const tooltipRef = useRef(null)
   const [anchorPosition, setAnchorPosition] = useState(null)
   const hpPercent = Math.ceil(hpRatio(pokemon))
+  const teraType = getBattleTeraType(pokemon)
   const statStages = battleStatStageEntries(pokemon)
   const conditions = battleConditionEntries(pokemon)
   const gimmicks = battleGimmickEntries(pokemon)
@@ -202,6 +204,7 @@ function BattlePokemonStatusTooltip({
 
       <div className="battle-pokemon-inspector-vitals">
         <span className="battle-pokemon-inspector-types">
+          <small className="battle-inspector-type-label">현재 타입</small>
           {(pokemon.types ?? []).map((type) => (
             <b className={`type-${typeClassName(type)}`} key={type}>{type}</b>
           ))}
@@ -229,9 +232,16 @@ function BattlePokemonStatusTooltip({
             </strong>
           </span>
           <span>
-            <small>테라스탈 타입</small>
-            <strong>{pokemon.teraType || '—'}</strong>
+            <small>{pokemon.teraActive ? '테라타입 · 사용 중' : '테라타입'}</small>
+            <strong className="battle-inspector-tera-value">{teraType}</strong>
           </span>
+        </div>
+      )}
+
+      {side !== 'player' && pokemon.teraActive && (
+        <div className="battle-inspector-revealed-tera">
+          <small>테라타입 · 사용 중</small>
+          <strong>{teraType}</strong>
         </div>
       )}
 

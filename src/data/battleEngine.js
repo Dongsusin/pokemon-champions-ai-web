@@ -1965,6 +1965,15 @@ export function getBattleTypeEffectiveness(state, moveType, defenderTypes, defen
 function getMoveTypeEffectiveness(state, attacker, defender, move) {
   if (move.id === 'struggle') return 1
   if (move.type === '스텔라') return defender.teraActive ? 2 : 1
+  const ignoresGroundImmunity = move.id === 'thousandarrows' && move.type === '땅'
+  if (move.type === '땅' && !ignoresGroundImmunity && !isGrounded(defender, state, {
+    ignoreAbility: moveIgnoresAbility(move, defender),
+    ignoreFlying: hasActiveHeldItem(defender, 'ring-target') || state?.rules?.format?.inverse,
+  })) return 0
+  // The first Thousand Arrows hit is neutral against an airborne Flying type,
+  // including its other type; later hits use the now-grounded type matchup.
+  if (ignoresGroundImmunity && defender.types.includes('비행') && !defender.roostedThisTurn
+    && !isGrounded(defender, state)) return 1
   const bypassGhostImmunity = (['배짱', '심안'].includes(attacker.ability) || defender.foresightActive)
     && ['노말', '격투'].includes(move.type)
   const strongWinds = effectiveWeatherId(state) === 'deltastream'
@@ -1978,7 +1987,8 @@ function getMoveTypeEffectiveness(state, attacker, defender, move) {
     if (defender.miracleEyeActive && move.type === '에스퍼' && defenderType === '악' && typeMultiplier === 0) {
       typeMultiplier = 1
     }
-    if (move.id === 'thousandarrows' && move.type === '땅' && defenderType === '비행' && typeMultiplier === 0) {
+    if (move.type === '땅' && defenderType === '비행' && typeMultiplier === 0
+      && (ignoresGroundImmunity || isForcedGrounded(defender, state))) {
       typeMultiplier = 1
     }
     if (hasActiveHeldItem(defender, 'ring-target') && typeMultiplier === 0) typeMultiplier = 1
@@ -1995,14 +2005,18 @@ function getMoveTypeEffectiveness(state, attacker, defender, move) {
   return 1 / resolvedMultiplier
 }
 
-function isGrounded(pokemon, state = null) {
-  if (state?.environment?.gravityTurns > 0) return true
-  if (hasActiveHeldItem(pokemon, 'iron-ball')) return true
-  if (pokemon.smackDownActive || pokemon.roostedThisTurn) return true
+function isForcedGrounded(pokemon, state) {
+  return state?.environment?.gravityTurns > 0 || pokemon.ingrainActive
+    || pokemon.smackDownActive || hasActiveHeldItem(pokemon, 'iron-ball')
+}
+
+function isGrounded(pokemon, state = null, { ignoreAbility = false, ignoreFlying = false } = {}) {
+  if (isForcedGrounded(pokemon, state)) return true
   if (pokemon.magnetRiseTurns > 0 || pokemon.telekinesisTurns > 0 || hasActiveHeldItem(pokemon, 'air-balloon')) {
     return false
   }
-  return !pokemon.semiInvulnerable && !pokemon.types.includes('비행') && pokemon.ability !== '부유'
+  return (ignoreFlying || pokemon.roostedThisTurn || !pokemon.types.includes('비행'))
+    && (ignoreAbility || pokemon.ability !== '부유')
 }
 
 function effectivePokemonWeight(pokemon, { ignoreAbility = false } = {}) {
@@ -2249,6 +2263,7 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
   }
   if (move.id === 'expandingforce' && terrainId === 'psychic' && isGrounded(attacker, state)) {
     resolvedMove.power = Math.max(1, Number(move.power) || 1) * 1.5
+    resolvedMove.target = 'allAdjacentFoes'
   }
   if (move.id === 'mistyexplosion' && terrainId === 'misty' && isGrounded(attacker, state)) {
     resolvedMove.power = Math.max(1, Number(move.power) || 1) * 1.5
@@ -2396,6 +2411,8 @@ function getMoveStab(pokemon, moveType, forceStab = false, boostedThisMove = fal
 function abilityImmunity(state, attacker, defender, move) {
   if (move.id === 'struggle') return null
   if (moveIgnoresAbility(move, defender)) return null
+  if (defender.ability === '부유' && move.type === '땅'
+    && (move.id === 'thousandarrows' || isForcedGrounded(defender, state))) return null
   if (
     ALLY_DAMAGE_IMMUNITY_ABILITIES.has(defender.ability)
     && getPokemonSide(state, attacker).id === getPokemonSide(state, defender).id
@@ -4292,6 +4309,11 @@ function cureTeamStatuses(state, attacker, move) {
   let cured = false
   side.team.forEach((pokemon) => {
     if (!pokemon.status) return
+    if (move.id === 'healbell' && pokemon !== attacker
+      && ['방음', '황금몸'].includes(pokemon.ability) && !moveIgnoresAbility(move, pokemon)) {
+      appendLog(state, `${pokemon.name}의 ${pokemon.ability}! 치료방울을 받지 않았다!`, 'ability')
+      return
+    }
     pokemon.status = null
     cured = true
   })
@@ -4715,11 +4737,10 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
     return true
   }
   if (['junglehealing', 'lunarblessing'].includes(move.id)) {
-    const side = getPokemonSide(state, attacker)
-    getActivePokemonList(state, side.id).forEach((pokemon) => {
-      pokemon.status = null
-      healPokemon(state, pokemon, baseMaxHp(pokemon) / 4, move.name)
-    })
+    const cured = Boolean(defender.status)
+    const healed = healPokemon(state, defender, baseMaxHp(defender) / 4, move.name)
+    defender.status = null
+    attacker.moveFailedThisTurn = !cured && healed <= 0
     return true
   }
   if (move.id === 'acupressure') {
@@ -4984,7 +5005,9 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
   if (move.heal || HEAL_MOVE_IDS.has(move.id)) {
     if (move.id === 'roost') attacker.roostedThisTurn = true
     const [numerator, denominator] = healingMoveFraction(state, attacker, move)
-    healPokemon(state, attacker, baseMaxHp(attacker) * numerator / denominator, move.name)
+    const recipient = move.target === 'allies' ? defender : attacker
+    const healed = healPokemon(state, recipient, baseMaxHp(recipient) * numerator / denominator, move.name)
+    if (move.target === 'allies') attacker.moveFailedThisTurn = healed <= 0
     return true
   }
 
@@ -5007,6 +5030,10 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
   if (applyAdvancedStatusMove(state, attacker, defender, move, random, context)) return true
 
   if (applyPrimaryMoveEffects(state, attacker, defender, move, random)) return true
+  if (move.target === 'allies') {
+    attacker.moveFailedThisTurn = true
+    return true
+  }
 
   const scriptedEffect = STATUS_MOVE_EFFECTS[move.id]
   if (scriptedEffect?.self) changeStages(state, attacker, scriptedEffect.self)
@@ -5763,7 +5790,7 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
   const allow = (mechanicId) => sideId === 'player' || configured.includes(mechanicId)
 
   if (!side.usedMechanics.tera && allow('tera')) {
-    available.push({ id: 'tera', label: `테라스탈 · ${pokemon.teraType}`, shortLabel: 'TERA' })
+    available.push({ id: 'tera', label: `테라스탈 · ${getBattleTeraType(pokemon)}`, shortLabel: 'TERA' })
   }
 
   if (!side.usedMechanics.dynamax && allow('dynamax')) {
@@ -5805,6 +5832,36 @@ function resolveAvailableActionGimmick(state, sideId, activeSlot, gimmickId) {
     .some((mechanic) => mechanic.id === gimmickId)
     ? gimmickId
     : null
+}
+
+export function getBattleTeraType(pokemon) {
+  if (!pokemon) return null
+  if (pokemon.teraActive) return pokemon.teraType ?? null
+  if (pokemon.battleBaseSpeciesId === 1024) return '스텔라'
+  if (pokemon.battleBaseSpeciesId === 1017) {
+    return (OGERPON_TERA_FORM_RULES[currentSpeciesSlug(pokemon)] ?? OGERPON_TERA_FORM_RULES.ogerpon).teraType
+  }
+  return pokemon.teraType ?? null
+}
+
+function pushMechanicTimeline(state, sideId, actorSlot, mechanicId, before, timeline, actionOrder, move = null) {
+  const pokemon = getActivePokemon(state, sideId, actorSlot)
+  const after = mechanicPokemonSnapshot(pokemon)
+  pushTimelineStep(timeline, state, {
+    phase: 'gimmick', actionOrder, sideId, targetSideId: sideId,
+    actorSlot, targetSlot: actorSlot,
+    actorName: after.name, actorSpeciesId: after.speciesId,
+    actorOriginalSpeciesId: after.originalSpeciesId, actorPreviousName: before.name,
+    mechanicId, mechanicLabel: MECHANIC_LABELS[mechanicId],
+    mechanicType: mechanicId === 'tera' ? pokemon.teraType : null,
+    mechanicMode: mechanicId === 'dynamax' ? pokemon.dynamaxMode : null,
+    chargedMoveName: mechanicId === 'zmove' ? move?.name : null,
+    spriteBeforeFront: before.spriteFront, spriteBeforeBack: before.spriteBack,
+    spriteBeforeFrontFallback: before.spriteFrontFallback, spriteBeforeBackFallback: before.spriteBackFallback,
+    spriteAfterFront: after.spriteFront, spriteAfterBack: after.spriteBack,
+    spriteAfterFrontFallback: after.spriteFrontFallback, spriteAfterBackFallback: after.spriteBackFallback,
+    message: `${pokemon.name}의 ${MECHANIC_LABELS[mechanicId]}이(가) 발동했다!`,
+  })
 }
 
 function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
@@ -6000,6 +6057,8 @@ export function getBattleStruggleAction(state, sideId = 'player', activeSlot = 0
 }
 
 function resolveSelectedBattleAction(state, sideId, action, actorSlot) {
+  // This marker belongs to the current turn's validated transformation queue.
+  action = { ...action, preMoveMechanicBattleId: null }
   const pokemon = getActivePokemon(state, sideId, actorSlot)
   const forced = forcedActionForPokemon(pokemon)
   if (forced) return { ...action, ...forced, actorSlot }
@@ -6633,6 +6692,13 @@ function applyDamagingHitAbilityEffects(
   return applied
 }
 
+function popAirBalloon(state, pokemon) {
+  if (!hasActiveHeldItem(pokemon, 'air-balloon')) return false
+  consumeHeldItem(state, pokemon)
+  appendLog(state, `${pokemon.name}의 풍선이 터졌다!`, 'item')
+  return true
+}
+
 function applyDamagingHitItemEffects(
   state,
   sideId,
@@ -6654,11 +6720,7 @@ function applyDamagingHitItemEffects(
   const moveEffects = phase !== 'hit'
   const contact = moveMakesContact(attacker, move)
 
-  if (hitEffects && hasActiveHeldItem(defender, 'air-balloon')) {
-    consumeHeldItem(state, defender)
-    appendLog(state, `${defender.name}의 풍선이 터졌다!`, 'item')
-    applied = true
-  }
+  if (hitEffects) applied = popAirBalloon(state, defender) || applied
   if (hitEffects && defender.hp > 0 && effectiveness > 1 && hasActiveHeldItem(defender, 'weakness-policy')) {
     consumeHeldItem(state, defender)
     changeStages(state, defender, { attack: 2, specialAttack: 2 })
@@ -7375,6 +7437,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     targetSlot = selected.slot
     defender = selected.target
   }
+  if (['allies', 'allySide', 'allyTeam'].includes(targetingMove.target)) {
+    targetSide = side
+    targetSlot = actorSlot
+    defender = attacker
+  }
   const allyTarget = targetSide.id === sideId
   const isBideContinuation = action.forcedReason === 'bide' && Boolean(attacker.bideState)
   const isBideRelease = isBideContinuation && attacker.bideState.remainingTurns <= 1
@@ -7522,7 +7589,13 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   const requestedGimmick = action.gimmick
-  const resolvedGimmick = resolveAvailableActionGimmick(state, sideId, actorSlot, requestedGimmick)
+  const alreadyActivated = action.preMoveMechanicBattleId === attacker.battleId
+    && attacker.usedBattleMechanicId === requestedGimmick
+  const resolvedGimmick = alreadyActivated
+    ? requestedGimmick
+    : requestedGimmick === 'zmove'
+      ? resolveAvailableActionGimmick(state, sideId, actorSlot, requestedGimmick)
+      : null
   const resolvedAction = resolvedGimmick === requestedGimmick
     ? action
     : { ...action, gimmick: resolvedGimmick }
@@ -7542,7 +7615,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     appendLog(state, `${moveSlot.name}에는 현재 Z크리스탈의 힘을 담을 수 없다!`, 'muted')
     return
   }
-  let powerMultiplier = activateMechanic(state, sideId, resolvedGimmick, actorSlot)
+  let powerMultiplier = alreadyActivated ? 1 : activateMechanic(state, sideId, resolvedGimmick, actorSlot)
   const environmentMove = resolveEnvironmentMove(state, attacker, defender, moveSlot)
   move = resolvedGimmick === 'zmove'
     ? resolveBattleZMove(attacker, environmentMove, moveSlot) ?? requestedZMove
@@ -7611,33 +7684,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
   if (resolvedGimmick && !mechanicWasUsed && side.usedMechanics[resolvedGimmick]) {
-    const mechanicAfter = mechanicPokemonSnapshot(attacker)
-    pushTimelineStep(timeline, state, {
-      phase: 'gimmick',
-      actionOrder,
-      sideId,
-      targetSideId: sideId,
-      actorSlot,
-      targetSlot: actorSlot,
-      actorName: mechanicAfter.name,
-      actorSpeciesId: mechanicAfter.speciesId,
-      actorOriginalSpeciesId: mechanicAfter.originalSpeciesId,
-      actorPreviousName: mechanicBefore.name,
-      mechanicId: resolvedGimmick,
-      mechanicLabel: MECHANIC_LABELS[resolvedGimmick],
-      mechanicType: resolvedGimmick === 'tera' ? attacker.teraType : null,
-      mechanicMode: resolvedGimmick === 'dynamax' ? attacker.dynamaxMode : null,
-      chargedMoveName: resolvedGimmick === 'zmove' ? move.name : null,
-      spriteBeforeFront: mechanicBefore.spriteFront,
-      spriteBeforeBack: mechanicBefore.spriteBack,
-      spriteBeforeFrontFallback: mechanicBefore.spriteFrontFallback,
-      spriteBeforeBackFallback: mechanicBefore.spriteBackFallback,
-      spriteAfterFront: mechanicAfter.spriteFront,
-      spriteAfterBack: mechanicAfter.spriteBack,
-      spriteAfterFrontFallback: mechanicAfter.spriteFrontFallback,
-      spriteAfterBackFallback: mechanicAfter.spriteBackFallback,
-      message: `${attacker.name}의 ${MECHANIC_LABELS[resolvedGimmick]}이(가) 발동했다!`,
-    })
+    pushMechanicTimeline(state, sideId, actorSlot, resolvedGimmick, mechanicBefore, timeline, actionOrder, move)
   }
 
   applyMoveTriggeredFormBefore(state, attacker, move)
@@ -7971,14 +8018,38 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
+  // Snatch takes the whole allied move, before any original recipient is
+  // processed. Reuse the normal copied-move path without spending another PP
+  // or allowing the stolen move to be snatched again.
+  const alliedSnatcher = move.target === 'allies' && !move.isZMove && !move.isMaxMove
+    && move.flags?.includes('snatch')
+    ? getActivePokemonList(state, getOtherSide(state, sideId).id)
+      .find((pokemon) => isAvailableFieldPokemon(pokemon) && pokemon.snatchActive)
+    : null
+  if (alliedSnatcher) {
+    alliedSnatcher.snatchActive = false
+    appendLog(state, `${alliedSnatcher.name}은(는) ${move.name}을(를) 가로챘다!`, 'status')
+    const snatcherSide = getPokemonSide(state, alliedSnatcher)
+    executeMove(state, snatcherSide.id, {
+      type: 'move', actorSlot: getActivePokemonList(state, snatcherSide.id).indexOf(alliedSnatcher),
+      targetSlot: 0, moveIndex: alliedSnatcher.lastMoveIndex ?? 0, gimmick: null, dancerCopy: true,
+      copiedMove: { ...move, flags: move.flags.filter((flag) => flag !== 'snatch') },
+    }, random, timeline, actionOrder)
+    attacker.moveFailedThisTurn = true
+    return
+  }
+
   const preparedMove = move
   const announcedMoveStep = moveStep
   const spreadTargeting = ['allAdjacent', 'allAdjacentFoes'].includes(move.target) && move.id !== 'corrosivegas'
-  const targetEntries = spreadTargeting
+  const alliesTargeting = move.target === 'allies'
+  const targetEntries = alliesTargeting
+    ? getActivePokemonList(state, sideId).map((target, slot) => ({ target, slot, sideId }))
+    : spreadTargeting
     ? battleMoveTargetOptions(state, sideId, actorSlot, { ...move, target: move.target === 'allAdjacentFoes' ? 'adjacentFoe' : 'normal' })
     : [{ target: defender, sideId: targetSide.id, slot: targetSlot }]
   const spreading = spreadTargeting && !isStatusMove(move) && targetEntries.length > 1
-  const statusSpread = spreadTargeting && isStatusMove(move)
+  const statusSpread = (spreadTargeting || alliesTargeting) && isStatusMove(move)
   // Keep damage stats stable across simultaneous targets even if an earlier
   // hit triggers a knockout boost, drains HP, or removes a field ability.
   const spreadDamageState = spreading ? cloneBattle(state) : null
@@ -8113,7 +8184,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         return
       }
       const statusMoveImmunity = abilityImmunity(state, attacker, defender, move)
-      if (move.target !== 'self' && statusMoveImmunity) {
+      if (!['self', 'allySide', 'allyTeam'].includes(move.target) && statusMoveImmunity) {
         appendLog(state, `${defender.name}의 ${statusMoveImmunity}! 기술을 무효화했다.`, 'ability')
         applyAbilityImmunityEffect(state, defender, statusMoveImmunity)
         pushTimelineStep(timeline, state, {
@@ -8139,7 +8210,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         })
         return
       }
-      if (move.target !== 'self' && !moveIgnoresAbility(move, defender) && defender.ability === '황금몸') {
+      if (!['self', 'allySide', 'allyTeam'].includes(move.target) && !moveIgnoresAbility(move, defender) && defender.ability === '황금몸') {
         appendLog(state, `${defender.name}의 황금몸! 변화 기술을 막아냈다!`, 'ability')
         pushTimelineStep(timeline, state, {
           phase: 'resolve',
@@ -8443,6 +8514,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         flushDeferredFormTimeline(state)
       }
       const hitEffectLogLength = state.log.length
+      if (substituteBlocks && hitDamage > 0) popAirBalloon(state, defender)
       if (hitDamage > 0 && move.drain) {
         const [numerator, denominator] = move.drain
         applyDrainingRecovery(state, attacker, defender, Math.ceil(hitDamage * numerator / denominator), move.name, {
@@ -10203,6 +10275,39 @@ function recordPlannedActions(state, sideId, actions) {
   })
 }
 
+const PRE_MOVE_MECHANIC_ORDER = { mega: 2, primal: 2, dynamax: 3, tera: 4 }
+
+function battleActionPhase(state, entry) {
+  if (entry.action.type === 'mechanic') return PRE_MOVE_MECHANIC_ORDER[entry.action.gimmick]
+  // Pursuit intercepts a switch before the ordinary pre-move transformation phase.
+  if (actionPriority(state, entry.sideId, entry.action) === 11) return 0
+  return entry.action.type === 'switch' ? 1 : 5
+}
+
+function compareBattleActions(state, first, second) {
+  const phaseDifference = battleActionPhase(state, first) - battleActionPhase(state, second)
+  if (phaseDifference) return phaseDifference
+  if (first.action.type !== 'mechanic') {
+    const priorityDifference = actionPriority(state, second.sideId, second.action)
+      - actionPriority(state, first.sideId, first.action)
+    if (priorityDifference) return priorityDifference
+    const actionOrderModifier = (entry) => {
+      if (entry.action.type !== 'move') return 0
+      const pokemon = getActivePokemon(state, entry.sideId, entry.action.actorSlot)
+      if (entry.quickDrawActivated || entry.quickClawActivated || entry.custapActivated) return 10
+      const laggingItem = hasActiveHeldItem(pokemon, 'lagging-tail') || hasActiveHeldItem(pokemon, 'full-incense')
+      return pokemon?.ability === '시간벌기' || laggingItem ? -10 : 0
+    }
+    const orderModifierDifference = actionOrderModifier(second) - actionOrderModifier(first)
+    if (orderModifierDifference) return orderModifierDifference
+  }
+  const firstSpeed = effectiveStat(state, getActivePokemon(state, first.sideId, first.action.actorSlot), 'speed')
+  const secondSpeed = effectiveStat(state, getActivePokemon(state, second.sideId, second.action.actorSlot), 'speed')
+  const speedDifference = state.environment?.trickRoomTurns > 0
+    ? firstSpeed - secondSpeed : secondSpeed - firstSpeed
+  return speedDifference || first.tieBreaker - second.tieBreaker
+}
+
 function orderedActions(state, playerActions, opponentActions, random) {
   const createOrderedAction = (sideId, action) => {
     const pokemon = getActivePokemon(state, sideId, action.actorSlot)
@@ -10216,36 +10321,50 @@ function orderedActions(state, playerActions, opponentActions, random) {
       sideId,
       action: quickDrawActivated || quickClawActivated
         ? { ...action, quickDrawActivated, quickClawActivated }
-        : action,
+        : { ...action },
       actorBattleId: pokemon?.battleId,
       quickDrawActivated,
       quickClawActivated,
+      custapActivated: Boolean(pokemon?.custapActive),
       tieBreaker: random(),
     }
-  }
-  const actionOrderModifier = ({ sideId, action, quickDrawActivated, quickClawActivated }) => {
-    if (action.type !== 'move') return 0
-    const pokemon = getActivePokemon(state, sideId, action.actorSlot)
-    if (quickDrawActivated || quickClawActivated || pokemon?.custapActive) return 10
-    const laggingItem = hasActiveHeldItem(pokemon, 'lagging-tail') || hasActiveHeldItem(pokemon, 'full-incense')
-    return pokemon?.ability === '시간벌기' || laggingItem ? -10 : 0
   }
   return [
     ...playerActions.map((action) => createOrderedAction('player', action)),
     ...opponentActions.map((action) => createOrderedAction('opponent', action)),
-  ].sort((first, second) => {
-    const priorityDifference = actionPriority(state, second.sideId, second.action)
-      - actionPriority(state, first.sideId, first.action)
-    if (priorityDifference) return priorityDifference
-    const orderModifierDifference = actionOrderModifier(second) - actionOrderModifier(first)
-    if (orderModifierDifference) return orderModifierDifference
-    const firstSpeed = effectiveStat(state, getActivePokemon(state, first.sideId, first.action.actorSlot), 'speed')
-    const secondSpeed = effectiveStat(state, getActivePokemon(state, second.sideId, second.action.actorSlot), 'speed')
-    const speedDifference = state.environment?.trickRoomTurns > 0
-      ? firstSpeed - secondSpeed
-      : secondSpeed - firstSpeed
-    return speedDifference || first.tieBreaker - second.tieBreaker
-  })
+  ].flatMap((entry) => {
+    const { sideId, action } = entry
+    const gimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
+    if (action.type !== 'move' || PRE_MOVE_MECHANIC_ORDER[gimmick] == null
+      || getBattleMoveSelectionState(state, sideId, action.moveIndex, action.actorSlot, gimmick).disabled) return [entry]
+    return [{ ...entry, action: { ...action, type: 'mechanic' } }, entry]
+  }).sort((first, second) => compareBattleActions(state, first, second))
+}
+
+function executePreMoveMechanic(state, entry, actions, actionOrder, timeline = null) {
+  const { sideId, action, actorBattleId } = entry
+  const pokemon = getActivePokemon(state, sideId, action.actorSlot)
+  if (!isAvailableFieldPokemon(pokemon) || pokemon.battleId !== actorBattleId) return
+  const gimmick = resolveAvailableActionGimmick(state, sideId, action.actorSlot, action.gimmick)
+  if (!gimmick) return
+  const before = mechanicPokemonSnapshot(pokemon)
+  activateMechanic(state, sideId, gimmick, action.actorSlot)
+  if (pokemon.usedBattleMechanicId !== gimmick) return
+  const moveEntry = actions.find((candidate) => candidate.action.type === 'move'
+    && candidate.actorBattleId === actorBattleId && candidate.sideId === sideId)
+  if (moveEntry) moveEntry.action.preMoveMechanicBattleId = actorBattleId
+  pushMechanicTimeline(state, sideId, action.actorSlot, gimmick, before, timeline, actionOrder)
+  // Reuse the original Quick Claw / tie rolls; new form speed, abilities, Tera
+  // boosts and Max Move priority must apply before the first ordinary move.
+  const remaining = actions.slice(actionOrder + 1)
+    .sort((first, second) => compareBattleActions(state, first, second))
+  actions.splice(actionOrder + 1, remaining.length, ...remaining)
+  for (const pendingSideId of ['player', 'opponent']) {
+    recordPlannedActions(state, pendingSideId, remaining.filter((candidate) => (
+      candidate.sideId === pendingSideId && candidate.action.type === 'move'
+      && getActivePokemon(state, pendingSideId, candidate.action.actorSlot)?.battleId === candidate.actorBattleId
+    )).map((candidate) => candidate.action))
+  }
 }
 
 function applyPendingTurnOrderChanges(state, actions, completedIndex) {
@@ -10254,7 +10373,7 @@ function applyPendingTurnOrderChanges(state, actions, completedIndex) {
     if (!orderBias) return
     pokemon.nextTurnOrderBias = 0
     const pendingIndex = actions.findIndex((entry, index) => (
-      index > completedIndex && entry.actorBattleId === pokemon.battleId
+      index > completedIndex && entry.action.type === 'move' && entry.actorBattleId === pokemon.battleId
     ))
     if (pendingIndex < 0) return
     const [pendingAction] = actions.splice(pendingIndex, 1)
@@ -12229,21 +12348,24 @@ function simulateAiActionPlans(state, sideId, ownDecisions, responseDecisions) {
   const opponentActions = sideId === 'opponent' ? ownActions : responseActions
   const actions = orderedActions(simulation, playerActions, opponentActions, AI_SIMULATION_RANDOM)
 
-  actions.forEach(({ sideId, action, actorBattleId }) => {
+  for (let actionOrder = 0; actionOrder < actions.length; actionOrder += 1) {
+    const { sideId, action, actorBattleId } = actions[actionOrder]
     const actor = getActivePokemon(simulation, sideId, action.actorSlot)
-    if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0 || actor.revivedThisTurn) return
+    if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0 || actor.revivedThisTurn) continue
     const actingSide = getSide(simulation, sideId)
     if (simulation.rules?.format?.rotation) {
       actingSide.rotationSlot = action.actorSlot ?? actingSide.rotationSlot
       actingSide.activeIndex = actingSide.activeIndexes[actingSide.rotationSlot] ?? actingSide.activeIndex
     }
-    if (action.type === 'switch') {
+    if (action.type === 'mechanic') {
+      executePreMoveMechanic(simulation, actions[actionOrder], actions, actionOrder)
+    } else if (action.type === 'switch') {
       performSwitch(simulation, sideId, action.targetIndex, false, null, null, action.actorSlot)
     } else {
       executeMove(simulation, sideId, action, AI_SIMULATION_RANDOM)
     }
     markActiveFaints(simulation)
-  })
+  }
 
   runResidualEffects(simulation, null, AI_SIMULATION_RANDOM)
   advanceSideConditionTimers(simulation)
@@ -12675,7 +12797,9 @@ function continueBattleTurn(nextState, random, timeline) {
       actingSide.activeIndex = actingSide.activeIndexes[actingSide.rotationSlot] ?? actingSide.activeIndex
     }
 
-    if (action.type === 'switch') {
+    if (action.type === 'mechanic') {
+      executePreMoveMechanic(nextState, actions[actionOrder], actions, actionOrder, timeline)
+    } else if (action.type === 'switch') {
       performSwitch(nextState, sideId, action.targetIndex, false, timeline, actionOrder, action.actorSlot)
     } else {
       executeMove(nextState, sideId, action, random, timeline, actionOrder)

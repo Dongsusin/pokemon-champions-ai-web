@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createBattle, playBattleTurnWithActions } from '../src/data/battleEngine.js'
+import { createBattle, getBattleMovePreview, getBattleMoveTargets, playBattleTurnWithActions } from '../src/data/battleEngine.js'
 import { SPECIES_PROFILES, getLearnableMoves, getMoveById } from '../src/data/trainingData.js'
 
 // Primary rules reference: Pokemon Showdown sim/battle-actions.ts (spread target
@@ -92,6 +92,20 @@ test('Heat Wave hits both opponents, never the ally, and spends PP only once', (
   assert.equal(hpDamage(before, after, 'player', 0), 0)
   assert.equal(hpDamage(before, after, 'player', 1), 0)
   assertOneUse(before, after)
+})
+
+test('Expanding Force becomes spread only for a grounded user in Psychic Terrain', () => {
+  for (const [slug, terrain, spread] of [['mew', 'psychic', true], ['mew', 'neutral', false], ['xatu', 'psychic', false]]) {
+    const before = battle(pokemon(slug, ['expandingforce']))
+    before.rules.terrain = { ...before.rules.terrain, id: terrain }
+    assert.equal(getBattleMovePreview(before).target, spread ? 'allAdjacentFoes' : 'normal')
+    assert.equal(getBattleMoveTargets(before).length === 0, spread)
+    const after = attack(before)
+    assert(hpDamage(before, after, 'opponent', 0) > 0)
+    assert.equal(hpDamage(before, after, 'opponent', 1) > 0, spread)
+    assert.equal(hpDamage(before, after, 'player', 1), 0)
+    assertOneUse(before, after)
+  }
 })
 
 test('Protect blocks only its own target and does not remove the spread modifier', () => {
