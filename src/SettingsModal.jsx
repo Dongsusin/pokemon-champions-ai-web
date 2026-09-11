@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  Bug,
   Clock3,
   Gamepad2,
   Gauge,
@@ -25,8 +26,9 @@ import {
   X,
 } from 'lucide-react'
 import { AchievementCatalog } from './AchievementsScreen'
+import BugReportPanel from './BugReportPanel'
 
-const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'account']
+const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'account', 'bug-report']
 
 const ATTACK_ANIMATION_OPTIONS = [
   { value: 'skip', label: '스킵' },
@@ -242,6 +244,7 @@ function SettingsModal({
   achievementProgress,
   balance = 0,
   initialTab = 'game',
+  reportContext,
   user,
   accountError,
   authBusy,
@@ -273,7 +276,7 @@ function SettingsModal({
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onCloseRef.current()
       if (event.key !== 'Tab') return
-      const controls = [...panelRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]')]
+      const controls = [...panelRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')]
         .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0)
       const first = controls[0]
       const last = controls[controls.length - 1]
@@ -299,7 +302,7 @@ function SettingsModal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}${activeTab === 'bug-report' ? ' settings-bug-report-open' : ''}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="settings-modal-header">
           <span className="settings-header-mark"><Sparkles size={22} /></span>
           <div>
@@ -368,6 +371,18 @@ function SettingsModal({
             onClick={() => setActiveTab('account')}
           >
             <UserRound size={20} /> 계정
+          </button>
+          <button
+            className={activeTab === 'bug-report' ? 'selected' : ''}
+            type="button"
+            role="tab"
+            id="settings-bug-report-tab"
+            aria-controls="settings-bug-report-panel"
+            aria-selected={activeTab === 'bug-report'}
+            tabIndex={activeTab === 'bug-report' ? 0 : -1}
+            onClick={() => setActiveTab('bug-report')}
+          >
+            <Bug size={20} /> 버그 신고
           </button>
         </nav>
 
@@ -445,7 +460,7 @@ function SettingsModal({
             <div className="settings-achievements-panel" id="settings-achievements-panel" role="tabpanel" aria-labelledby="settings-achievements-tab">
               <AchievementCatalog progress={achievementProgress} balance={balance} embedded />
             </div>
-          ) : (
+          ) : activeTab === 'account' ? (
             <AccountPanel
               user={user}
               accountError={accountError}
@@ -456,7 +471,8 @@ function SettingsModal({
               onDeleteAccount={onDeleteAccount}
               onSignOut={onSignOut}
             />
-          )}
+          ) : null}
+          <BugReportPanel key={user?.uid || 'guest'} user={user} reportContext={reportContext} active={activeTab === 'bug-report'} />
         </div>
 
         <footer className="settings-modal-footer">
