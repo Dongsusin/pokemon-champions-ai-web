@@ -11,6 +11,7 @@ import {
   NATURE_OPTIONS,
   normalizePokemon,
   resolveMoveForPokemon,
+  typeClassName,
 } from './trainingData.js'
 import { TYPE_FORM_SLUG_BY_KO } from './pokemonFormData.js'
 import {
@@ -618,6 +619,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     skyDropSourceBattleId: null,
     skyDropTargetBattleId: null,
     teraActive: false,
+    stellarBoostedTypes: [],
     dynamaxActive: false,
     dynamaxTurns: 0,
     dynamaxOriginalForm: null,
@@ -1550,6 +1552,7 @@ function clonePokemon(pokemon) {
     ...pokemon,
     types: [...pokemon.types],
     originalTypes: [...pokemon.originalTypes],
+    stellarBoostedTypes: [...(pokemon.stellarBoostedTypes ?? [])],
     stats: { ...pokemon.stats },
     moves: pokemon.moves.map((move) => ({ ...move })),
     usedMoveIds: [...(pokemon.usedMoveIds ?? [])],
@@ -1944,7 +1947,8 @@ export function getTypeEffectiveness(moveType, defenderTypes) {
   ), 1)
 }
 
-export function getBattleTypeEffectiveness(state, moveType, defenderTypes) {
+export function getBattleTypeEffectiveness(state, moveType, defenderTypes, defender = null) {
+  if (moveType === '스텔라') return defender?.teraActive ? 2 : 1
   const strongWinds = effectiveWeatherId(state) === 'deltastream'
   const standardMultiplier = defenderTypes.reduce((multiplier, defenderType) => {
     const typeMultiplier = TYPE_CHART[moveType]?.[defenderType] ?? 1
@@ -1957,6 +1961,7 @@ export function getBattleTypeEffectiveness(state, moveType, defenderTypes) {
 
 function getMoveTypeEffectiveness(state, attacker, defender, move) {
   if (move.id === 'struggle') return 1
+  if (move.type === '스텔라') return defender.teraActive ? 2 : 1
   const bypassGhostImmunity = (['배짱', '심안'].includes(attacker.ability) || defender.foresightActive)
     && ['노말', '격투'].includes(move.type)
   const strongWinds = effectiveWeatherId(state) === 'deltastream'
@@ -2180,6 +2185,7 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
   if (
     typeChangeRule
     && !TYPE_CHANGE_EXCLUDED_MOVE_IDS.has(move.id)
+    && !(move.id === 'terablast' && attacker.teraActive)
     && (typeChangeRule.allTypes || move.type === typeChangeRule.sourceType || move.flags?.includes(typeChangeRule.flag))
   ) {
     resolvedMove.type = typeChangeRule.targetType
@@ -2247,7 +2253,18 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
   if (move.id === 'growth' && weatherId === 'sun') {
     resolvedMove.boosts = { atk: 2, spa: 2 }
   }
-  if (move.id === 'terablast' && attacker.teraActive) resolvedMove.type = attacker.teraType
+  if (move.id === 'terablast') {
+    if (attacker.teraActive) {
+      resolvedMove.type = attacker.teraType
+      // Tera Blast keeps its Tera type and receives no -ate/Normalize power bonus.
+      delete resolvedMove.abilityPowerMultiplier
+      if (attacker.teraType === '스텔라') {
+        resolvedMove.power = 100
+        resolvedMove.self = { boosts: { atk: -1, spa: -1 } }
+      }
+    }
+    resolvedMove.typeId = typeClassName(resolvedMove.type)
+  }
   if (move.id === 'terastarstorm' && currentSpeciesSlug(attacker) === 'terapagos-stellar') {
     resolvedMove.type = '스텔라'
     resolvedMove.target = 'allAdjacentFoes'
@@ -2345,7 +2362,19 @@ function environmentMoveMultiplier(state, attacker, defender, move) {
   return multiplier
 }
 
-function getMoveStab(pokemon, moveType, forceStab = false) {
+function stellarBoostAvailable(pokemon, moveType, boostedThisMove = false) {
+  return pokemon.teraActive && pokemon.teraType === '스텔라' && moveType !== '???'
+    && (boostedThisMove || !(pokemon.stellarBoostedTypes ?? []).includes(moveType))
+}
+
+function getMoveStab(pokemon, moveType, forceStab = false, boostedThisMove = false) {
+  if (pokemon.teraActive && pokemon.teraType === '스텔라') {
+    const matchesOriginalType = forceStab || pokemon.originalTypes.includes(moveType)
+    if (stellarBoostAvailable(pokemon, moveType, boostedThisMove)) {
+      return matchesOriginalType ? 2 : 4915 / 4096
+    }
+    return matchesOriginalType ? 1.5 : 1
+  }
   if (forceStab) return 1.5
   if (!pokemon.teraActive) {
     return pokemon.types.includes(moveType)
@@ -2446,7 +2475,15 @@ function moveDamageStatProfile(state, attacker, defender, move) {
   let category = move.categoryId ?? (move.category === '물리' ? 'physical' : 'special')
   const adaptiveMode = rule?.adaptive ?? (move.adaptiveOffense ? 'higher-offense' : null)
 
-  if (adaptiveMode === 'higher-offense' || adaptiveMode === 'tera-only' && attacker.teraActive) {
+  if (adaptiveMode === 'tera-only') {
+    // Compare actual stats plus stages, before held items, abilities, weather,
+    // burns or the target's Unaware. A tie (and every non-Tera use) is special.
+    const stagedStat = (key) => Math.max(1, Math.floor(
+      attacker.stats[key] * stageMultiplier(attacker.statStages[key] ?? 0),
+    ))
+    category = attacker.teraActive && stagedStat('attack') > stagedStat('specialAttack')
+      ? 'physical' : 'special'
+  } else if (adaptiveMode === 'higher-offense') {
     category = effectiveStat(state, attacker, 'attack') > effectiveStat(state, attacker, 'specialAttack')
       ? 'physical'
       : 'special'
@@ -2678,11 +2715,20 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   if (effectiveMoveWeatherFamilyId(state, defender) === 'sandstorm' && defenseKey === 'specialDefense' && defender.types.includes('바위')) defense *= 1.5
   const baseDamage = (((2 * Number(attacker.level ?? 50)) / 5 + 2) * power * attack / defense) / 50 + 2
   const randomFactor = 0.85 + random() * 0.15
-  let modifier = getMoveStab(attacker, move.type, move.pledgeStabOverride)
+  let modifier = getMoveStab(attacker, move.type, move.pledgeStabOverride, move.stellarBoosted)
     * effectiveness
     * environmentMoveMultiplier(state, attacker, defender, move)
     * randomFactor
     * (critical ? 1.5 : 1)
+
+  // Only an actual damage calculation consumes the once-per-type boost.
+  // Reuse the boost for every hit of this move; previews/AI estimates stay pure.
+  if (effectiveness > 0 && stellarBoostAvailable(attacker, move.type, move.stellarBoosted)) {
+    move.stellarBoosted = true
+    if (currentSpeciesSlug(attacker) !== 'terapagos-stellar') {
+      attacker.stellarBoostedTypes = [...new Set([...(attacker.stellarBoostedTypes ?? []), move.type])]
+    }
+  }
 
   if (hasActiveHeldItem(attacker, 'life-orb')) modifier *= 1.3
   if (hasActiveHeldItem(attacker, 'expert-belt') && effectiveness > 1) modifier *= 1.2
@@ -5170,7 +5216,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.name = form.name
   pokemon.formName = form.formName ?? form.name
   pokemon.originalTypes = [...form.types]
-  pokemon.types = pokemon.teraActive ? [pokemon.teraType] : [...form.types]
+  pokemon.types = pokemon.teraActive && pokemon.teraType !== '스텔라' ? [pokemon.teraType] : [...form.types]
   pokemon.ability = preservedAbility
   pokemon.stats = nextStats
   pokemon.originalMaxHp = nextBaseMaxHp
@@ -5203,7 +5249,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
 }
 
 function restorePokemonOwnTypes(pokemon) {
-  if (pokemon.teraActive) {
+  if (pokemon.teraActive && pokemon.teraType !== '스텔라') {
     pokemon.types = [pokemon.teraType]
     return
   }
@@ -5774,7 +5820,7 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
       pokemon.teraType = ogerponTeraRule.teraType
     }
     pokemon.teraActive = true
-    pokemon.types = terapagosStellar ? [...terapagosStellar.types] : [pokemon.teraType]
+    pokemon.types = pokemon.teraType === '스텔라' ? [...pokemon.originalTypes] : [pokemon.teraType]
     appendLog(state, `${trainerName}의 ${pokemon.name}이(가) ${pokemon.teraType}타입으로 테라스탈했다!`, 'gimmick')
     if (ogerponTeraRule) {
       appendLog(state, `${pokemon.name}의 초상투영! 가면에 담긴 힘이 넘쳐흐른다!`, 'ability')
@@ -5964,7 +6010,10 @@ export function getBattleMovePreview(
   const move = battleActionMove(attacker, moveIndex)
   if (!attacker || !defender || !move) return move ?? null
   const resolvedGimmick = moveIndex === -1 ? null : resolveAvailableActionGimmick(state, sideId, activeSlot, gimmick)
-  const environmentMove = resolveEnvironmentMove(state, attacker, defender, move)
+  const projectedAttacker = resolvedGimmick === 'tera'
+    ? projectAiPokemonForMechanic(attacker, resolvedGimmick)
+    : attacker
+  const environmentMove = resolveEnvironmentMove(state, projectedAttacker, defender, move)
   const zMove = resolvedGimmick === 'zmove' ? resolveBattleZMove(attacker, environmentMove, move) : null
   const resolvedMove = resolvedGimmick === 'zmove'
     ? zMove ?? { ...environmentMove, zMoveCompatible: false }
@@ -5974,7 +6023,7 @@ export function getBattleMovePreview(
     ...(resolvedMove.id === 'pollenpuff' && targetSideId === sideId
       ? { power: 0, category: '변화', categoryId: 'status', healsTarget: true }
       : {}),
-    priority: environmentMovePriority(state, attacker, resolvedMove),
+    priority: environmentMovePriority(state, projectedAttacker, resolvedMove),
   }
 }
 
@@ -8151,6 +8200,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
           * helpingHandMultiplier
           * (parentalBondActive && hitIndex === 1 ? 0.25 : 1),
       )
+    if (hitMove.stellarBoosted) move.stellarBoosted = true
     const substituteBlocks = defender.substituteHp > 0
       && attacker.ability !== '틈새포착'
       && !move.flags?.includes('bypasssub')
@@ -9985,9 +10035,51 @@ const AI_SCREEN_BREAK_MOVE_IDS = new Set(['defog', 'brickbreak', 'psychicfangs',
 
 function projectAiPokemonForMechanic(attacker, gimmick) {
   if (gimmick === 'tera' && attacker.teraType) {
+    const ogerponTeraRule = attacker.battleBaseSpeciesId === 1017
+      ? OGERPON_TERA_FORM_RULES[currentSpeciesSlug(attacker)] ?? OGERPON_TERA_FORM_RULES.ogerpon
+      : null
+    const terapagosStellar = attacker.battleBaseSpeciesId === 1024
+      ? relatedFormBySlug(attacker, 'terapagos-stellar')
+      : null
+    const form = terapagosStellar
+      ?? (ogerponTeraRule ? relatedFormBySlug(attacker, ogerponTeraRule.form) : null)
+    const teraType = terapagosStellar ? '스텔라' : ogerponTeraRule?.teraType ?? attacker.teraType
+    let projectedAttacker = attacker
+    if (form) {
+      const ability = form.abilities.includes(attacker.ability) ? attacker.ability : form.abilities[0]
+      const transformed = normalizePokemon({
+        ...attacker,
+        speciesId: form.id,
+        ability,
+        moves: attacker.moves.map((move) => move.name),
+      })
+      const stats = statObject(transformed)
+      const maxHp = Math.max(1, Math.floor(stats.hp * (attacker.difficultyHpMultiplier ?? 1)))
+      projectedAttacker = {
+        ...attacker,
+        speciesId: form.id,
+        slug: form.slug,
+        ability,
+        originalTypes: [...form.types],
+        stats: { ...stats, hp: maxHp },
+        originalMaxHp: maxHp,
+        maxHp,
+        hp: attacker.hp <= 0 ? 0 : Math.max(1, Math.min(maxHp, maxHp - (attacker.maxHp - attacker.hp))),
+      }
+    }
+    // Forecast the first Tera turn without consuming a mechanic, changing HP,
+    // or applying form/Embody Aspect changes to the live battle object.
+    const statStages = { ...projectedAttacker.statStages }
+    for (const [statKey, boost] of Object.entries(ogerponTeraRule?.boost ?? {})) {
+      statStages[statKey] = Math.min(6, (statStages[statKey] ?? 0) + boost)
+    }
     return {
-      ...attacker,
-      types: [attacker.teraType],
+      ...projectedAttacker,
+      statStages,
+      types: teraType === '스텔라'
+        ? [...(projectedAttacker.originalTypes ?? projectedAttacker.types)]
+        : [teraType],
+      teraType,
       teraActive: true,
     }
   }

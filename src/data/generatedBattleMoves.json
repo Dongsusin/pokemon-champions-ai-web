@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-25T06:20:42.293Z",
+  "generatedAt": "2026-09-11T03:27:39.004Z",
   "source": {
     "battleData": "https://play.pokemonshowdown.com/data/moves.json",
     "localization": "https://pokeapi.co/api/v2/move"
@@ -21555,7 +21555,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "위력 80의 노말타입 공격 기술이다.",
+      "description": "평소에는 위력 80의 노말타입 특수 기술이다. 테라스탈하면 테라타입으로 바뀌며, 능력 변화가 반영된 공격이 특수공격보다 높으면 물리 기술이 된다. 스텔라 테라스탈 시 위력이 100이 되고 테라스탈한 상대에게 효과가 굉장하며, 명중 후 자신의 공격과 특수공격이 1랭크씩 떨어진다.",
       "flags": [
         "protect",
         "mirror",

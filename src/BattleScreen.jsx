@@ -1511,7 +1511,7 @@ function MoveMenu({
             moveIndex === -1 ? null : pendingGimmick,
           ) ?? move
           const multiplier = moveDealsDirectDamage(displayMove)
-            ? getBattleTypeEffectiveness(battle, displayMove.type, opponent.types)
+            ? getBattleTypeEffectiveness(battle, displayMove.type, opponent.types, opponent)
             : null
           const presentation = effectivenessPresentation(multiplier)
           const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
@@ -1637,7 +1637,7 @@ function MoveTargetMenu({
             targetSideId,
           ) ?? move
           const multiplier = moveDealsDirectDamage(targetMove)
-            ? getBattleTypeEffectiveness(battle, targetMove.type, target.types)
+            ? getBattleTypeEffectiveness(battle, targetMove.type, target.types, target)
             : null
           const presentation = effectivenessPresentation(multiplier)
           const healsTarget = targetMove.healsTarget || ['healpulse', 'floralhealing'].includes(targetMove.id)

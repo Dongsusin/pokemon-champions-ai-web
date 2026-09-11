@@ -24,6 +24,8 @@
     "validate:battle-difficulty": "node scripts/validateBattleDifficulty.mjs",
     "validate:battle-move-conditions": "node scripts/validateBattleMoveConditions.mjs",
     "validate:battle-move-effects": "node scripts/validateBattleMoveEffects.mjs",
+    "validate:tera-blast": "node scripts/validateTeraBlast.mjs",
+    "validate:tera-blast-ui": "node scripts/validateTeraBlastUi.mjs",
     "validate:battle-mechanics": "node scripts/validateBattleMechanicCoverage.mjs",
     "benchmark:battle-ai": "node scripts/benchmarkBattleAi.mjs",
     "validate:battle-gimmicks": "node scripts/validateBattleGimmickLimit.mjs",
