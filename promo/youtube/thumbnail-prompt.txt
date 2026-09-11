@@ -1,0 +1,15 @@
+Use case: ads-marketing.
+Create ONE finished premium Korean YouTube thumbnail for an independently developed, unofficial Pokémon fan-made browser battle game called Champions Arena. Landscape 16:9 composition, ideally 3840 by 2160 pixels. This is a promotional graphic, not a screenshot. Make it genuinely legible at 320px thumbnail width and visually strong like a competitive turn-based battle trailer.
+
+Art direction: sophisticated dramatic midnight-navy arena in perspective with custom angular platforms, a sweeping blue-versus-warm-orange energy collision on the right, tiny luminous particles and a luminous metallic "VS" as the main right-hand graphic. Original abstract geometry and energy only. Cyan rim lighting and golden-orange impact streaks. Deep quiet navy area behind the text on the left. Very polished game advertising typography. Crisp shapes, tight hierarchy, cinematic depth, restrained light bloom. No visual clutter. Do not depict characters, monsters, silhouettes of known characters, people, trainers, Pokémon sprites, Poké Balls, existing game logos, Nintendo marks, or official Pokémon logo lettering. Do not imitate a particular existing franchise's key art. No website screenshots or fake gameplay UI.
+
+Text must be spelled exactly, in modern heavy Korean sans-serif lettering, NOT in the stylized Pokémon wordmark font:
+1. Near upper left, a highly readable compact yellow outlined badge: "비공식 팬메이드".
+2. Left 60% of image, two huge lines with strong dark outline and modest dimensional shadow:
+"팬이 만든"
+"포켓몬 배틀"
+First line white, second line vivid warm yellow. These two lines are the dominant focal point.
+3. Below the headline in a clean smaller pill/panel: "1,025종 · AI 238명".
+4. Bottom left, small clean project wordmark in ordinary sans-serif uppercase: "CHAMPIONS ARENA".
+5. The right-side abstract clash may contain only the letters "VS".
+No other text. All listed text inside a generous 6% safe margin. Keep bottom-right corner clear for YouTube's duration overlay. No legal paragraphs or fine print. Energetic but not childish. The unofficial fan-made badge must not look like an official seal. Render the whole thumbnail as a finished image, including typography.

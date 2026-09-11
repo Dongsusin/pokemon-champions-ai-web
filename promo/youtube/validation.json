@@ -1,0 +1,60 @@
+{
+  "checkedDate": "2026-09-11",
+  "title": "[비공식 팬메이드] 1,025종 포켓몬 × 238명 AI 트레이너 | 챔피언스 아레나",
+  "titleLength": 47,
+  "descriptionLength": 1171,
+  "videoDuration": 122,
+  "videoSha256": "82512a8c363faf9c5f44c6e634eade6137f38d939bff01f1ed3c2589f2de0eed",
+  "chapters": [
+    {
+      "seconds": 0,
+      "label": "오프닝 · 1,025종의 포켓몬"
+    },
+    {
+      "seconds": 18,
+      "label": "238명의 AI 트레이너 · 128강 토너먼트"
+    },
+    {
+      "seconds": 40,
+      "label": "아이템으로 완성하는 전략"
+    },
+    {
+      "seconds": 54,
+      "label": "메가진화"
+    },
+    {
+      "seconds": 66,
+      "label": "Z기술"
+    },
+    {
+      "seconds": 78,
+      "label": "거다이맥스"
+    },
+    {
+      "seconds": 90,
+      "label": "테라스탈"
+    },
+    {
+      "seconds": 102,
+      "label": "더블·싱글배틀 · 다음 챔피언은 당신"
+    }
+  ],
+  "thumbnail": {
+    "width": 1672,
+    "height": 940,
+    "pngBytes": 2253672,
+    "jpgBytes": 468962,
+    "jpgWithinMobile2MB": true,
+    "pngSha256": "5a2926a6022632d8ed2d525229659eb763be9baa1eecb87be21c14088266765a",
+    "jpgSha256": "a3ab5ffdb4f056b24b95e3473cf2ec9fee12c151674c349262911aec9e243e55"
+  },
+  "review": {
+    "koreanTextVisuallyChecked": true,
+    "unofficialBadge": true,
+    "generatedPromotionalGraphic": true,
+    "existingCharacterOrOfficialLogoAssetsAdded": false,
+    "musicAttributionVerified": true,
+    "allVideoRightsCleared": false
+  },
+  "status": "format-and-copy-checks-passed"
+}
