@@ -67,9 +67,12 @@
     "validate:battle-spread-ui": "node scripts/validateBattleSpreadUi.mjs",
     "validate:battle-tera-info-ui": "node scripts/validateBattleTeraInfoUi.mjs",
     "validate:battle-retargeting": "node scripts/validateBattleRetargeting.mjs",
-    "validate:double-battle-commands-ui": "node scripts/validateDoubleBattleCommandsUi.mjs"
+    "validate:double-battle-commands-ui": "node scripts/validateDoubleBattleCommandsUi.mjs",
+    "discord:setup": "node --env-file-if-exists=.env.discord.local scripts/setupDiscordCommunity.mjs",
+    "validate:discord": "node scripts/validateDiscordHttp.mjs && node scripts/validateDiscordCommunity.mjs && node scripts/validateDiscordSetup.mjs"
   },
   "dependencies": {
+    "@vercel/functions": "3.9.7",
     "firebase": "^12.18.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
