@@ -217,43 +217,151 @@ test('reconnect retains own submitted action and deadline', async () => {
   assert.equal(state.match.actionSubmitted, true)
   assert.equal(state.match.deadlineAt, match.deadlineAt)
 })
-test('forfeit updates both ratings exactly once, including concurrent retries and result reload', async () => {
+test('forfeit settles both ratings once and detaches both players while current clients receive results', async () => {
   const env = environment()
   const match = await battle(env)
-  await Promise.all(Array.from({ length: 6 }, () => env.call('alice', 'forfeit', { matchId: match.id })))
+  const responses = await Promise.all(Array.from({ length: 6 }, () => env.call('alice', 'forfeit', { matchId: match.id })))
+  assert.ok(responses.every(value => value.match.result.outcome === 'loss'))
   const alice = await env.call('alice', 'status')
   const bob = await env.call('bob', 'status')
   assert.equal(alice.profile.single.played, 1)
   assert.equal(alice.profile.single.losses, 1)
   assert.equal(bob.profile.single.wins, 1)
   assert.equal(bob.profile.single.points, 30)
-  assert.equal(bob.match.result.ratingDelta, 16)
-  assert.equal(alice.match.result.ratingDelta, -16)
+  assert.equal(alice.match, null)
+  assert.equal(bob.match, null)
+  assert.equal((await env.call('bob', 'status', { matchId: match.id })).match.result.ratingDelta, 16)
+  assert.equal(responses[0].match.result.ratingDelta, -16)
   assert.equal(bob.profile.double.played, 0)
+  const records = (await env.store.inspect()).collections.players
+  for (const who of ['alice', 'bob']) {
+    assert.equal(records[identities[who].uid].activeMatchId, null)
+    assert.equal(records[identities[who].uid].history.length, 1)
+  }
 })
-test('battle winner settles ratings and a new search clears the finished match', async () => {
+test('battle winner delivers the last animation to both current clients without replaying on a new session', async () => {
   const env = environment()
   const match = await battle(env)
   await env.call('alice', 'submit', command(match, { finish: true }))
   const final = await env.call('bob', 'submit', command(match))
   assert.equal(final.match.phase, 'finished')
   assert.equal(final.match.result.outcome, 'loss')
+  assert.equal(final.match.timeline.length, 1)
+  const waiting = await env.call('alice', 'status', { matchId: match.id, timelineRevision: match.timelineRevision })
+  assert.equal(waiting.match.result.outcome, 'win')
+  assert.equal(waiting.match.timeline.length, 1)
+  const replayed = await env.call('alice', 'status', { matchId: match.id, timelineRevision: final.match.timelineRevision })
+  assert.deepEqual(replayed.match.timeline, [])
+  const reconnected = createRankedService({ store: env.store, engine: env.engine, now: () => 1_000_500 })
+  for (const who of ['alice', 'bob']) {
+    const lobby = await reconnected.execute(identities[who], { action: 'status' })
+    assert.equal(lobby.match, null)
+    assert.equal(lobby.queue, null)
+    assert.equal(lobby.profile.single.played, 1)
+  }
   const next = await env.call('alice', 'join', { format: 'double', team: team('a') })
   assert.equal(next.match, null)
   assert.equal(next.queue.format, 'double')
   assert.equal(next.profile.single.wins, 1)
 })
+test('legacy finished pointers are removed on reconnect without repeating settlement', async () => {
+  const env = environment()
+  const match = await battle(env)
+  await env.call('alice', 'forfeit', { matchId: match.id })
+  await env.store.transaction(async tx => {
+    for (const who of ['alice', 'bob']) {
+      const player = await tx.get('players', identities[who].uid)
+      player.activeMatchId = match.id
+      tx.set('players', player.uid, player)
+    }
+  })
+  const before = (await env.store.inspect()).collections
+  for (const who of ['alice', 'bob']) {
+    const status = await env.call(who, 'status')
+    assert.equal(status.match, null)
+    assert.equal(status.profile.single.played, 1)
+    const player = (await env.store.inspect()).collections.players[identities[who].uid]
+    assert.equal(player.activeMatchId, null)
+    assert.deepEqual(player.profiles, before.players[player.uid].profiles)
+    assert.deepEqual(player.history, before.players[player.uid].history)
+  }
+  assert.deepEqual((await env.store.inspect()).collections.matches[match.id], before.matches[match.id])
+  await rejectsCode(env.call('charlie', 'status', { matchId: match.id }), 'MATCH_FORBIDDEN')
+  await rejectsCode(env.call('charlie', 'forfeit', { matchId: match.id }), 'MATCH_FORBIDDEN')
+})
+
+test('new queues and matches take priority over delayed status or commands for a finished match', async () => {
+  const env = environment()
+  const match = await battle(env)
+  await env.call('alice', 'forfeit', { matchId: match.id })
+  const queued = await env.call('alice', 'join', { format: 'double', team: team('a') })
+  const oldPoll = await env.call('alice', 'status', { matchId: match.id })
+  assert.equal(oldPoll.match, null)
+  assert.equal(oldPoll.queue.ticket, queued.queue.ticket)
+  const oldForfeit = await env.call('alice', 'forfeit', { matchId: match.id })
+  assert.equal(oldForfeit.match, null)
+  assert.equal(oldForfeit.queue.ticket, queued.queue.ticket)
+  const current = (await env.call('charlie', 'join', { format: 'double', team: team('c') })).match
+  assert.equal((await env.call('alice', 'status', { matchId: match.id })).match.id, current.id)
+  for (const action of ['submit', 'replace', 'forfeit']) {
+    const response = await env.call('alice', action, { ...command(match), targetIndex: 1 })
+    assert.equal(response.match.id, current.id)
+    assert.equal(response.match.phase, 'select')
+    assert.equal(response.profile.single.played, 1)
+    assert.equal(response.profile.double.played, 0)
+  }
+  assert.equal((await env.store.inspect()).collections.players[identities.alice.uid].activeMatchId, current.id)
+})
+
+test('a reconnect that expires an abandoned battle returns only its settled profile', async () => {
+  const env = environment()
+  const match = await battle(env)
+  await env.call('bob', 'submit', command(match))
+  env.advance(1001)
+  const reconnected = await env.call('alice', 'status')
+  assert.equal(reconnected.match, null)
+  assert.equal(reconnected.profile.single.losses, 1)
+  const stillWaiting = await env.call('bob', 'status', { matchId: match.id })
+  assert.equal(stillWaiting.match.result.outcome, 'win')
+  assert.equal(stillWaiting.profile.single.wins, 1)
+  assert.equal((await env.call('bob', 'status')).match, null)
+})
+
+test('a match ending during replacement returns its final state and stays finished on retry', async () => {
+  const env = environment()
+  const match = await battle(env)
+  await env.call('alice', 'submit', command(match, { replacement: true }))
+  const waiting = (await env.call('bob', 'submit', command(match))).match
+  const resolveReplacement = env.engine.resolveRankedReplacement
+  env.engine.resolveRankedReplacement = (...args) => {
+    const result = resolveReplacement(...args)
+    result.state.winner = 'opponent'
+    return result
+  }
+  const body = { matchId: match.id, revision: waiting.revision, targetIndex: 1, requestId: 'final-replacement' }
+  const result = await env.call('alice', 'replace', body)
+  assert.equal(result.match.phase, 'finished')
+  assert.equal(result.match.result.outcome, 'loss')
+  assert.equal(result.match.timeline.length, 1)
+  const retry = await env.call('alice', 'replace', body)
+  assert.equal(retry.match.phase, 'finished')
+  assert.equal(retry.profile.single.played, 1)
+  assert.equal(env.engine.calls.replacements, 1)
+  assert.equal((await env.call('alice', 'status')).match, null)
+  assert.equal((await env.call('bob', 'status')).match, null)
+})
+
 test('selection timeout penalizes only the unready player; both absent is a draw', async () => {
   const env = environment()
   const match = await paired(env)
   await env.call('alice', 'select', { matchId: match.id, revision: 1, selection: [0, 1, 2] })
   env.advance(1001)
-  const result = await env.call('alice', 'status')
+  const result = await env.call('alice', 'status', { matchId: match.id })
   assert.equal(result.match.result.outcome, 'win')
   assert.equal(result.match.result.reason, 'selection-timeout')
   const absent = environment()
-  await paired(absent); absent.advance(1001)
-  const draw = await absent.call('alice', 'status')
+  const absentMatch = await paired(absent); absent.advance(1001)
+  const draw = await absent.call('alice', 'status', { matchId: absentMatch.id })
   assert.equal(draw.match.result.outcome, 'draw')
   assert.equal(draw.profile.single.points, 0)
 })
@@ -263,15 +371,15 @@ test('turn timeout gives the waiting player a win, repeated polling settles once
   await env.call('bob', 'submit', command(match))
   env.advance(1001)
   await Promise.all([env.call('alice', 'status'), env.call('bob', 'status')])
-  const result = await env.call('bob', 'status')
+  const result = await env.call('bob', 'status', { matchId: match.id })
   assert.equal(result.match.result.outcome, 'win')
   assert.equal(result.profile.single.played, 1)
   assert.equal(result.match.result.reason, 'turn-timeout')
 })
 test('both players missing the turn receive a draw without points', async () => {
   const env = environment()
-  await battle(env); env.advance(1001)
-  const result = await env.call('alice', 'status')
+  const match = await battle(env); env.advance(1001)
+  const result = await env.call('alice', 'status', { matchId: match.id })
   assert.equal(result.match.result.outcome, 'draw')
   assert.equal(result.profile.single.points, 0)
 })
@@ -292,7 +400,7 @@ test('forced replacement timeout never penalizes the waiting opponent', async ()
   await env.call('alice', 'submit', command(match, { replacement: true }))
   await env.call('bob', 'submit', command(match))
   env.advance(1001)
-  const result = await env.call('bob', 'status')
+  const result = await env.call('bob', 'status', { matchId: match.id })
   assert.equal(result.match.result.outcome, 'win')
   assert.equal(result.match.result.reason, 'replacement-timeout')
 })
@@ -418,7 +526,9 @@ test('Firestore transaction adapter supports a full match and settles both profi
   assert.equal(alice.profile.double.wins, 1)
   assert.equal(bob.profile.double.losses, 1)
   assert.equal(alice.profile.single.played, 0)
-  assert.equal(bob.match.result.outcome, 'loss')
+  assert.equal(alice.match, null)
+  assert.equal(bob.match, null)
+  assert.equal((await env.call('bob', 'status', { matchId: match.id })).match.result.outcome, 'loss')
   assert.ok([...db.documents.values()].every(value => Buffer.byteLength(value.payload) <= 850_000))
 })
 test('ownership resolver ignores forged client stats/species and rejects unowned items', async () => {
@@ -521,7 +631,7 @@ test('two independent HTTP clients match, choose teams, play, reconnect, and rec
   const handler = createRankedHttpHandler({ service: env.service, authenticate: createLocalRankedAuthenticator({ enabled: true, production: false }), enabled: true })
   let url
   const server = createServer(async (incoming, outgoing) => {
-    const request = new Request(url, { method: incoming.method, headers: incoming.headers, ...(incoming.method === 'POST' ? { body: Readable.toWeb(incoming), duplex: 'half' } : {}) })
+    const request = new Request(new URL(incoming.url, url), { method: incoming.method, headers: incoming.headers, ...(incoming.method === 'POST' ? { body: Readable.toWeb(incoming), duplex: 'half' } : {}) })
     const result = await handler(request)
     outgoing.writeHead(result.status, Object.fromEntries(result.headers)); outgoing.end(Buffer.from(await result.arrayBuffer()))
   })
@@ -533,7 +643,7 @@ test('two independent HTTP clients match, choose teams, play, reconnect, and rec
       const response = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action, requestId: `http-request-${++sequence}`, ...values }) })
       const payload = await response.json(); assert.equal(response.status, 200, JSON.stringify(payload)); return payload
     },
-    async status() { const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } }); assert.equal(response.status, 200); return response.json() },
+    async status(matchId) { const response = await fetch(matchId ? `${url}?matchId=${encodeURIComponent(matchId)}` : url, { headers: { Authorization: `Bearer ${token}` } }); assert.equal(response.status, 200); return response.json() },
   })
   try {
     const alice = client('ranked-test-alice'), bob = client('ranked-test-bob')
@@ -547,7 +657,9 @@ test('two independent HTTP clients match, choose teams, play, reconnect, and rec
     match = (await reconnected.status()).match
     assert.equal(match.state.turn, 2)
     await alice.post('forfeit', { matchId: match.id })
-    assert.equal((await bob.status()).match.result.outcome, 'win')
+    assert.equal((await bob.status(match.id)).match.result.outcome, 'win')
+    assert.equal((await bob.status()).match, null)
+    assert.equal((await reconnected.status()).match, null)
     assert.equal((await reconnected.status()).profile.single.played, 1)
     assert.equal(env.engine.calls.turns, 1)
   } finally { await new Promise(resolve => server.close(resolve)) }
@@ -558,8 +670,8 @@ test('real battle engine over HTTP supports singles and doubles with damage, rep
   const server = await startRankedDevServer({ port: 0, testAccounts: true, store })
   let sequence = 0
   const client = who => ({
-    async status() {
-      const result = await fetch(server.url, { headers: { Authorization: `Bearer ranked-test-${who}` } })
+    async status(matchId) {
+      const result = await fetch(matchId ? `${server.url}?matchId=${encodeURIComponent(matchId)}` : server.url, { headers: { Authorization: `Bearer ranked-test-${who}` } })
       assert.equal(result.status, 200); return result.json()
     },
     async post(action, body) {
@@ -602,10 +714,12 @@ test('real battle engine over HTTP supports singles and doubles with damage, rep
       }
       const completed = await alice.post('forfeit', { matchId: match.id })
       assert.equal(completed.match.result.outcome, 'loss')
-      const winner = await bob.status()
+      const winner = await bob.status(match.id)
       assert.equal(winner.match.result.outcome, 'win')
       assert.equal(winner.profile[format].wins, 1)
       assert.equal(winner.profile[format].played, 1)
+      assert.equal((await alice.status()).match, null)
+      assert.equal((await bob.status()).match, null)
       const data = await store.inspect()
       for (const value of Object.values(data.collections.matches)) assert(Buffer.byteLength(JSON.stringify(value)) < 850_000)
       for (const value of Object.values(data.collections.timelines ?? {})) assert(Buffer.byteLength(JSON.stringify(value)) < 850_000)

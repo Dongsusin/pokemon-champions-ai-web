@@ -163,7 +163,7 @@ async function exerciseBattleService(makeStore, report, checkpoint = () => {}) {
     await settledTogether([call(0, 'forfeit', retryBody), call(0, 'forfeit', retryBody)])
     await call(0, 'forfeit', { matchId: match.id })
     service = createService()
-    const [loser, winner] = await settledTogether([call(0, 'status'), call(1, 'status')])
+    const [loser, winner] = await settledTogether([call(0, 'status', { matchId: match.id }), call(1, 'status', { matchId: match.id })])
     assert.equal(loser.match.result.outcome, 'loss')
     assert.equal(winner.match.result.outcome, 'win')
     assert.equal(loser.profile[format].played, 1)
@@ -177,6 +177,10 @@ async function exerciseBattleService(makeStore, report, checkpoint = () => {}) {
     const otherFormat = format === 'single' ? 'double' : 'single'
     assert.equal(winner.profile[otherFormat].played, format === 'single' ? 0 : 1)
     report(`${format}: duplicate forfeit settles both ratings exactly once`)
+    const freshSessions = await settledTogether([call(0, 'status'), call(1, 'status')])
+    assert.ok(freshSessions.every(snapshot => snapshot.match === null && snapshot.queue === null))
+    assert.deepEqual(freshSessions.map(snapshot => snapshot.profile), [loser.profile, winner.profile])
+    report(`${format}: fresh sessions retain points without restoring the finished battle`)
   }
 
   const store = makeStore()
@@ -187,7 +191,10 @@ async function exerciseBattleService(makeStore, report, checkpoint = () => {}) {
     assert.equal(players.length, 2)
     assert.equal(matches.length, 2)
     assert.equal((await tx.list('queue')).length, 0)
-    for (const player of players) assert.ok(identities.some(identity => identity.uid === player.uid))
+    for (const player of players) {
+      assert.ok(identities.some(identity => identity.uid === player.uid))
+      assert.equal(player.activeMatchId, null)
+    }
     for (const match of matches) {
       assert.equal(match.phase, 'finished')
       assert.ok(Buffer.byteLength(JSON.stringify(match), 'utf8') < 850_000)

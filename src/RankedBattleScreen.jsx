@@ -61,11 +61,9 @@ export default function RankedBattleScreen({
   const [refreshError, setRefreshError] = useState('')
   const [now, setNow] = useState(Date.now())
   const [serverOffset, setServerOffset] = useState(0)
-  const [dismissedMatch, setDismissedMatch] = useState(null)
   const [playedRevision, setPlayedRevision] = useState(null)
   const [confirmForfeit, setConfirmForfeit] = useState(false)
   const snapshotRef = useRef(snapshot)
-  snapshotRef.current = snapshot
   const operationRef = useRef(false)
   const mountedRef = useRef(true)
   const generationRef = useRef(0)
@@ -86,14 +84,20 @@ export default function RankedBattleScreen({
   }), [identity, user?.uid])
   const accept = useCallback(value => {
     if (Number.isFinite(value.serverTime)) setServerOffset(value.serverTime - Date.now())
-    setSnapshot(previous => {
-      if (previous.match?.id === value.match?.id && previous.match?.revision > value.match?.revision) return previous
-      if (previous.match?.id === value.match?.id && previous.match?.timelineRevision === value.match?.timelineRevision
-        && previous.match?.timeline?.length && !value.match?.timeline?.length) {
-        return { ...EMPTY, ...value, match: { ...value.match, timeline: previous.match.timeline } }
+    const previous = snapshotRef.current
+    let next = { ...EMPTY, ...value }
+    // Only a match observed in this visit may play its final turn. Old servers
+    // can still return a completed match while a rolling deployment settles.
+    if (next.match?.phase === 'finished' && previous.match?.id !== next.match.id) next.match = null
+    if (previous.match?.id === next.match?.id) {
+      if (previous.match?.revision > next.match?.revision) next = previous
+      else if (previous.match?.timelineRevision === next.match?.timelineRevision
+        && previous.match?.timeline?.length && !next.match?.timeline?.length) {
+        next.match = { ...next.match, timeline: previous.match.timeline }
       }
-      return { ...EMPTY, ...value }
-    })
+    }
+    snapshotRef.current = next
+    setSnapshot(next)
     setConnected(true)
     setRefreshError('')
   }, [])
@@ -103,6 +107,7 @@ export default function RankedBattleScreen({
     const controller = new AbortController()
     let timer, running = false, active = true
     generationRef.current += 1
+    snapshotRef.current = EMPTY
     setSnapshot(EMPTY)
     setConnected(false)
     setError('')
@@ -147,7 +152,7 @@ export default function RankedBattleScreen({
   useEffect(() => { setSelection([]); setPlayedRevision(null); setConfirmForfeit(false) }, [match?.id])
   const resultReady = match?.phase === 'finished' && (!match.state || !match.timeline?.length
     || playedRevision === (match.timelineRevision ?? match.revision))
-  const battleVisible = Boolean(match?.state && match.id !== dismissedMatch && !resultReady)
+  const battleVisible = Boolean(match?.state && !resultReady)
   useEffect(() => { onBattleActiveChange?.(battleVisible); return () => onBattleActiveChange?.(false) }, [battleVisible, onBattleActiveChange])
 
   const mutate = async (action, payload, before) => {
@@ -180,7 +185,7 @@ export default function RankedBattleScreen({
     : (selectedTeam?.pokemonIds ?? []).map(id => boxPokemon.find(pokemon => pokemon.captureId === id)).filter(Boolean)
   const teamSelectionLocked = busy || Boolean(snapshot.queue) || Boolean(match && match.phase !== 'finished')
   const teamReady = roster.length === BATTLE_TEAM_SIZE
-  const shownMatchFormat = match && match.id !== dismissedMatch ? match.format : null
+  const shownMatchFormat = match?.format ?? null
   const currentFormat = RANKED_FORMATS.find(entry => entry.id === (shownMatchFormat ?? snapshot.queue?.format ?? format)) ?? RANKED_FORMATS[0]
   const record = snapshot.profile?.[format] ?? createRankedProfile(format)
   const deadline = timeValue(match?.deadlineAt)
@@ -195,7 +200,6 @@ export default function RankedBattleScreen({
   async function join() {
     if (busy || operationRef.current) return
     try {
-      setDismissedMatch(null)
       await mutate('join', { format, team: roster }, onBeforeJoin)
     } catch { /* Errors are shown inline. */ }
   }
@@ -204,6 +208,19 @@ export default function RankedBattleScreen({
       try { const value = await mutate('cancel', { queueTicket: snapshot.queue.ticket }); if (!value || (value.match && value.match.phase !== 'finished')) return } catch { return }
     }
     onBack?.()
+  }
+  function closeResult() {
+    const current = snapshotRef.current
+    if (current.match?.phase !== 'finished') return
+    // Invalidate a poll already in flight before removing its match context.
+    generationRef.current += 1
+    setFormat(current.match.format)
+    const lobby = { ...current, match: null }
+    snapshotRef.current = lobby
+    setSnapshot(lobby)
+    setError('')
+    setRefreshError('')
+    refreshRef.current?.()
   }
   const visibleError = refreshError || error
   const connectionNotice = visibleError && <div className="ranked-error" role="alert"><WifiOff size={17} /><span>{visibleError}</span>
@@ -236,13 +253,13 @@ export default function RankedBattleScreen({
     {connectionNotice}
     {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>현재 환경에서는 참가할 수 없습니다.</p></section>
       : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>Google 계정으로 참가하세요</h2><p>레이팅과 경기 기록은 로그인한 계정에 저장됩니다.</p></section>
-      : resultReady && match.id !== dismissedMatch ? <section className={`ranked-result outcome-${match.result?.outcome}`}>
+      : resultReady ? <section className={`ranked-result outcome-${match.result?.outcome}`}>
         <Trophy size={48} /><span>{currentFormat.label} · 결과 확정</span><h2>{resultNames[match.result?.outcome] ?? '대전 종료'}</h2>
         <p>{reasonNames[match.result?.reason] ?? '서버에서 대전 결과를 확정했습니다.'}</p>
         <RankBadge record={snapshot.profile?.[match.format]} />
         <div className="ranked-result-rating"><span>레이팅</span><strong>{match.result?.ratingBefore ?? '—'} <ArrowRight size={18} /> {match.result?.ratingAfter ?? '—'}</strong>
           <b>{Number.isFinite(match.result?.ratingDelta) ? `${match.result.ratingDelta > 0 ? '+' : ''}${match.result.ratingDelta}` : '정산 확인 중'}</b></div>
-        <button className="ranked-primary" type="button" onClick={() => { setDismissedMatch(match.id); setFormat(match.format) }}>레이팅 로비로</button>
+        <button className="ranked-primary" type="button" onClick={closeResult}>레이팅 로비로</button>
       </section>
       : match?.phase === 'select' ? <section className="ranked-selection">
         <div className="ranked-selection-heading"><div><span>TEAM PREVIEW</span><h2>{currentFormat.battleSize}마리를 출전 순서대로 선택하세요</h2><p>앞의 {currentFormat.activeSlots}마리가 선봉입니다. 상대의 선출은 배틀 시작 후 공개됩니다.</p></div>
@@ -268,7 +285,7 @@ export default function RankedBattleScreen({
         <p className="ranked-ladder-note">몬스터볼·슈퍼볼·하이퍼볼 IV → I<br />마스터볼부터 레이팅 점수로 경쟁합니다.<br />싱글과 더블 기록은 각각 저장됩니다.</p>
       </section><section className="ranked-entry-panel">
         {isRankedLocalTest && <div className="ranked-test-identity"><span>독립 로컬 테스트 계정</span><label>트레이너<select aria-label="로컬 테스트 계정" value={identity} disabled={busy || Boolean(snapshot.queue) || Boolean(match && match.phase !== 'finished')}
-          onChange={event => { setDismissedMatch(null); setIdentity(event.target.value) }}><option value="alice">Alice</option><option value="bob">Bob</option></select></label></div>}
+          onChange={event => setIdentity(event.target.value)}><option value="alice">Alice</option><option value="bob">Bob</option></select></label></div>}
         <div className="ranked-team-heading"><div><span>REGISTERED TEAM</span><h2>출전 팀 선택</h2></div>
           {isRankedLocalTest && <select aria-label="레이팅 출전 팀" value={selectedTeam?.id ?? ''} disabled={teamSelectionLocked} onChange={event => setFixtureTeamId(event.target.value)}>
             {!teamOptions.length && <option value="">팀 불러오는 중</option>}{teamOptions.map(team => <option value={team.id} key={team.id}>{team.name}</option>)}</select>}</div>

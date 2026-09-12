@@ -100,6 +100,9 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       { outcome: outcome === 'draw' ? 'draw' : outcome === 'win' ? 'loss' : 'win', reason, ratingBefore: before[1].rating, ratingAfter: settled.b.rating, ratingDelta: settled.b.rating - before[1].rating, pointsBefore: before[1].points, pointsAfter: settled.b.points, pointsDelta: settled.b.points - before[1].points },
     ]
     for (const player of [first, second]) {
+      // Keep the settled match for safe retries, but it is no longer a session
+      // to resume when either player opens the game again.
+      if (player.activeMatchId === match.id) player.activeMatchId = null
       player.history = [{ matchId: match.id, format: match.format, finishedAt: timestamp, ...match.result[indexOf(match, player.uid)] }, ...(player.history ?? [])].slice(0, 20)
       tx.set('players', player.uid, player)
     }
@@ -151,7 +154,19 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
   async function snapshot(tx, uid, { knownTimelineRevision, knownMatchId } = {}) {
     const player = await tx.get('players', uid)
     const queue = await tx.get('queue', uid)
-    const match = player?.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
+    let match = player?.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
+    if (match?.phase === 'finished') {
+      // Lazy migration for matches settled before active pointers were cleared.
+      player.activeMatchId = null
+      tx.set('players', uid, player)
+      match = null
+    }
+    if (!match && !player?.activeMatchId && !queue && knownMatchId) {
+      const known = await tx.get('matches', knownMatchId)
+      // Only a client already playing this match needs the last animation and
+      // result. A fresh status request gets the settled profile and lobby.
+      if (known?.phase === 'finished') match = known
+    }
     const timeline = []
     const unchangedTimeline = match && knownMatchId === match.id && Number(knownTimelineRevision) === match.timelineRevision
     for (let index = 0; !unchangedTimeline && index < (match?.timelineChunks ?? 0); index += 1) {
@@ -196,7 +211,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
   async function sync(tx, identity, timestamp, matchId) {
     let player = await loadPlayer(tx, identity)
     const match = player.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
-    if (match) await expireMatch(tx, match, timestamp)
+    if (match && await expireMatch(tx, match, timestamp)) player = await tx.get('players', identity.uid)
     let queue = await tx.get('queue', identity.uid)
     if (queue) {
       await lobbyLock(tx)
@@ -327,13 +342,13 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       const match = await tx.get('matches', payload.matchId)
       if (!match) fail('MATCH_NOT_FOUND', '대전을 찾을 수 없습니다.', 404)
       if (indexOf(match, identity.uid) < 0) fail('MATCH_FORBIDDEN', '이 대전에 참여한 계정만 명령을 보낼 수 있습니다.', 403)
-      if (match.phase === 'finished' || await expireMatch(tx, match, timestamp)) return snapshot(tx, player.uid)
-      if (hasRequest(match, `${identity.uid}_${payload.requestId}`, requestHash)) return snapshot(tx, player.uid)
+      if (match.phase === 'finished' || await expireMatch(tx, match, timestamp)) return snapshot(tx, player.uid, { knownMatchId: match.id })
+      if (hasRequest(match, `${identity.uid}_${payload.requestId}`, requestHash)) return snapshot(tx, player.uid, { knownMatchId: match.id })
       const side = sideOf(match, identity.uid)
       if (action !== 'forfeit' && (!Number.isSafeInteger(payload.revision) || payload.revision !== match.revision)) fail('STALE_REVISION', '대전이 진행됐습니다. 최신 상태를 불러온 뒤 다시 선택해주세요.', 409)
       if (action === 'forfeit') {
         await settlement(tx, match, opposite(side), 'forfeit', timestamp)
-        return snapshot(tx, player.uid)
+        return snapshot(tx, player.uid, { knownMatchId: match.id })
       }
       remember(match, `${identity.uid}_${payload.requestId}`, requestHash)
       if (action === 'select') {
@@ -363,7 +378,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (!Number.isInteger(payload.targetIndex) || payload.targetIndex < 0 || payload.targetIndex >= getRankedFormat(match.format).battleSize) fail('INVALID_REPLACEMENT', '교체할 포켓몬을 다시 선택해주세요.')
         await afterEngine(tx, match, engine.resolveRankedReplacement(match.state, side, payload.targetIndex, seededRandom(seed)), timestamp)
       }
-      return snapshot(tx, player.uid)
+      return snapshot(tx, player.uid, { knownMatchId: match.id })
     })
   }
   return { execute }

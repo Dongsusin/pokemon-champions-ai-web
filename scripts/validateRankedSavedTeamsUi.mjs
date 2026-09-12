@@ -4,8 +4,10 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
-import { normalizePokemon } from '../src/data/trainingData.js'
+import { normalizePokemon, getMoveById } from '../src/data/trainingData.js'
 import { createSavedTeams } from '../src/data/teamData.js'
+import { createRankedProfile } from '../src/data/rankedRules.js'
+import { createRankedBattle, getRankedBattleView, getRankedTimelineView, resolveRankedTurn } from '../server/rankedBattle.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 // Exercise the production team picker with saved-team props and intercepted HTTP.
@@ -20,6 +22,24 @@ teams[2].name = '비바라기 팀'
 teams[2].pokemonIds = boxPokemon.slice(0, 6).reverse().map(pokemon => pokemon.captureId)
 teams[3].pokemonIds = [boxPokemon[0].captureId, 'removed-pokemon']
 teams[4].pokemonIds = boxPokemon.slice(6).map(pokemon => pokemon.captureId)
+const finalTurnStart = createRankedBattle({ format: 'single', playerName: '테스트 트레이너', opponentName: '상대 트레이너',
+  playerTeam: [25, 6, 9].map((speciesId, index) => normalizePokemon({ speciesId, captureId: `finish-player-${index}`,
+    moves: [getMoveById(index === 0 ? 'thunderbolt' : 'protect').name] })),
+  opponentTeam: [143, 94, 149].map((speciesId, index) => normalizePokemon({ speciesId, captureId: `finish-opponent-${index}`,
+    moves: [getMoveById(index === 0 ? 'tackle' : 'protect').name] })),
+})
+finalTurnStart.opponent.team.forEach((pokemon, index) => { pokemon.hp = index === 0 ? 1 : 0; pokemon.fainted = index !== 0 })
+const finalTurn = resolveRankedTurn(finalTurnStart, {
+  player: [{ type: 'move', actorSlot: 0, moveIndex: 0, targetSideId: 'opponent', targetSlot: 0 }],
+  opponent: [{ type: 'move', actorSlot: 0, moveIndex: 0, targetSideId: 'player', targetSlot: 0 }],
+}, () => .5)
+assert.equal(finalTurn.state.winner, 'player')
+const settledProfile = { single: { ...createRankedProfile('single'), points: 30, rating: 1016, wins: 1, played: 1, streak: 1 }, double: createRankedProfile('double') }
+const observedMatch = { id: 'saved-team-finished-match', format: 'single', phase: 'battle', revision: 7, timelineRevision: 7,
+  you: { name: '테스트 트레이너' }, opponent: { name: '상대 트레이너' }, state: getRankedBattleView(finalTurnStart, 'player'), timeline: [] }
+const finishedMatch = { ...observedMatch, phase: 'finished', revision: 8, timelineRevision: 8,
+  state: getRankedBattleView(finalTurn.state, 'player'), timeline: getRankedTimelineView(finalTurn.timeline, 'player'),
+  result: { outcome: 'win', reason: 'battle', ratingBefore: 1000, ratingAfter: 1016, ratingDelta: 16 } }
 const checks = [], errors = []
 async function test(name, run) {
   try { await run(); checks.push({ name, passed: true }); console.log(`PASS ${name}`) }
@@ -27,9 +47,11 @@ async function test(name, run) {
 }
 const entry = `import React,{StrictMode,useState} from 'react';import{createRoot}from'react-dom/client';import RankedBattleScreen from '/src/RankedBattleScreen.jsx';
 import '/src/styles.css';import '/src/screenRedesign.css';import '/src/battleHub.css';
-window.__savedTeamEvents={selected:[],opened:[],saved:0};window.__saveResult=true;
+window.__savedTeamEvents={selected:[],opened:[],saved:0,played:[],battleActive:[],results:0};window.__saveResult=true;
+let resultVisible=false;new MutationObserver(()=>{const visible=Boolean(document.querySelector('.ranked-result'));if(visible&&!resultVisible)window.__savedTeamEvents.results++;resultVisible=visible}).observe(document.documentElement,{childList:true,subtree:true});
 function Harness(){const[activeTeamId,setActiveTeamId]=useState('team-1');return React.createElement('div',{className:'app-shell ranked-view'},React.createElement(RankedBattleScreen,{
 user:{uid:'saved-team-ui',displayName:'테스트 트레이너'},teams:window.__fixture.teams,boxPokemon:window.__fixture.boxPokemon,activeTeamId,soundEnabled:false,
+gameSettings:{attackAnimation:'skip',hpBarSpeed:'instant'},onBattleActiveChange:active=>window.__savedTeamEvents.battleActive.push(active),
 onSelectTeam:id=>{window.__savedTeamEvents.selected.push(id);setActiveTeamId(id)},onOpenBox:()=>window.__savedTeamEvents.opened.push(activeTeamId),
 onBeforeJoin:async()=>{window.__savedTeamEvents.saved++;return window.__saveResult},onBack:()=>{}}))}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(Harness)));`
@@ -61,7 +83,8 @@ try {
     await context.route('**/ranked-saved-teams.html', route => route.fulfill({ contentType: 'text/html', body: html }))
     let snapshot = { profile: null, queue: null, match: null }
     let statusFailure = null, commandFailure = null
-    const requests = []
+    const requests = [], statusRequests = []
+    let deferredStatus = null
     await context.route('**/api/ranked*', async route => {
       const request = route.request()
       if (request.method() === 'POST') {
@@ -73,15 +96,34 @@ try {
         }
         if (payload.action === 'join') snapshot = { ...snapshot, queue: { ticket: 'saved-team-ticket', format: payload.format, queuedAt: Date.now() } }
         if (payload.action === 'cancel') snapshot = { ...snapshot, queue: null }
-      } else if (statusFailure) {
-        await route.fulfill({ status: statusFailure.status, contentType: 'application/json', body: JSON.stringify({ error: statusFailure.error }) })
-        return
+      } else {
+        statusRequests.push(Object.fromEntries(new URL(request.url()).searchParams))
+        if (deferredStatus) {
+          const deferred = deferredStatus
+          deferredStatus = null
+          deferred.started()
+          await deferred.wait
+          await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...deferred.snapshot, serverTime: Date.now() }) })
+          return
+        }
+        if (statusFailure) {
+          await route.fulfill({ status: statusFailure.status, contentType: 'application/json', body: JSON.stringify({ error: statusFailure.error }) })
+          return
+        }
       }
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...snapshot, serverTime: Date.now() }) })
     })
     const page = await context.newPage()
     page.setDefaultTimeout(10_000)
     page.on('pageerror', error => errors.push({ device: device.id, message: error.message }))
+    await context.route('**/src/BattleScreen.jsx', async route => {
+      const response = await route.fetch()
+      const original = await response.text()
+      const body = original.replace(/(onlineRef\.current\??\.onPlaybackComplete\?\.\(resolution\.remoteRevision\))/g,
+        'window.__savedTeamEvents.played.push(resolution.remoteRevision); $1')
+      assert.notEqual(body, original, 'BattleScreen playback observation hook was not installed')
+      await route.fulfill({ response, body })
+    })
     await page.goto(`http://127.0.0.1:${port}/ranked-saved-teams.html`)
     const click = locator => device.hasTouch ? locator.tap() : locator.click()
     const slot = number => page.getByRole('button', { name: new RegExp(`^팀 ${number},`) })
@@ -177,6 +219,90 @@ try {
       assert.match(await page.getByRole('alert').innerText(), /서버와 동기화된 팀/)
       assert(!(await findOpponent.isDisabled()))
       commandFailure = null
+    })
+    const refreshStatus = async () => {
+      await Promise.all([
+        page.waitForResponse(response => response.url().includes('/api/ranked') && response.request().method() === 'GET' && response.status() === 200),
+        page.evaluate(() => window.dispatchEvent(new Event('online'))),
+      ])
+    }
+    const assertSettledLobby = async () => {
+      await findOpponent.waitFor()
+      assert.equal(await page.locator('.ranked-result, .ranked-live-battle').count(), 0)
+      assert.match(await page.locator('.ranked-rank-badge').innerText(), /30 RP/)
+      assert.equal(await page.locator('.ranked-record strong').first().innerText(), '1')
+    }
+    await test(`${device.id}: reopening a completed battle keeps its score without replaying a legacy finished response`, async () => {
+      snapshot = { profile: settledProfile, queue: null, match: finishedMatch }
+      statusRequests.length = 0
+      await page.reload()
+      await assertSettledLobby()
+      await refreshStatus()
+      await assertSettledLobby()
+      assert.deepEqual(await page.evaluate(() => window.__savedTeamEvents.played), [])
+      assert(!(await page.evaluate(() => window.__savedTeamEvents.battleActive)).includes(true))
+      assert.equal(await page.evaluate(() => window.__savedTeamEvents.results), 0)
+      assert(statusRequests.length >= 2)
+      assert(statusRequests.every(request => !request.matchId), JSON.stringify(statusRequests))
+    })
+    await test(`${device.id}: reopening an unfinished battle still restores its server state`, async () => {
+      snapshot = { profile: { single: createRankedProfile('single'), double: createRankedProfile('double') }, queue: null, match: observedMatch }
+      await page.reload()
+      await page.locator('.ranked-live-battle').waitFor()
+      await page.waitForFunction(() => window.__savedTeamEvents.played.includes(7))
+      assert((await page.evaluate(() => window.__savedTeamEvents.battleActive)).includes(true))
+      await refreshStatus()
+      assert.equal(statusRequests.at(-1).matchId, observedMatch.id)
+      assert.equal(await page.locator('.ranked-result').count(), 0)
+    })
+    await test(`${device.id}: a watched battle plays its final turn and shows the settled result exactly once`, async () => {
+      snapshot = { profile: settledProfile, queue: null, match: finishedMatch }
+      await refreshStatus()
+      await page.locator('.ranked-result').waitFor()
+      assert.match(await page.locator('.ranked-result h2').innerText(), /승리/)
+      assert.match(await page.locator('.ranked-result-rating').innerText(), /1016/)
+      assert.equal(await page.evaluate(() => window.__savedTeamEvents.played.filter(revision => revision === 8).length), 1)
+      assert.equal(await page.evaluate(() => window.__savedTeamEvents.results), 1)
+      await refreshStatus()
+      assert.equal(await page.evaluate(() => window.__savedTeamEvents.played.filter(revision => revision === 8).length), 1)
+      assert.equal(await page.evaluate(() => window.__savedTeamEvents.results), 1)
+    })
+    await test(`${device.id}: leaving results clears match context and ignores an in-flight stale battle response`, async () => {
+      let release
+      const wait = new Promise(resolve => { release = resolve })
+      let started
+      const requestStarted = new Promise(resolve => { started = resolve })
+      // This request began while the result was visible. Its response arrives only
+      // after the player leaves, so it must not revive even an older battle phase.
+      deferredStatus = { wait, started, snapshot: { profile: settledProfile, queue: null, match: observedMatch } }
+      try {
+        await page.evaluate(() => window.dispatchEvent(new Event('online')))
+        await requestStarted
+        assert.equal(statusRequests.at(-1).matchId, finishedMatch.id)
+        const requestCount = statusRequests.length
+        await click(page.getByRole('button', { name: '레이팅 로비로', exact: true }))
+        await assertSettledLobby()
+        release()
+        await refreshStatus()
+        await assertSettledLobby()
+        await refreshStatus()
+        await assertSettledLobby()
+        const afterExit = statusRequests.slice(requestCount)
+        assert(afterExit.length > 0)
+        assert(afterExit.every(request => !request.matchId && !request.timelineRevision), JSON.stringify(afterExit))
+        assert.equal(await page.evaluate(() => window.__savedTeamEvents.played.filter(revision => revision === 8).length), 1)
+        assert.equal(await page.evaluate(() => window.__savedTeamEvents.results), 1)
+      } finally { release(); deferredStatus = null }
+    })
+    await test(`${device.id}: closing and reopening the lobby retains only the settled rating`, async () => {
+      snapshot = { profile: settledProfile, queue: null, match: null }
+      await page.reload()
+      await assertSettledLobby()
+      await refreshStatus()
+      await assertSettledLobby()
+      assert.deepEqual(await page.evaluate(() => window.__savedTeamEvents.played), [])
+      assert.equal(await page.evaluate(() => window.__savedTeamEvents.results), 0)
+      assert(!statusRequests.at(-1).matchId)
     })
     await context.close()
   }
