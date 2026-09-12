@@ -1,6 +1,6 @@
 # 레이팅 서버: 로컬 테스트와 배포 전 확인 사항
 
-레이팅 서버는 실제 로그인 계정의 Firebase ID 토큰으로 사용자를 확인하고 Firestore에서 경기와 등급을 관리한다. 2026-09-12 사용자 요청으로 운영 배포를 준비한다. 일반 개발·빌드에서는 `RANKED_ENABLED`가 기본적으로 꺼져 있고 `/api/ranked`는 503 `RANKED_DISABLED`를 반환한다.
+레이팅 서버는 실제 로그인 계정의 Firebase ID 토큰으로 사용자를 확인하고 Firestore에서 경기와 등급을 관리한다. 2026-09-12 사용자 승인으로 운영용 서버 인증 설정을 완료했다. 일반 개발·빌드에서는 `RANKED_ENABLED`가 기본적으로 꺼져 있고 `/api/ranked`는 503 `RANKED_DISABLED`를 반환한다.
 
 ## 두 사용자로 실행하기
 
@@ -72,13 +72,18 @@ Firestore는 `${prefix}_players`, `${prefix}_queue`, `${prefix}_matches`, `${pre
 
 운영 로그의 `Ranked server failure`는 `initialization`, `authentication`, `request` 단계와 허용된 Firebase/gRPC 오류 코드만 기록한다. 토큰, 관리자 자격 증명, SDK 오류 원문, 팀 자료는 출력하지 않는다. 기능을 끈 경우는 `RANKED_DISABLED`, 초기화·인증 서버 장애는 `RANKED_UNAVAILABLE`(503), 실제 만료·취소·잘못된 ID 토큰은 `UNAUTHENTICATED`(401)로 구분한다. 동기화 중 컬렉션과 진행 자료의 저장 리비전이 다르면 참가를 확정하지 않고 `ACCOUNT_SYNC_REQUIRED`(409)로 다시 동기화하도록 안내한다.
 
-로컬 파일 저장과 Firestore 어댑터 계약은 검증되었다. 2026-09-12 Vercel Production에 `6c2fa5f` 코드가 배포되었으며 운영 참가 플래그는 서버 인증키 등록 승인 전까지 꺼져 있다. 실제 운영 Firestore 인증과 두 계정 간 매칭은 아직 검증하지 않았다. 동시 접속 부하, 데이터 보존 정책과 요금은 후속 운영 검증 대상이다. 완료 매치 문서 정리 작업과 반복 상대를 이용한 점수 획득 방지 정책은 아직 추가하지 않았다.
+로컬 파일 저장과 Firestore 어댑터 계약은 검증되었다. 2026-09-12 전용 계정으로 실제 Firestore의 별도 검증 공간에서 싱글·더블 매칭과 정산 등 9개 검사를 통과했고 생성한 문서 8개를 정리했다. 이는 공개 API를 통한 두 Google 계정 간 대전 시험과 구분한다. 동시 접속 부하, 데이터 보존 정책과 요금은 후속 운영 검증 대상이다. 완료 매치 문서 정리 작업과 반복 상대를 이용한 점수 획득 방지 정책은 아직 추가하지 않았다.
+
+운영 공개키 인증서는 2027-09-12 만료된다. 해당 날짜 전에 새 키를 등록하고 Vercel Production Secret을 교체한 다음 인증된 API와 저장소 연결을 재검증해야 한다. 비밀 파일은 로컬의 Git 제외 경로에서만 다루며 문서나 소스에 내용을 기록하지 않는다. 공개키 등록 방식: [Google IAM 키 업로드](https://docs.cloud.google.com/iam/docs/keys-upload).
 
 ## 검증
 
 ```powershell
 node scripts/validateRankedService.mjs
 node scripts/validateRankedBattle.mjs
+node scripts/validateRankedFirestore.mjs --dry-run
 ```
+
+실제 Firestore 연결 검증은 `npm run validate:ranked-firestore -- --credentials <서비스계정JSON경로> --project-id <기대프로젝트ID>`로 실행한다. 임의의 `ranked_validation_...` 접두어만 사용하며 기존 사용자·운영 점수 컬렉션에는 쓰지 않는다. 종료 시 자신의 자료만 제거한 뒤 빈 상태를 확인한다. 검증용 식별자는 Firebase Auth 계정이 아니며 공개 API의 인증을 우회하는 경로는 제공하지 않는다.
 
 서비스 검증은 동시 매칭·취소 경쟁, 요청 중복, 리비전, 비공개 정보, 재접속, 결과 한 번 반영, 단계별 타임아웃, 파일 재시작, Firestore JSON 계약, 서버 소유권 확인, 인증 우회 방지, 실제 두 HTTP 클라이언트의 싱글/더블 기술 데미지와 승패 정산을 포함한다. 실제 Firebase/Vercel을 변경하지 않는다.

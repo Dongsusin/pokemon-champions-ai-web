@@ -1,6 +1,6 @@
 # 레이팅 배틀
 
-레이팅 배틀은 로그인한 실제 사용자끼리 저장된 팀으로 대전하는 모드다. 2026-09-12 사용자 요청으로 운영 배포를 준비하며, 활성화에는 아래 서버 인증 설정이 필요하다. 새 환경에서는 클라이언트 참가 기능과 서버 API가 기본 비활성화된다.
+레이팅 배틀은 로그인한 실제 사용자끼리 저장된 팀으로 대전하는 모드다. 2026-09-12 사용자 승인으로 운영용 서버 인증과 저장소를 구성했다. 새 환경에서는 클라이언트 참가 기능과 서버 API가 기본 비활성화되며, 아래 환경 설정을 적용해야 활성화된다.
 
 ## 저장된 팀으로 참가하기
 
@@ -59,7 +59,7 @@ npm run ranked:test
 
 ## 운영 환경 설정
 
-운영 대상은 `pokemon-champions-area-web.co.kr`이며 Firebase 프로젝트는 `pokemon-champions-arena-2026`이다. 서버 자격 증명 등록 후 다음 설정을 적용하고 배포한다.
+운영 대상은 `pokemon-champions-area-web.co.kr`이며 Firebase 프로젝트는 `pokemon-champions-arena-2026`이다. Vercel Production에 아래 설정을 저장했으며 새 배포부터 적용된다.
 
 1. 레이팅 서버 전용 서비스 계정에 `roles/datastore.user`와 `roles/firebaseauth.viewer`를 부여한다. 클라이언트에는 관리자 키를 넣지 않는다.
 2. Vercel Production에 `RANKED_FIREBASE_PROJECT_ID=pokemon-champions-arena-2026`, `RANKED_FIRESTORE_PREFIX=ranked`, 비밀값 `RANKED_FIREBASE_SERVICE_ACCOUNT_JSON`을 설정한다.
@@ -94,4 +94,6 @@ UI 자동 검증은 기존 프로젝트와 동일하게 `promo`의 Playwright �
 - 동일 연출을 알고 있는 상태 조회는 테스트한 더블 경기에서 약 454KB → 65KB로 줄었으며 연출 배열을 재전송하지 않음을 확인.
 - 테스트 서버 강제 종료 후 재실행 시 죽은 PID 잠금 자동 복구와 전적 보존 확인.
 - `6c2fa5f`를 `main`과 `codex/ranked-battles`에 푸시했고 Vercel Production 배포가 Ready 상태임을 확인했다. 실제 도메인의 최신 JS/CSS, 로비, AI/레이팅 분류 화면 진입을 확인했으며 검사 중 브라우저 경고·오류는 0건이었다.
-- 운영 서버 전용 Firebase 자격 증명 생성·Vercel 비밀 저장 승인은 대기 중이다. 따라서 운영 참가 플래그는 아직 꺼져 있으며 `/api/ranked`는 의도한 503 `RANKED_DISABLED`를 반환한다. 실제 운영 계정 간 매칭·Firestore 통합 및 외부 네트워크 부하 검증은 아직 수행하지 않았다.
+- 사용자 승인 후 전용 서비스 계정과 최소 역할을 구성하고 Vercel Production에 관리자 자격 증명을 Secret으로 등록했다. 로컬에서 만든 RSA 키의 공개 인증서만 Google에 등록했으며 비공개 자료는 Git에서 제외했다.
+- 실제 Firestore에서 독립된 검증용 네임스페이스로 싱글·더블 매칭, 동시 명령, 피해, 새 서비스 복구, 중복 기권의 단일 점수 정산 등 9개 검증을 통과했다. 생성한 8개 문서를 정리하고 5개 컬렉션이 비었음을 확인했다. 실제 사용자 프로필·등급은 수정하지 않았다.
+- 위 검증은 Firebase Auth 사용자 두 명의 공개 API 대전 시험과 구분한다. 실제 두 Google 계정 간 전체 대전과 외부 네트워크 부하 시험은 아직 수행하지 않았다.
