@@ -93,4 +93,5 @@ UI 자동 검증은 기존 프로젝트와 동일하게 `promo`의 Playwright �
 - `npm run build` 성공. 기존 대형 번들 경고는 남아 있다. `npm audit --omit=dev` 취약점 0건.
 - 동일 연출을 알고 있는 상태 조회는 테스트한 더블 경기에서 약 454KB → 65KB로 줄었으며 연출 배열을 재전송하지 않음을 확인.
 - 테스트 서버 강제 종료 후 재실행 시 죽은 PID 잠금 자동 복구와 전적 보존 확인.
-- 운영 서버 전용 Firebase 자격 증명 등록과 실제 Firestore 통합 검증은 진행 전이다. 외부 네트워크 부하 검증은 아직 수행하지 않았다.
+- `6c2fa5f`를 `main`과 `codex/ranked-battles`에 푸시했고 Vercel Production 배포가 Ready 상태임을 확인했다. 실제 도메인의 최신 JS/CSS, 로비, AI/레이팅 분류 화면 진입을 확인했으며 검사 중 브라우저 경고·오류는 0건이었다.
+- 운영 서버 전용 Firebase 자격 증명 생성·Vercel 비밀 저장 승인은 대기 중이다. 따라서 운영 참가 플래그는 아직 꺼져 있으며 `/api/ranked`는 의도한 503 `RANKED_DISABLED`를 반환한다. 실제 운영 계정 간 매칭·Firestore 통합 및 외부 네트워크 부하 검증은 아직 수행하지 않았다.

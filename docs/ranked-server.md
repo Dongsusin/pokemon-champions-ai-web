@@ -72,7 +72,7 @@ Firestore는 `${prefix}_players`, `${prefix}_queue`, `${prefix}_matches`, `${pre
 
 운영 로그의 `Ranked server failure`는 `initialization`, `authentication`, `request` 단계와 허용된 Firebase/gRPC 오류 코드만 기록한다. 토큰, 관리자 자격 증명, SDK 오류 원문, 팀 자료는 출력하지 않는다. 기능을 끈 경우는 `RANKED_DISABLED`, 초기화·인증 서버 장애는 `RANKED_UNAVAILABLE`(503), 실제 만료·취소·잘못된 ID 토큰은 `UNAUTHENTICATED`(401)로 구분한다. 동기화 중 컬렉션과 진행 자료의 저장 리비전이 다르면 참가를 확정하지 않고 `ACCOUNT_SYNC_REQUIRED`(409)로 다시 동기화하도록 안내한다.
 
-로컬 파일 저장과 Firestore 어댑터 계약은 검증되었지만, 현재 요청에서는 실제 운영 Firestore에 접속해 부하·비용·보안 규칙을 시험하지 않았다. 공개 전에는 별도의 테스트 프로젝트에서 인증, 트랜잭션 재시도, 동시 접속 부하, 데이터 보존 정책과 요금을 확인한다. 완료 매치 문서 정리 작업과 반복 상대를 이용한 점수 획득 방지 정책은 아직 추가하지 않았다.
+로컬 파일 저장과 Firestore 어댑터 계약은 검증되었다. 2026-09-12 Vercel Production에 `6c2fa5f` 코드가 배포되었으며 운영 참가 플래그는 서버 인증키 등록 승인 전까지 꺼져 있다. 실제 운영 Firestore 인증과 두 계정 간 매칭은 아직 검증하지 않았다. 동시 접속 부하, 데이터 보존 정책과 요금은 후속 운영 검증 대상이다. 완료 매치 문서 정리 작업과 반복 상대를 이용한 점수 획득 방지 정책은 아직 추가하지 않았다.
 
 ## 검증
 
