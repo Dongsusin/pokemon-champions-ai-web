@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Clock3, Flag, LoaderCircle, RefreshCw, Shield, Swords, Trophy, UsersRound, Wifi, WifiOff } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import SpriteImage from './SpriteImage'
+import RankedTeamRoster from './RankedTeamRoster'
 import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS, RANKED_TIERS, createRankedProfile, getRankedTier } from './data/rankedRules'
 import { getSpeciesProfile } from './data/trainingData'
@@ -293,7 +294,7 @@ export default function RankedBattleScreen({
           aria-label={`팀 ${index + 1}, ${team.pokemonIds.length}마리 편성`} aria-pressed={selectedTeam?.id === team.id} disabled={teamSelectionLocked}
           onClick={() => onSelectTeam?.(team.id)}><strong>팀 {index + 1}</strong><span>{team.pokemonIds.length} / {BATTLE_TEAM_SIZE}</span></button>)}</div>}
         <div className="ranked-roster-heading"><strong>{selectedTeam?.name ?? '출전 팀'}</strong><span className={teamReady ? 'ready' : ''}>{teamReady ? <><Check size={14} /> 편성 완료</> : `${roster.length} / ${BATTLE_TEAM_SIZE}마리 편성`}</span></div>
-        <div className="ranked-six-grid" aria-label="선택한 팀 포켓몬">{Array.from({ length: BATTLE_TEAM_SIZE }, (_, index) => roster[index] ? <PokemonCard pokemon={roster[index]} index={index} key={index} /> : <div className="ranked-pokemon-card empty" key={index}><span>+</span><small>팀 편성 필요</small></div>)}</div>
+        <RankedTeamRoster key={selectedTeam?.id ?? 'roster'} pokemon={roster} />
         {!teamReady && <p className="ranked-team-help" role="status">{selectedTeam?.name ?? '선택한 팀'}에 포켓몬 {BATTLE_TEAM_SIZE - roster.length}마리를 더 편성하면 참가할 수 있습니다.</p>}
         <div className="ranked-rule-summary"><Shield size={19} /><p>6마리 등록 · {currentFormat.battleSize}마리 선출 · Lv.50<br /><span>상대와 동시에 명령을 선택하는 실제 유저 대전</span></p></div>
         {snapshot.queue ? <div className="ranked-queue" role="status"><LoaderCircle className="ranked-spin" size={31} /><div><h2>대전 상대를 찾고 있습니다</h2><p>참가한 다른 트레이너를 기다리는 중입니다.</p><strong>{clockText(Math.floor((now + serverOffset - timeValue(snapshot.queue.queuedAt)) / 1000) || 0)}</strong></div>
