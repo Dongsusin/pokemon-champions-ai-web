@@ -6,7 +6,6 @@ const KEYBOARD_HEIGHT_RATIO = 0.62
 const viewportMeta = document.querySelector('meta[name="viewport"]')
 const touchPointerQuery = window.matchMedia('(hover: none) and (pointer: coarse)')
 const landscapeQuery = window.matchMedia('(orientation: landscape)')
-const standaloneQuery = window.matchMedia('(display-mode: standalone)')
 const MOBILE_USER_AGENT_PATTERN = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
 
 let syncFrame = null
@@ -100,34 +99,8 @@ function scheduleMobileViewportSync() {
   }, 240)
 }
 
-export async function requestLandscapeMode() {
-  if (landscapeQuery.matches) {
-    scheduleMobileViewportSync()
-    return true
-  }
-
-  const orientation = window.screen?.orientation
-  if (typeof orientation?.lock !== 'function') return false
-
-  try {
-    if (!document.fullscreenElement && typeof document.documentElement.requestFullscreen === 'function') {
-      await document.documentElement.requestFullscreen()
-    }
-    await orientation.lock('landscape')
-    scheduleMobileViewportSync()
-    return true
-  } catch {
-    scheduleMobileViewportSync()
-    return landscapeQuery.matches
-  }
-}
-
 syncMobileViewport()
 scheduleMobileViewportSync()
-
-if (standaloneQuery.matches && typeof window.screen?.orientation?.lock === 'function') {
-  window.screen.orientation.lock('landscape').catch(() => {})
-}
 
 window.addEventListener('orientationchange', scheduleMobileViewportSync)
 window.addEventListener('resize', scheduleMobileViewportSync, { passive: true })

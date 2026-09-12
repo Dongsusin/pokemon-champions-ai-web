@@ -120,35 +120,6 @@
   line-height: 1.65;
 }
 
-.landscape-orientation-button {
-  display: inline-flex;
-  min-width: 210px;
-  min-height: 48px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 5px;
-  padding: 0 22px;
-  border: 1px solid rgba(190, 250, 255, 0.72);
-  border-radius: 15px;
-  color: #071333;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 950;
-  background: linear-gradient(135deg, #75f3ff, #b7ff63);
-  box-shadow: 0 10px 28px rgba(75, 228, 255, 0.24);
-  cursor: pointer;
-}
-
-.landscape-orientation-button:active {
-  transform: translateY(1px) scale(0.985);
-}
-
-.landscape-orientation-button:disabled {
-  opacity: 0.72;
-  cursor: wait;
-}
-
 .landscape-orientation-card small {
   max-width: 330px;
   color: #ffd987;
