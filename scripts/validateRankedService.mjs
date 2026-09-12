@@ -472,7 +472,7 @@ test('production startup and authentication outages remain distinct from invalid
   const logs = []
   const originalLog = console.error
   console.error = (...values) => logs.push(values)
-  const saved = Object.fromEntries(['RANKED_ENABLED', 'RANKED_FIREBASE_PROJECT_ID', 'RANKED_FIRESTORE_PREFIX'].map(key => [key, process.env[key]]))
+  const saved = Object.fromEntries(['RANKED_ENABLED', 'RANKED_FIREBASE_PROJECT_ID', 'RANKED_FIRESTORE_PREFIX', 'RANKED_FIREBASE_SERVICE_ACCOUNT_JSON'].map(key => [key, process.env[key]]))
   try {
     process.env.RANKED_ENABLED = 'true'
     delete process.env.RANKED_FIREBASE_PROJECT_ID
@@ -480,6 +480,11 @@ test('production startup and authentication outages remain distinct from invalid
     const startup = await handleProductionRankedRequest(new Request('https://game.example/api/ranked'))
     assert.equal(startup.status, 503)
     assert.equal((await startup.json()).error.code, 'RANKED_UNAVAILABLE')
+    process.env.RANKED_FIREBASE_PROJECT_ID = 'ranked-validation'
+    process.env.RANKED_FIRESTORE_PREFIX = 'rankedValidation'
+    process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON = '{private-credential-content'
+    const malformedCredential = await handleProductionRankedRequest(new Request('https://game.example/api/ranked'))
+    assert.equal(malformedCredential.status, 503)
     const request = () => new Request('https://game.example/api/ranked', { headers: { Authorization: 'Bearer private-id-token' } })
     for (const [code, status] of [['auth/id-token-expired', 401], ['auth/invalid-credential', 503], ['auth/certificate-fetch-failed', 503]]) {
       const handler = createRankedHttpHandler({ enabled: true, service: {}, authenticate: async () => { throw Object.assign(new Error('private-credential-content'), { code }) } })
@@ -490,6 +495,7 @@ test('production startup and authentication outages remain distinct from invalid
     const printed = JSON.stringify(logs)
     assert.ok(printed.includes('initialization') && printed.includes('ranked/configuration-incomplete'))
     assert.ok(printed.includes('authentication') && printed.includes('auth/invalid-credential'))
+    assert.ok(printed.includes('credential-json') && printed.includes('SyntaxError'))
     assert.ok(!printed.includes('private-id-token') && !printed.includes('private-credential-content'))
   } finally {
     console.error = originalLog

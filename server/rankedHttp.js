@@ -20,14 +20,23 @@ const DIAGNOSTIC_CODES = new Set([
   'auth/insufficient-permission', 'auth/certificate-fetch-failed',
   'app/invalid-credential', 'app/network-error', 'app/network-timeout',
   'ranked/configuration-incomplete', 'ranked/project-mismatch',
+  'ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND', 'ERR_REQUIRE_ESM',
+  'ERR_PACKAGE_PATH_NOT_EXPORTED', 'ERR_REQUIRE_ASYNC_MODULE',
 ])
+const STARTUP_STEPS = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'battle-engine', 'credential-json', 'credential', 'firebase-client', 'store'])
 
 function logFailure(stage, error) {
   // SDK error messages/stacks may contain credentials, tokens, or private paths.
   // Log only our stage and a known SDK / gRPC status code.
   const code = DIAGNOSTIC_CODES.has(error?.code) ? error.code
     : Number.isInteger(error?.code) && error.code >= 0 && error.code <= 16 ? `grpc/${error.code}` : 'unknown'
-  console.error('Ranked server failure', { stage, code })
+  const step = STARTUP_STEPS.has(error?.rankedStartupStep) ? error.rankedStartupStep : undefined
+  const type = ['SyntaxError', 'TypeError', 'ReferenceError'].includes(error?.name) ? error.name : undefined
+  console.error('Ranked server failure', { stage, code, ...(step ? { step } : {}), ...(type ? { type } : {}) })
+}
+
+async function startupModule(step, promise) {
+  try { return await promise } catch (error) { error.rankedStartupStep = step; throw error }
 }
 
 export function createLocalRankedAuthenticator({ enabled, production = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL) } = {}) {
@@ -152,11 +161,16 @@ export async function handleProductionRankedRequest(request) {
     productionHandler = (async () => {
       if (!process.env.RANKED_FIREBASE_PROJECT_ID || !process.env.RANKED_FIRESTORE_PREFIX) throw Object.assign(new Error('Ranked production configuration is incomplete'), { code: 'ranked/configuration-incomplete' })
       const [{ initializeApp, getApps, applicationDefault, cert }, { getAuth }, { getFirestore }, engine] = await Promise.all([
-        import('firebase-admin/app'), import('firebase-admin/auth'), import('firebase-admin/firestore'), import('./rankedBattle.js'),
+        startupModule('firebase-app', import('firebase-admin/app')),
+        startupModule('firebase-auth', import('firebase-admin/auth')),
+        startupModule('firebase-firestore', import('firebase-admin/firestore')),
+        startupModule('battle-engine', import('./rankedBattle.js')),
       ])
       const options = { projectId: process.env.RANKED_FIREBASE_PROJECT_ID }
       if (process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON) {
-        const credential = JSON.parse(process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON)
+        let credential
+        try { credential = JSON.parse(process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON) }
+        catch (error) { error.rankedStartupStep = 'credential-json'; throw error }
         if (credential.project_id !== options.projectId) throw Object.assign(new Error('Ranked service account project mismatch'), { code: 'ranked/project-mismatch' })
         options.credential = cert(credential)
       } else options.credential = applicationDefault()
