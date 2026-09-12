@@ -323,6 +323,7 @@ function GameApp({
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
   const soundEnabled = settings.audio.enabled
+  const battleMusicActive = screen === 'battle' || rankedBattleActive
   const isGuest = Boolean(user.isLocalGuest)
   const trainerName = user.displayName?.trim()
     || user.email?.split('@')[0]
@@ -390,8 +391,8 @@ function GameApp({
   }, [settings.audio])
 
   useEffect(() => {
-    gameAudioRef.current?.setScene(screen === 'battle' || rankedBattleActive ? null : screen)
-  }, [screen, rankedBattleActive])
+    gameAudioRef.current?.setScene(battleMusicActive ? null : 'menu')
+  }, [battleMusicActive])
 
   useEffect(() => {
     if (screen === 'battle' || rankedBattleActive) return undefined

@@ -18,6 +18,7 @@
     "validate:move-quality": "node scripts/validateMoveAnimationCoverage.mjs && node scripts/validateMoveChoreography.mjs && node scripts/validateMovePainter.mjs",
     "validate:move-sounds": "node scripts/validateMoveSoundCoverage.mjs",
     "generate:battle-sounds": "node scripts/generateBattleSoundAssets.mjs",
+    "validate:game-audio": "node scripts/validateGameAudio.mjs",
     "validate:battle-audio": "node scripts/validateMoveSoundCoverage.mjs && node scripts/validateBattleAudio.mjs",
     "validate:battle-ai": "node scripts/validateBattleAi.mjs",
     "validate:battle-ai-decks": "node scripts/validateBattleAiDeckCoverage.mjs",

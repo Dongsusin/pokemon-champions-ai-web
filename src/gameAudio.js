@@ -1,43 +1,4 @@
-const SCENE_THEMES = {
-  lobby: {
-    bpm: 116,
-    melody: [659, 784, 988, 784, 698, 784, 1047, 988, 659, 784, 880, 784, 587, 698, 784, 0],
-    bass: [131, 147, 165, 147],
-  },
-  hatch: {
-    bpm: 124,
-    melody: [784, 988, 1175, 1568, 1175, 988, 880, 1175, 784, 1047, 1319, 1760, 1319, 1047, 988, 0],
-    bass: [147, 196, 165, 220],
-    sparkle: true,
-  },
-  training: {
-    bpm: 108,
-    melody: [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 988, 880, 784, 659, 0],
-    bass: [131, 165, 147, 196],
-  },
-  box: {
-    bpm: 112,
-    melody: [587, 698, 880, 698, 659, 784, 988, 784, 587, 698, 784, 698, 523, 659, 698, 0],
-    bass: [147, 165, 131, 147],
-  },
-  shop: {
-    bpm: 126,
-    melody: [659, 880, 988, 880, 784, 988, 1175, 988, 698, 880, 1047, 880, 659, 784, 988, 0],
-    bass: [165, 196, 147, 196],
-  },
-  'battle-select': {
-    bpm: 122,
-    melody: [392, 523, 659, 784, 659, 784, 880, 988, 392, 523, 698, 880, 784, 698, 659, 0],
-    bass: [98, 110, 131, 110],
-    march: true,
-  },
-  competition: {
-    bpm: 132,
-    melody: [523, 659, 784, 1047, 784, 988, 1175, 988, 523, 698, 880, 1047, 988, 880, 784, 0],
-    bass: [98, 131, 110, 147],
-    march: true,
-  },
-}
+import { MENU_MUSIC_TRACKS } from './data/menuMusic.js'
 
 const MASTER_VOLUME = 0.94
 const MUSIC_VOLUME = 0.16
@@ -83,7 +44,10 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
   let schedulerTimer = null
   let nextMusicTime = 0
   let musicStep = 0
-  let currentScene = 'lobby'
+  let musicTrackIndex = 0
+  let scheduledMusicSteps = []
+  const musicSources = new Map()
+  let menuMusicActive = true
   let enabled = Boolean(initialEnabled)
   let mix = mergeAudioMix(DEFAULT_AUDIO_MIX, initialMix)
   let activated = false
@@ -112,7 +76,7 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
     compressor = context.createDynamicsCompressor()
 
     masterGain.gain.value = enabled ? MASTER_VOLUME * mix.master : 0
-    musicGain.gain.value = MUSIC_VOLUME * mix.music
+    musicGain.gain.value = menuMusicActive ? MUSIC_VOLUME * mix.music : 0
     uiGain.gain.value = UI_VOLUME * mix.ui
     eventGain.gain.value = EVENT_VOLUME * mix.event
     compressor.threshold.value = -20
@@ -127,6 +91,15 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
     masterGain.connect(compressor)
     compressor.connect(context.destination)
     return context
+  }
+
+  const trackMusicSource = (source, start, bus) => {
+    if (bus !== 'music') return
+    musicSources.set(source, start)
+    source.onended = () => {
+      musicSources.delete(source)
+      source.disconnect()
+    }
   }
 
   const tone = (frequency, start, duration, options = {}) => {
@@ -167,6 +140,7 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
     }
 
     lastNode.connect(output)
+    trackMusicSource(oscillator, start, options.bus)
     oscillator.start(start)
     oscillator.stop(end + 0.025)
   }
@@ -203,6 +177,7 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
       envelope.connect(output)
     }
 
+    trackMusicSource(source, start, options.bus)
     source.start(start)
     source.stop(start + duration + 0.025)
   }
@@ -231,7 +206,7 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
       tone(melody, start, stepDuration * 0.78, {
         bus: 'music',
         volume: melodyIndex % 4 === 0 ? 0.135 : 0.102,
-        wave: 'square',
+        wave: theme.wave ?? 'square',
         pan: melodyIndex % 2 === 0 ? -0.12 : 0.12,
         filter: { frequency: 2600, q: 0.45 },
       })
@@ -275,29 +250,50 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
   }
 
   const schedulerTick = () => {
-    const theme = SCENE_THEMES[currentScene]
-    if (!activated || !enabled || !theme || !context) return
-    const lookAhead = context.currentTime + 0.22
-    const stepDuration = 60 / theme.bpm / 2
+    if (!activated || !enabled || !menuMusicActive || !context) return
+    const now = context.currentTime
+    const lookAhead = now + 0.22
+    scheduledMusicSteps = scheduledMusicSteps.filter(step => step.start >= now)
+    // A throttled background timer must not play all missed notes at once.
+    if (nextMusicTime < now) nextMusicTime = now + 0.025
 
     while (nextMusicTime < lookAhead) {
+      let theme = MENU_MUSIC_TRACKS[musicTrackIndex]
+      if (musicStep >= theme.melody.length * theme.loops) {
+        musicTrackIndex = (musicTrackIndex + 1) % MENU_MUSIC_TRACKS.length
+        musicStep = 0
+        theme = MENU_MUSIC_TRACKS[musicTrackIndex]
+      }
+      scheduledMusicSteps.push({ trackIndex: musicTrackIndex, step: musicStep, start: nextMusicTime })
       scheduleMusicStep(theme, musicStep, nextMusicTime)
       musicStep += 1
-      nextMusicTime += stepDuration
+      // Carry the same audio timeline across songs, including tempo changes.
+      nextMusicTime += 60 / theme.bpm / 2
     }
   }
 
   const stopMusic = () => {
-    if (schedulerTimer) window.clearInterval(schedulerTimer)
+    if (schedulerTimer !== null) window.clearInterval(schedulerTimer)
     schedulerTimer = null
+    const now = context?.currentTime ?? 0
+    // Return queued, unheard notes to the playback cursor before pausing.
+    const pendingStep = scheduledMusicSteps.find(step => step.start >= now)
+    if (pendingStep) {
+      musicTrackIndex = pendingStep.trackIndex
+      musicStep = pendingStep.step
+    }
+    scheduledMusicSteps = []
+    for (const [source, start] of musicSources) {
+      try { source.stop(start >= now ? now : now + 0.035) } catch { /* Already ended. */ }
+    }
+    musicSources.clear()
   }
 
   const startMusic = () => {
     const audio = ensureContext()
-    if (!audio || !activated || !enabled || !SCENE_THEMES[currentScene]) return
-    if (!schedulerTimer) {
+    if (!audio || !activated || !enabled || !menuMusicActive) return
+    if (schedulerTimer === null) {
       nextMusicTime = audio.currentTime + 0.06
-      musicStep = 0
       schedulerTick()
       schedulerTimer = window.setInterval(schedulerTick, 70)
     }
@@ -445,28 +441,23 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
   }
 
   const setScene = (nextScene) => {
-    const normalizedScene = SCENE_THEMES[nextScene] ? nextScene : null
-    if (currentScene === normalizedScene) return
-    currentScene = normalizedScene
-    stopMusic()
+    // Every menu shares one playlist; only an explicit battle boundary pauses it.
+    const nextActive = nextScene != null && nextScene !== 'battle'
+    if (menuMusicActive === nextActive) return
+    menuMusicActive = nextActive
+    if (!nextActive) stopMusic()
+    if (!context || !activated) return
 
-    if (!context || !activated || !enabled) return
     const now = context.currentTime
     musicGain.gain.cancelScheduledValues(now)
-    musicGain.gain.setTargetAtTime(0.001, now, 0.025)
-
-    if (normalizedScene) {
-      musicGain.gain.setTargetAtTime(MUSIC_VOLUME * mix.music, now + 0.1, 0.08)
-      musicStep = 0
-      nextMusicTime = now + 0.12
-      startMusic()
-      tone(523, now + 0.12, 0.07, { volume: 0.055, wave: 'square', pan: -0.1 })
-      tone(784, now + 0.18, 0.09, { volume: 0.045, wave: 'square', pan: 0.1 })
-    }
+    musicGain.gain.setTargetAtTime(nextActive ? MUSIC_VOLUME * mix.music : 0, now, 0.018)
+    if (nextActive && enabled) startMusic()
   }
 
   const setEnabled = (nextEnabled) => {
-    enabled = Boolean(nextEnabled)
+    const nextValue = Boolean(nextEnabled)
+    if (enabled === nextValue) return
+    enabled = nextValue
     if (!activated && !context) return
     const audio = enabled ? ensureContext() : context
     if (!audio || !masterGain) return
@@ -486,7 +477,7 @@ export function createGameAudio(initialEnabled = true, initialMix = {}) {
     if (!context) return
     const now = context.currentTime
     masterGain.gain.setTargetAtTime(enabled ? MASTER_VOLUME * mix.master : 0, now, 0.025)
-    musicGain.gain.setTargetAtTime(MUSIC_VOLUME * mix.music, now, 0.04)
+    musicGain.gain.setTargetAtTime(menuMusicActive ? MUSIC_VOLUME * mix.music : 0, now, 0.04)
     uiGain.gain.setTargetAtTime(UI_VOLUME * mix.ui, now, 0.025)
     eventGain.gain.setTargetAtTime(EVENT_VOLUME * mix.event, now, 0.025)
   }
