@@ -1,6 +1,6 @@
 # 레이팅 서버: 로컬 테스트와 배포 전 확인 사항
 
-이 변경은 **로컬 테스트용 구현**이다. 현재 요청 범위에서는 Vercel 배포, 운영 환경변수 변경, 운영 Firebase 데이터 변경, 원격 브랜치 푸시를 하지 않는다. 일반 개발·빌드에서는 `RANKED_ENABLED`가 기본적으로 꺼져 있고 `/api/ranked`는 503 `RANKED_DISABLED`를 반환한다.
+레이팅 서버는 실제 로그인 계정의 Firebase ID 토큰으로 사용자를 확인하고 Firestore에서 경기와 등급을 관리한다. 2026-09-12 사용자 요청으로 운영 배포를 준비한다. 일반 개발·빌드에서는 `RANKED_ENABLED`가 기본적으로 꺼져 있고 `/api/ranked`는 503 `RANKED_DISABLED`를 반환한다.
 
 ## 두 사용자로 실행하기
 
@@ -51,22 +51,26 @@ npm run ranked:test
 
 기본 응답은 `{profile: {single, double}, queue, match, serverTime}`이다. 매치는 `phase: select/battle/finished`, `revision`, `timelineRevision`, 개인화된 `state`, `timeline`, 제출 여부, 서버 제한 시간, 자기 결과를 제공한다. 상태 폴링에 `matchId`와 이미 받은 `timelineRevision`을 함께 보내면 같은 연출의 대용량 재전송을 생략한다. 이때 `timeline`만 빈 배열이고 현재 상태는 계속 반환한다. 오류는 `{error: {code, message}}`이며 클라이언트는 409 이후 최신 상태를 다시 불러온다.
 
-## 향후 운영을 켤 때 필요한 설정
+## 운영 설정
 
-이 절차는 아직 실행하지 않는다. 추후 배포 승인이 있어야 진행한다.
+Vercel Production에서 아래 설정을 사용한다. 서버 계정 생성과 비밀 키 등록은 별도 인증 설정 단계다.
 
 | 서버 환경변수 | 의미 |
 | --- | --- |
 | `RANKED_ENABLED=true` | HTTP 서버 활성화 |
-| `RANKED_FIREBASE_PROJECT_ID` | 실제 게임 계정의 Firebase 프로젝트 |
-| `RANKED_FIRESTORE_PREFIX` | 레이팅 전용 컬렉션 이름 접두어 |
+| `RANKED_FIREBASE_PROJECT_ID=pokemon-champions-arena-2026` | 실제 게임 계정의 Firebase 프로젝트 |
+| `RANKED_FIRESTORE_PREFIX=ranked` | 운영 레이팅 전용 컬렉션 이름 접두어 |
 | `RANKED_FIREBASE_SERVICE_ACCOUNT_JSON` | 서버 전용 서비스 계정 JSON. 생략 시 ADC 사용 |
 
 서비스 계정이나 토큰을 `VITE_` 변수, 소스, 커밋에 넣지 않는다. Firebase Admin은 만료·취소된 ID 토큰과 비활성 계정을 거절한다. 실제 계정의 팀은 `players/{uid}/gameData/collection`의 저장된 보유 포켓몬으로 다시 구성한다. 요청 본문에 넣은 종·능력치·도구를 그대로 채택하지 않는다. 장착 도구는 `progress` 문서의 보유 도구 정보도 확인한다.
 
+전용 서비스 계정은 Firestore 읽기/쓰기용 `roles/datastore.user`와 취소·비활성 계정 확인용 `roles/firebaseauth.viewer`를 사용한다. 후자의 읽기 권한에는 인증 사용자 정보 조회가 포함되므로 비밀 키는 Vercel 서버에서만 보관한다. 참고: [Firestore IAM](https://firebase.google.com/docs/firestore/security/iam), [Firebase Authentication 역할](https://docs.cloud.google.com/iam/docs/roles-permissions/firebaseauth).
+
 현재 게임의 기존 보유 데이터 자체는 클라이언트 동기화 방식으로 저장된다. 따라서 이 구현은 **계정 저장에 없는 포켓몬 등록 및 전투 명령 변조를 차단**하지만, 기존 수집/재화 저장 시스템 전체를 변조 불가능한 서버 게임으로 전환한 것은 아니다. 공개 경쟁 시즌 전에는 수집·재화 획득 검증과 부정 사용 대응이 별도로 필요하다.
 
-Firestore는 `${prefix}_players`, `${prefix}_queue`, `${prefix}_matches`, `${prefix}_timelines`, `${prefix}_meta`를 서버 권한으로만 읽고 쓴다. 클라이언트 규칙으로 이 컬렉션을 열지 않는다. 대전 상태는 중첩 배열을 보존하는 JSON 문자열로 저장하고, 문서당 850KB 상한을 둔다. 연출은 700KB 이하 청크로 나눠 별도 저장하고 다음 연출 생성 때 이전 청크를 제거한다. 매칭은 로비 문서, 턴/결과는 매치와 양쪽 프로필을 Firestore 트랜잭션으로 함께 보호한다.
+Firestore는 `${prefix}_players`, `${prefix}_queue`, `${prefix}_matches`, `${prefix}_timelines`, `${prefix}_meta`를 서버 권한으로만 읽고 쓴다. 클라이언트 규칙으로 이 컬렉션을 열지 않는다. 대전 상태는 중첩 배열을 보존하는 JSON 문자열로 저장하고, 문서당 850KB 상한을 둔다. 연출은 700KB 이하 청크로 나눠 별도 저장하고 다음 연출 생성 때 이전 청크를 제거한다. 한 번의 전체 연출은 3.5MB를 넘지 않아야 하며, 이를 넘어서는 엔진 결과는 저장 전에 트랜잭션 전체를 취소한다. 이는 이전 연출 삭제와 새 연출 저장이 함께 일어나는 Firestore 트랜잭션 크기 및 Vercel 응답 크기에 여유를 남긴다. 매칭은 로비 문서, 턴/결과는 매치와 양쪽 프로필을 Firestore 트랜잭션으로 함께 보호한다.
+
+운영 로그의 `Ranked server failure`는 `initialization`, `authentication`, `request` 단계와 허용된 Firebase/gRPC 오류 코드만 기록한다. 토큰, 관리자 자격 증명, SDK 오류 원문, 팀 자료는 출력하지 않는다. 기능을 끈 경우는 `RANKED_DISABLED`, 초기화·인증 서버 장애는 `RANKED_UNAVAILABLE`(503), 실제 만료·취소·잘못된 ID 토큰은 `UNAUTHENTICATED`(401)로 구분한다. 동기화 중 컬렉션과 진행 자료의 저장 리비전이 다르면 참가를 확정하지 않고 `ACCOUNT_SYNC_REQUIRED`(409)로 다시 동기화하도록 안내한다.
 
 로컬 파일 저장과 Firestore 어댑터 계약은 검증되었지만, 현재 요청에서는 실제 운영 Firestore에 접속해 부하·비용·보안 규칙을 시험하지 않았다. 공개 전에는 별도의 테스트 프로젝트에서 인증, 트랜잭션 재시도, 동시 접속 부하, 데이터 보존 정책과 요금을 확인한다. 완료 매치 문서 정리 작업과 반복 상대를 이용한 점수 획득 방지 정책은 아직 추가하지 않았다.
 

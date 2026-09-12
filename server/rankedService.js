@@ -8,6 +8,9 @@ const REPLACEMENT_TIMEOUT = 45_000
 const MAX_TURNS = 300
 const MAX_QUEUE = 200
 const REQUEST_HISTORY = 64
+// Leave room for the match document and Firestore deleting the previous
+// timeline in the same 10 MiB transaction, as well as Vercel's response limit.
+const MAX_TIMELINE_BYTES = 3_500_000
 const clone = value => structuredClone(value)
 
 export class RankedError extends Error {
@@ -219,8 +222,11 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     const chunks = []
     let frames = []
     let bytes = 0
+    let totalBytes = 2
     for (const frame of result.timeline ?? []) {
       const size = Buffer.byteLength(JSON.stringify(frame), 'utf8')
+      totalBytes += size + 1
+      if (totalBytes > MAX_TIMELINE_BYTES) throw new RankedError('BATTLE_STATE_TOO_LARGE', '대전 연출이 저장 한도를 넘었습니다. 운영자에게 문의해주세요.', 503)
       if (size > 700_000) throw new RankedError('BATTLE_STATE_TOO_LARGE', '대전 상태가 저장 한도를 넘었습니다. 운영자에게 문의해주세요.', 503)
       if (bytes + size > 700_000) { chunks.push(frames); frames = []; bytes = 0 }
       frames.push(frame)
@@ -229,6 +235,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (frames.length) chunks.push(frames)
     if (chunks.length > 100) throw new RankedError('BATTLE_STATE_TOO_LARGE', '대전 연출이 저장 한도를 넘었습니다.', 503)
     match.timelineChunks = chunks.length
+    match.timelineBytes = totalBytes
     chunks.forEach((chunk, index) => tx.set('timelines', `${match.id}_${match.timelineRevision}_${index}`, { frames: chunk }))
     match.pendingActions = {}
     match.deadlineAt = timestamp + (match.state.pendingHumanSwitch ? replacementTimeout : turnTimeout) + (chunks.length ? playbackGrace : 0)

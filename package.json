@@ -72,7 +72,8 @@
     "validate:discord": "node scripts/validateDiscordHttp.mjs && node scripts/validateDiscordCommunity.mjs && node scripts/validateDiscordSetup.mjs",
     "ranked:test": "node scripts/startRankedTest.mjs",
     "validate:ranked-ratings": "node scripts/validateRankedRatings.mjs",
-    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs"
+    "validate:ranked-saved-teams-ui": "node scripts/validateRankedSavedTeamsUi.mjs",
+    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs && node scripts/validateRankedSavedTeamsUi.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",

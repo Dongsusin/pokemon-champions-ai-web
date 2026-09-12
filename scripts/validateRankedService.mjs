@@ -8,6 +8,8 @@ import { createRankedService, RankedError } from '../server/rankedService.js'
 import { createMemoryRankedStore, createFileRankedStore, createFirestoreRankedStore } from '../server/rankedStore.js'
 import { createRankedHttpHandler, createLocalRankedAuthenticator, createFirebaseRankedTeamResolver, handleProductionRankedRequest } from '../server/rankedHttp.js'
 import { startRankedDevServer } from './rankedDevServer.mjs'
+import { canonicalizeRankedTeam } from '../server/rankedBattle.js'
+import { normalizePokemon } from '../src/data/trainingData.js'
 
 let checked = 0
 const tests = []
@@ -309,6 +311,24 @@ test('timeline payloads are separate from matches and replaced each resolved tur
   assert.deepEqual(fresh.match.timeline, [])
   assert.equal(fresh.match.timelineRevision, match.timelineRevision)
 })
+test('oversized whole timelines fail atomically before exceeding production storage limits', async () => {
+  const env = environment()
+  const match = await battle(env)
+  const resolveTurn = env.engine.resolveRankedTurn
+  env.engine.resolveRankedTurn = (state, actions) => {
+    const result = resolveTurn(state, actions)
+    result.timeline = Array.from({ length: 6 }, () => ({ state: result.state, padding: 'x'.repeat(600_000) }))
+    return result
+  }
+  await env.call('alice', 'submit', command(match))
+  await rejectsCode(env.call('bob', 'submit', command(match)), 'BATTLE_STATE_TOO_LARGE')
+  const snapshot = await env.call('bob', 'status')
+  assert.equal(snapshot.match.revision, match.revision)
+  assert.equal(snapshot.match.state.turn, 1)
+  assert.equal(snapshot.match.actionSubmitted, false)
+  assert.equal(snapshot.match.opponentActionSubmitted, true)
+  assert.equal(Object.keys((await env.store.inspect()).collections.timelines ?? {}).length, 0)
+})
 test('failed transactions roll back, without poisoning later transactions', async () => {
   const store = createMemoryRankedStore()
   await assert.rejects(store.transaction(async tx => { tx.set('players', 'someone', { rating: 99 }); throw new Error('rollback') }))
@@ -383,6 +403,24 @@ test('Firestore adapter serializes nested arrays and buffers writes until reads 
   await assert.rejects(store.transaction(tx => tx.set('matches', 'huge', { text: 'x'.repeat(860_000) })), /size limit/)
   assert.equal(db.documents.has('rankedValidation_matches/huge'), false)
 })
+test('Firestore transaction adapter supports a full match and settles both profiles once', async () => {
+  const db = firestoreFixture()
+  const env = environment({ store: createFirestoreRankedStore(db, { prefix: 'rankedValidation' }) })
+  const match = await battle(env, 'double')
+  await env.call('alice', 'submit', command(match))
+  const progressed = await env.call('bob', 'submit', command(match))
+  assert.equal(progressed.match.state.turn, 2)
+  await env.call('bob', 'forfeit', { matchId: match.id })
+  await env.call('bob', 'forfeit', { matchId: match.id })
+  const alice = await env.call('alice', 'status')
+  const bob = await env.call('bob', 'status')
+  assert.equal(alice.profile.double.points, 30)
+  assert.equal(alice.profile.double.wins, 1)
+  assert.equal(bob.profile.double.losses, 1)
+  assert.equal(alice.profile.single.played, 0)
+  assert.equal(bob.match.result.outcome, 'loss')
+  assert.ok([...db.documents.values()].every(value => Buffer.byteLength(value.payload) <= 850_000))
+})
 test('ownership resolver ignores forged client stats/species and rejects unowned items', async () => {
   const owned = { captureId: 'owned-capture', speciesId: 25, stats: { attack: 55 } }
   const docs = {
@@ -396,6 +434,23 @@ test('ownership resolver ignores forged client stats/species and rejects unowned
   owned.heldItemId = 'missing-item'
   docs.collection.payload['champions-dex-v2'] = JSON.stringify([owned])
   await rejectsCode(resolver(identities.alice, entries), 'ITEM_NOT_OWNED')
+})
+test('saved production loadouts canonicalize and mixed cloud revisions request resync', async () => {
+  const owned = [3, 6, 9, 25, 94, 149].map((speciesId, index) => normalizePokemon({ speciesId, captureId: `saved-${index}` }))
+  const docs = {
+    collection: { revision: 'same-revision', payload: { 'champions-dex-v2': JSON.stringify(owned) } },
+    progress: { revision: 'same-revision', payload: { 'champions-battle-items-v1': '{}' } },
+  }
+  const resolver = createFirebaseRankedTeamResolver({ doc(path) { return { async get() { return { data: () => docs[path.split('/').at(-1)] } } } } })
+  const submitted = [...owned].reverse().map(pokemon => ({ captureId: pokemon.captureId, speciesId: 999, moves: ['forged'] }))
+  const canonical = canonicalizeRankedTeam(await resolver(identities.alice, submitted))
+  assert.deepEqual(canonical.map(pokemon => pokemon.speciesId), [149, 94, 25, 9, 6, 3])
+  assert.ok(canonical.every(pokemon => pokemon.moveIds.length === 4 && !pokemon.moves.includes('forged')))
+  docs.collection.revision = 'new-revision'
+  await rejectsCode(resolver(identities.alice, submitted), 'ACCOUNT_SYNC_REQUIRED')
+  docs.progress.revision = 'new-revision'
+  docs.progress.payload['champions-battle-items-v1'] = 'null'
+  await rejectsCode(resolver(identities.alice, submitted), 'ACCOUNT_SYNC_REQUIRED')
 })
 test('test identity bypass requires explicit development mode and loopback', async () => {
   assert.throws(() => createLocalRankedAuthenticator({ enabled: false }), /explicit/)
@@ -412,6 +467,34 @@ test('production endpoint remains disabled without explicit configuration', asyn
     assert.equal(result.status, 503)
     assert.equal((await result.json()).error.code, 'RANKED_DISABLED')
   } finally { if (previous === undefined) delete process.env.RANKED_ENABLED; else process.env.RANKED_ENABLED = previous }
+})
+test('production startup and authentication outages remain distinct from invalid login without leaking secrets', async () => {
+  const logs = []
+  const originalLog = console.error
+  console.error = (...values) => logs.push(values)
+  const saved = Object.fromEntries(['RANKED_ENABLED', 'RANKED_FIREBASE_PROJECT_ID', 'RANKED_FIRESTORE_PREFIX'].map(key => [key, process.env[key]]))
+  try {
+    process.env.RANKED_ENABLED = 'true'
+    delete process.env.RANKED_FIREBASE_PROJECT_ID
+    delete process.env.RANKED_FIRESTORE_PREFIX
+    const startup = await handleProductionRankedRequest(new Request('https://game.example/api/ranked'))
+    assert.equal(startup.status, 503)
+    assert.equal((await startup.json()).error.code, 'RANKED_UNAVAILABLE')
+    const request = () => new Request('https://game.example/api/ranked', { headers: { Authorization: 'Bearer private-id-token' } })
+    for (const [code, status] of [['auth/id-token-expired', 401], ['auth/invalid-credential', 503], ['auth/certificate-fetch-failed', 503]]) {
+      const handler = createRankedHttpHandler({ enabled: true, service: {}, authenticate: async () => { throw Object.assign(new Error('private-credential-content'), { code }) } })
+      const result = await handler(request())
+      assert.equal(result.status, status)
+      assert.equal((await result.json()).error.code, status === 401 ? 'UNAUTHENTICATED' : 'RANKED_UNAVAILABLE')
+    }
+    const printed = JSON.stringify(logs)
+    assert.ok(printed.includes('initialization') && printed.includes('ranked/configuration-incomplete'))
+    assert.ok(printed.includes('authentication') && printed.includes('auth/invalid-credential'))
+    assert.ok(!printed.includes('private-id-token') && !printed.includes('private-credential-content'))
+  } finally {
+    console.error = originalLog
+    for (const [key, value] of Object.entries(saved)) if (value === undefined) delete process.env[key]; else process.env[key] = value
+  }
 })
 test('HTTP rejects unauthorized, oversized, malformed, foreign-origin, and GET mutation requests', async () => {
   const env = environment()

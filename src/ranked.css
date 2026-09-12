@@ -3,7 +3,7 @@
 .ranked-header > div { text-align: center; }
 .ranked-header > div > span, .ranked-team-heading > div > span, .ranked-selection-heading > div > span { color: #92b8d0; font-size: 10px; letter-spacing: .2em; font-weight: 800; }
 .ranked-header h1 { margin: 5px 0 0; font-size: clamp(25px, 3vw, 36px); letter-spacing: -.05em; }
-.ranked-test-tag { color: #bbd9ec; background: #162c42; border: 1px solid #42647e; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 800; }
+.ranked-mode-tag { color: #bbd9ec; background: #162c42; border: 1px solid #42647e; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 800; }
 .ranked-screen button, .ranked-screen select, .ranked-live-battle button { font: inherit; }
 .ranked-screen button { cursor: pointer; }
 .ranked-screen button:disabled, .ranked-screen select:disabled, .ranked-live-battle button:disabled { opacity: .45; cursor: default; }
@@ -38,6 +38,18 @@
 .ranked-screen select { border: 1px solid #49647d; border-radius: 7px; color: #e5f4ff; background: #14283d; padding: 8px 10px; max-width: 190px; }
 .ranked-team-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 18px; }
 .ranked-team-heading h2 { margin: 5px 0 0; font-size: 23px; }
+.ranked-team-slots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-bottom: 18px; }
+.ranked-team-slots button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 11px 5px; border: 1px solid #38566d; border-radius: 9px; background: #0e2032; color: #bed2e2; }
+.ranked-team-slots button strong { font-size: 14px; }
+.ranked-team-slots button span { font-size: 11px; color: #819fb9; }
+.ranked-team-slots button[aria-pressed=true] { background: #234952; border-color: #79d9d1; color: #e3fffa; box-shadow: inset 0 0 0 1px #79d9d12a; }
+.ranked-team-slots button[aria-pressed=true] span { color: #a9dbd5; }
+.ranked-team-slots button:not(:disabled):hover { border-color: #8cd7e1; }
+.ranked-roster-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 10px; }
+.ranked-roster-heading > strong { font-size: 15px; overflow-wrap: anywhere; }
+.ranked-roster-heading > span { display: flex; align-items: center; gap: 4px; flex-shrink: 0; color: #b0b9c5; font-size: 11px; }
+.ranked-roster-heading > span.ready { color: #99e9d3; }
+.ranked-team-help { color: #edc994; background: #332d2c; border: 1px solid #645043; border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; font-size: 12px; line-height: 1.7; }
 .ranked-six-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .ranked-entry-panel .ranked-six-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ranked-pokemon-card { display: flex; position: relative; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 12px 8px; color: #e8f3fc; border: 1px solid #344d66; border-radius: 10px; background: #102236; min-height: 130px; }
@@ -57,7 +69,7 @@ button.ranked-pokemon-card.selected .ranked-pokemon-number { color: #9affe1; }
 .ranked-primary { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 14px 22px; border: 1px solid #79dfe2; border-radius: 9px; background: linear-gradient(110deg, #b0eee0, #7bcee0); color: #102839; font-weight: 900 !important; }
 .ranked-primary:not(:disabled):hover { filter: brightness(1.09); }
 .ranked-quiet { border: 1px solid #425970; background: #14283c; border-radius: 8px; padding: 10px 16px; color: #adc9dd; }
-.ranked-test-note { text-align: center; color: #7696b0; font-size: 11px; line-height: 1.7; margin: 17px 0 0; }
+.ranked-match-note { text-align: center; color: #7696b0; font-size: 11px; line-height: 1.7; margin: 17px 0 0; }
 .ranked-queue { display: flex; align-items: center; gap: 15px; padding: 18px 0 2px; color: #95e4dc; }
 .ranked-queue > div { flex: 1; }
 .ranked-queue h2 { margin: 0; font-size: 17px; }
@@ -127,7 +139,7 @@ button.ranked-pokemon-card.selected .ranked-pokemon-number { color: #9affe1; }
   .ranked-six-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ranked-header { gap: 8px; }
   .ranked-header .screen-back-button { font-size: 11px; }
-  .ranked-test-tag { padding: 6px; font-size: 10px; }
+  .ranked-mode-tag { padding: 6px; font-size: 10px; }
   .ranked-selection-heading, .ranked-selection-actions { flex-wrap: wrap; }
   .ranked-selection-actions > p { flex-basis: 100%; }
   .ranked-error { align-items: flex-start; flex-wrap: wrap; }

@@ -11,6 +11,24 @@ const TEST_IDENTITIES = Object.freeze({
   'ranked-test-bob': { uid: 'ranked-test-bob', name: '테스트 트레이너 B' },
   'ranked-test-charlie': { uid: 'ranked-test-charlie', name: '테스트 트레이너 C' },
 })
+const AUTH_REJECTION_CODES = new Set([
+  'auth/argument-error', 'auth/invalid-argument', 'auth/invalid-id-token',
+  'auth/id-token-expired', 'auth/id-token-revoked', 'auth/user-disabled', 'auth/user-not-found',
+])
+const DIAGNOSTIC_CODES = new Set([
+  ...AUTH_REJECTION_CODES, 'auth/internal-error', 'auth/invalid-credential',
+  'auth/insufficient-permission', 'auth/certificate-fetch-failed',
+  'app/invalid-credential', 'app/network-error', 'app/network-timeout',
+  'ranked/configuration-incomplete', 'ranked/project-mismatch',
+])
+
+function logFailure(stage, error) {
+  // SDK error messages/stacks may contain credentials, tokens, or private paths.
+  // Log only our stage and a known SDK / gRPC status code.
+  const code = DIAGNOSTIC_CODES.has(error?.code) ? error.code
+    : Number.isInteger(error?.code) && error.code >= 0 && error.code <= 16 ? `grpc/${error.code}` : 'unknown'
+  console.error('Ranked server failure', { stage, code })
+}
 
 export function createLocalRankedAuthenticator({ enabled, production = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL) } = {}) {
   if (enabled !== true || production) throw new Error('Test accounts require an explicit loopback-only development server')
@@ -46,7 +64,7 @@ async function readPayload(request) {
   return payload
 }
 
-export function createRankedHttpHandler({ service, authenticate, enabled = false, allowLocalOrigins = false, now = Date.now } = {}) {
+export function createRankedHttpHandler({ service, authenticate, enabled = false, unavailable = false, allowLocalOrigins = false, now = Date.now } = {}) {
   const buckets = new Map()
   function limit(uid, mutation) {
     const timestamp = now()
@@ -73,6 +91,7 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
         ...headers, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600',
       } })
       if (!['GET', 'POST'].includes(request.method)) return response({ error: { code: 'METHOD_NOT_ALLOWED', message: '허용되지 않은 요청 방식입니다.' } }, 405, { ...headers, Allow: 'GET, POST, OPTIONS' })
+      if (unavailable) throw new RankedError('RANKED_UNAVAILABLE', '대전 서버에 일시적인 문제가 있습니다. 잠시 후 다시 연결해주세요.', 503)
       if (!enabled || !service || !authenticate) throw new RankedError('RANKED_DISABLED', '레이팅 배틀은 현재 테스트 준비 중입니다.', 503)
       const authorization = request.headers.get('authorization') ?? ''
       const match = /^Bearer ([^\s]{8,4096})$/.exec(authorization)
@@ -80,7 +99,9 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
       let identity
       try { identity = await authenticate(request, match[1]) } catch (error) {
         if (error instanceof RankedError) throw error
-        throw new RankedError('UNAUTHENTICATED', '로그인이 만료됐습니다. 다시 로그인해주세요.', 401)
+        if (AUTH_REJECTION_CODES.has(error?.code)) throw new RankedError('UNAUTHENTICATED', '로그인이 만료됐습니다. 다시 로그인해주세요.', 401)
+        logFailure('authentication', error)
+        throw new RankedError('RANKED_UNAVAILABLE', '로그인 확인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.', 503)
       }
       limit(identity.uid, request.method === 'POST')
       const payload = request.method === 'GET'
@@ -93,7 +114,7 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
         return response({ error: { code: error.code ?? 'INVALID_COMMAND', message: error.message } }, error.status, headers)
       }
       // Never include request bodies, ID tokens, private teams, or Admin SDK errors.
-      console.error('Ranked request failed')
+      logFailure('request', error)
       return response({ error: { code: 'RANKED_UNAVAILABLE', message: '대전 서버에 일시적인 문제가 있습니다. 잠시 후 다시 연결해주세요.' } }, 503, headers)
     }
   }
@@ -108,13 +129,14 @@ export function createFirebaseRankedTeamResolver(firestore) {
     ])
     let owned, inventory
     try {
+      if (collection.data()?.revision !== progress.data()?.revision) throw new Error('Account snapshot is changing')
       const payload = collection.data()?.payload ?? {}
       owned = JSON.parse(payload['champions-dex-v2'] ?? payload['champions-box-v1'] ?? '[]')
       inventory = JSON.parse(progress.data()?.payload?.['champions-battle-items-v1'] ?? '{}')
     } catch { throw new RankedError('ACCOUNT_SYNC_REQUIRED', '보유 포켓몬 정보를 서버에 동기화한 뒤 다시 시도해주세요.', 409) }
-    if (!Array.isArray(owned)) throw new RankedError('ACCOUNT_SYNC_REQUIRED', '보유 포켓몬 정보를 먼저 동기화해주세요.', 409)
+    if (!Array.isArray(owned) || !inventory || typeof inventory !== 'object' || Array.isArray(inventory)) throw new RankedError('ACCOUNT_SYNC_REQUIRED', '보유 포켓몬 정보를 먼저 동기화해주세요.', 409)
     return entries.map(entry => {
-      const pokemon = owned.find(candidate => candidate.captureId === entry?.captureId)
+      const pokemon = owned.find(candidate => candidate && typeof candidate === 'object' && candidate.captureId === entry?.captureId)
       if (!pokemon) throw new RankedError('POKEMON_NOT_OWNED', '서버에 저장된 보유 포켓몬만 레이팅에 등록할 수 있습니다.', 403)
       if (pokemon.heldItemId && !(Number(inventory[pokemon.heldItemId]) > 0)) throw new RankedError('ITEM_NOT_OWNED', '보유 도구 정보를 동기화한 뒤 다시 시도해주세요.', 409)
       // Loadouts and species come from the account save, never the join body.
@@ -128,14 +150,14 @@ export async function handleProductionRankedRequest(request) {
   if (process.env.RANKED_ENABLED !== 'true') return createRankedHttpHandler()(request)
   if (!productionHandler) {
     productionHandler = (async () => {
-      if (!process.env.RANKED_FIREBASE_PROJECT_ID || !process.env.RANKED_FIRESTORE_PREFIX) throw new Error('Ranked production configuration is incomplete')
+      if (!process.env.RANKED_FIREBASE_PROJECT_ID || !process.env.RANKED_FIRESTORE_PREFIX) throw Object.assign(new Error('Ranked production configuration is incomplete'), { code: 'ranked/configuration-incomplete' })
       const [{ initializeApp, getApps, applicationDefault, cert }, { getAuth }, { getFirestore }, engine] = await Promise.all([
         import('firebase-admin/app'), import('firebase-admin/auth'), import('firebase-admin/firestore'), import('./rankedBattle.js'),
       ])
       const options = { projectId: process.env.RANKED_FIREBASE_PROJECT_ID }
       if (process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON) {
         const credential = JSON.parse(process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON)
-        if (credential.project_id !== options.projectId) throw new Error('Ranked service account project mismatch')
+        if (credential.project_id !== options.projectId) throw Object.assign(new Error('Ranked service account project mismatch'), { code: 'ranked/project-mismatch' })
         options.credential = cert(credential)
       } else options.credential = applicationDefault()
       const app = getApps().find(candidate => candidate.name === 'ranked-server') ?? initializeApp(options, 'ranked-server')
@@ -147,7 +169,11 @@ export async function handleProductionRankedRequest(request) {
         const verified = await getAuth(app).verifyIdToken(token, true)
         return { uid: verified.uid, name: verified.name || '트레이너' }
       } })
-    })().catch(() => { productionHandler = null; return createRankedHttpHandler() })
+    })().catch(error => {
+      logFailure('initialization', error)
+      productionHandler = null
+      return createRankedHttpHandler({ unavailable: true })
+    })
   }
   return (await productionHandler)(request)
 }

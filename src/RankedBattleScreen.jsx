@@ -5,6 +5,7 @@ import SpriteImage from './SpriteImage'
 import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS, RANKED_TIERS, createRankedProfile, getRankedTier } from './data/rankedRules'
 import { getSpeciesProfile } from './data/trainingData'
+import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
 import './ranked.css'
 
@@ -168,10 +169,14 @@ export default function RankedBattleScreen({
     } finally { operationRef.current = false; if (mountedRef.current) setBusy(false) }
   }
   const fire = async (action, payload) => { try { await mutate(action, payload) } catch { /* Visible error belongs to the request panel. */ } }
-  const teamOptions = isRankedLocalTest ? fixtures : teams
+  const savedTeamOptions = useMemo(() => normalizeSavedTeamState({ teams, activeTeamId }, boxPokemon.map(pokemon => pokemon.captureId)).teams,
+    [teams, activeTeamId, boxPokemon])
+  const teamOptions = isRankedLocalTest ? fixtures : savedTeamOptions
   const selectedTeam = teamOptions.find(team => team.id === (isRankedLocalTest ? fixtureTeamId : activeTeamId)) ?? teamOptions[0]
   const roster = isRankedLocalTest ? selectedTeam?.pokemon ?? []
     : (selectedTeam?.pokemonIds ?? []).map(id => boxPokemon.find(pokemon => pokemon.captureId === id)).filter(Boolean)
+  const teamSelectionLocked = busy || Boolean(snapshot.queue) || Boolean(match && match.phase !== 'finished')
+  const teamReady = roster.length === BATTLE_TEAM_SIZE
   const shownMatchFormat = match && match.id !== dismissedMatch ? match.format : null
   const currentFormat = RANKED_FORMATS.find(entry => entry.id === (shownMatchFormat ?? snapshot.queue?.format ?? format)) ?? RANKED_FORMATS[0]
   const record = snapshot.profile?.[format] ?? createRankedProfile(format)
@@ -205,7 +210,7 @@ export default function RankedBattleScreen({
       <span className={secondsLeft !== null && secondsLeft <= 15 ? 'is-urgent' : ''}><Clock3 size={14} />{secondsLeft === null ? '—' : clockText(secondsLeft)}</span>
       <button type="button" disabled={busy || match.phase === 'finished'} onClick={() => setConfirmForfeit(true)}><Flag size={14} /> 기권</button></div>
     {connectionNotice}
-    <BattleScreen key={match.id} competitionLabel={`${currentFormat.label} · 레이팅 테스트`} playerPokemon={match.state.player.team}
+    <BattleScreen key={match.id} competitionLabel={`${currentFormat.label} · 레이팅${isRankedLocalTest ? ' 테스트' : ''}`} playerPokemon={match.state.player.team}
       opponent={match.opponent} opponentTeam={{ pokemon: match.state.opponent.team }} rules={match.state.rules}
       soundEnabled={soundEnabled} gameSettings={gameSettings} playerGender={playerGender} audioSettings={audioSettings}
       onToggleSound={onToggleSound} onOpenSettings={onOpenSettings}
@@ -223,7 +228,7 @@ export default function RankedBattleScreen({
 
   return <main className="ranked-screen">
     <header className="ranked-header"><button className="screen-back-button" type="button" disabled={busy || Boolean(match && match.phase !== 'finished')} onClick={leave}><ArrowLeft size={18} /> 배틀 선택</button>
-      <div><span>TRAINER VS TRAINER</span><h1>레이팅 배틀</h1></div><span className="ranked-test-tag">테스트 운영</span></header>
+      <div><span>TRAINER VS TRAINER</span><h1>레이팅 배틀</h1></div><span className="ranked-mode-tag">{isRankedLocalTest ? '로컬 테스트' : '온라인 대전'}</span></header>
     {connectionNotice}
     {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>현재 환경에서는 참가할 수 없습니다.</p></section>
       : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>Google 계정으로 참가하세요</h2><p>레이팅과 경기 기록은 로그인한 계정에 저장됩니다.</p></section>
@@ -260,16 +265,21 @@ export default function RankedBattleScreen({
       </section><section className="ranked-entry-panel">
         {isRankedLocalTest && <div className="ranked-test-identity"><span>독립 로컬 테스트 계정</span><label>트레이너<select aria-label="로컬 테스트 계정" value={identity} disabled={busy || Boolean(snapshot.queue) || Boolean(match && match.phase !== 'finished')}
           onChange={event => { setDismissedMatch(null); setIdentity(event.target.value) }}><option value="alice">Alice</option><option value="bob">Bob</option></select></label></div>}
-        <div className="ranked-team-heading"><div><span>REGISTERED TEAM</span><h2>{selectedTeam?.name ?? '출전 팀'}</h2></div>
-          <select aria-label="레이팅 출전 팀" value={selectedTeam?.id ?? ''} disabled={busy || Boolean(snapshot.queue)} onChange={event => isRankedLocalTest ? setFixtureTeamId(event.target.value) : onSelectTeam?.(event.target.value)}>
-            {!teamOptions.length && <option value="">팀 불러오는 중</option>}{teamOptions.map(team => <option value={team.id} key={team.id}>{team.name}</option>)}</select></div>
-        <div className="ranked-six-grid">{Array.from({ length: 6 }, (_, index) => roster[index] ? <PokemonCard pokemon={roster[index]} index={index} key={index} /> : <div className="ranked-pokemon-card empty" key={index}><span>+</span><small>팀 편성 필요</small></div>)}</div>
+        <div className="ranked-team-heading"><div><span>REGISTERED TEAM</span><h2>출전 팀 선택</h2></div>
+          {isRankedLocalTest && <select aria-label="레이팅 출전 팀" value={selectedTeam?.id ?? ''} disabled={teamSelectionLocked} onChange={event => setFixtureTeamId(event.target.value)}>
+            {!teamOptions.length && <option value="">팀 불러오는 중</option>}{teamOptions.map(team => <option value={team.id} key={team.id}>{team.name}</option>)}</select>}</div>
+        {!isRankedLocalTest && <div className="ranked-team-slots" role="group" aria-label="저장된 출전 팀 선택">{teamOptions.map((team, index) => <button type="button" key={team.id}
+          aria-label={`팀 ${index + 1}, ${team.pokemonIds.length}마리 편성`} aria-pressed={selectedTeam?.id === team.id} disabled={teamSelectionLocked}
+          onClick={() => onSelectTeam?.(team.id)}><strong>팀 {index + 1}</strong><span>{team.pokemonIds.length} / {BATTLE_TEAM_SIZE}</span></button>)}</div>}
+        <div className="ranked-roster-heading"><strong>{selectedTeam?.name ?? '출전 팀'}</strong><span className={teamReady ? 'ready' : ''}>{teamReady ? <><Check size={14} /> 편성 완료</> : `${roster.length} / ${BATTLE_TEAM_SIZE}마리 편성`}</span></div>
+        <div className="ranked-six-grid" aria-label="선택한 팀 포켓몬">{Array.from({ length: BATTLE_TEAM_SIZE }, (_, index) => roster[index] ? <PokemonCard pokemon={roster[index]} index={index} key={index} /> : <div className="ranked-pokemon-card empty" key={index}><span>+</span><small>팀 편성 필요</small></div>)}</div>
+        {!teamReady && <p className="ranked-team-help" role="status">{selectedTeam?.name ?? '선택한 팀'}에 포켓몬 {BATTLE_TEAM_SIZE - roster.length}마리를 더 편성하면 참가할 수 있습니다.</p>}
         <div className="ranked-rule-summary"><Shield size={19} /><p>6마리 등록 · {currentFormat.battleSize}마리 선출 · Lv.50<br /><span>상대와 동시에 명령을 선택하는 실제 유저 대전</span></p></div>
         {snapshot.queue ? <div className="ranked-queue" role="status"><LoaderCircle className="ranked-spin" size={31} /><div><h2>대전 상대를 찾고 있습니다</h2><p>참가한 다른 트레이너를 기다리는 중입니다.</p><strong>{clockText(Math.floor((now + serverOffset - timeValue(snapshot.queue.queuedAt)) / 1000) || 0)}</strong></div>
           <button type="button" disabled={busy} onClick={() => fire('cancel', { queueTicket: snapshot.queue.ticket })}>매칭 취소</button></div>
-          : <div className="ranked-entry-actions"><button className="ranked-primary" type="button" disabled={busy || !connected || roster.length !== 6} onClick={join}>{busy ? <LoaderCircle className="ranked-spin" size={19} /> : <Swords size={19} />} {busy ? '참가 준비 중' : '대전 상대 찾기'}</button>
-            {!isRankedLocalTest && <button className="ranked-quiet" type="button" disabled={busy} onClick={onOpenBox}>박스에서 팀 편성</button>}</div>}
-        <p className="ranked-test-note">테스트 중인 대전입니다. 대기 중인 트레이너가 없으면 매칭을 계속 기다립니다.</p>
+          : <div className="ranked-entry-actions"><button className="ranked-primary" type="button" disabled={busy || !connected || !teamReady} onClick={join}>{busy ? <LoaderCircle className="ranked-spin" size={19} /> : <Swords size={19} />} {busy ? '참가 준비 중' : '대전 상대 찾기'}</button>
+            {!isRankedLocalTest && <button className="ranked-quiet" type="button" disabled={teamSelectionLocked} onClick={onOpenBox}>선택한 팀 편성하기</button>}</div>}
+        <p className="ranked-match-note">{snapshot.queue ? '매칭 중에는 출전 팀이 고정됩니다. 팀을 변경하려면 매칭을 취소해 주세요.' : '저장된 팀으로 참가합니다. 같은 배틀 형식의 트레이너가 참가하면 대전을 시작합니다.'}</p>
       </section></div>}
   </main>
 }
