@@ -5236,6 +5236,7 @@
 }
 
 .app-shell.battle-view .format-double .battle-pokemon-stage.player {
+  --battle-stage-floor: 5%;
   --battle-stage-size: min(17.5cqw, 46cqh, 360px);
 }
 
@@ -5244,7 +5245,7 @@
 }
 
 .app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-0 { --battle-stage-center: 23%; }
-.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-1 { --battle-stage-center: 41%; --battle-stage-floor: 10%; }
+.app-shell.battle-view .format-double .battle-pokemon-stage.player.slot-1 { --battle-stage-center: 41%; }
 .app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-0 { --battle-stage-center: 80%; --battle-stage-floor: 30%; }
 .app-shell.battle-view .format-double .battle-pokemon-stage.opponent.slot-1 { --battle-stage-center: 62%; --battle-stage-floor: 36%; }
 
