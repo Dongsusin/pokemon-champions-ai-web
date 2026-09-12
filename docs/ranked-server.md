@@ -61,6 +61,9 @@ Vercel Production에서 아래 설정을 사용한다. 서버 계정 생성과 �
 | `RANKED_FIREBASE_PROJECT_ID=pokemon-champions-arena-2026` | 실제 게임 계정의 Firebase 프로젝트 |
 | `RANKED_FIRESTORE_PREFIX=ranked` | 운영 레이팅 전용 컬렉션 이름 접두어 |
 | `RANKED_FIREBASE_SERVICE_ACCOUNT_JSON` | 서버 전용 서비스 계정 JSON. 생략 시 ADC 사용 |
+| `NODE_OPTIONS=--experimental-require-module` | Vercel Node 24에서 Firebase Admin의 CommonJS → ESM 의존성 로딩 허용 |
+
+Vercel은 Node 런타임의 `require(esm)`을 기본적으로 비활성화한다. 현재 Firebase Admin 14.4.0의 `jwks-rsa` 4.1.0은 CommonJS에서 ESM 전용 `jose` 6을 불러오므로 위 `NODE_OPTIONS` 설정이 필요하다. 설정이 빠지면 서버 인증 모듈을 불러오는 `initialization / firebase-auth` 단계에서 `ERR_REQUIRE_ESM`이 발생한다. Node 버전만 24로 맞춘 것으로는 충분하지 않으며 환경변수를 등록한 뒤 새 배포에 반영해야 한다. [Vercel 공식 require(esm) 설정](https://vercel.com/docs/functions/runtimes/node-js/advanced-node-configuration#experimental-nodejs-require-of-es-module), [Firebase Admin 관련 이슈](https://github.com/firebase/firebase-admin-node/issues/3181).
 
 서비스 계정이나 토큰을 `VITE_` 변수, 소스, 커밋에 넣지 않는다. Firebase Admin은 만료·취소된 ID 토큰과 비활성 계정을 거절한다. 실제 계정의 팀은 `players/{uid}/gameData/collection`의 저장된 보유 포켓몬으로 다시 구성한다. 요청 본문에 넣은 종·능력치·도구를 그대로 채택하지 않는다. 장착 도구는 `progress` 문서의 보유 도구 정보도 확인한다.
 
@@ -87,3 +90,15 @@ node scripts/validateRankedFirestore.mjs --dry-run
 실제 Firestore 연결 검증은 `npm run validate:ranked-firestore -- --credentials <서비스계정JSON경로> --project-id <기대프로젝트ID>`로 실행한다. 임의의 `ranked_validation_...` 접두어만 사용하며 기존 사용자·운영 점수 컬렉션에는 쓰지 않는다. 종료 시 자신의 자료만 제거한 뒤 빈 상태를 확인한다. 검증용 식별자는 Firebase Auth 계정이 아니며 공개 API의 인증을 우회하는 경로는 제공하지 않는다.
 
 서비스 검증은 동시 매칭·취소 경쟁, 요청 중복, 리비전, 비공개 정보, 재접속, 결과 한 번 반영, 단계별 타임아웃, 파일 재시작, Firestore JSON 계약, 서버 소유권 확인, 인증 우회 방지, 실제 두 HTTP 클라이언트의 싱글/더블 기술 데미지와 승패 정산을 포함한다. 실제 Firebase/Vercel을 변경하지 않는다.
+
+Vercel 기본값과 같은 모듈 로딩 실패를 자격 증명 없이 재현하려면 아래 명령을 실행한다. 현재 의존성 조합에서는 `ERR_REQUIRE_ESM`과 종료 코드 1이 재현 결과다.
+
+```powershell
+node --no-experimental-require-module --input-type=module -e "await import('firebase-admin/auth')"
+```
+
+배포에 사용할 설정으로 Firebase Admin 세 진입점과 엔진을 검증한다. 이 명령은 인증키를 읽거나 Firestore에 접속하지 않는다.
+
+```powershell
+node --experimental-require-module --input-type=module -e "await Promise.all([import('firebase-admin/app'),import('firebase-admin/auth'),import('firebase-admin/firestore'),import('./server/rankedBattle.js')]); console.log('runtime imports passed')"
+```

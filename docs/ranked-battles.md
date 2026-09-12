@@ -63,7 +63,7 @@ npm run ranked:test
 
 1. 레이팅 서버 전용 서비스 계정에 `roles/datastore.user`와 `roles/firebaseauth.viewer`를 부여한다. 클라이언트에는 관리자 키를 넣지 않는다.
 2. Vercel Production에 `RANKED_FIREBASE_PROJECT_ID=pokemon-champions-arena-2026`, `RANKED_FIRESTORE_PREFIX=ranked`, 비밀값 `RANKED_FIREBASE_SERVICE_ACCOUNT_JSON`을 설정한다.
-3. 클라이언트 `VITE_RANKED_ENABLED=true`, 서버 `RANKED_ENABLED=true`를 설정한다. 브라우저는 같은 출처의 `/api/ranked`를 사용한다. 로컬 테스트 플래그는 운영에 설정하지 않는다.
+3. 클라이언트 `VITE_RANKED_ENABLED=true`, 서버 `RANKED_ENABLED=true`, Vercel Node 런타임 `NODE_OPTIONS=--experimental-require-module`을 설정한다. 마지막 옵션은 Firebase Admin의 `jwks-rsa` → `jose` 모듈 호환에 필요하며 [Vercel 공식 설정](https://vercel.com/docs/functions/runtimes/node-js/advanced-node-configuration#experimental-nodejs-require-of-es-module)을 따른다. 브라우저는 같은 출처의 `/api/ranked`를 사용한다. 로컬 테스트 플래그는 운영에 설정하지 않는다.
 4. Firestore 레이팅 컬렉션은 클라이언트 직접 접근을 허용하지 않는다. Admin SDK만 서버에서 읽고 쓴다.
 5. 실제 두 Google 계정으로 팀 동기화, 인증 만료, 재접속, 저장소 트랜잭션과 배포 환경의 지연을 검증한다. 로컬 모의 계정 검증과 실제 운영 검증은 별도로 기록한다.
 
