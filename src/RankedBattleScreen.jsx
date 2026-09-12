@@ -58,6 +58,7 @@ export default function RankedBattleScreen({
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState('')
+  const [refreshError, setRefreshError] = useState('')
   const [now, setNow] = useState(Date.now())
   const [serverOffset, setServerOffset] = useState(0)
   const [dismissedMatch, setDismissedMatch] = useState(null)
@@ -94,6 +95,7 @@ export default function RankedBattleScreen({
       return { ...EMPTY, ...value }
     })
     setConnected(true)
+    setRefreshError('')
   }, [])
 
   useEffect(() => {
@@ -104,6 +106,7 @@ export default function RankedBattleScreen({
     setSnapshot(EMPTY)
     setConnected(false)
     setError('')
+    setRefreshError('')
     setFixtures([])
     const refresh = async () => {
       if (running || !active) return
@@ -112,9 +115,9 @@ export default function RankedBattleScreen({
       try {
         const known = snapshotRef.current.match
         const value = await client.status(known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}, { signal: controller.signal })
-        if (active && generation === generationRef.current) { accept(value); setError(current => current.startsWith('서버와') || current.startsWith('응답이') ? '' : current) }
+        if (active && generation === generationRef.current) accept(value)
       } catch (failure) {
-        if (active && failure.name !== 'AbortError' && generation === generationRef.current) { setConnected(false); setError(failure.message) }
+        if (active && failure.name !== 'AbortError' && generation === generationRef.current) { setConnected(false); setRefreshError(failure.message) }
       } finally {
         running = false
         if (active) timer = setTimeout(refresh, 1500)
@@ -202,7 +205,8 @@ export default function RankedBattleScreen({
     }
     onBack?.()
   }
-  const connectionNotice = error && <div className="ranked-error" role="alert"><WifiOff size={17} /><span>{error}</span>
+  const visibleError = refreshError || error
+  const connectionNotice = visibleError && <div className="ranked-error" role="alert"><WifiOff size={17} /><span>{visibleError}</span>
     <button type="button" onClick={() => refreshRef.current?.()}><RefreshCw size={14} /> 다시 연결</button></div>
 
   if (battleVisible) return <div className="ranked-live-battle">

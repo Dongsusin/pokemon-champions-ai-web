@@ -60,14 +60,22 @@ try {
     await context.addInitScript(value => { window.__fixture = value }, { teams, boxPokemon })
     await context.route('**/ranked-saved-teams.html', route => route.fulfill({ contentType: 'text/html', body: html }))
     let snapshot = { profile: null, queue: null, match: null }
+    let statusFailure = null, commandFailure = null
     const requests = []
     await context.route('**/api/ranked*', async route => {
       const request = route.request()
       if (request.method() === 'POST') {
         const payload = request.postDataJSON()
         requests.push({ ...payload, authorization: request.headers().authorization })
+        if (commandFailure) {
+          await route.fulfill({ status: commandFailure.status, contentType: 'application/json', body: JSON.stringify({ error: commandFailure.error }) })
+          return
+        }
         if (payload.action === 'join') snapshot = { ...snapshot, queue: { ticket: 'saved-team-ticket', format: payload.format, queuedAt: Date.now() } }
         if (payload.action === 'cancel') snapshot = { ...snapshot, queue: null }
+      } else if (statusFailure) {
+        await route.fulfill({ status: statusFailure.status, contentType: 'application/json', body: JSON.stringify({ error: statusFailure.error }) })
+        return
       }
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...snapshot, serverTime: Date.now() }) })
     })
@@ -86,6 +94,18 @@ try {
       assert.equal(await page.getByLabel('로컬 테스트 계정').count(), 0)
       assert(!/Alice|Bob|테스트 운영|레이팅 테스트|로컬 테스트/.test(await page.locator('main').innerText()))
       assert.deepEqual(await roster.locator('strong').allTextContents(), boxPokemon.slice(0, 6).map(pokemon => pokemon.name))
+    })
+    await test(`${device.id}: status 503 warning clears after a successful reconnect regardless of message prefix`, async () => {
+      const message = '대전 서버에 일시적인 문제가 있습니다. 잠시 후 다시 연결해주세요.'
+      statusFailure = { status: 503, error: { code: 'RANKED_UNAVAILABLE', message } }
+      await page.evaluate(() => window.dispatchEvent(new Event('online')))
+      await page.getByRole('alert').waitFor()
+      assert.match(await page.getByRole('alert').innerText(), /대전 서버에 일시적인 문제가/)
+      assert(await findOpponent.isDisabled())
+      statusFailure = null
+      await click(page.getByRole('button', { name: '다시 연결', exact: true }))
+      await page.getByRole('alert').waitFor({ state: 'hidden' })
+      assert(!(await findOpponent.isDisabled()))
     })
     await test(`${device.id}: empty and deleted-member teams explain the shortage and prevent matchmaking`, async () => {
       await click(slot(2))
@@ -142,6 +162,21 @@ try {
       assert(overflow.documentWidth <= overflow.width + 1, JSON.stringify(overflow))
       assert(overflow.slots.every(bounds => bounds.left >= 0 && bounds.right <= overflow.width + 1), JSON.stringify(overflow))
       await page.screenshot({ path: path.join(output, `${device.id}.png`), fullPage: true })
+    })
+    await test(`${device.id}: successful status refresh preserves command validation errors independently of their wording`, async () => {
+      const message = '서버와 동기화된 팀을 다시 편성해 주세요.'
+      commandFailure = { status: 409, error: { code: 'INVALID_TEAM', message } }
+      await click(findOpponent)
+      await page.getByRole('alert').waitFor()
+      assert.match(await page.getByRole('alert').innerText(), /서버와 동기화된 팀/)
+      await Promise.all([
+        page.waitForResponse(response => response.url().includes('/api/ranked') && response.request().method() === 'GET' && response.status() === 200),
+        click(page.getByRole('button', { name: '다시 연결', exact: true })),
+      ])
+      await page.waitForTimeout(100)
+      assert.match(await page.getByRole('alert').innerText(), /서버와 동기화된 팀/)
+      assert(!(await findOpponent.isDisabled()))
+      commandFailure = null
     })
     await context.close()
   }
