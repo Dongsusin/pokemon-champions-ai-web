@@ -1205,7 +1205,6 @@ function GameApp({
           balance={vp}
           settings={settings}
           user={user}
-          reportContext={{ screen }}
           accountError={accountError}
           authBusy={authBusy}
           autoLogin={autoLogin}

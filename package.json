@@ -41,7 +41,7 @@
     "validate:battle-state": "node scripts/validateBattleStateSweep.mjs",
     "validate:battle-actions": "node scripts/validateBattleActionSelection.mjs",
     "validate:battle-actions-ui": "node scripts/validateBattleActionUi.mjs",
-    "validate:battle-audit": "npm run validate:battle-content && npm run validate:battle-status && npm run validate:battle-interactions && npm run validate:battle-actions && npm run validate:battle-pivots && npm run validate:battle-move-rules && npm run validate:battle-spread && npm run validate:tera-blast && npm run validate:battle-state && npm run validate:battle-ai && npm run validate:battle-difficulty && npm run validate:battle-gimmicks && npm run validate:signature-z-moves && npm run validate:training-moves && npm run validate:battle-air-balloon && npm run validate:battle-allies && npm run validate:battle-gimmick-timing",
+    "validate:battle-audit": "npm run validate:battle-content && npm run validate:battle-status && npm run validate:battle-interactions && npm run validate:battle-actions && npm run validate:battle-pivots && npm run validate:battle-move-rules && npm run validate:battle-spread && npm run validate:tera-blast && npm run validate:battle-state && npm run validate:battle-ai && npm run validate:battle-difficulty && npm run validate:battle-gimmicks && npm run validate:signature-z-moves && npm run validate:training-moves && npm run validate:battle-air-balloon && npm run validate:battle-allies && npm run validate:battle-gimmick-timing && npm run validate:battle-retargeting",
     "validate:trainer-dialogues": "node scripts/validateTrainerDialogues.mjs",
     "validate:battle-content": "npm run validate:battle-move-conditions && npm run validate:battle-move-effects && npm run validate:battle-mechanics && npm run validate:battle-abilities && npm run validate:battle-ability-effects && npm run validate:season-megas",
     "validate:signature-z-moves": "node scripts/validateSignatureZMoves.mjs",
@@ -55,8 +55,6 @@
     "validate:account-sync": "node scripts/validateAccountGameData.mjs",
     "validate:account-session": "node scripts/validateAccountSession.mjs",
     "validate:account-recovery-ui": "node scripts/validateAccountRecoveryUi.mjs",
-    "validate:bug-reports": "node scripts/validateBugReports.mjs",
-    "validate:bug-reports-ui": "node scripts/validateBugReportUi.mjs",
     "validate:achievements": "node scripts/validateBattleAchievementFacts.mjs && node scripts/validateAchievements.mjs && node scripts/validateEliteAchievements.mjs && node scripts/validateRareRewards.mjs && node scripts/validateRareRewardAssets.mjs && node scripts/validateAchievementRewards.mjs && node scripts/validateAchievementStorage.mjs && node scripts/validateAccountGameData.mjs",
     "validate:achievements-ui": "node scripts/validateAchievementUi.mjs && node scripts/validateSkinSpritesUi.mjs",
     "generate:sprite-manifest": "node scripts/generateGen5SpriteManifest.mjs",
@@ -67,7 +65,9 @@
     "validate:battle-allies": "node scripts/validateBattleAlliesMoves.mjs",
     "validate:battle-gimmick-timing": "node scripts/validateBattleGimmickTiming.mjs",
     "validate:battle-spread-ui": "node scripts/validateBattleSpreadUi.mjs",
-    "validate:battle-tera-info-ui": "node scripts/validateBattleTeraInfoUi.mjs"
+    "validate:battle-tera-info-ui": "node scripts/validateBattleTeraInfoUi.mjs",
+    "validate:battle-retargeting": "node scripts/validateBattleRetargeting.mjs",
+    "validate:double-battle-commands-ui": "node scripts/validateDoubleBattleCommandsUi.mjs"
   },
   "dependencies": {
     "firebase": "^12.18.0",

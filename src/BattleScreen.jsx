@@ -1378,7 +1378,7 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
   )
 }
 
-function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, onPreview }) {
+function PokemonPartyMenu({ battle, forced, activeSlot = 0, reservedSwitchIndexes, onSelect, onBack, onPreview }) {
   const activeIndexes = battle.player.activeIndexes ?? [battle.player.activeIndex]
   const activeIndex = activeIndexes[activeSlot] ?? battle.player.activeIndex
   const switchRequest = forced ? battle.pendingPlayerSwitch : null
@@ -1394,7 +1394,7 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
             ? `${switchSource || '회생의기도'} · 되살릴 포켓몬을 선택하세요`
             : switchSource
             ? `${switchSource} · 교대할 포켓몬을 선택하세요`
-            : forced ? '다음 포켓몬을 선택하세요' : '교대할 포켓몬 선택'}</strong>
+            : forced ? '다음 포켓몬을 선택하세요' : `${battle.player.team[activeIndex].name} · 교대할 포켓몬 선택`}</strong>
         </div>
         {!forced && <button type="button" onPointerEnter={onPreview} onClick={onBack}><ChevronLeft size={17} /> 돌아가기</button>}
       </header>
@@ -1402,9 +1402,10 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
         {battle.player.team.map((pokemon, index) => {
           const isActive = activeIndexes.includes(index)
           const isSelectedSlot = index === activeIndex
+          const isReserved = !forced && reservedSwitchIndexes?.has(index)
           const isDisabled = choosingRevival
             ? !pokemon.fainted && pokemon.hp > 0
-            : isActive || pokemon.fainted || pokemon.hp <= 0
+            : isActive || isReserved || pokemon.fainted || pokemon.hp <= 0
           return (
             <button
               className={`${isActive && !choosingRevival ? 'active' : ''}${isSelectedSlot ? ' selected-slot' : ''}${pokemon.fainted ? ' fainted' : ''}`}
@@ -1425,7 +1426,7 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, onSelect, onBack, on
               <span>
                 <strong>{pokemon.name}</strong>
                 <span className="battle-party-meta">
-                  <small>{pokemon.fainted ? '기절' : isSelectedSlot ? '교대 대상' : isActive ? '배틀 중' : pokemon.status?.label ?? '정상'}</small>
+                  <small>{pokemon.fainted ? '기절' : isSelectedSlot ? '교대 대상' : isActive ? '배틀 중' : isReserved ? '교대 예약' : pokemon.status?.label ?? '정상'}</small>
                   <BattleTeraBadge pokemon={pokemon} />
                 </span>
               </span>
@@ -2158,8 +2159,18 @@ function BattleScreen({
       .filter((action) => action.actorSlot !== commandSlot && action.gimmick)
       .map((action) => action.gimmick),
   ), [commandSlot, queuedActions])
+  const reservedSwitchIndexes = useMemo(() => new Set(
+    queuedActions
+      .filter((action) => action.actorSlot !== commandSlot && action.type === 'switch')
+      .map((action) => action.targetIndex),
+  ), [commandSlot, queuedActions])
 
   const submitPlayerAction = (action) => {
+    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
+    if (action.type === 'switch' && reservedSwitchIndexes.has(action.targetIndex)) {
+      battleAudioRef.current?.playMenu('cancel')
+      return
+    }
     if (action.gimmick && reservedMechanicIds.has(action.gimmick)) {
       battleAudioRef.current?.playMenu('cancel')
       setPendingGimmick(null)
@@ -2261,10 +2272,15 @@ function BattleScreen({
       if (resolution.state === battle && resolution.timeline.length === 0) return
       playBattleResolution(resolution)
     } else {
+      const selected = battle.player.team[targetIndex]
+      const activeIndexes = battle.player.activeIndexes ?? [battle.player.activeIndex]
+      if (!selected || selected.fainted || selected.hp <= 0 || activeIndexes.includes(targetIndex)) return
       submitPlayerAction({ type: 'switch', targetIndex })
     }
     setPendingMoveIndex(null)
-    setMenu('command')
+    setPendingGimmick(null)
+    // submitPlayerAction owns the next slot/menu; replacing its 'fight' menu
+    // here would restart the command selection and discard the queued switch.
   }
 
   const completeBattle = (forcedWinner) => {
@@ -2594,6 +2610,7 @@ function BattleScreen({
               battle={battle}
               forced={battle.awaitingPlayerSwitch}
               activeSlot={battle.awaitingPlayerSwitch ? battle.awaitingPlayerSwitchSlots?.[0] ?? 0 : commandSlot}
+              reservedSwitchIndexes={reservedSwitchIndexes}
               onSelect={chooseSwitch}
               onBack={returnToCommandMenu}
               onPreview={previewBattleMenu}

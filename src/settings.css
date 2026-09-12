@@ -95,7 +95,7 @@
 
 .settings-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 10px 12px 0;
   background: rgba(12, 10, 29, 0.68);
@@ -335,95 +335,6 @@ html[data-mobile-layout="landscape"] .settings-modal.settings-achievements-open 
   align-content: start;
   gap: 12px;
   padding: clamp(14px, 3vw, 28px);
-}
-
-.settings-bug-report-panel {
-  align-content: start;
-  padding: clamp(14px, 2.5vw, 24px);
-}
-
-.settings-bug-report-panel[hidden] { display: none; }
-.bug-report-form,
-.bug-report-form fieldset { display: grid; gap: 17px; min-width: 0; }
-.bug-report-form fieldset { margin: 0; padding: 0; border: 0; }
-.bug-report-intro { display: flex; gap: 12px; align-items: center; }
-.bug-report-intro > span { display: grid; flex: 0 0 42px; height: 42px; place-items: center; border: 1px solid #6ff0df66; border-radius: 12px; color: #77f4df; background: #204444; }
-.bug-report-intro h3 { margin: 0 0 4px; color: #fff4d5; font-size: 19px; }
-.bug-report-intro p { margin: 0; color: #c4bfd6; font-size: 12px; line-height: 1.6; }
-.bug-report-heading-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 0.42fr); gap: 14px; }
-.bug-report-detail-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.bug-report-field { display: grid; gap: 7px; min-width: 0; }
-.bug-report-field > span { display: flex; gap: 7px; align-items: baseline; color: #f1edf9; font-size: 13px; font-weight: 800; }
-.bug-report-field b { color: #ffc570; font-size: 10px; font-weight: 700; }
-.bug-report-field em { color: #b6b0c9; font-size: 11px; font-style: normal; font-weight: 400; }
-.bug-report-field > span > small { margin-left: auto; color: #aba6bd; font-size: 10px; font-weight: 400; }
-.bug-report-field > small { color: #b6b1c7; font-size: 11px; line-height: 1.55; }
-.bug-report-field input,
-.bug-report-field select,
-.bug-report-field textarea { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 10px 12px; border: 1px solid #79718e; border-radius: 8px; color: #fff9ef; background: #1c1a30; font: inherit; font-size: 13px; line-height: 1.6; color-scheme: dark; }
-.bug-report-field textarea { resize: vertical; max-height: 350px; }
-.bug-report-field input::placeholder,
-.bug-report-field textarea::placeholder { color: #a6a0b9; opacity: 1; }
-.bug-report-field [aria-invalid="true"] { border-color: #ffa4ad; }
-.bug-report-field input:focus-visible,
-.bug-report-field select:focus-visible,
-.bug-report-field textarea:focus-visible,
-.bug-report-diagnostics input:focus-visible,
-.bug-report-submit:focus-visible,
-.bug-report-notice button:focus-visible { outline: 2px solid #79ece7; outline-offset: 3px; }
-.bug-report-form fieldset:disabled { opacity: 0.7; }
-.bug-report-diagnostics { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px; border: 1px solid #81e2df33; border-radius: 9px; background: #17414644; cursor: pointer; }
-.bug-report-diagnostics input { flex: 0 0 18px; width: 18px; height: 18px; margin: 2px 0 0; accent-color: #73e9d8; cursor: pointer; }
-.bug-report-diagnostics > span { display: grid; gap: 4px; }
-.bug-report-diagnostics strong { color: #d8fffa; font-size: 12px; line-height: 1.6; }
-.bug-report-diagnostics small { color: #b8cbc9; font-size: 11px; line-height: 1.55; }
-.bug-report-privacy { margin: 0; color: #b5b0c6; font-size: 11px; line-height: 1.7; }
-.bug-report-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.bug-report-actions > small { color: #b5b0c6; font-size: 10px; line-height: 1.6; }
-.bug-report-submit { display: inline-flex; gap: 9px; align-items: center; justify-content: center; min-height: 44px; padding: 10px 20px; border: 1px solid #92f6e4; border-radius: 9px; color: #122d32; background: linear-gradient(180deg, #8df3da, #55cbbb); font: inherit; font-size: 13px; font-weight: 900; cursor: pointer; box-shadow: inset 0 -3px #25877844; }
-.bug-report-submit:disabled,
-.bug-report-notice button:disabled { opacity: 0.55; cursor: not-allowed; }
-.bug-report-notice { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 14px; border: 1px solid #edc27655; border-radius: 9px; color: #ffdda0; background: #68480a33; font-size: 12px; line-height: 1.6; }
-.bug-report-notice > span { flex: 1 1 250px; }
-.bug-report-notice button { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; padding: 7px 10px; border: 1px solid #c9ad7766; border-radius: 7px; color: #ffe8bd; background: #3a2b32; font: inherit; font-size: 11px; cursor: pointer; }
-.bug-report-error { margin: 0; padding: 12px 14px; border: 1px solid #ff879866; border-radius: 9px; color: #ffd2d8; background: #761e3b44; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-.bug-report-success { display: grid; gap: 15px; justify-items: center; align-content: center; min-height: 240px; padding: 28px 12px; text-align: center; }
-.bug-report-success > svg { color: #82f4d6; }
-.bug-report-success h3 { margin: 0; font-size: 23px; color: #e5fff6; }
-.bug-report-success p { margin: 0; color: #c7c1d8; font-size: 13px; line-height: 1.7; }
-.bug-report-reference { display: grid; gap: 5px; max-width: 100%; color: #b9b3cb; font-size: 11px; }
-.bug-report-reference code { color: #c5f9ee; overflow-wrap: anywhere; }
-.bug-report-honeypot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.bug-report-spinner { animation: bug-report-spin 1s linear infinite; }
-@keyframes bug-report-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .bug-report-spinner { animation: none; } }
-
-@media (max-width: 600px) {
-  .settings-tabs { gap: 4px; padding-right: 7px; padding-left: 7px; }
-  .settings-tabs button { gap: 4px; font-size: 11px; padding-right: 2px; padding-left: 2px; white-space: nowrap; }
-  .settings-tabs button svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .bug-report-heading-fields,
-  .bug-report-detail-fields { grid-template-columns: 1fr; }
-  .bug-report-actions { align-items: stretch; flex-direction: column; }
-  .bug-report-submit { width: 100%; }
-  .bug-report-intro h3 { font-size: 17px; }
-}
-
-@media (max-height: 510px) and (orientation: landscape) {
-  .settings-modal-backdrop:has(.settings-bug-report-open) { padding: 12px; }
-  .settings-modal.settings-bug-report-open { width: calc(100vw - 28px); max-height: calc(100dvh - 24px); border-width: 2px; border-radius: 12px; }
-  .settings-bug-report-open .settings-modal-header { min-height: 40px; gap: 9px; padding: 4px 10px; }
-  .settings-bug-report-open .settings-modal-header small { display: none; }
-  .settings-bug-report-open .settings-modal-header h2 { font-size: 20px; }
-  .settings-bug-report-open .settings-header-mark { width: 28px; height: 28px; border-radius: 8px; }
-  .settings-bug-report-open .settings-header-mark svg { width: 18px; height: 18px; }
-  .settings-bug-report-open .settings-close-button { width: 28px; height: 28px; border-radius: 7px; }
-  .settings-bug-report-open .settings-tabs { gap: 6px; padding: 4px 8px 0; }
-  .settings-bug-report-open .settings-tabs button { min-height: 31px; gap: 5px; font-size: 11px; }
-  .settings-bug-report-open .settings-tabs button svg { width: 15px; height: 15px; }
-  .settings-bug-report-open .settings-modal-body { padding: 6px 8px; }
-  .settings-bug-report-open .settings-modal-footer { padding: 4px 8px; }
-  .settings-bug-report-open .settings-modal-footer button { min-height: 30px; font-size: 11px; }
 }
 
 .settings-account-card {

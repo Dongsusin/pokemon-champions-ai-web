@@ -6110,7 +6110,7 @@ export function getBattleMovePreview(
 const SELECTABLE_MOVE_TARGETS = new Set(['normal', 'any', 'adjacentFoe', 'adjacentAlly', 'adjacentAllyOrSelf', 'self'])
 const ALLY_SUPPORT_MOVE_IDS = new Set(['healpulse', 'floralhealing', 'pollenpuff', 'acupressure', 'helpinghand'])
 
-function battleMoveTargetOptions(state, sideId, activeSlot, move) {
+function battleMoveTargetOptions(state, sideId, activeSlot, move, { includeUnavailable = false } = {}) {
   if (!SELECTABLE_MOVE_TARGETS.has(move?.target)) return []
   const allies = getActivePokemonList(state, sideId)
   const oppositeSideId = getOtherSide(state, sideId).id
@@ -6124,7 +6124,7 @@ function battleMoveTargetOptions(state, sideId, activeSlot, move) {
   }
   const options = []
   const append = (entries, candidateSideId) => entries.forEach((target, slot) => {
-    if (!isAvailableFieldPokemon(target) || !adjacent(candidateSideId, slot)) return
+    if (!(includeUnavailable ? target : isAvailableFieldPokemon(target)) || !adjacent(candidateSideId, slot)) return
     const isSelf = candidateSideId === sideId && slot === activeSlot
     if (isSelf && !['self', 'adjacentAllyOrSelf'].includes(move.target)) return
     if (move.target === 'self' && !isSelf) return
@@ -7415,7 +7415,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     }
   }
   if (!isSkyDropContinuation && SELECTABLE_MOVE_TARGETS.has(targetingMove.target)) {
-    const options = battleMoveTargetOptions(state, sideId, actorSlot, targetingMove)
+    // A command selects a location. Keep living occupants (including a hidden
+    // Commander) and switched-in replacements; only a fainted foe is eligible
+    // for random retargeting. The UI still lists only available targets.
+    const locations = battleMoveTargetOptions(state, sideId, actorSlot, targetingMove, { includeUnavailable: true })
+    const options = locations.filter((option) => isAvailableFieldPokemon(option.target))
     const requestedSideId = action.targetAllySlot != null ? sideId : action.targetSideId
     const requestedSlot = Number(action.targetAllySlot ?? action.targetSlot ?? 0)
     const defaultSideId = ['self', 'adjacentAlly', 'adjacentAllyOrSelf'].includes(targetingMove.target)
@@ -7424,9 +7428,17 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     const defaultSlot = targetingMove.target === 'self' || targetingMove.target === 'adjacentAllyOrSelf'
       ? actorSlot
       : requestedSlot
-    const selected = options.find((option) => option.sideId === (requestedSideId ?? defaultSideId)
+    let selected = locations.find((option) => option.sideId === (requestedSideId ?? defaultSideId)
       && option.slot === (requestedSideId ? requestedSlot : defaultSlot))
       ?? (!requestedSideId ? options.find((option) => option.sideId === defaultSideId) : null)
+    if (selected && (selected.target.fainted || selected.target.hp <= 0)) {
+      if (selected.sideId !== sideId) {
+        const candidates = options.filter((option) => option.sideId === selected.sideId)
+        if (candidates.length) selected = candidates.length === 1 ? candidates[0] : candidates[Math.floor(random() * candidates.length)]
+      } else if (targetingMove.target === 'adjacentAllyOrSelf') {
+        selected = options.find((option) => option.sideId === sideId && option.slot === actorSlot) ?? selected
+      }
+    }
     if (!selected) {
       attacker.actedThisTurn = true
       attacker.moveFailedThisTurn = true
@@ -7470,16 +7482,23 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     defender = redirectedTarget.pokemon
     targetRedirection = redirectedTarget.reason
   }
-  if (!isAvailableFieldPokemon(defender)) {
-    targetSlot = getActivePokemonList(state, targetSide.id).findIndex(isAvailableFieldPokemon)
-    defender = getActivePokemon(state, targetSide.id, Math.max(0, targetSlot))
+  if (!isAvailableFieldPokemon(defender) && !SELECTABLE_MOVE_TARGETS.has(targetingMove.target) && !isSkyDropContinuation) {
+    const candidates = targetingMove.target === 'randomNormal'
+      ? battleMoveTargetOptions(state, sideId, actorSlot, { ...targetingMove, target: 'adjacentFoe' })
+      : getActivePokemonList(state, targetSide.id).map((target, slot) => ({ target, slot }))
+        .filter((entry) => isAvailableFieldPokemon(entry.target))
+    if (candidates.length) {
+      const replacement = candidates.length === 1 ? candidates[0] : candidates[Math.floor(random() * candidates.length)]
+      targetSlot = replacement.slot
+      defender = replacement.target
+    }
   }
   let move = moveSlot
   const previousBattleMove = state.lastUsedMove ? { ...state.lastUsedMove } : null
   let moveCategory = moveSlot?.categoryId
     ?? (moveSlot?.category === '물리' ? 'physical' : moveSlot?.category === '변화' ? 'status' : 'special')
 
-  if (!isAvailableFieldPokemon(defender)) return
+  if (!defender) return
   attacker.actedThisTurn = true
   // Glaive Rush lasts until this Pokemon's next attempted move, including
   // attacks made by faster opponents on the following turn.
@@ -7803,6 +7822,16 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
 
   if (!action.dancerCopy && !attacker.usedMoveIds.includes(move.id)) attacker.usedMoveIds.push(move.id)
+  if (!isAvailableFieldPokemon(defender)
+    && (SELECTABLE_MOVE_TARGETS.has(targetingMove.target) || targetingMove.target === 'randomNormal' || isSkyDropContinuation)) {
+    const message = defender.commanding
+      ? `${defender.name}은(는) 사령탑으로 숨어 있어 기술이 닿지 않았다!`
+      : `${move.name}을(를) 사용할 수 있는 대상이 없다!`
+    appendLog(state, message, 'muted')
+    applyFailedMoveConsequences(state, attacker, move)
+    pushTimelineStep(timeline, state, { phase: 'resolve', ...moveStep, result: 'failed', message })
+    return
+  }
   const failureReason = specialMoveFailureReason(state, attacker, defender, move, { isChargeContinuation })
   if (failureReason) {
     appendLog(state, failureReason, 'muted')
@@ -12838,8 +12867,8 @@ function continueBattleTurn(nextState, random, timeline) {
   return finishBattleResolution(nextState, timeline)
 }
 
-export function createBattleTurnTimeline(state, playerAction, random = Math.random) {
-  return resolveBattleTurn(state, playerAction, random, true)
+export function createBattleTurnTimeline(state, playerAction, random = Math.random, opponentActions = null) {
+  return resolveBattleTurn(state, playerAction, random, true, opponentActions)
 }
 
 export function playBattleTurn(state, playerAction, random = Math.random) {

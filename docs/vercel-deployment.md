@@ -24,8 +24,6 @@
 
 Firebase Web App 환경 변수는 Vercel의 Production 환경에도 설정해야 한다. 필요한 변수 목록과 Firestore 규칙 배포 절차는 [Firebase 설정](firebase-setup.md)을 따른다. 인증·저장 형식이 바뀌는 변경은 웹과 실제 Firestore 규칙의 호환성을 확인한 후 함께 반영한다.
 
-버그 신고는 루트 `api/bug-report.js`의 Node 함수로 처리한다. 수신 주소와 활성화 여부는 서버 전용 환경변수로 설정하며, 메일 수신함 활성화·검증 절차는 [버그 신고 운영](bug-reports.md)을 따른다. 환경변수 변경도 새 배포가 필요하다.
-
 ## 푸시 이후 확인
 
 1. 관련 검증을 통과한 변경을 커밋하고 현재 브랜치로 푸시한다.
