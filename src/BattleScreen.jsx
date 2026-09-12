@@ -1378,6 +1378,36 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
   )
 }
 
+function rankedMoveOption(battle, moveIndex, activeSlot = 0, gimmick) {
+  const option = battle.commandOptions?.[activeSlot]?.moves?.find(entry => entry.moveIndex === moveIndex)
+  if (!option) return null
+  return gimmick ? { ...option, ...(option.variants?.[gimmick] ?? { disabled: true, reason: '서버에서 허용되지 않은 기믹입니다.' }) } : option
+}
+
+function getUiBattleMechanics(battle, side, slot = 0) {
+  return Array.isArray(battle.commandOptions) ? battle.commandOptions[slot]?.mechanics ?? [] : getAvailableBattleMechanics(battle, side, slot)
+}
+
+function getUiMoveSelection(battle, side, index, slot = 0, gimmick) {
+  return Array.isArray(battle.commandOptions)
+    ? rankedMoveOption(battle, index, slot, gimmick) ?? { disabled: true, reason: '서버의 명령 정보를 기다리고 있습니다.' }
+    : getBattleMoveSelectionState(battle, side, index, slot, gimmick)
+}
+
+function getUiMovePreview(battle, side, index, slot = 0, targetSlot = 0, gimmick, targetSide) {
+  return Array.isArray(battle.commandOptions)
+    ? rankedMoveOption(battle, index, slot, gimmick)?.preview ?? getActivePokemon(battle, side, slot)?.moves?.[index]
+    : getBattleMovePreview(battle, side, index, slot, targetSlot, gimmick, targetSide)
+}
+
+function getUiMoveTargets(battle, side, index, slot = 0, gimmick) {
+  return Array.isArray(battle.commandOptions)
+    ? (rankedMoveOption(battle, index, slot, gimmick)?.targets ?? []).map(entry => ({
+      ...entry, target: getActivePokemon(battle, entry.sideId, entry.slot),
+    })).filter(entry => entry.target && !entry.target.fainted && entry.target.hp > 0)
+    : getBattleMoveTargets(battle, side, index, slot, gimmick)
+}
+
 function PokemonPartyMenu({ battle, forced, activeSlot = 0, reservedSwitchIndexes, onSelect, onBack, onPreview }) {
   const activeIndexes = battle.player.activeIndexes ?? [battle.player.activeIndex]
   const activeIndex = activeIndexes[activeSlot] ?? battle.player.activeIndex
@@ -1403,9 +1433,12 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, reservedSwitchIndexe
           const isActive = activeIndexes.includes(index)
           const isSelectedSlot = index === activeIndex
           const isReserved = !forced && reservedSwitchIndexes?.has(index)
-          const isDisabled = choosingRevival
+          const eligibleIndexes = Array.isArray(battle.commandOptions)
+            ? forced ? battle.replacementIndexes ?? [] : battle.commandOptions[activeSlot]?.switchIndexes ?? []
+            : null
+          const isDisabled = (eligibleIndexes && !eligibleIndexes.includes(index)) || (choosingRevival
             ? !pokemon.fainted && pokemon.hp > 0
-            : isActive || isReserved || pokemon.fainted || pokemon.hp <= 0
+            : isActive || isReserved || pokemon.fainted || pokemon.hp <= 0)
           return (
             <button
               className={`${isActive && !choosingRevival ? 'active' : ''}${isSelectedSlot ? ' selected-slot' : ''}${pokemon.fainted ? ' fainted' : ''}`}
@@ -1489,11 +1522,13 @@ function MoveMenu({
   const pokemon = getActivePokemon(battle, 'player', activeSlot)
   const opponent = getActivePokemon(battle, 'opponent', targetSlot)
   const playerActive = getActivePokemonList(battle, 'player')
-  const mechanics = getAvailableBattleMechanics(battle, 'player', activeSlot)
+  const mechanics = getUiBattleMechanics(battle, 'player', activeSlot)
     .filter((mechanic) => !reservedMechanicIds?.has(mechanic.id))
-  const struggleAction = getBattleStruggleAction(battle, 'player', activeSlot, pendingGimmick)
+  const struggleAction = Array.isArray(battle.commandOptions)
+    ? battle.commandOptions[activeSlot]?.moves?.find(option => option.moveIndex === -1 && !option.disabled)
+    : getBattleStruggleAction(battle, 'player', activeSlot, pendingGimmick)
   const moveOptions = struggleAction
-    ? [{ moveIndex: -1, move: getBattleMovePreview(battle, 'player', -1, activeSlot, targetSlot) }]
+    ? [{ moveIndex: -1, move: getUiMovePreview(battle, 'player', -1, activeSlot, targetSlot) }]
     : pokemon.moves.map((move, moveIndex) => ({ move, moveIndex }))
 
   return (
@@ -1537,7 +1572,7 @@ function MoveMenu({
       </header>
       <div className="battle-move-grid">
         {moveOptions.map(({ move, moveIndex }) => {
-          const displayMove = getBattleMovePreview(
+          const displayMove = getUiMovePreview(
             battle,
             'player',
             moveIndex,
@@ -1552,7 +1587,7 @@ function MoveMenu({
           const tooltipId = `battle-move-tooltip-${pokemon.battleId}-${moveIndex}`
           const isTooltipVisible = activeTooltipIndex === moveIndex
           const isZMoveLocked = moveIndex !== -1 && pendingGimmick === 'zmove' && displayMove.zMoveCompatible === false
-          const selection = getBattleMoveSelectionState(battle, 'player', moveIndex, activeSlot, pendingGimmick)
+          const selection = getUiMoveSelection(battle, 'player', moveIndex, activeSlot, pendingGimmick)
           const blockedReason = isZMoveLocked ? '현재 Z크리스탈과 호환되지 않음' : selection.reason
 
           return (
@@ -1625,11 +1660,11 @@ function MoveTargetMenu({
 }) {
   const pokemon = getActivePokemon(battle, 'player', activeSlot)
   const move = pokemon?.moves?.[moveIndex]
-    ?? (moveIndex === -1 ? getBattleMovePreview(battle, 'player', -1, activeSlot) : null)
-  const targets = getBattleMoveTargets(battle, 'player', moveIndex, activeSlot, pendingGimmick)
-  const selectedMechanic = getAvailableBattleMechanics(battle, 'player', activeSlot)
+    ?? (moveIndex === -1 ? getUiMovePreview(battle, 'player', -1, activeSlot) : null)
+  const targets = getUiMoveTargets(battle, 'player', moveIndex, activeSlot, pendingGimmick)
+  const selectedMechanic = getUiBattleMechanics(battle, 'player', activeSlot)
     .find((mechanic) => mechanic.id === pendingGimmick)
-  const displayMove = getBattleMovePreview(
+  const displayMove = getUiMovePreview(
     battle,
     'player',
     moveIndex,
@@ -1662,7 +1697,7 @@ function MoveTargetMenu({
         style={{ '--battle-target-columns': Math.max(1, Math.min(3, targets.length)) }}
       >
         {targets.map(({ target, slot, sideId: targetSideId }) => {
-          const targetMove = getBattleMovePreview(
+          const targetMove = getUiMovePreview(
             battle,
             'player',
             moveIndex,
@@ -1900,9 +1935,10 @@ function BattleScreen({
   onResolved,
   battleRewards = null,
   onComplete,
+  online = null,
 }) {
-  const [battle, setBattle] = useState(() => createBattle({ playerPokemon, opponent, opponentTeam, rules }))
-  const [introVisible, setIntroVisible] = useState(true)
+  const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, opponent, opponentTeam, rules }))
+  const [introVisible, setIntroVisible] = useState(!online)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
   const [queuedActions, setQueuedActions] = useState([])
@@ -1922,6 +1958,12 @@ function BattleScreen({
   const turnLockedRef = useRef(false)
   const battleAudioRef = useRef(null)
   const resultReportedRef = useRef(false)
+  const onlineRef = useRef(online)
+  onlineRef.current = online
+  const remoteRevisionRef = useRef(null)
+  const remotePendingRef = useRef(null)
+  const remotePlayingRef = useRef(false)
+  const [onlineSubmitting, setOnlineSubmitting] = useState(false)
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
   const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
   const activeTrainerDialogue = trainerDialogue
@@ -1932,17 +1974,18 @@ function BattleScreen({
   const inspectedPokemonSide = hoveredPokemonSide ?? focusedPokemonSide ?? pinnedPokemonSide
   const summary = useMemo(() => getBattleSummary(battle), [battle])
   useEffect(() => {
-    if (!summary.winner || isTurnAnimating || resultReportedRef.current) return
+    if (online || !summary.winner || isTurnAnimating || resultReportedRef.current) return
     resultReportedRef.current = true
     onResolved?.(summary)
-  }, [summary, isTurnAnimating, onResolved])
+  }, [summary, isTurnAnimating, onResolved, Boolean(online)])
   const currentLogEntry = battle.log.at(-1)
   const currentBattleMessage = turnCue?.message ?? currentLogEntry?.message ?? '배틀을 준비하고 있습니다.'
   const currentBattleTone = turnCue ? cueTone(turnCue) : currentLogEntry?.tone ?? 'neutral'
   const battleLogHistory = battle.log
     .filter((entry) => entry.id !== currentLogEntry?.id || turnCue)
     .slice(-12)
-  const commandLocked = isTurnAnimating || Boolean(battle.winner) || Boolean(activeTrainerDialogue)
+  const onlineLocked = Boolean(online && (!online.canAct || onlineSubmitting))
+  const commandLocked = isTurnAnimating || Boolean(battle.winner) || Boolean(activeTrainerDialogue) || onlineLocked
   const attackAnimationMode = gameSettings.attackAnimation ?? 'normal'
   const showDamageNumbers = gameSettings.showDamageNumbers !== false
   const hpBarDuration = HP_BAR_DURATIONS[gameSettings.hpBarSpeed] ?? HP_BAR_DURATIONS.normal
@@ -2010,6 +2053,9 @@ function BattleScreen({
   useEffect(() => () => {
     playbackTokenRef.current += 1
     turnLockedRef.current = false
+    remoteRevisionRef.current = null
+    remotePendingRef.current = null
+    remotePlayingRef.current = false
     if (playbackTimerRef.current) clearTimeout(playbackTimerRef.current)
     battleAudioRef.current?.destroy()
   }, [])
@@ -2063,10 +2109,14 @@ function BattleScreen({
     const playbackToken = playbackTokenRef.current + 1
     playbackTokenRef.current = playbackToken
     const steps = resolution.timeline
+    const playbackDuration = steps.reduce((total, _, index) => total + turnPlaybackDelay(steps, index, attackAnimationMode), 0)
+    const playbackScale = onlineRef.current ? Math.min(1, 12_000 / Math.max(1, playbackDuration)) : 1
+    if (onlineRef.current) remotePlayingRef.current = steps.length > 0
 
     setMenu('command')
     setQueuedActions([])
     setPendingMoveIndex(null)
+    setPendingGimmick(null)
     setIsTurnAnimating(steps.length > 0)
 
     const playStep = (stepIndex) => {
@@ -2077,6 +2127,13 @@ function BattleScreen({
         setIsTurnAnimating(false)
         turnLockedRef.current = false
         playbackTimerRef.current = null
+        remotePlayingRef.current = false
+        if (onlineRef.current) {
+          onlineRef.current.onPlaybackComplete?.(resolution.remoteRevision)
+          const pending = remotePendingRef.current
+          remotePendingRef.current = null
+          if (pending) playBattleResolution(pending)
+        }
         return
       }
 
@@ -2086,7 +2143,7 @@ function BattleScreen({
       playBattleCue(step)
       playbackTimerRef.current = setTimeout(
         () => playStep(stepIndex + 1),
-        turnPlaybackDelay(steps, stepIndex, attackAnimationMode),
+        turnPlaybackDelay(steps, stepIndex, attackAnimationMode) * playbackScale,
       )
     }
 
@@ -2097,16 +2154,55 @@ function BattleScreen({
       setTurnCue(null)
       setIsTurnAnimating(false)
       turnLockedRef.current = false
+      remotePlayingRef.current = false
+      onlineRef.current?.onPlaybackComplete?.(resolution.remoteRevision)
+    }
+  }
+
+  useEffect(() => {
+    if (!online?.state) return
+    const revision = online.timelineRevision ?? online.revision
+    if (remoteRevisionRef.current === revision) return
+    remoteRevisionRef.current = revision
+    const resolution = { state: online.state, timeline: online.timeline ?? [], remoteRevision: revision }
+    if (remotePlayingRef.current) remotePendingRef.current = resolution
+    else playBattleResolution(resolution)
+  }, [online?.revision, online?.timelineRevision])
+
+  useEffect(() => {
+    if (!online || !moveAssetsReady) return
+    battleAudioRef.current?.start({ player: playerActive, opponent: opponentActive,
+      playerPokemon: playerActivePokemon, opponentPokemon: opponentActivePokemon })
+  }, [Boolean(online), moveAssetsReady])
+
+  const sendOnlineAction = async (kind, value) => {
+    if (!onlineRef.current?.canAct || turnLockedRef.current || onlineSubmitting) return
+    turnLockedRef.current = true
+    setOnlineSubmitting(true)
+    try {
+      if (kind === 'replace') await onlineRef.current.onReplace(value)
+      else await onlineRef.current.onSubmit(Array.isArray(value) ? value : [value])
+      setMenu('command')
+      setQueuedActions([])
+      setPendingGimmick(null)
+      setPendingMoveIndex(null)
+    } catch {
+      // The wrapper shows the error and refreshes authoritative state. There is
+      // no local simulation or optimistic HP/PP change on an uncertain request.
+    } finally {
+      if (!remotePlayingRef.current) turnLockedRef.current = false
+      setOnlineSubmitting(false)
     }
   }
 
   const startAnimatedTurn = (playerAction) => {
-    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
+    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue || onlineLocked) return
+    if (online) { void sendOnlineAction('submit', playerAction); return }
     playBattleResolution(createBattleTurnTimeline(battle, playerAction))
   }
 
   const livingPlayerActionSlots = playerActivePokemon
-    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
+    .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted && (!online || !pokemon.commanding) ? slot : -1))
     .filter((slot) => slot >= 0)
   const livingOpponentTargetSlots = opponentActivePokemon
     .map((pokemon, slot) => (pokemon.hp > 0 && !pokemon.fainted ? slot : -1))
@@ -2117,7 +2213,7 @@ function BattleScreen({
     : livingPlayerActionSlots
   const forcedPlayerActions = requiredPlayerActionSlots
     .map((actorSlot) => {
-      const forcedAction = getForcedBattleAction(battle, 'player', actorSlot)
+      const forcedAction = online ? battle.commandOptions?.[actorSlot]?.forcedAction : getForcedBattleAction(battle, 'player', actorSlot)
       return forcedAction ? { ...forcedAction, actorSlot } : null
     })
     .filter(Boolean)
@@ -2135,6 +2231,7 @@ function BattleScreen({
       || activeTrainerDialogue
       || battle.winner
       || battle.awaitingPlayerSwitch
+      || onlineLocked
       || forcedPlayerActions.length === 0
       || selectablePlayerActionSlots.length > 0
     ) return undefined
@@ -2153,6 +2250,7 @@ function BattleScreen({
     activeTrainerDialogue,
     introVisible,
     isTurnAnimating,
+    onlineLocked,
   ])
   const reservedMechanicIds = useMemo(() => new Set(
     queuedActions
@@ -2166,7 +2264,7 @@ function BattleScreen({
   ), [commandSlot, queuedActions])
 
   const submitPlayerAction = (action) => {
-    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue) return
+    if (turnLockedRef.current || battle.winner || battle.awaitingPlayerSwitch || activeTrainerDialogue || onlineLocked) return
     if (action.type === 'switch' && reservedSwitchIndexes.has(action.targetIndex)) {
       battleAudioRef.current?.playMenu('cancel')
       return
@@ -2211,11 +2309,11 @@ function BattleScreen({
   }
 
   const chooseMove = (moveIndex) => {
-    if (getBattleMoveSelectionState(battle, 'player', moveIndex, commandSlot, pendingGimmick).disabled) return
+    if (getUiMoveSelection(battle, 'player', moveIndex, commandSlot, pendingGimmick).disabled) return
     const selectedGimmick = moveIndex === -1 ? null : pendingGimmick
     battleAudioRef.current?.playMenu('select')
     const pokemon = getActivePokemon(battle, 'player', commandSlot)
-    const move = getBattleMovePreview(
+    const move = getUiMovePreview(
       battle,
       'player',
       moveIndex,
@@ -2224,7 +2322,7 @@ function BattleScreen({
       selectedGimmick,
     ) ?? pokemon?.moves?.[moveIndex]
     if (selectedGimmick === 'zmove' && move?.zMoveCompatible === false) return
-    const targets = getBattleMoveTargets(battle, 'player', moveIndex, commandSlot, selectedGimmick)
+    const targets = getUiMoveTargets(battle, 'player', moveIndex, commandSlot, selectedGimmick)
     if (targets.length > 1) {
       setPendingGimmick(selectedGimmick)
       setPendingMoveIndex(moveIndex)
@@ -2249,7 +2347,7 @@ function BattleScreen({
 
   const chooseMoveTarget = (selectedTargetSlot, selectedTargetSideId = 'opponent') => {
     if (pendingMoveIndex == null) return
-    const targets = getBattleMoveTargets(battle, 'player', pendingMoveIndex, commandSlot, pendingGimmick)
+    const targets = getUiMoveTargets(battle, 'player', pendingMoveIndex, commandSlot, pendingGimmick)
     if (!targets.some((target) => target.slot === selectedTargetSlot && target.sideId === selectedTargetSideId)) return
     battleAudioRef.current?.playMenu('select')
     setTargetSlot(selectedTargetSlot)
@@ -2265,7 +2363,8 @@ function BattleScreen({
   }
 
   const chooseSwitch = (targetIndex) => {
-    if (turnLockedRef.current || activeTrainerDialogue) return
+    if (turnLockedRef.current || activeTrainerDialogue || onlineLocked) return
+    if (online && battle.awaitingPlayerSwitch) { void sendOnlineAction('replace', targetIndex); return }
     battleAudioRef.current?.playMenu('select')
     if (battle.awaitingPlayerSwitch) {
       const resolution = resumeBattleTurnTimeline(battle, targetIndex)
@@ -2284,6 +2383,11 @@ function BattleScreen({
   }
 
   const completeBattle = (forcedWinner) => {
+    if (online) {
+      if (forcedWinner === 'opponent') online.onForfeit?.()
+      else onComplete?.(summary)
+      return
+    }
     if (forcedWinner === 'opponent') battleAudioRef.current?.playMenu('cancel')
     onComplete({
       ...summary,
@@ -2403,7 +2507,7 @@ function BattleScreen({
     >
       <header className="battle-game-header">
         <div className="battle-title-lockup">
-          <span><Swords size={14} /> TRAINER BATTLE</span>
+          <span><Swords size={14} /> {online ? 'RANKED BATTLE' : 'TRAINER BATTLE'}</span>
           <strong>{competitionLabel}</strong>
         </div>
         <div className="battle-game-turn">
@@ -2436,12 +2540,12 @@ function BattleScreen({
               label={battle.rules.gimmickRestriction.label}
               description={getBattleRuleDescription('gimmick', battle.rules.gimmickRestriction)}
             />
-            <BattleRuleBadge
+            {!online && <BattleRuleBadge
               id="difficulty"
               category="AI"
               label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty)}
               description={getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
-            />
+            />}
           </div>
           <div className="battle-header-actions">
             <span>{playerActive.name} VS {opponentActive.name}</span>
@@ -2483,7 +2587,7 @@ function BattleScreen({
         ))}
         {playerActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('player', pokemon, visualTurnCue, slot)} key={`player-status-${pokemon.battleId}`}>
-            <BattleStatusPanel pokemon={pokemon} side="player" trainerName="PLAYER_01" />
+            <BattleStatusPanel pokemon={pokemon} side="player" trainerName={online?.playerName ?? 'PLAYER_01'} />
             {slot === 0 && <PartyIndicators side={battle.player} />}
           </div>
         ))}
@@ -2504,7 +2608,7 @@ function BattleScreen({
             key={`player-tooltip-${pokemon.battleId}`}
             pokemon={pokemon}
             side="player"
-            trainerName="PLAYER_01"
+            trainerName={online?.playerName ?? 'PLAYER_01'}
             visible={!introVisible && inspectedPokemonSide === `player-${slot}`}
           />
         ))}
@@ -2703,6 +2807,7 @@ function BattleScreen({
       )}
 
       {battle.winner
+        && !online
         && !introVisible
         && !isTurnAnimating
         && !activeTrainerDialogue && (

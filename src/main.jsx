@@ -1,7 +1,8 @@
 import './mobileViewport'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App'
+import App, { RankedTestApp } from './App'
+import { isRankedLocalTest } from './rankedClient'
 import { AuthProvider } from './auth/AuthProvider'
 import ResourceBootstrap from './ResourceBootstrap'
 import './styles.css'
@@ -17,9 +18,9 @@ import './mobileLandscape.css'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ResourceBootstrap>
-      <AuthProvider>
+      {isRankedLocalTest ? <RankedTestApp /> : <AuthProvider>
         <App />
-      </AuthProvider>
+      </AuthProvider>}
     </ResourceBootstrap>
   </StrictMode>,
 )

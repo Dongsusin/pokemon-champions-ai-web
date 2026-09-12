@@ -1616,6 +1616,8 @@ function cloneBattle(state) {
     log: [...state.log],
     awaitingPlayerSwitchSlots: [...(state.awaitingPlayerSwitchSlots ?? [])],
     pendingPlayerSwitch: state.pendingPlayerSwitch ? structuredClone(state.pendingPlayerSwitch) : null,
+    pendingHumanSwitch: state.pendingHumanSwitch ? structuredClone(state.pendingHumanSwitch) : null,
+    humanReplacementBatch: state.humanReplacementBatch ? structuredClone(state.humanReplacementBatch) : null,
     pendingSwitches: (state.pendingSwitches ?? []).map((request) => structuredClone(request)),
     pendingTurn: state.pendingTurn ? structuredClone(state.pendingTurn) : null,
     lastEvent: state.lastEvent ? { ...state.lastEvent } : null,
@@ -4950,7 +4952,7 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
   if (move.id === 'revivalblessing') {
     const side = getPokemonSide(state, attacker)
     const fainted = side.team.filter((pokemon) => pokemon.fainted || pokemon.hp <= 0)
-    if (side.id === 'player' && !state.aiSimulation && fainted.length > 0) {
+    if ((side.id === 'player' || state.rules?.pvp) && !state.aiSimulation && fainted.length > 0) {
       requestBattleSwitch(state, side.id, context.actorSlot ?? 0, {
         kind: 'revival', moveName: move.name, actionOrder: context.actionOrder,
       }, context.timeline)
@@ -5780,14 +5782,14 @@ function inferConfiguredMechanics(pokemon) {
 
 export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot = null) {
   if (!state || state.winner) return []
-  if (sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'easy') return []
+  if (!state.rules?.pvp && sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'easy') return []
   const side = getSide(state, sideId)
   const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted) return []
   if (pokemon.usedBattleMechanicId) return []
   const configured = sideId === 'opponent' ? inferConfiguredMechanics(pokemon) : []
   const available = []
-  const allow = (mechanicId) => sideId === 'player' || configured.includes(mechanicId)
+  const allow = (mechanicId) => state.rules?.pvp || sideId === 'player' || configured.includes(mechanicId)
 
   if (!side.usedMechanics.tera && allow('tera')) {
     available.push({ id: 'tera', label: `테라스탈 · ${getBattleTeraType(pokemon)}`, shortLabel: 'TERA' })
@@ -7111,6 +7113,7 @@ function finishRequestedSwitch(state, request, targetIndex, timeline) {
 }
 
 function resolveRequestedSwitches(state, timeline = null) {
+  if (state.rules?.pvp && state.pendingHumanSwitch) return true
   if (remainingCount(state.player) === 0 || remainingCount(state.opponent) === 0) {
     state.pendingSwitches = []
     return false
@@ -7121,6 +7124,15 @@ function resolveRequestedSwitches(state, timeline = null) {
     if (!actor || actor.battleId !== request.actorBattleId
       || request.kind !== 'faint' && (actor.hp <= 0 || actor.fainted)
       || request.kind !== 'revival' && availableBenchIndexes(getSide(state, request.sideId)).length === 0) continue
+    if (state.rules?.pvp) {
+      state.pendingHumanSwitch = request
+      const message = request.kind === 'revival'
+        ? `${getSide(state, request.sideId).name}: 되살릴 포켓몬을 선택하고 있습니다.`
+        : `${getSide(state, request.sideId).name}: 다음 포켓몬을 선택하고 있습니다.`
+      appendLog(state, message, 'prompt')
+      pushTimelineStep(timeline, state, { phase: 'prompt', sideId: request.sideId, targetSideId: request.sideId, message })
+      return true
+    }
     if (request.sideId === 'player') {
       state.pendingPlayerSwitch = request
       state.awaitingPlayerSwitch = true
@@ -9502,6 +9514,7 @@ function performSwitch(
   prepareSwitchOutForm(state, current)
   clearSwitchVolatiles(current)
   side.activeIndexes[resolvedSlot] = targetIndex
+  if (state.rules?.pvp) target.rankedRevealed = true
   side.activeIndex = side.activeIndexes[state.rules?.format?.rotation ? side.rotationSlot : 0] ?? targetIndex
   refreshStrongWeatherSource(state)
   clearSwitchVolatiles(target)
@@ -10219,11 +10232,15 @@ function settleFaints(state, timeline = null) {
   const opponentRemaining = remainingCount(state.opponent)
 
   if (playerRemaining === 0 || opponentRemaining === 0) {
-    state.winner = playerRemaining > 0 ? 'player' : 'opponent'
+    state.winner = state.rules?.pvp && playerRemaining === 0 && opponentRemaining === 0
+      ? 'draw' : playerRemaining > 0 ? 'player' : 'opponent'
     state.phase = 'complete'
     appendLog(
       state,
-      state.winner === 'player' ? `${state.opponent.name}과의 승부에서 이겼다!` : `${state.opponent.name}에게 패배했다…`,
+      state.rules?.pvp
+        ? state.winner === 'draw' ? '양쪽 포켓몬이 모두 쓰러졌다. 무승부!'
+          : `${getSide(state, state.winner).name}의 승리!`
+        : state.winner === 'player' ? `${state.opponent.name}과의 승부에서 이겼다!` : `${state.opponent.name}에게 패배했다…`,
       state.winner === 'player' ? 'victory' : 'defeat',
     )
     pushTimelineStep(timeline, state, {
@@ -10231,6 +10248,32 @@ function settleFaints(state, timeline = null) {
       sideId: state.winner,
       message: latestLogMessage(state, '배틀이 끝났다!'),
     })
+    return
+  }
+
+  if (state.rules?.pvp) {
+    for (const sideId of ['player', 'opponent']) {
+      const side = getSide(state, sideId)
+      const slots = getActivePokemonList(state, sideId)
+        .map((pokemon, slot) => pokemon.fainted ? slot : -1)
+        .filter((slot) => slot >= 0)
+        .slice(0, availableBenchIndexes(side).length)
+      for (const slot of slots) {
+        const actor = getActivePokemon(state, sideId, slot)
+        if (state.pendingHumanSwitch?.actorBattleId === actor.battleId
+          || state.pendingSwitches.some((request) => request.actorBattleId === actor.battleId)) continue
+        state.pendingSwitches.push({ kind: 'faint', sideId, actorSlot: slot, actorBattleId: actor.battleId })
+      }
+    }
+    // Simultaneous faint replacements stay private until every required
+    // choice is submitted, so the second trainer cannot counter-pick a reveal.
+    if (!state.pendingHumanSwitch && !state.humanReplacementBatch) {
+      const requests = state.pendingSwitches.filter((request) => request.kind === 'faint')
+      if (requests.length > 1) {
+        state.humanReplacementBatch = { requests: structuredClone(requests), choices: [] }
+      }
+    }
+    if (!state.pendingHumanSwitch) resolveRequestedSwitches(state, timeline)
     return
   }
 
@@ -12633,7 +12676,7 @@ function chooseAiActions(state, random) {
   return chooseAiActionsForSide(state, 'opponent', random)
 }
 
-export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null }) {
+export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null, playerName = 'PLAYER_01', random = Math.random }) {
   const battleRules = rules ?? {
     weather: { id: 'clear', label: '맑음' },
     terrain: { id: 'neutral', label: '일반 필드' },
@@ -12649,16 +12692,16 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     playerPokemon.length,
     opponentTeam.pokemon.length,
   ))
-  const player = createSide('player', 'PLAYER_01', playerPokemon, [], '', activeSlots)
+  const player = createSide('player', playerName, playerPokemon, [], '', activeSlots)
   const opponentSide = createSide(
     'opponent',
     opponent.name,
     opponentTeam.pokemon,
     opponentTeam.battleGimmicks,
-    opponentTeam.strategy?.lead,
+    resolvedRules.pvp ? '' : opponentTeam.strategy?.lead,
     activeSlots,
   )
-  applyOpponentAiDifficulty(opponentSide, resolvedRules.aiDifficulty)
+  if (!resolvedRules.pvp) applyOpponentAiDifficulty(opponentSide, resolvedRules.aiDifficulty)
   const state = {
     turn: 1,
     phase: 'command',
@@ -12672,6 +12715,8 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     awaitingPlayerSwitchSlots: [],
     pendingSwitches: [],
     pendingPlayerSwitch: null,
+    pendingHumanSwitch: null,
+    humanReplacementBatch: null,
     pendingTurn: null,
     winner: null,
     log: [],
@@ -12682,7 +12727,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     eventNonce: 0,
   }
 
-  const opponentLeadIndexes = chooseAiLeadIndexes(
+  const opponentLeadIndexes = resolvedRules.pvp ? [] : chooseAiLeadIndexes(
     state,
     'opponent',
     activeSlots,
@@ -12696,14 +12741,19 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   getActivePokemonList(state, 'opponent').forEach((pokemon) => {
     pokemon.difficultyBoostPending = false
   })
+  if (resolvedRules.pvp) {
+    for (const sideId of ['player', 'opponent']) {
+      getActivePokemonList(state, sideId).forEach((pokemon) => { pokemon.rankedRevealed = true })
+    }
+  }
   getActivePokemonList(state, 'opponent').forEach((pokemon) => activateIllusion(state, 'opponent', pokemon))
   getActivePokemonList(state, 'player').forEach((pokemon) => activateIllusion(state, 'player', pokemon))
 
-  appendLog(state, `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
+  appendLog(state, resolvedRules.pvp ? `${player.name} vs ${opponent.name}, 레이팅 배틀 시작!` : `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
   appendLog(state, `${resolvedRules.weather.label} · ${resolvedRules.terrain.label} · ${resolvedRules.format.label}`, 'field')
-  if (resolvedRules.aiDifficulty.id === 'easy') {
+  if (!resolvedRules.pvp && resolvedRules.aiDifficulty.id === 'easy') {
     appendLog(state, '이지 난이도: 상대 포켓몬은 지닌 도구와 배틀 기믹을 사용하지 않는다.', 'field')
-  } else if (resolvedRules.aiDifficulty.id === 'hard') {
+  } else if (!resolvedRules.pvp && resolvedRules.aiDifficulty.id === 'hard') {
     appendLog(
       state,
       `하드 난이도: 상대 포켓몬의 HP와 주요 능력이 ${resolvedRules.aiDifficulty.boostStage}단계 강화된 상태로 시작한다!`,
@@ -12715,16 +12765,35 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     `${opponent.name}은(는) ${getActivePokemonList(state, 'opponent').map((pokemon) => pokemon.name).join(', ')}을(를) 내보냈다!`,
     'opponent',
   )
-  appendLog(state, `${getActivePokemonList(state, 'player').map((pokemon) => pokemon.name).join(', ')}! 너희로 정했다!`, 'player')
-  getActivePokemonList(state, 'opponent').forEach((_, slot) => activateEntryAbility(state, 'opponent', slot))
-  getActivePokemonList(state, 'player').forEach((_, slot) => activateEntryAbility(state, 'player', slot))
+  appendLog(state, resolvedRules.pvp
+    ? `${player.name}은(는) ${getActivePokemonList(state, 'player').map((pokemon) => pokemon.name).join(', ')}을(를) 내보냈다!`
+    : `${getActivePokemonList(state, 'player').map((pokemon) => pokemon.name).join(', ')}! 너희로 정했다!`, 'player')
+  if (resolvedRules.pvp) {
+    const entries = ['player', 'opponent'].flatMap((sideId) => getActivePokemonList(state, sideId)
+      .map((pokemon, slot) => ({ sideId, slot, speed: effectiveStat(state, pokemon, 'speed') })))
+      .sort((first, second) => second.speed - first.speed)
+    // Simultaneous entry abilities follow Speed; ties use the server's RNG.
+    for (let start = 0; start < entries.length;) {
+      let end = start + 1
+      while (end < entries.length && entries[end].speed === entries[start].speed) end += 1
+      for (let index = end - 1; index > start; index -= 1) {
+        const selected = start + Math.floor(random() * (index - start + 1))
+        ;[entries[index], entries[selected]] = [entries[selected], entries[index]]
+      }
+      start = end
+    }
+    entries.forEach(({ sideId, slot }) => activateEntryAbility(state, sideId, slot))
+  } else {
+    getActivePokemonList(state, 'opponent').forEach((_, slot) => activateEntryAbility(state, 'opponent', slot))
+    getActivePokemonList(state, 'player').forEach((_, slot) => activateEntryAbility(state, 'player', slot))
+  }
   resolvePendingEjectPacks(state)
   resolveRequestedSwitches(state)
   return state
 }
 
 function resolveBattleTurn(state, playerAction, random, captureTimeline, opponentActionOverride = null) {
-  if (!state || state.winner || state.awaitingPlayerSwitch) {
+  if (!state || state.winner || state.awaitingPlayerSwitch || state.pendingHumanSwitch) {
     return { state, timeline: [] }
   }
 
@@ -12857,9 +12926,11 @@ function continueBattleTurn(nextState, random, timeline) {
   if (nextState.winner) {
     nextState.pendingSwitches = []
     nextState.pendingPlayerSwitch = null
+    nextState.pendingHumanSwitch = null
+    nextState.humanReplacementBatch = null
     nextState.awaitingPlayerSwitch = false
     nextState.awaitingPlayerSwitchSlots = []
-  } else if (!nextState.awaitingPlayerSwitch) {
+  } else if (!nextState.awaitingPlayerSwitch && !nextState.pendingHumanSwitch) {
     resolvePendingEjectPacks(nextState, timeline)
     resolveRequestedSwitches(nextState, timeline)
   }
@@ -12934,6 +13005,66 @@ export function resumeBattleTurnTimeline(state, targetIndex, random = Math.rando
 
 export function forcePlayerSwitch(state, targetIndex, random = Math.random) {
   return resumeBattleTurnTimeline(state, targetIndex, random).state
+}
+
+// PvP suspends the same turn queue for either human. Never choose a bench
+// Pokemon on the second player's behalf or repeat residual effects on resume.
+export function resumeHumanBattleTurnTimeline(state, sideId, targetIndex, random = Math.random) {
+  const request = state?.pendingHumanSwitch
+  if (!state?.rules?.pvp || state.winner || !request || request.sideId !== sideId
+    || !Number.isInteger(targetIndex)) return { state, timeline: [] }
+  const side = getSide(state, sideId)
+  const selected = side.team[targetIndex]
+  if (state.humanReplacementBatch?.choices.some((choice) => choice.request.sideId === sideId && choice.targetIndex === targetIndex)) return { state, timeline: [] }
+  if (request.kind === 'revival'
+    ? !selected || selected.hp > 0 && !selected.fainted
+    : !availableBenchIndexes(side).includes(targetIndex)) return { state, timeline: [] }
+  const nextState = cloneBattle(state)
+  const timeline = []
+  FORM_TIMELINE_CONTEXTS.set(nextState, { timeline, deferred: [] })
+  nextState.pendingHumanSwitch = null
+  const batch = nextState.humanReplacementBatch
+  const belongsToBatch = batch?.requests.some((entry) => entry.actorBattleId === request.actorBattleId)
+  if (belongsToBatch) {
+    batch.choices.push({ request: structuredClone(request), targetIndex })
+    if (batch.choices.length < batch.requests.length) {
+      if (resolveRequestedSwitches(nextState, timeline)) return finishBattleResolution(nextState, timeline)
+      FORM_TIMELINE_CONTEXTS.delete(nextState)
+      return { state, timeline: [] }
+    }
+    nextState.humanReplacementBatch = null
+    const replacements = batch.choices.map((choice) => ({ ...choice,
+      speed: effectiveStat(nextState, getSide(nextState, choice.request.sideId).team[choice.targetIndex], 'speed'),
+      tie: random(),
+    })).sort((first, second) => second.speed - first.speed || first.tie - second.tie)
+    for (const choice of replacements) finishRequestedSwitch(nextState, choice.request, choice.targetIndex, timeline)
+  } else if (!finishRequestedSwitch(nextState, request, targetIndex, timeline)) {
+    FORM_TIMELINE_CONTEXTS.delete(nextState)
+    return { state, timeline: [] }
+  }
+  if (remainingCount(nextState.player) === 0 || remainingCount(nextState.opponent) === 0) {
+    settleFaints(nextState, timeline)
+    nextState.pendingSwitches = []
+    nextState.pendingHumanSwitch = null
+    nextState.humanReplacementBatch = null
+    if (nextState.pendingTurn) nextState.turn += 1
+    nextState.pendingTurn = null
+    return finishBattleResolution(nextState, timeline)
+  }
+  if (resolveRequestedSwitches(nextState, timeline)) return finishBattleResolution(nextState, timeline)
+  if (nextState.pendingTurn) return continueBattleTurn(nextState, random, timeline)
+  return finishBattleResolution(nextState, timeline)
+}
+
+export function getBattleSwitchIndexes(state, sideId = 'player', activeSlot = 0) {
+  const side = getSide(state, sideId)
+  const current = getActivePokemon(state, sideId, activeSlot)
+  if (!current || current.commanding || current.commandedByBattleId || forcedActionForPokemon(current)) return []
+  if (current.hp > 0 && !current.fainted && (
+    current.skyDropSourceBattleId || trappingAbilitySource(state, current)
+    || current.trappedTurns > 0 && !current.types.includes('고스트') && !hasActiveHeldItem(current, 'shed-shell')
+  )) return []
+  return availableBenchIndexes(side)
 }
 
 export function getBattleSummary(state) {

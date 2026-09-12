@@ -82,14 +82,14 @@ function BattleSelectScreen({
   return (
     <main className="battle-select-screen">
       <header className="battle-select-header">
-        <button className="screen-back-button" type="button" aria-label="로비로 돌아가기" onClick={onBack}>
+        <button className="screen-back-button" type="button" aria-label="배틀 종류 선택으로 돌아가기" onClick={onBack}>
           <ArrowLeft size={19} />
-          <span>로비</span>
+          <span>배틀 선택</span>
         </button>
 
         <div className="battle-select-title">
           <span>BATTLE CHALLENGE</span>
-          <h1>배틀 모드 선택</h1>
+          <h1>AI 대전</h1>
           <p>출전 팀을 확인하고 AI 트레이너와 겨룰 경기 방식을 선택하세요.</p>
         </div>
 

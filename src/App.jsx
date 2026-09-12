@@ -16,6 +16,9 @@ import {
   Zap,
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
+import BattleHub from './BattleHub'
+import RankedBattleScreen from './RankedBattleScreen'
+import { isRankedLocalTest } from './rankedClient'
 import BattleScreen from './BattleScreen'
 import AchievementsScreen from './AchievementsScreen'
 import AchievementToast from './AchievementToast'
@@ -30,7 +33,7 @@ import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
 import TrainingScreen from './TrainingScreen'
 import LoginScreen, { AccountDataErrorScreen, AuthLoadingScreen } from './LoginScreen'
-import { useAuth } from './auth/AuthProvider'
+import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { useAccountGameData } from './auth/useAccountGameData'
 import { createGameAudio } from './gameAudio'
 import {
@@ -213,7 +216,7 @@ const modes = [
     id: 'start',
     eyebrow: 'START BATTLE',
     title: '시작하기',
-    description: 'AI와 배틀 시작',
+    description: '레이팅 · AI 대전 선택',
     icon: Swords,
   },
   {
@@ -262,6 +265,7 @@ function GameApp({
   onConnectGoogle,
   onDeleteAccount,
   onPlayerDataChanged,
+  onSyncBeforeRanked,
   onSignOut,
 }) {
   const initialAchievementWallet = useRef(null)
@@ -312,6 +316,7 @@ function GameApp({
   const [notice, setNotice] = useState('')
   const [competition, setCompetition] = useState(null)
   const [battleMatch, setBattleMatch] = useState(null)
+  const [rankedBattleActive, setRankedBattleActive] = useState(false)
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
   if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(settings.audio.enabled, settings.audio)
@@ -385,11 +390,11 @@ function GameApp({
   }, [settings.audio])
 
   useEffect(() => {
-    gameAudioRef.current?.setScene(screen === 'battle' ? null : screen)
-  }, [screen])
+    gameAudioRef.current?.setScene(screen === 'battle' || rankedBattleActive ? null : screen)
+  }, [screen, rankedBattleActive])
 
   useEffect(() => {
-    if (screen === 'battle') return undefined
+    if (screen === 'battle' || rankedBattleActive) return undefined
 
     const interactiveSelector = 'button, [role="button"], select, input[type="checkbox"], input[type="radio"], input[type="range"]'
     const findInteractive = (target) => target instanceof Element ? target.closest(interactiveSelector) : null
@@ -420,7 +425,7 @@ function GameApp({
       document.removeEventListener('pointerover', playHoverSound, true)
       document.removeEventListener('keydown', activateFromKeyboard, true)
     }
-  }, [screen])
+  }, [screen, rankedBattleActive])
 
   useEffect(() => {
     try {
@@ -548,7 +553,7 @@ function GameApp({
     setSelectedMode(mode.id)
 
     if (mode.id === 'start') {
-      setScreen('battle-select')
+      setScreen('battle-hub')
       return
     }
 
@@ -608,6 +613,11 @@ function GameApp({
 
   const openBoxFromBattleSelect = () => {
     setBoxReturnScreen('battle-select')
+    setScreen('box')
+  }
+
+  const openBoxFromRanked = () => {
+    setBoxReturnScreen('ranked')
     setScreen('box')
   }
 
@@ -981,7 +991,7 @@ function GameApp({
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${screen === 'battle' ? ' battle-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${screen === 'battle' || rankedBattleActive ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -1005,6 +1015,7 @@ function GameApp({
           <button
             className="status-card currency-card"
             type="button"
+            disabled={screen === 'ranked'}
             onClick={openShop}
           >
             <span className="status-icon status-icon-cyan">
@@ -1047,7 +1058,7 @@ function GameApp({
             <Settings size={21} />
           </button>
 
-          {screen !== 'battle' && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
+          {screen !== 'battle' && screen !== 'ranked' && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
             <Trophy size={21} />
           </button>}
 
@@ -1101,12 +1112,20 @@ function GameApp({
 
         </section>
       </main>
+      ) : screen === 'battle-hub' ? (
+        <BattleHub onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')} />
+      ) : screen === 'ranked' ? (
+        <RankedBattleScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
+          onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRanked} onBack={() => setScreen('battle-hub')}
+          soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
+          audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
+          onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} />
       ) : screen === 'battle-select' ? (
         <BattleSelectScreen
           pokemon={boxPokemon}
           teams={teams}
           activeTeamId={activeTeam?.id}
-          onBack={returnToLobby}
+          onBack={() => setScreen('battle-hub')}
           onOpenBox={openBoxFromBattleSelect}
           onSelectTeam={selectSavedTeam}
           onStartMode={startBattleMode}
@@ -1174,7 +1193,7 @@ function GameApp({
           teamIds={teamIds}
           inventory={itemInventory}
           onBack={returnFromBox}
-          backLabel={boxReturnScreen === 'battle-select' ? '배틀 선택' : '로비'}
+          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : '로비'}
           onEquipItem={equipBattleItem}
           onSetTeraType={setPokemonTeraType}
           onSetDynamaxMode={setPokemonDynamaxMode}
@@ -1353,9 +1372,30 @@ function AccountGameApp({ user, accountError, ...props }) {
       accountError={signOutError || syncError || accountError}
       authBusy={signingOut || props.authBusy}
       onPlayerDataChanged={scheduleSave}
+      onSyncBeforeRanked={flush}
       onSignOut={() => leaveAccount(true)}
     />
   )
+}
+
+// A separate development-only entry avoids creating or changing real accounts
+// when two browsers exercise the local ranked server.
+export function RankedTestApp() {
+  const [page, setPage] = useState('hub')
+  const [battleActive, setBattleActive] = useState(false)
+  const [sound, setSound] = useState(false)
+  if (!isRankedLocalTest) return null
+  if (page === 'ai') return <AuthProvider><App /></AuthProvider>
+  return <>
+    <LandscapeOrientationGate />
+    <div className={`app-shell ranked-view${battleActive ? ' battle-view' : ''}`}>
+      {page === 'hub'
+        ? <BattleHub onBack={() => setPage('ai')} onSelectAi={() => setPage('ai')} onSelectRanked={() => setPage('ranked')} />
+        : <RankedBattleScreen onBack={() => setPage('hub')} onBattleActiveChange={setBattleActive}
+            soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
+            gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />}
+    </div>
+  </>
 }
 
 export default App

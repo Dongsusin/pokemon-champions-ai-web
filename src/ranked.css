@@ -1,0 +1,162 @@
+.ranked-screen { width: min(1320px, 100%); margin: 0 auto; padding: 24px 30px 40px; color: #eff6ff; min-height: 0; overflow-y: auto; }
+.ranked-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.ranked-header > div { text-align: center; }
+.ranked-header > div > span, .ranked-team-heading > div > span, .ranked-selection-heading > div > span { color: #92b8d0; font-size: 10px; letter-spacing: .2em; font-weight: 800; }
+.ranked-header h1 { margin: 5px 0 0; font-size: clamp(25px, 3vw, 36px); letter-spacing: -.05em; }
+.ranked-test-tag { color: #bbd9ec; background: #162c42; border: 1px solid #42647e; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 800; }
+.ranked-screen button, .ranked-screen select, .ranked-live-battle button { font: inherit; }
+.ranked-screen button { cursor: pointer; }
+.ranked-screen button:disabled, .ranked-screen select:disabled, .ranked-live-battle button:disabled { opacity: .45; cursor: default; }
+.ranked-screen button:focus-visible, .ranked-screen select:focus-visible, .ranked-live-battle button:focus-visible { outline: 3px solid #6ce3ed; outline-offset: 3px; }
+.ranked-lobby-grid { display: grid; grid-template-columns: minmax(270px, .82fr) minmax(0, 1.5fr); gap: 22px; }
+.ranked-ladder-panel, .ranked-entry-panel, .ranked-selection, .ranked-empty, .ranked-result { background: linear-gradient(135deg, rgba(24,43,67,.96), rgba(9,21,39,.98)); border: 1px solid #344b67; border-radius: 19px; padding: 26px; box-shadow: 0 20px 40px #0002; }
+.ranked-format-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; background: #081522; border-radius: 11px; padding: 5px; }
+.ranked-format-tabs button { display: flex; align-items: center; justify-content: center; gap: 7px; color: #a2b6cb; padding: 11px 8px; background: transparent; border: 0; border-radius: 8px; font-size: 14px; font-weight: 800; }
+.ranked-format-tabs button[aria-pressed=true] { background: #25445c; color: #e4ffff; box-shadow: inset 0 0 0 1px #4a798e; }
+.ranked-rank-badge { display: flex; align-items: center; justify-content: center; gap: 19px; padding: 36px 0 24px; }
+.ranked-rank-badge > div { display: flex; flex-direction: column; gap: 5px; }
+.ranked-rank-badge small { color: #7899b4; font-size: 10px; letter-spacing: .16em; font-weight: 800; }
+.ranked-rank-badge strong { color: var(--rank-color); font-size: clamp(22px, 2.2vw, 30px); font-weight: 950; letter-spacing: -.045em; }
+.ranked-rank-badge > div > span { color: #aabed0; font-size: 13px; }
+.ranked-ball { position: relative; flex: 0 0 67px; width: 67px; height: 67px; border-radius: 50%; background: linear-gradient(to bottom, var(--rank-color) 0 43%, #142136 43% 54%, #dae6ed 54%); border: 4px solid #152135; outline: 1px solid #7290a666; box-shadow: 0 0 26px color-mix(in srgb, var(--rank-color) 24%, transparent), inset -8px -8px 12px #0003; }
+.ranked-ball i { position: absolute; inset: 20px; border: 5px solid #152135; background: #edfaff; border-radius: 50%; }
+.tier-greatball .ranked-ball::before, .tier-ultraball .ranked-ball::before, .tier-masterball .ranked-ball::before { content: ''; position: absolute; inset: 5px 13px 34px; border-left: 6px solid #243653; border-right: 6px solid #243653; border-radius: 50% 50% 0 0; }
+.ranked-progress { height: 7px; background: #080f1d; border-radius: 9px; overflow: hidden; }
+.ranked-progress > span { height: 100%; display: block; background: linear-gradient(90deg, #679dc8, #6de7d8); transition: width .3s ease; }
+.ranked-progress-label { color: #99b1c8; text-align: right; font-size: 12px; }
+.ranked-record { display: flex; justify-content: space-around; border-top: 1px solid #32455b; border-bottom: 1px solid #32455b; padding: 18px 0; margin: 22px 0; }
+.ranked-record > span { color: #96afc5; font-size: 12px; display: flex; align-items: baseline; gap: 8px; }
+.ranked-record strong { color: #eef8ff; font-size: 25px; }
+.ranked-tier-path { display: flex; justify-content: space-between; gap: 5px; }
+.ranked-tier-path > span { display: flex; flex-direction: column; align-items: center; gap: 7px; color: #758fa9; font-size: 10px; }
+.ranked-tier-path i { width: 12px; height: 12px; border: 2px solid var(--rank-color); border-radius: 50%; }
+.ranked-tier-path .current { color: #e7f8ff; }
+.ranked-tier-path .current i { background: var(--rank-color); box-shadow: 0 0 12px var(--rank-color); }
+.ranked-ladder-note { color: #829fb8; text-align: center; font-size: 12px; line-height: 1.8; margin: 22px 0 0; }
+.ranked-test-identity { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #253946; padding: 9px 12px; border-radius: 9px; margin-bottom: 18px; font-size: 12px; color: #bad9e4; }
+.ranked-test-identity label { display: flex; align-items: center; gap: 8px; }
+.ranked-screen select { border: 1px solid #49647d; border-radius: 7px; color: #e5f4ff; background: #14283d; padding: 8px 10px; max-width: 190px; }
+.ranked-team-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 18px; }
+.ranked-team-heading h2 { margin: 5px 0 0; font-size: 23px; }
+.ranked-six-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.ranked-entry-panel .ranked-six-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ranked-pokemon-card { display: flex; position: relative; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 12px 8px; color: #e8f3fc; border: 1px solid #344d66; border-radius: 10px; background: #102236; min-height: 130px; }
+.ranked-pokemon-number { align-self: flex-start; display: flex; align-items: center; gap: 4px; color: #819bb1; font-size: 10px; min-height: 16px; }
+.ranked-pokemon-card img { width: 70px; height: 58px; object-fit: contain; image-rendering: pixelated; }
+.ranked-pokemon-card strong { font-size: 13px; text-align: center; word-break: keep-all; }
+.ranked-pokemon-card > small { color: #8da9c1; font-size: 10px; margin-top: 4px; text-align: center; }
+.ranked-pokemon-card.empty > span { font-size: 35px; color: #47617c; }
+button.ranked-pokemon-card { transition: border-color .15s, background .15s, transform .15s; }
+button.ranked-pokemon-card:not(:disabled):hover { transform: translateY(-3px); border-color: #79cfd7; }
+button.ranked-pokemon-card.selected { border-color: #77e3c7; background: #193f49; box-shadow: inset 0 0 0 1px #77e3c740; }
+button.ranked-pokemon-card.selected .ranked-pokemon-number { color: #9affe1; }
+.ranked-rule-summary { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 18px 0; color: #c8dce9; }
+.ranked-rule-summary p { font-size: 13px; line-height: 1.8; margin: 0; }
+.ranked-rule-summary p span { color: #829fb9; font-size: 12px; }
+.ranked-entry-actions { display: flex; flex-direction: column; gap: 10px; }
+.ranked-primary { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 14px 22px; border: 1px solid #79dfe2; border-radius: 9px; background: linear-gradient(110deg, #b0eee0, #7bcee0); color: #102839; font-weight: 900 !important; }
+.ranked-primary:not(:disabled):hover { filter: brightness(1.09); }
+.ranked-quiet { border: 1px solid #425970; background: #14283c; border-radius: 8px; padding: 10px 16px; color: #adc9dd; }
+.ranked-test-note { text-align: center; color: #7696b0; font-size: 11px; line-height: 1.7; margin: 17px 0 0; }
+.ranked-queue { display: flex; align-items: center; gap: 15px; padding: 18px 0 2px; color: #95e4dc; }
+.ranked-queue > div { flex: 1; }
+.ranked-queue h2 { margin: 0; font-size: 17px; }
+.ranked-queue p { font-size: 12px; color: #92aabd; }
+.ranked-queue strong { font-variant-numeric: tabular-nums; }
+.ranked-queue button, .ranked-error button { flex-shrink: 0; border: 1px solid #577287; background: #203c51; color: #e3f2ff; border-radius: 7px; padding: 9px; font-size: 12px; }
+.ranked-spin { animation: ranked-spin 1.5s linear infinite; flex-shrink: 0; }
+@keyframes ranked-spin { to { transform: rotate(360deg); } }
+.ranked-error { display: flex; align-items: center; gap: 10px; background: #412c37; border: 1px solid #85515f; border-radius: 9px; padding: 11px 14px; margin-bottom: 15px; color: #ffccd4; font-size: 13px; }
+.ranked-error > span { flex: 1; }
+.ranked-error button { display: flex; align-items: center; gap: 6px; }
+.ranked-selection-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.ranked-selection-heading h2 { font-size: 24px; margin: 7px 0; letter-spacing: -.03em; }
+.ranked-selection-heading p { color: #96b0c5; font-size: 13px; }
+.ranked-selection-heading > strong { display: flex; align-items: center; gap: 8px; font-size: 24px; color: #cbecef; font-variant-numeric: tabular-nums; }
+.ranked-team-preview { margin-top: 20px; }
+.ranked-team-preview > header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; gap: 10px; }
+.ranked-team-preview > header > span { color: #8cafc1; font-size: 12px; }
+.ranked-selection-actions { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
+.ranked-selection-actions > p { flex: 1; color: #a7bccd; font-size: 12px; }
+.ranked-empty, .ranked-result { display: flex; align-items: center; flex-direction: column; padding: 60px 25px; text-align: center; }
+.ranked-empty > svg, .ranked-result > svg { color: #8bdfdf; }
+.ranked-empty p, .ranked-result p { color: #9cb7ca; }
+.ranked-result > span { margin-top: 16px; color: #9fbed5; font-size: 13px; }
+.ranked-result h2 { font-size: 48px; margin: 8px 0; }
+.ranked-result.outcome-win > svg, .ranked-result.outcome-win > h2 { color: #f6d37d; }
+.ranked-result-rating { display: flex; align-items: center; gap: 18px; padding: 18px 25px; border: 1px solid #395772; border-radius: 9px; margin-bottom: 24px; }
+.ranked-result-rating > span { font-size: 13px; color: #9ab5cd; }
+.ranked-result-rating strong { display: flex; align-items: center; gap: 12px; font-size: 24px; }
+.ranked-result-rating b { color: #88e3cd; }
+.ranked-live-battle { width: 100%; min-height: 0; height: 100%; display: flex; flex-direction: column; position: relative; }
+.ranked-live-battle > .battle-game-screen { flex: 1; min-height: 0; height: auto; }
+.ranked-battle-connection { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px; min-height: 35px; padding: 5px 18px; color: #bfe9e8; background: #102538; border-bottom: 1px solid #3c5a72; font-size: 12px; }
+.ranked-battle-connection > span { display: flex; align-items: center; gap: 7px; }
+.ranked-battle-connection > span:first-child { flex: 1; }
+.ranked-battle-connection button { border: 1px solid #42617b; border-radius: 5px; background: #20394f; color: #d3e4f3; padding: 4px 9px; display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.is-urgent { color: #ff9d9d !important; }
+.ranked-live-battle > .ranked-error { position: absolute; z-index: 200; top: 41px; left: 12px; right: 12px; box-shadow: 0 8px 25px #0005; }
+.ranked-confirm-backdrop { position: absolute; inset: 0; z-index: 450; background: #020917bb; display: grid; place-items: center; padding: 16px; }
+.ranked-confirm { background: #15283b; border: 1px solid #53718b; border-radius: 17px; max-width: 380px; padding: 30px; text-align: center; color: #e6f2fe; }
+.ranked-confirm > svg { color: #e6b284; }
+.ranked-confirm h2 { font-size: 22px; }
+.ranked-confirm p { color: #a3bcd0; }
+.ranked-confirm > div { display: flex; gap: 10px; margin-top: 23px; }
+.ranked-confirm button { padding: 10px 16px; border-radius: 7px; border: 1px solid #627f94; color: #dff4ff; background: #254359; cursor: pointer; }
+.ranked-confirm button:last-child { color: #ffd6d6; border-color: #986e76; background: #593940; }
+@media (max-width: 900px) {
+  .ranked-screen { padding: 14px 16px 22px; }
+  .ranked-header { margin-bottom: 13px; }
+  .ranked-header h1 { font-size: 25px; }
+  .ranked-lobby-grid { grid-template-columns: minmax(220px, .8fr) minmax(0, 1.3fr); gap: 13px; }
+  .ranked-ladder-panel, .ranked-entry-panel, .ranked-selection { padding: 17px; border-radius: 13px; }
+  .ranked-rank-badge { gap: 12px; padding: 23px 0 17px; }
+  .ranked-rank-badge strong { font-size: 21px; }
+  .ranked-ball { width: 53px; height: 53px; flex-basis: 53px; }
+  .ranked-ball i { inset: 15px; }
+  .ranked-pokemon-card { min-height: 106px; padding: 8px 5px; }
+  .ranked-pokemon-card img { width: 57px; height: 45px; }
+  .ranked-pokemon-card strong { font-size: 11px; }
+  .ranked-selection-heading h2 { font-size: 20px; }
+  .ranked-selection-heading p { font-size: 11px; }
+  .ranked-selection-actions { margin-top: 15px; }
+  .ranked-team-preview { margin-top: 14px; }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .ranked-lobby-grid { grid-template-columns: 1fr; }
+  .ranked-six-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ranked-header { gap: 8px; }
+  .ranked-header .screen-back-button { font-size: 11px; }
+  .ranked-test-tag { padding: 6px; font-size: 10px; }
+  .ranked-selection-heading, .ranked-selection-actions { flex-wrap: wrap; }
+  .ranked-selection-actions > p { flex-basis: 100%; }
+  .ranked-error { align-items: flex-start; flex-wrap: wrap; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .ranked-screen { padding: 10px 18px 18px; }
+  .ranked-header > div > span { display: none; }
+  .ranked-header { margin-bottom: 10px; }
+  .ranked-header h1 { margin: 0; font-size: 22px; }
+  .ranked-selection { padding: 12px 16px; }
+  .ranked-selection-heading h2 { font-size: 17px; margin: 4px 0; }
+  .ranked-selection-heading p { margin: 5px 0; }
+  .ranked-selection-heading > div > span { display: none; }
+  .ranked-team-preview { margin-top: 8px; }
+  .ranked-team-preview > header { margin-bottom: 5px; font-size: 12px; }
+  .ranked-pokemon-card { min-height: 87px; padding: 5px; }
+  .ranked-pokemon-card img { height: 34px; }
+  .ranked-selection-actions { margin-top: 10px; gap: 8px; }
+  .ranked-selection-actions .ranked-primary, .ranked-selection-actions .ranked-quiet { padding: 9px 14px; font-size: 12px; }
+  .ranked-battle-connection { min-height: 27px; padding: 3px 11px; font-size: 10px; gap: 8px; }
+  .ranked-battle-connection button { font-size: 10px; padding: 3px 6px; }
+  .ranked-live-battle > .ranked-error { top: 30px; font-size: 11px; padding: 7px 10px; }
+  .ranked-result { padding: 20px; }
+  .ranked-result > svg { width: 30px; height: 30px; }
+  .ranked-result h2 { font-size: 30px; }
+  .ranked-result .ranked-rank-badge { padding: 10px; }
+  .ranked-result-rating { padding: 10px 18px; margin-bottom: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranked-spin { animation-duration: 5s; }
+  .ranked-progress > span, button.ranked-pokemon-card { transition: none; }
+}

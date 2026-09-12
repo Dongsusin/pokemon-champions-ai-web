@@ -69,11 +69,15 @@
     "validate:battle-retargeting": "node scripts/validateBattleRetargeting.mjs",
     "validate:double-battle-commands-ui": "node scripts/validateDoubleBattleCommandsUi.mjs",
     "discord:setup": "node --env-file-if-exists=.env.discord.local scripts/setupDiscordCommunity.mjs",
-    "validate:discord": "node scripts/validateDiscordHttp.mjs && node scripts/validateDiscordCommunity.mjs && node scripts/validateDiscordSetup.mjs"
+    "validate:discord": "node scripts/validateDiscordHttp.mjs && node scripts/validateDiscordCommunity.mjs && node scripts/validateDiscordSetup.mjs",
+    "ranked:test": "node scripts/startRankedTest.mjs",
+    "validate:ranked-ratings": "node scripts/validateRankedRatings.mjs",
+    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",
     "firebase": "^12.18.0",
+    "firebase-admin": "^14.4.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -81,5 +85,10 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.5"
+  },
+  "overrides": {
+    "gaxios@6.7.1": {
+      "uuid": "^11.1.1"
+    }
   }
 }
