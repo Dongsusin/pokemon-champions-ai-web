@@ -10,6 +10,7 @@ import {
   STAT_POINT_PER_STAT, TERA_TYPES, HIDDEN_POWER_TYPES,
 } from '../src/data/trainingData.js'
 import { getBattleItem } from '../src/data/shopData.js'
+import { maskRankedBattleState, maskRankedTimelineStep, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 
 function invalid(message) {
   const error = new Error(message)
@@ -90,8 +91,8 @@ export function createRankedBattle({ playerTeam, opponentTeam, format = 'single'
   return createBattle({
     random,
     playerPokemon: canonical(playerTeam, 'player'),
-    playerName: String(playerName).slice(0, 40),
-    opponent: { id: 'ranked-human', name: String(opponentName).slice(0, 40), tier: '레이팅' },
+    playerName: maskRankedTrainerName(playerName),
+    opponent: { id: 'ranked-human', name: maskRankedTrainerName(opponentName), tier: '레이팅' },
     opponentTeam: { pokemon: canonical(opponentTeam, 'opponent'), battleGimmicks: [], strategy: {} },
     rules: {
       pvp: true,
@@ -273,7 +274,7 @@ export function getRankedBattleView(state, sideId, { includeCommandOptions = tru
   const view = remapSideReferences(rawView, sideId)
   view.player.id = 'player'
   view.opponent.id = 'opponent'
-  return JSON.parse(JSON.stringify(view))
+  return JSON.parse(JSON.stringify(maskRankedBattleState(view)))
 }
 
 const TIMELINE_FIELDS = [
@@ -306,6 +307,7 @@ export function getRankedTimelineView(timeline, sideId) {
       const target = getActivePokemon(step.state, step.targetSideId, step.targetSlot ?? 0)
       if (target?.illusionSnapshot) safe.targetSpeciesId = publicPokemon(target, step.state[step.targetSideId]).speciesId
     }
-    return { ...remapSideReferences(safe, sideId), state: getRankedBattleView(step.state, sideId, { includeCommandOptions: false }) }
+    return maskRankedTimelineStep({ ...remapSideReferences(safe, sideId), state: getRankedBattleView(step.state, sideId, { includeCommandOptions: false }) },
+      [step.state?.player?.name, step.state?.opponent?.name])
   })
 }

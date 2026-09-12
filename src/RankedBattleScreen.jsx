@@ -6,6 +6,7 @@ import RankedTeamRoster from './RankedTeamRoster'
 import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS, RANKED_TIERS, createRankedProfile, getRankedTier } from './data/rankedRules'
 import { RANKED_VP_REWARDS } from './data/rankedRewards'
+import { maskRankedMatch } from './data/rankedPrivacy'
 import { getSpeciesProfile } from './data/trainingData'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
@@ -145,7 +146,7 @@ export default function RankedBattleScreen({
   const accept = useCallback(value => {
     if (Number.isFinite(value.serverTime)) setServerOffset(value.serverTime - Date.now())
     const previous = snapshotRef.current
-    let next = { ...EMPTY, ...value }
+    let next = { ...EMPTY, ...value, match: maskRankedMatch(value.match) }
     // Only a match observed in this visit may play its final turn. Old servers
     // can still return a completed match while a rolling deployment settles.
     if (next.match?.phase === 'finished' && previous.match?.id !== next.match.id) next.match = null

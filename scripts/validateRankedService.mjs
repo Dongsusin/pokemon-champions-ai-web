@@ -263,7 +263,7 @@ test('single and doubles queues never mix', async () => {
   await env.call('alice', 'join', { format: 'single', team: team('a') })
   assert.equal((await env.call('bob', 'join', { format: 'double', team: team('b') })).match, null)
   const paired = await env.call('charlie', 'join', { format: 'single', team: team('c') })
-  assert.equal(paired.match.opponent.name, 'alice')
+  assert.equal(paired.match.opponent.name, 'a**')
   assert.equal((await env.call('bob', 'status')).queue.format, 'double')
 })
 test('matching search expands by wait time and expired queues cannot match', async () => {
@@ -455,6 +455,55 @@ test('legacy finished pointers are removed on reconnect without repeating settle
   assert.deepEqual((await env.store.inspect()).collections.matches[match.id], before.matches[match.id])
   await rejectsCode(env.call('charlie', 'status', { matchId: match.id }), 'MATCH_FORBIDDEN')
   await rejectsCode(env.call('charlie', 'forfeit', { matchId: match.id }), 'MATCH_FORBIDDEN')
+})
+
+test('public trainer names are masked during selection and before a new engine state is created', async () => {
+  const env = environment()
+  const create = env.engine.createRankedBattle
+  let received
+  env.engine.createRankedBattle = options => { received = options; return create(options) }
+  const selected = await paired(env)
+  assert.equal(selected.you.name, 'b**')
+  assert.equal(selected.opponent.name, 'a**')
+  await env.call('alice', 'select', { matchId: selected.id, revision: selected.revision, selection: [0, 1, 2] })
+  await env.call('bob', 'select', { matchId: selected.id, revision: selected.revision, selection: [0, 1, 2] })
+  assert.equal(received.playerName, 'a**')
+  assert.equal(received.opponentName, 'b**')
+})
+
+test('legacy live match snapshots mask both trainers and timeline text without altering authenticated identities', async () => {
+  const env = environment()
+  const match = await battle(env)
+  env.engine.getRankedBattleView = state => structuredClone(state)
+  env.engine.getRankedTimelineView = timeline => structuredClone(timeline)
+  await env.store.transaction(async tx => {
+    const legacy = await tx.get('matches', match.id)
+    legacy.players[0].name = 'Alexander'
+    legacy.players[1].name = 'Amelia'
+    legacy.state.player.name = 'Alexander'
+    legacy.state.opponent.name = 'Amelia'
+    legacy.state.opponentMeta = { name: 'Amelia' }
+    const message = 'Alexander vs Amelia, 레이팅 배틀 시작!'
+    legacy.state.log = [{ id: `1-0-${message}`, message, tone: 'opponent' }]
+    legacy.timelineChunks = 1
+    tx.set('matches', match.id, legacy)
+    tx.set('timelines', `${match.id}_${legacy.timelineRevision}_0`, { frames: [{ id: '1-0-switch-out', phase: 'switch-out', message: 'Amelia은(는) 피카츄을(를) 불러들였다!', actorName: '피카츄', state: legacy.state }] })
+  })
+  for (const who of ['alice', 'bob']) {
+    const result = await env.call(who, 'status')
+    assert.equal(result.match.you.name, 'A**')
+    assert.equal(result.match.opponent.name, 'A**')
+    assert.equal(result.match.state.player.name, 'A**')
+    assert.equal(result.match.state.opponent.name, 'A**')
+    assert.equal(result.match.state.opponentMeta.name, 'A**')
+    assert.equal(result.match.timeline[0].message, 'A**은(는) 피카츄을(를) 불러들였다!')
+    assert.equal(result.match.timeline[0].actorName, '피카츄')
+    assert.equal(result.vpRewards.uid, identities[who].uid)
+    assert.ok(!JSON.stringify(result.match).includes('Alexander'))
+    assert.ok(!JSON.stringify(result.match).includes('Amelia'))
+  }
+  const stored = (await env.store.inspect()).collections.matches[match.id]
+  assert.equal(stored.state.player.name, 'Alexander', 'Reading a public snapshot cannot rewrite the stored battle')
 })
 
 test('new queues and matches take priority over delayed status or commands for a finished match', async () => {

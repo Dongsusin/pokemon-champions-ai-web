@@ -36,6 +36,7 @@ import LoginScreen, { AccountDataErrorScreen, AuthLoadingScreen } from './LoginS
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { useAccountGameData } from './auth/useAccountGameData'
 import { hasActiveAccountSession } from './auth/accountSession'
+import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { createGameAudio } from './gameAudio'
 import {
   SETTINGS_STORAGE_KEY,
@@ -331,6 +332,7 @@ function GameApp({
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
+  const displayedTrainerName = screen === 'ranked' ? maskRankedTrainerName(trainerName) : trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
     if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {
@@ -1052,14 +1054,14 @@ function GameApp({
 
           <div
             className={`player-account${accountError ? ' sync-error' : ''}`}
-            title={accountError || user.email || trainerName}
+            title={accountError || (screen === 'ranked' ? displayedTrainerName : user.email || trainerName)}
           >
             <span className="player-account-avatar">
               {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : trainerInitial}
             </span>
             <span className="player-account-copy">
               <small>{accountError ? 'SYNC ERROR' : isGuest ? 'GUEST TRAINER' : 'GOOGLE TRAINER'}</small>
-              <strong>{trainerName}</strong>
+              <strong>{displayedTrainerName}</strong>
             </span>
           </div>
 

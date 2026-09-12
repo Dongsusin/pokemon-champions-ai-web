@@ -1,6 +1,7 @@
 import { createHash, randomUUID, randomBytes } from 'node:crypto'
 import { createRankedProfile, getRankedFormat, settleRankedRatings } from '../src/data/rankedRules.js'
 import { getRankedVpReward } from '../src/data/rankedRewards.js'
+import { maskRankedMatch, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 
 const QUEUE_LEASE = 30_000
 const SELECT_TIMEOUT = 90_000
@@ -144,7 +145,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     const side = index === 0 ? 'player' : 'opponent'
     const you = match.players[index]
     const opponent = match.players[1 - index]
-    return {
+    return maskRankedMatch({
       id: match.id, format: match.format, phase: match.phase, revision: match.revision,
       timelineRevision: match.timelineRevision,
       createdAt: match.createdAt, deadlineAt: match.deadlineAt, finishedAt: match.finishedAt ?? null,
@@ -156,7 +157,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       state: match.state ? engine.getRankedBattleView(match.state, side) : null,
       timeline: timeline.length ? engine.getRankedTimelineView(timeline, side) : [],
       result: match.result ? clone(match.result[index]) : null,
-    }
+    })
   }
 
   async function snapshot(tx, uid, { knownTimelineRevision, knownMatchId } = {}) {
@@ -370,7 +371,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (match.players.every(entry => match.selections[entry.uid])) {
           const selected = match.players.map(entry => match.selections[entry.uid].map(index => entry.team[index]))
           match.phase = 'battle'
-          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: match.players[0].name, opponentName: match.players[1].name, random: seededRandom(seed) })
+          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name), opponentName: maskRankedTrainerName(match.players[1].name), random: seededRandom(seed) })
           await afterEngine(tx, match, { state, timeline: [] }, timestamp)
         } else tx.set('matches', match.id, match)
       } else if (action === 'submit') {

@@ -75,9 +75,10 @@
     "validate:ranked-vp": "node scripts/validateRankedVpWallet.mjs && node scripts/validateAchievementStorage.mjs && node scripts/validateRankedService.mjs",
     "validate:ranked-vp-ui": "node scripts/validateRankedVpUi.mjs",
     "validate:ranked-ratings": "node scripts/validateRankedRatings.mjs",
+    "validate:ranked-privacy": "node scripts/validateRankedPrivacy.mjs",
     "validate:ranked-saved-teams-ui": "node scripts/validateRankedSavedTeamsUi.mjs",
     "validate:ranked-firestore": "node scripts/validateRankedFirestore.mjs",
-    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs && node scripts/validateRankedSavedTeamsUi.mjs"
+    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedPrivacy.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs && node scripts/validateRankedSavedTeamsUi.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",
