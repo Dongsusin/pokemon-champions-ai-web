@@ -1,5 +1,6 @@
 import { createHash, randomUUID, randomBytes } from 'node:crypto'
 import { createRankedProfile, getRankedFormat, settleRankedRatings } from '../src/data/rankedRules.js'
+import { getRankedVpReward } from '../src/data/rankedRewards.js'
 
 const QUEUE_LEASE = 30_000
 const SELECT_TIMEOUT = 90_000
@@ -12,6 +13,7 @@ const REQUEST_HISTORY = 64
 // timeline in the same 10 MiB transaction, as well as Vercel's response limit.
 const MAX_TIMELINE_BYTES = 3_500_000
 const clone = value => structuredClone(value)
+const vpRewardTotal = value => Number.isSafeInteger(value) && value >= 0 ? value : 0
 
 export class RankedError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status }
@@ -43,7 +45,7 @@ function previewPokemon(pokemon) {
 }
 
 function profileRecord(uid, name) {
-  return { uid, name, profiles: { single: createRankedProfile('single'), double: createRankedProfile('double') }, activeMatchId: null, queueTicket: null, requests: [] }
+  return { uid, name, profiles: { single: createRankedProfile('single'), double: createRankedProfile('double') }, vpRewardTotal: 0, activeMatchId: null, queueTicket: null, requests: [] }
 }
 
 function assertRequest(payload) {
@@ -100,10 +102,16 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       { outcome: outcome === 'draw' ? 'draw' : outcome === 'win' ? 'loss' : 'win', reason, ratingBefore: before[1].rating, ratingAfter: settled.b.rating, ratingDelta: settled.b.rating - before[1].rating, pointsBefore: before[1].points, pointsAfter: settled.b.points, pointsDelta: settled.b.points - before[1].points },
     ]
     for (const player of [first, second]) {
+      const result = match.result[indexOf(match, player.uid)]
+      result.rewardVp = getRankedVpReward({ outcome: result.outcome, reason, battleStarted: Boolean(match.state) })
+      // A lifetime counter lets clients reconcile missed rewards without
+      // depending on the bounded match history or replaying finished games.
+      player.vpRewardTotal = vpRewardTotal(player.vpRewardTotal) + result.rewardVp
+      if (!Number.isSafeInteger(player.vpRewardTotal)) throw new Error('Ranked VP reward total exceeds the safe integer range')
       // Keep the settled match for safe retries, but it is no longer a session
       // to resume when either player opens the game again.
       if (player.activeMatchId === match.id) player.activeMatchId = null
-      player.history = [{ matchId: match.id, format: match.format, finishedAt: timestamp, ...match.result[indexOf(match, player.uid)] }, ...(player.history ?? [])].slice(0, 20)
+      player.history = [{ matchId: match.id, format: match.format, finishedAt: timestamp, ...result }, ...(player.history ?? [])].slice(0, 20)
       tx.set('players', player.uid, player)
     }
     tx.set('matches', match.id, match)
@@ -175,6 +183,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     }
     return {
       profile: clone(player?.profiles ?? { single: createRankedProfile('single'), double: createRankedProfile('double') }),
+      vpRewards: { uid, total: vpRewardTotal(player?.vpRewardTotal) },
       queue: queue ? { ticket: queue.ticket, format: queue.format, queuedAt: queue.queuedAt, expiresAt: queue.expiresAt, rating: queue.rating } : null,
       match: viewMatch(match, uid, timeline), serverTime: now(),
     }

@@ -5,6 +5,7 @@ import SpriteImage from './SpriteImage'
 import RankedTeamRoster from './RankedTeamRoster'
 import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS, RANKED_TIERS, createRankedProfile, getRankedTier } from './data/rankedRules'
+import { RANKED_VP_REWARDS } from './data/rankedRewards'
 import { getSpeciesProfile } from './data/trainingData'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
@@ -48,7 +49,7 @@ function RankBadge({ record, compact = false }) {
 export default function RankedBattleScreen({
   user, teams = [], boxPokemon = [], activeTeamId, onSelectTeam, onOpenBox, onBack, onBeforeJoin,
   soundEnabled = true, gameSettings = {}, playerGender = 'male', audioSettings = {},
-  onToggleSound, onOpenSettings, onBattleActiveChange,
+  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards,
 }) {
   const [identity, setIdentity] = useState(initialIdentity)
   const [format, setFormat] = useState('single')
@@ -64,11 +65,69 @@ export default function RankedBattleScreen({
   const [serverOffset, setServerOffset] = useState(0)
   const [playedRevision, setPlayedRevision] = useState(null)
   const [confirmForfeit, setConfirmForfeit] = useState(false)
+  const [vpSync, setVpSync] = useState({ uid: null, appliedTotal: -1, pending: false, error: '' })
+  const vpCallbackRef = useRef(onVpRewards)
+  const vpAccountRef = useRef(user?.uid)
+  const vpLatestRef = useRef(null)
+  const vpAppliedRef = useRef(null)
+  const vpFailedRef = useRef(null)
+  const vpRunningRef = useRef(null)
   const snapshotRef = useRef(snapshot)
   const operationRef = useRef(false)
   const mountedRef = useRef(true)
   const generationRef = useRef(0)
   const refreshRef = useRef(null)
+  // VP synchronization has its own lifetime: a stale battle response may still
+  // carry a newer reward total, and a parent wallet render must not restart polls.
+  const synchronizeVpRewards = useCallback(() => {
+    if (!vpCallbackRef.current || !vpLatestRef.current || vpRunningRef.current) return
+    if (vpAppliedRef.current?.uid === vpLatestRef.current.uid && vpAppliedRef.current.total >= vpLatestRef.current.total) return
+    const token = {}
+    vpRunningRef.current = token
+    let attempted
+    setVpSync(current => ({ ...current, pending: true, error: '' }))
+    void (async () => {
+      try {
+        while (mountedRef.current && vpRunningRef.current === token) {
+          const target = vpLatestRef.current
+          if (!target || (vpAppliedRef.current?.uid === target.uid && vpAppliedRef.current.total >= target.total)) break
+          attempted = target
+          const result = await vpCallbackRef.current(target)
+          if (!mountedRef.current || vpRunningRef.current !== token) return
+          if (!Number.isSafeInteger(result?.appliedTotal) || result.appliedTotal < target.total) {
+            throw new Error('VP 지급을 확인하지 못했습니다.')
+          }
+          vpAppliedRef.current = { uid: target.uid, total: result.appliedTotal }
+          vpFailedRef.current = null
+          setVpSync({ uid: target.uid, appliedTotal: result.appliedTotal, pending: false, error: '' })
+        }
+      } catch {
+        if (mountedRef.current && vpRunningRef.current === token) {
+          vpFailedRef.current = attempted
+          setVpSync(current => ({ ...current, pending: false, error: 'VP 보상을 저장하지 못했습니다. 다시 시도해 주세요.' }))
+        }
+      } finally {
+        if (vpRunningRef.current === token) {
+          vpRunningRef.current = null
+          // A larger total received during a failed write still needs a try.
+          if (mountedRef.current && vpFailedRef.current && vpLatestRef.current?.total > vpFailedRef.current.total) synchronizeVpRewards()
+        }
+      }
+    })()
+  }, [])
+  const receiveVpRewards = useCallback(reward => {
+    if (!reward || typeof reward.uid !== 'string' || !Number.isSafeInteger(reward.total) || reward.total < 0) return
+    if (vpAccountRef.current && reward.uid !== vpAccountRef.current) return
+    if (vpLatestRef.current?.uid === reward.uid && vpLatestRef.current.total > reward.total) return
+    vpLatestRef.current = { uid: reward.uid, total: reward.total }
+    if (vpAppliedRef.current?.uid === reward.uid && vpAppliedRef.current.total >= reward.total) return
+    if (vpFailedRef.current?.uid === reward.uid && vpFailedRef.current.total >= reward.total) return
+    synchronizeVpRewards()
+  }, [synchronizeVpRewards])
+  useEffect(() => {
+    vpCallbackRef.current = onVpRewards
+    if (!vpFailedRef.current) synchronizeVpRewards()
+  }, [onVpRewards, synchronizeVpRewards])
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; generationRef.current += 1 } }, [])
   useEffect(() => {
     if (!isRankedLocalTest) return
@@ -104,10 +163,16 @@ export default function RankedBattleScreen({
   }, [])
 
   useEffect(() => {
+    generationRef.current += 1
+    vpAccountRef.current = user?.uid
+    vpLatestRef.current = null
+    vpAppliedRef.current = null
+    vpFailedRef.current = null
+    vpRunningRef.current = null
+    setVpSync({ uid: null, appliedTotal: -1, pending: false, error: '' })
     if (!isRankedEnabled || !canAuthenticate) return
     const controller = new AbortController()
     let timer, running = false, active = true
-    generationRef.current += 1
     snapshotRef.current = EMPTY
     setSnapshot(EMPTY)
     setConnected(false)
@@ -121,6 +186,7 @@ export default function RankedBattleScreen({
       try {
         const known = snapshotRef.current.match
         const value = await client.status(known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}, { signal: controller.signal })
+        if (active) receiveVpRewards(value.vpRewards)
         if (active && generation === generationRef.current) accept(value)
       } catch (failure) {
         if (active && failure.name !== 'AbortError' && generation === generationRef.current) { setConnected(false); setRefreshError(failure.message) }
@@ -146,7 +212,7 @@ export default function RankedBattleScreen({
       window.removeEventListener('online', reconnect)
       document.removeEventListener('visibilitychange', reconnect)
     }
-  }, [client, canAuthenticate, accept])
+  }, [client, canAuthenticate, accept, receiveVpRewards])
 
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   const match = snapshot.match
@@ -166,6 +232,7 @@ export default function RankedBattleScreen({
       if (before && await before() === false) throw new Error('팀을 계정에 저장하지 못했습니다. 저장 상태를 확인한 뒤 다시 참가해 주세요.')
       if (!mountedRef.current || generation !== generationRef.current) return null
       const value = await client.request(action, payload, { requestId: createRankedRequestId() })
+      if (mountedRef.current) receiveVpRewards(value.vpRewards)
       if (mountedRef.current && generation === generationRef.current) accept(value)
       return value
     } catch (failure) {
@@ -226,12 +293,18 @@ export default function RankedBattleScreen({
   const visibleError = refreshError || error
   const connectionNotice = visibleError && <div className="ranked-error" role="alert"><WifiOff size={17} /><span>{visibleError}</span>
     <button type="button" onClick={() => refreshRef.current?.()}><RefreshCw size={14} /> 다시 연결</button></div>
+  const rewardNotice = vpSync.error && <div className="ranked-error ranked-vp-error" role="alert"><Trophy size={17} /><span>{vpSync.error}</span>
+    <button type="button" disabled={vpSync.pending} onClick={synchronizeVpRewards}><RefreshCw size={14} /> 보상 다시 받기</button></div>
+  const notices = (connectionNotice || rewardNotice) && <div className="ranked-notices">{connectionNotice}{rewardNotice}</div>
+  const resultVp = Number.isSafeInteger(match?.result?.rewardVp) ? match.result.rewardVp : null
+  const rewardTotal = vpLatestRef.current
+  const rewardConfirmed = rewardTotal && vpSync.uid === rewardTotal.uid && vpSync.appliedTotal >= rewardTotal.total
 
   if (battleVisible) return <div className="ranked-live-battle">
     <div className="ranked-battle-connection" role="status"><span>{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{waitingMessage}</span>
       <span className={secondsLeft !== null && secondsLeft <= 15 ? 'is-urgent' : ''}><Clock3 size={14} />{secondsLeft === null ? '—' : clockText(secondsLeft)}</span>
       <button type="button" disabled={busy || match.phase === 'finished'} onClick={() => setConfirmForfeit(true)}><Flag size={14} /> 기권</button></div>
-    {connectionNotice}
+    {notices}
     <BattleScreen key={match.id} competitionLabel={`${currentFormat.label} · 레이팅${isRankedLocalTest ? ' 테스트' : ''}`} playerPokemon={match.state.player.team}
       opponent={match.opponent} opponentTeam={{ pokemon: match.state.opponent.team }} rules={match.state.rules}
       soundEnabled={soundEnabled} gameSettings={gameSettings} playerGender={playerGender} audioSettings={audioSettings}
@@ -251,7 +324,7 @@ export default function RankedBattleScreen({
   return <main className="ranked-screen">
     <header className="ranked-header"><button className="screen-back-button" type="button" disabled={busy || Boolean(match && match.phase !== 'finished')} onClick={leave}><ArrowLeft size={18} /> 배틀 선택</button>
       <div><span>TRAINER VS TRAINER</span><h1>레이팅 배틀</h1></div><span className="ranked-mode-tag">{isRankedLocalTest ? '로컬 테스트' : '온라인 대전'}</span></header>
-    {connectionNotice}
+    {notices}
     {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>현재 환경에서는 참가할 수 없습니다.</p></section>
       : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>Google 계정으로 참가하세요</h2><p>레이팅과 경기 기록은 로그인한 계정에 저장됩니다.</p></section>
       : resultReady ? <section className={`ranked-result outcome-${match.result?.outcome}`}>
@@ -260,6 +333,8 @@ export default function RankedBattleScreen({
         <RankBadge record={snapshot.profile?.[match.format]} />
         <div className="ranked-result-rating"><span>레이팅</span><strong>{match.result?.ratingBefore ?? '—'} <ArrowRight size={18} /> {match.result?.ratingAfter ?? '—'}</strong>
           <b>{Number.isFinite(match.result?.ratingDelta) ? `${match.result.ratingDelta > 0 ? '+' : ''}${match.result.ratingDelta}` : '정산 확인 중'}</b></div>
+        {resultVp !== null && <div className="ranked-result-vp" role="status"><span>획득 VP</span><strong>+{resultVp.toLocaleString()} VP</strong>
+          <small>{!onVpRewards ? '테스트 보상' : rewardConfirmed ? '지급 완료' : '지급 확인 중'}</small></div>}
         <button className="ranked-primary" type="button" onClick={closeResult}>레이팅 로비로</button>
       </section>
       : match?.phase === 'select' ? <section className="ranked-selection">
@@ -296,7 +371,8 @@ export default function RankedBattleScreen({
         <div className="ranked-roster-heading"><strong>{selectedTeam?.name ?? '출전 팀'}</strong><span className={teamReady ? 'ready' : ''}>{teamReady ? <><Check size={14} /> 편성 완료</> : `${roster.length} / ${BATTLE_TEAM_SIZE}마리 편성`}</span></div>
         <RankedTeamRoster key={selectedTeam?.id ?? 'roster'} pokemon={roster} />
         {!teamReady && <p className="ranked-team-help" role="status">{selectedTeam?.name ?? '선택한 팀'}에 포켓몬 {BATTLE_TEAM_SIZE - roster.length}마리를 더 편성하면 참가할 수 있습니다.</p>}
-        <div className="ranked-rule-summary"><Shield size={19} /><p>6마리 등록 · {currentFormat.battleSize}마리 선출 · Lv.50<br /><span>상대와 동시에 명령을 선택하는 실제 유저 대전</span></p></div>
+        <div className="ranked-rule-summary"><Shield size={19} /><p>6마리 등록 · {currentFormat.battleSize}마리 선출 · Lv.50<br /><span>상대와 동시에 명령을 선택하는 실제 유저 대전</span>
+          <small className="ranked-vp-rules">승리 {RANKED_VP_REWARDS.win} · 무승부 {RANKED_VP_REWARDS.draw} · 패배 {RANKED_VP_REWARDS.loss} VP<em>기권·시간초과 패배, 양쪽 시간초과, 배틀 전 종료는 0 VP</em></small></p></div>
         {snapshot.queue ? <div className="ranked-queue" role="status"><LoaderCircle className="ranked-spin" size={31} /><div><h2>대전 상대를 찾고 있습니다</h2><p>참가한 다른 트레이너를 기다리는 중입니다.</p><strong>{clockText(Math.floor((now + serverOffset - timeValue(snapshot.queue.queuedAt)) / 1000) || 0)}</strong></div>
           <button type="button" disabled={busy} onClick={() => fire('cancel', { queueTicket: snapshot.queue.ticket })}>매칭 취소</button></div>
           : <div className="ranked-entry-actions"><button className="ranked-primary" type="button" disabled={busy || !connected || !teamReady} onClick={join}>{busy ? <LoaderCircle className="ranked-spin" size={19} /> : <Swords size={19} />} {busy ? '참가 준비 중' : '대전 상대 찾기'}</button>

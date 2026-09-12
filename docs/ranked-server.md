@@ -35,6 +35,14 @@ npm run ranked:test
 - 상대 관점의 타겟 지정은 서버에서 변환한다. 피해량·기술 위력·상대 행동·승패를 클라이언트가 지정할 수 없다.
 - 턴 300회 초과는 무승부 처리한다. 대전 결과 기록은 계정별 최근 20개를 유지한다.
 
+## VP 지급
+
+정상 승리 300 VP, 패배 100 VP, 무승부 150 VP이며 싱글·더블에 같은 기준을 적용한다. 배틀 시작 후 상대 기권·행동/교대 시간 초과로 이기면 300 VP, 해당 패자는 0 VP다. 배틀 시작 전 종료와 양쪽 시간 초과에는 VP를 지급하지 않는다. 배포 전에 이미 완료된 경기는 소급 지급하지 않는다.
+
+VP는 승패와 같은 서버 트랜잭션에서 한 번만 확정한다. 계정별 `vpRewardTotal`은 최근 20개 경기 기록과 별개인 누적 합계이며 모든 상태 응답의 `vpRewards: {uid, total}`로 전달한다. 경기 결과의 `rewardVp`는 해당 경기 지급액을 표시하는 용도다.
+
+클라이언트는 현재 계정의 활성 세션을 확인하고, 서버 합계에서 같은 UID의 수령 합계를 뺀 양수 차이만 적립한다. 잔액과 `rankedVpRewards: {uid, total}` 수령 기록은 `champions-achievements-v1` 지갑에 단일 쓰기로 저장한다. 업적·구매·훈련·AI 보상 저장에서도 수령 기록을 보존하고 기존 계정 동기화로 함께 저장한다. 결과 창을 닫거나 새로고침해도 중복 지급하지 않으며, 지급 응답을 놓쳤으면 다음 레이팅 접속 때 누적 차액을 회수한다. 계정 저장 실패는 재시도 안내를 표시하고 재적립 없이 저장만 재시도한다. 로컬 테스트 계정의 보상은 실제 게임 지갑에 지급하지 않는다.
+
 ## HTTP 계약
 
 인증은 `Authorization: Bearer <Firebase ID token>`이다. 명시적 로컬 서버만 `ranked-test-alice`, `ranked-test-bob`, `ranked-test-charlie`를 받는다.
@@ -50,7 +58,7 @@ npm run ranked:test
 | `POST` `action: replace` | `requestId`, `matchId`, `revision`, `targetIndex` |
 | `POST` `action: forfeit` | `requestId`, `matchId` |
 
-기본 응답은 `{profile: {single, double}, queue, match, serverTime}`이다. 매치는 `phase: select/battle/finished`, `revision`, `timelineRevision`, 개인화된 `state`, `timeline`, 제출 여부, 서버 제한 시간, 자기 결과를 제공한다. 상태 폴링에 `matchId`와 이미 받은 `timelineRevision`을 함께 보내면 같은 연출의 대용량 재전송을 생략한다. 이때 `timeline`만 빈 배열이고 현재 상태는 계속 반환한다. 오류는 `{error: {code, message}}`이며 클라이언트는 409 이후 최신 상태를 다시 불러온다.
+기본 응답은 `{profile: {single, double}, vpRewards: {uid, total}, queue, match, serverTime}`이다. 매치는 `phase: select/battle/finished`, `revision`, `timelineRevision`, 개인화된 `state`, `timeline`, 제출 여부, 서버 제한 시간, 자기 결과를 제공한다. 상태 폴링에 `matchId`와 이미 받은 `timelineRevision`을 함께 보내면 같은 연출의 대용량 재전송을 생략한다. 이때 `timeline`만 빈 배열이고 현재 상태는 계속 반환한다. 오류는 `{error: {code, message}}`이며 클라이언트는 409 이후 최신 상태를 다시 불러온다.
 
 경기가 끝난 직후에도 해당 경기를 보고 있던 클라이언트의 `matchId` 조회와 종료 명령 응답에는 마지막 턴과 결과를 전달한다. 새로운 대기열이나 진행 경기가 있으면 그 상태를 우선한다. `matchId` 없는 새 상태 조회는 완료 경기를 반환하지 않는다. 화면에서 결과를 닫으면 로컬 경기 데이터와 조회용 `matchId`를 제거하고 진행 중이던 이전 응답도 무효화한다. 서버의 완료 기록은 중복 정산 방지를 위해 보존하며, 진행 중인 경기의 재접속 복구는 유지한다.
 

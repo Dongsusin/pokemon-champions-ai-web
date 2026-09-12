@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Boxes,
   ChevronRight,
@@ -22,7 +22,7 @@ import { isRankedLocalTest } from './rankedClient'
 import BattleScreen from './BattleScreen'
 import AchievementsScreen from './AchievementsScreen'
 import AchievementToast from './AchievementToast'
-import { loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
+import { creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
 import { getUnlockedPokemonSkins } from './data/rareRewards'
 import BoxScreen from './BoxScreen'
@@ -35,6 +35,7 @@ import TrainingScreen from './TrainingScreen'
 import LoginScreen, { AccountDataErrorScreen, AuthLoadingScreen } from './LoginScreen'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { useAccountGameData } from './auth/useAccountGameData'
+import { hasActiveAccountSession } from './auth/accountSession'
 import { createGameAudio } from './gameAudio'
 import {
   SETTINGS_STORAGE_KEY,
@@ -319,6 +320,7 @@ function GameApp({
   const [rankedBattleActive, setRankedBattleActive] = useState(false)
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
+  const rankedRewardSyncPending = useRef(false)
   if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(settings.audio.enabled, settings.audio)
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
@@ -329,6 +331,26 @@ function GameApp({
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
+
+  const receiveRankedVpRewards = useCallback(async rewards => {
+    if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {
+      throw new Error('계정 연결을 확인한 뒤 레이팅 보상을 다시 받아주세요.')
+    }
+    const result = creditRankedVpRewards(achievementProgressRef.current, vpBalance.current, rewards, user.uid)
+    if (result.granted > 0) {
+      vpBalance.current = result.balance
+      setVp(result.balance)
+      rankedRewardSyncPending.current = true
+      onPlayerDataChanged?.()
+    }
+    if (rankedRewardSyncPending.current) {
+      if (onSyncBeforeRanked && await onSyncBeforeRanked() === false) {
+        throw new Error('VP는 이 기기에 지급됐습니다. 계정 저장을 다시 시도해주세요.')
+      }
+      rankedRewardSyncPending.current = false
+    }
+    return result
+  }, [user.uid, user.isLocalGuest, onPlayerDataChanged, onSyncBeforeRanked])
 
   function enqueueAchievementToasts(unlocked) {
     const fresh = unlocked.filter((definition) => {
@@ -1120,7 +1142,7 @@ function GameApp({
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRanked} onBack={() => setScreen('battle-hub')}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
-          onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} />
+          onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards} />
       ) : screen === 'battle-select' ? (
         <BattleSelectScreen
           pokemon={boxPokemon}
