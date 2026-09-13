@@ -278,5 +278,55 @@ await check('unreadable local storage never uploads a partial save', async () =>
   await env.unmount()
 })
 
+await check('legacy guest migration transfers exactly once to its bound authenticated owner', async () => {
+  const env = environment({ cloudResult: null })
+  env.api.claimLocalPlayerData('local-guest-migrate')
+  env.api.markPendingGoogleMigration('local-guest-migrate', user.uid)
+  const app = await env.mount()
+  assert.equal(app.current.ready, true)
+  assert.deepEqual(env.calls.save, [{ uid: user.uid, payload: { 'champions-vp-v1': '100' } }])
+  assert.equal(env.api.readPlayerSyncState().ownerUid, user.uid)
+  assert.equal(env.api.readPendingGoogleMigration(), null)
+  await env.unmount()
+})
+
+await check('migration for a different destination never imports another guest save', async () => {
+  const env = environment({ cloudResult: null })
+  env.api.claimLocalPlayerData('local-guest-migrate')
+  env.api.markPendingGoogleMigration('local-guest-migrate', 'different-destination')
+  const app = await env.mount()
+  assert.equal(app.current.ready, true)
+  assert.deepEqual(env.calls.save, [{ uid: user.uid, payload: {} }])
+  assert.equal(env.api.readPendingGoogleMigration().targetUid, 'different-destination')
+  await env.unmount()
+})
+
+await check('existing Google progress wins during anonymous linking while guest backup is preserved', async () => {
+  const env = environment()
+  const sourceUid = 'anonymous-source'
+  env.api.claimLocalPlayerData(sourceUid)
+  assert.equal(env.api.backupGuestPlayerData(sourceUid), true)
+  env.api.markPendingGoogleMigration(sourceUid, user.uid, { preserveExistingCloud: true })
+  const app = await env.mount()
+  assert.equal(app.current.ready, true)
+  assert.deepEqual(env.calls.save, [])
+  assert.deepEqual(env.api.readLocalPlayerData(), cloudData.payload)
+  const backup = JSON.parse(env.values.get(`${env.api.GUEST_MIGRATION_BACKUP_PREFIX}${sourceUid}`))
+  assert.deepEqual(backup.payload, { 'champions-vp-v1': '100' })
+  assert.equal(backup.sourceUid, sourceUid)
+  assert.equal(env.api.readPendingGoogleMigration(), null)
+  await env.unmount()
+})
+
+await check('explicit migration into a new Google account preserves guest progress', async () => {
+  const env = environment({ cloudResult: null })
+  env.api.claimLocalPlayerData('anonymous-source')
+  env.api.markPendingGoogleMigration('anonymous-source', user.uid, { preserveExistingCloud: true })
+  const app = await env.mount()
+  assert.equal(app.current.ready, true)
+  assert.deepEqual(env.calls.save[0].payload, { 'champions-vp-v1': '100' })
+  await env.unmount()
+})
+
 delete globalThis.__accountSyncHarness
 console.log(`Validated ${checks} account session sync scenarios (React ${React.version}, real accountStorage).`)

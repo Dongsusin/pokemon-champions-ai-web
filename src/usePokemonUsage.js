@@ -11,7 +11,7 @@ export default function usePokemonUsage(user) {
   const [error, setError] = useState('')
   const [recordError, setRecordError] = useState('')
   const session = useRef(null)
-  const canUse = isPokemonUsageEnabled && (isPokemonUsageDemo || !user?.isLocalGuest)
+  const canUse = isPokemonUsageEnabled && (isPokemonUsageDemo || Boolean(user?.uid && !user.isLocalGuest))
 
   useEffect(() => {
     setSnapshot(emptySnapshot())
@@ -34,7 +34,8 @@ export default function usePokemonUsage(user) {
     const client = createPokemonUsageClient(async () => {
       const activeUser = firebaseAuth?.currentUser
       if (!current.alive || activeUser?.uid !== user.uid) return null
-      return activeUser.getIdToken()
+      const token = await activeUser.getIdToken()
+      return current.alive && firebaseAuth?.currentUser?.uid === user.uid ? token : null
     })
     const outbox = createUsageOutbox({ uid: user.uid, storage,
       keyPrefix: `champions-usage-outbox-v1-${pokemonUsageSource}`,
@@ -74,7 +75,7 @@ export default function usePokemonUsage(user) {
 
   const refresh = useCallback(async () => {
     if (!isPokemonUsageEnabled) { setError('사용률 집계는 아직 공개 준비 중입니다.'); return }
-    if (!canUse) { setError('전체 유저 사용률은 Google 로그인 후 확인할 수 있습니다.'); return }
+    if (!canUse) { setError('게스트 또는 Google 로그인 후 전체 유저 사용률을 확인할 수 있습니다.'); return }
     await session.current?.refresh()
   }, [canUse])
   const recordAiBattle = useCallback(report => {

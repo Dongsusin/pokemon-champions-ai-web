@@ -23,6 +23,7 @@ const CLOUD_SAVE_DEBOUNCE_MS = 700
 function canTransferLocalData(syncState, migration, userId) {
   if (!syncState?.ownerUid || syncState.ownerUid === userId) return true
   return migration?.sourceUid === syncState.ownerUid
+    && (!migration.targetUid || migration.targetUid === userId)
 }
 
 function shouldPreferUnsyncedLocalData(syncState, cloudData, userId) {
@@ -140,7 +141,9 @@ export function useAccountGameData(user) {
     const bootstrap = async () => {
       try {
         const syncState = readPlayerSyncState()
-        const migration = readPendingGoogleMigration()
+        const pendingMigration = readPendingGoogleMigration()
+        const migration = !pendingMigration?.targetUid || pendingMigration.targetUid === userId
+          ? pendingMigration : null
         const localPayload = readLocalPlayerData()
         const cloudData = await loadPlayerGameData(userId)
         if (!isCurrent()) return
@@ -152,7 +155,7 @@ export function useAccountGameData(user) {
           const isFirstDeviceMigration = !syncState?.ownerUid
             && getPlayerDataProgressScore(localPayload) > getPlayerDataProgressScore(cloudData.payload)
           const keepLocalData = localTransferAllowed && (
-            isExplicitGuestMigration
+            (isExplicitGuestMigration && !migration.preserveExistingCloud)
             || isFirstDeviceMigration
             || shouldPreferUnsyncedLocalData(syncState, cloudData, userId)
           )

@@ -1,3 +1,7 @@
+# Supabase 저장소 전환
+
+`GAME_STORAGE_PROVIDER=supabase` 운영 구성에서는 레이팅·사용률·팩토리·게스트 번호 예약을 PostgreSQL에 저장합니다. Firebase Auth ID 토큰 검증과 기존 계정 UID는 유지합니다. 배포와 백업 절차는 [SUPABASE_STORAGE.md](SUPABASE_STORAGE.md)를 확인하세요. 아래 Firestore 관련 내용은 기존 저장소 구성의 참고입니다.
+
 # 레이팅 서버: 로컬 테스트와 배포 전 확인 사항
 
 레이팅 서버는 실제 로그인 계정의 Firebase ID 토큰으로 사용자를 확인하고 Firestore에서 경기와 등급을 관리한다. 2026-09-12 사용자 승인으로 운영용 서버 인증 설정을 완료했다. 일반 개발·빌드에서는 `RANKED_ENABLED`가 기본적으로 꺼져 있고 `/api/ranked`는 503 `RANKED_DISABLED`를 반환한다.

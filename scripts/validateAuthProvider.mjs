@@ -29,9 +29,11 @@ const mockModules = {
   'firebase/auth': [
     'GoogleAuthProvider', 'browserLocalPersistence', 'browserSessionPersistence', 'deleteUser',
     'onAuthStateChanged', 'reauthenticateWithPopup', 'setPersistence', 'signInWithPopup', 'signOut',
+    'signInAnonymously', 'linkWithPopup', 'signInWithCredential',
   ],
   './firebaseClient': ['firebaseAuth', 'isFirebaseConfigured', 'missingFirebaseEnvironmentVariables'],
-  './accountStorage': ['clearLocalPlayerData', 'clearPendingGoogleMigration', 'markPendingGoogleMigration'],
+  './accountStorage': ['clearLocalPlayerData', 'clearPendingGoogleMigration', 'markPendingGoogleMigration', 'backupGuestPlayerData', 'readPlayerSyncState'],
+  './guestIdentityClient': ['resolveGuestIdentity'],
   './playerProfile': ['deletePlayerProfile', 'ensurePlayerProfile'],
   './accountSession': ['acquireAccountSession', 'ACCOUNT_SESSION_ERROR_CODES'],
 }
@@ -41,7 +43,7 @@ const compiled = await build({
   plugins: [{
     name: 'auth-provider-test-services',
     setup(buildApi) {
-      buildApi.onResolve({ filter: /^(firebase\/auth|\.\/(firebaseClient|accountStorage|playerProfile|accountSession))$/ }, ({ path: modulePath }) => (
+      buildApi.onResolve({ filter: /^(firebase\/auth|\.\/(firebaseClient|accountStorage|playerProfile|accountSession|guestIdentityClient))$/ }, ({ path: modulePath }) => (
         { path: modulePath, namespace: 'auth-test' }
       ))
       buildApi.onLoad({ filter: /.*/, namespace: 'auth-test' }, ({ path: modulePath }) => ({
@@ -64,8 +66,10 @@ const storage = () => {
 }
 const googleUser = { uid: 'google-user', displayName: 'Trainer', email: 'trainer@example.invalid' }
 const guestUser = { version: 1, uid: 'local-guest-remembered', displayName: 'Guest' }
+const anonymousUser = { uid: 'firebase-anonymous-user', isAnonymous: true, providerData: [], getIdToken() { assert.equal(this.uid, 'firebase-anonymous-user'); return Promise.resolve('anonymous-token') } }
 
-function environment({ initialUser = null, rememberedGuest = null, acquireGate = null, rejectAll = false, migrationError = null } = {}) {
+function environment({ initialUser = null, rememberedGuest = null, acquireGate = null, rejectAll = false, migrationError = null,
+  configured = true, syncOwner = rememberedGuest?.uid, identityError = null, linkError = null } = {}) {
   const windowObject = Object.assign(new EventTarget(), { localStorage: storage(), sessionStorage: storage() })
   const pageshowCallbacks = new Set()
   const addListener = windowObject.addEventListener.bind(windowObject)
@@ -81,12 +85,13 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
   if (rememberedGuest) windowObject.localStorage.setItem('champions-local-guest-v1', JSON.stringify(rememberedGuest))
   globalThis.window = windowObject
   const observers = new Set()
-  const calls = { acquire: [], profiles: [], persistence: [], signOut: 0, popups: 0, releases: 0, order: [] }
+  const calls = { acquire: [], profiles: [], persistence: [], migrations: [], backups: [], identities: [], signOut: 0,
+    popups: 0, releases: 0, anonymousSignIns: 0, links: 0, credentialSignIns: 0, reauth: 0, deletes: 0, order: [] }
   let activeHandle = null
   const services = {
-    firebaseAuth: { currentUser: initialUser }, isFirebaseConfigured: true, missingFirebaseEnvironmentVariables: [],
+    firebaseAuth: configured ? { currentUser: initialUser } : null, isFirebaseConfigured: configured, missingFirebaseEnvironmentVariables: [],
     ACCOUNT_SESSION_ERROR_CODES: { occupied: 'account-session/occupied', unavailable: 'account-session/unavailable', lost: 'account-session/lost' },
-    GoogleAuthProvider: class { setCustomParameters() {} },
+    GoogleAuthProvider: class { setCustomParameters() {} static credentialFromError(error) { return error.credential ?? null } },
     browserLocalPersistence: 'local', browserSessionPersistence: 'session',
     onAuthStateChanged(auth, callback) {
       observers.add(callback)
@@ -95,6 +100,21 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
     },
     async setPersistence(auth, value) { calls.persistence.push(value); calls.order.push('persistence') },
     async signInWithPopup(auth) { calls.popups += 1; auth.currentUser = googleUser; for (const observer of observers) observer(googleUser); return { user: googleUser } },
+    async signInAnonymously(auth) { calls.anonymousSignIns += 1; auth.currentUser = anonymousUser; for (const observer of observers) observer(anonymousUser); return { user: anonymousUser } },
+    async linkWithPopup(user) {
+      calls.links += 1
+      if (linkError) throw linkError
+      const linked = { ...user, isAnonymous: false, displayName: 'Linked trainer', providerData: [{ providerId: 'google.com' }] }
+      services.firebaseAuth.currentUser = linked
+      for (const observer of observers) observer(linked)
+      return { user: linked }
+    },
+    async signInWithCredential(auth) { calls.credentialSignIns += 1; auth.currentUser = googleUser; for (const observer of observers) observer(googleUser); return { user: googleUser } },
+    async resolveGuestIdentity(user) {
+      calls.identities.push(user.uid)
+      if (identityError) throw identityError
+      return { ...user, displayName: 'guest-012345', isGuest: true, isLocalGuest: false, getIdToken: user.getIdToken.bind(user) }
+    },
     async signOut(auth) {
       assert.ok(activeHandle?.isActive(), 'Keep the lock until shared credentials are cleared')
       calls.signOut += 1
@@ -102,9 +122,12 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
       auth.currentUser = null
       for (const observer of observers) observer(null)
     },
-    async reauthenticateWithPopup() {}, async deleteUser() {}, async deletePlayerProfile() {},
+    async reauthenticateWithPopup() { calls.reauth += 1 }, async deleteUser() { calls.deletes += 1 }, async deletePlayerProfile() {},
     async ensurePlayerProfile(user) { calls.profiles.push(user.uid); calls.order.push('profile') },
-    clearLocalPlayerData() {}, clearPendingGoogleMigration() {}, markPendingGoogleMigration() { if (migrationError) throw migrationError },
+    clearLocalPlayerData() {}, clearPendingGoogleMigration() {},
+    markPendingGoogleMigration(...args) { if (migrationError) throw migrationError; calls.migrations.push(args) },
+    backupGuestPlayerData(uid) { if (migrationError) throw migrationError; calls.backups.push(uid) },
+    readPlayerSyncState() { return syncOwner ? { ownerUid: syncOwner } : null },
     async acquireAccountSession(user, options) {
       calls.acquire.push(user.uid)
       calls.order.push('acquire')
@@ -232,7 +255,7 @@ await check('second provider rejection preserves the admitted owner and profile 
 })
 
 await check('remembered guest uses the same lock for automatic and manual login', async () => {
-  const env = environment({ rememberedGuest: guestUser, rejectAll: true })
+  const env = environment({ rememberedGuest: guestUser, rejectAll: true, configured: false })
   const app = await env.mount()
   let result
   await act(async () => { result = await app.current.signInAsGuest() })
@@ -246,7 +269,7 @@ await check('remembered guest uses the same lock for automatic and manual login'
 
 await check('new guest is stored only after admission and releases ownership on signout', async () => {
   const gate = deferred()
-  const env = environment({ acquireGate: gate })
+  const env = environment({ acquireGate: gate, configured: false })
   const app = await env.mount()
   let pending
   await act(async () => { pending = app.current.signInAsGuest(); await flush() })
@@ -382,7 +405,7 @@ await check('BFCache restoration stays logged out if another window took ownersh
 })
 
 await check('guest conversion stops before authentication if migration storage cannot be persisted', async () => {
-  const env = environment({ rememberedGuest: guestUser, migrationError: new Error('quota exceeded') })
+  const env = environment({ rememberedGuest: guestUser, migrationError: new Error('quota exceeded'), configured: false })
   const app = await env.mount()
   let result
   await act(async () => { result = await app.current.connectGuestToGoogle() })
@@ -392,6 +415,138 @@ await check('guest conversion stops before authentication if migration storage c
   assert.equal(env.calls.popups, 0)
   assert.equal(env.active().isActive(), true)
   await env.cleanup()
+})
+
+await check('configured guest creates Firebase identity, reserves nickname and acquires authenticated lease', async () => {
+  const env = environment()
+  const app = await env.mount()
+  await act(async () => { assert.equal(await app.current.signInAsGuest(), true) })
+  assert.equal(env.calls.anonymousSignIns, 1)
+  assert.equal(app.current.user.uid, anonymousUser.uid)
+  assert.equal(app.current.user.isAnonymous, true)
+  assert.equal(app.current.user.isLocalGuest, false)
+  assert.equal(app.current.user.displayName, 'guest-012345')
+  assert.equal(await app.current.user.getIdToken(), 'anonymous-token')
+  assert.deepEqual(env.calls.profiles, [anonymousUser.uid])
+  assert.equal(env.windowObject.localStorage.getItem('champions-local-guest-v1'), null)
+  await env.cleanup()
+})
+
+await check('persisted anonymous guest restores same UID and rejects another window without new signup', async () => {
+  const env = environment({ initialUser: anonymousUser })
+  const owner = await env.mount()
+  const other = await env.mount()
+  await act(async () => { assert.equal(await other.current.signInAsGuest(), false) })
+  assert.equal(owner.current.user.uid, anonymousUser.uid)
+  assert.equal(other.current.user, null)
+  assert.equal(env.calls.anonymousSignIns, 0)
+  assert.equal(env.calls.signOut, 0)
+  assert.deepEqual(env.calls.identities, [anonymousUser.uid])
+  await env.cleanup()
+})
+
+await check('legacy guest migrates only its own save to a bound anonymous UID', async () => {
+  const env = environment({ rememberedGuest: guestUser })
+  const app = await env.mount()
+  assert.equal(app.current.user.uid, anonymousUser.uid)
+  assert.equal(env.calls.anonymousSignIns, 1)
+  assert.deepEqual(env.calls.migrations, [[guestUser.uid, anonymousUser.uid]])
+  assert.deepEqual(env.calls.backups, [guestUser.uid])
+  assert.equal(env.windowObject.localStorage.getItem('champions-local-guest-v1'), null)
+  await env.cleanup()
+  const foreign = environment({ rememberedGuest: guestUser, syncOwner: googleUser.uid })
+  const second = await foreign.mount()
+  assert.equal(second.current.user.uid, anonymousUser.uid)
+  assert.deepEqual(foreign.calls.migrations, [])
+  assert.deepEqual(foreign.calls.backups, [])
+  await foreign.cleanup()
+})
+
+await check('guest remount restores persisted identity without generating a new UID or nickname', async () => {
+  const env = environment()
+  const first = await env.mount()
+  await act(async () => { assert.equal(await first.current.signInAsGuest(), true) })
+  const identity = first.current.user
+  await env.cleanup()
+  const restored = await env.mount({ strict: true })
+  assert.equal(restored.current.user.uid, identity.uid)
+  assert.equal(restored.current.user.displayName, identity.displayName)
+  assert.equal(env.calls.anonymousSignIns, 1)
+  assert.equal(env.active().isActive(), true)
+  await env.cleanup()
+})
+
+await check('legacy upgrade under StrictMode creates one anonymous identity', async () => {
+  const env = environment({ rememberedGuest: guestUser })
+  const app = await env.mount({ strict: true })
+  assert.equal(app.current.user.uid, anonymousUser.uid)
+  assert.equal(env.calls.anonymousSignIns, 1)
+  assert.equal(env.calls.acquire.length, 1)
+  await env.cleanup()
+})
+
+await check('existing Google credentials take priority over stale guest markers', async () => {
+  const env = environment({ initialUser: googleUser, rememberedGuest: guestUser })
+  const app = await env.mount()
+  assert.equal(app.current.user.uid, googleUser.uid)
+  assert.equal(env.calls.anonymousSignIns, 0)
+  assert.deepEqual(env.calls.migrations, [])
+  await env.cleanup()
+})
+
+await check('failed nickname reservation never exposes partial guest or stores local-only fallback', async () => {
+  const env = environment({ initialUser: anonymousUser, identityError: new Error('offline') })
+  const app = await env.mount()
+  assert.equal(app.current.user, null)
+  assert.ok(app.current.error)
+  assert.equal(env.active(), null)
+  assert.equal(env.calls.profiles.length, 0)
+  assert.equal(env.windowObject.localStorage.getItem('champions-local-guest-v1'), null)
+  await env.cleanup()
+})
+
+await check('anonymous Google link retains UID and session while refreshing visible identity', async () => {
+  const env = environment({ initialUser: anonymousUser, syncOwner: anonymousUser.uid })
+  const app = await env.mount()
+  const handle = env.active()
+  await act(async () => { assert.equal(await app.current.connectGuestToGoogle(), true) })
+  assert.equal(env.calls.links, 1)
+  assert.equal(env.calls.popups, 0)
+  assert.equal(app.current.user.uid, anonymousUser.uid)
+  assert.equal(app.current.user.isAnonymous, false)
+  assert.equal(app.current.user.displayName, 'Linked trainer')
+  assert.equal(env.active(), handle)
+  assert.equal(env.calls.acquire.length, 1)
+  await env.cleanup()
+})
+
+await check('existing Google credential fallback binds migration and preserves existing cloud data', async () => {
+  const env = environment({ initialUser: anonymousUser, syncOwner: anonymousUser.uid,
+    linkError: Object.assign(new Error('already linked'), { code: 'auth/credential-already-in-use', credential: {} }) })
+  const app = await env.mount()
+  await act(async () => { assert.equal(await app.current.connectGuestToGoogle(), true) })
+  assert.equal(env.calls.credentialSignIns, 1)
+  assert.equal(app.current.user.uid, googleUser.uid)
+  assert.deepEqual(env.calls.migrations.at(-1), [anonymousUser.uid, googleUser.uid, { preserveExistingCloud: true }])
+  assert.deepEqual(env.calls.backups, [anonymousUser.uid])
+  assert.match(app.current.profileSyncError, /기존 Google 계정/)
+  await env.cleanup()
+})
+
+await check('anonymous deletion skips Google reauthentication; logout still clears auth before lease', async () => {
+  const env = environment({ initialUser: anonymousUser })
+  const app = await env.mount()
+  await act(async () => { assert.equal(await app.current.deleteAccount(), true) })
+  assert.equal(env.calls.reauth, 0)
+  assert.equal(env.calls.deletes, 1)
+  assert.equal(app.current.user, null)
+  await env.cleanup()
+  const second = environment({ initialUser: anonymousUser })
+  const loggedIn = await second.mount()
+  await act(async () => { await loggedIn.current.signOut() })
+  assert.ok(second.calls.order.indexOf('firebase-signout') < second.calls.order.indexOf('release'))
+  assert.equal(second.calls.signOut, 1)
+  await second.cleanup()
 })
 
 delete globalThis.__authProviderHarness

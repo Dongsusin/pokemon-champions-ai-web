@@ -118,7 +118,8 @@ function AccountPanel({
   onSignOut,
 }) {
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false)
-  const isGuest = Boolean(user?.isLocalGuest)
+  const isGuest = Boolean(user?.isAnonymous || user?.isLocalGuest)
+  const localGuest = Boolean(user?.isLocalGuest)
   const accountName = user?.displayName?.trim()
     || user?.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
@@ -138,11 +139,11 @@ function AccountPanel({
         <span className="settings-account-copy">
           <small>{isGuest ? 'GUEST TRAINER' : 'GOOGLE TRAINER'}</small>
           <strong>{accountName}</strong>
-          <span>{isGuest ? '이 PC 브라우저에만 저장' : user?.email}</span>
+          <span>{localGuest ? '이 PC 브라우저에만 저장' : isGuest ? '온라인 게스트 · 레이팅과 통계 이용 가능' : user?.email}</span>
         </span>
         <span className="settings-account-badge">
           <ShieldCheck size={15} />
-          {isGuest ? '로컬 저장' : '클라우드 동기화'}
+          {localGuest ? '로컬 저장' : '클라우드 동기화'}
         </span>
       </div>
 
@@ -169,7 +170,8 @@ function AccountPanel({
 
       {isGuest && (
         <p className="settings-account-warning">
-          게스트 데이터는 서버에 전송되지 않으며 이 브라우저의 데이터가 삭제되면 복구할 수 없습니다.
+          {localGuest ? '오프라인 게스트 데이터는 이 브라우저에만 저장됩니다.' : '게스트의 진행 기록과 대전 기록은 서버에 저장됩니다.'}
+          {' '}브라우저 데이터를 삭제하거나 로그아웃하면 게스트 계정에 다시 접속할 수 없습니다. Google 계정에 연결하면 다른 기기에서도 이어서 플레이할 수 있습니다.
         </p>
       )}
 

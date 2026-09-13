@@ -87,13 +87,23 @@
     "validate:battle-factory": "node scripts/validateBattleFactory.mjs",
     "validate:battle-factory-ui": "node scripts/validateBattleFactoryUi.mjs",
     "validate:battle-factory-ranking": "node scripts/validateBattleFactoryRanking.mjs",
-    "validate:battle-factory-ranking-client": "node scripts/validateBattleFactoryRankingClient.mjs"
+    "validate:battle-factory-ranking-client": "node scripts/validateBattleFactoryRankingClient.mjs",
+    "validate:guest-identity": "node scripts/validateGuestIdentity.mjs",
+    "validate:guest-identity-client": "node scripts/validateGuestIdentityClient.mjs",
+    "validate:guest-online-ui": "node scripts/validateGuestOnlineUi.mjs",
+    "validate:guest-online": "node scripts/validateGuestOnline.mjs",
+    "validate:postgres-store": "node scripts/validatePostgresStore.mjs",
+    "validate:storage-migration": "node scripts/validateStorageMigration.mjs",
+    "validate:account-api": "node scripts/validateAccountApiClient.mjs && node scripts/validateAccountServer.mjs",
+    "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
+    "validate:battle-retention": "node scripts/validateBattleRetention.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",
     "firebase": "^12.18.0",
     "firebase-admin": "^14.4.0",
     "lucide-react": "^0.468.0",
+    "pg": "^8.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

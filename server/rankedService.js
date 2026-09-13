@@ -4,8 +4,10 @@ import { getRankedVpReward } from '../src/data/rankedRewards.js'
 import { maskRankedMatch, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 import { readPokemonUsage, recordRankedPokemonUsage, reportAiPokemonUsage, validateAiPokemonUsage } from './pokemonUsageService.js'
 import { readFactoryLeaderboard, reportFactoryRun, validateFactoryRankingReport } from './battleFactoryRankingService.js'
+import { createGuestIdentityRegistry } from './guestIdentity.js'
 
 const QUEUE_LEASE = 30_000
+const QUEUE_HEARTBEAT = 10_000
 const SELECT_TIMEOUT = 90_000
 const TURN_TIMEOUT = 60_000
 const REPLACEMENT_TIMEOUT = 45_000
@@ -67,7 +69,8 @@ function hasRequest(record, requestId, hash) {
 
 export function createRankedService({ store, engine, now = Date.now, newId = randomUUID,
   makeSeed = () => randomBytes(4).readUInt32LE(), resolveTeam = async (_identity, team) => team,
-  fixtures = null, timeouts = {}, usageEnabled = false }) {
+  fixtures = null, timeouts = {}, usageEnabled = false, guestRegistry = null }) {
+  const guestIdentities = guestRegistry ?? createGuestIdentityRegistry({ store, now })
   const selectionTimeout = timeouts.selection ?? SELECT_TIMEOUT
   const turnTimeout = timeouts.turn ?? TURN_TIMEOUT
   const replacementTimeout = timeouts.replacement ?? REPLACEMENT_TIMEOUT
@@ -77,6 +80,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     let player = await tx.get('players', identity.uid)
     if (!player) player = profileRecord(identity.uid, identity.name)
     player.name = identity.name
+    player.isGuest = identity.isGuest === true
     return player
   }
   async function lobbyLock(tx) {
@@ -151,7 +155,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       id: match.id, format: match.format, phase: match.phase, revision: match.revision,
       timelineRevision: match.timelineRevision,
       createdAt: match.createdAt, deadlineAt: match.deadlineAt, finishedAt: match.finishedAt ?? null,
-      you: { name: you.name, rating: you.rating }, opponent: { name: opponent.name, rating: opponent.rating },
+      you: { name: you.name, rating: you.rating, isGuest: you.isGuest === true }, opponent: { name: opponent.name, rating: opponent.rating, isGuest: opponent.isGuest === true },
       teamPreview: { you: clone(you.team), opponent: opponent.team.map(previewPokemon) },
       selectionSubmitted: Boolean(match.selections[uid]), opponentSelectionSubmitted: Boolean(match.selections[opponent.uid]),
       selectedIndices: clone(match.selections[uid] ?? []),
@@ -205,7 +209,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       const match = {
         id: matchId, format: queue.format, phase: 'select', revision: 1, timelineRevision: 0,
         createdAt: timestamp, deadlineAt: timestamp + selectionTimeout,
-        players: [other, queue].map(entry => ({ uid: entry.uid, name: entry.name, rating: entry.rating, team: entry.team })),
+        players: [other, queue].map(entry => ({ uid: entry.uid, name: entry.name, isGuest: entry.isGuest === true, rating: entry.rating, team: entry.team })),
         selections: {}, pendingActions: {}, state: null, timelineChunks: 0, requests: [],
       }
       for (const player of [first, second]) {
@@ -226,12 +230,17 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (match && await expireMatch(tx, match, timestamp)) player = await tx.get('players', identity.uid)
     let queue = await tx.get('queue', identity.uid)
     if (queue) {
-      await lobbyLock(tx)
       if (queue.expiresAt <= timestamp) {
+        await lobbyLock(tx)
         tx.delete('queue', identity.uid)
         player.queueTicket = null
         tx.set('players', identity.uid, player)
-      } else {
+      } else if (queue.expiresAt - timestamp <= QUEUE_LEASE - QUEUE_HEARTBEAT) {
+        // Frequent UI polls are read-only between heartbeats. The 30-second
+        // lease still leaves 20 seconds for a delayed renewal, while newly
+        // joining opponents match immediately through their join transaction.
+        // Re-check widening rating ranges only when renewing the lease.
+        await lobbyLock(tx)
         queue.expiresAt = timestamp + QUEUE_LEASE
         tx.set('queue', identity.uid, queue)
         await tryMatch(tx, queue, timestamp, matchId)
@@ -281,9 +290,14 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
 
   async function execute(identity, payload) {
     if (!identity || !isId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
-    identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32) }
+    identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32), isGuest: identity.isGuest === true }
     const action = payload?.action ?? 'status'
-    if (!['status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (!['guestProfile', 'status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (action === 'guestProfile') return guestIdentities.create(identity)
+    if (identity.isGuest) {
+      const profile = await guestIdentities.read(identity)
+      identity.name = profile.displayName
+    }
     if (action === 'factoryLeaderboard') return store.transaction(tx => readFactoryLeaderboard(tx, identity.uid))
     if (action === 'reportFactoryRun') {
       const report = validateFactoryRankingReport(payload.report)
@@ -343,7 +357,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         const queues = await tx.list('queue')
         for (const expired of queues.filter(entry => entry.expiresAt <= timestamp)) tx.delete('queue', expired.uid)
         if (queues.filter(entry => entry.expiresAt > timestamp).length >= MAX_QUEUE) fail('QUEUE_FULL', '매칭 서버가 혼잡합니다. 잠시 후 다시 시도해주세요.', 503)
-        const queue = { uid: identity.uid, name: identity.name, ticket: id, format: payload.format, team, queuedAt: timestamp, expiresAt: timestamp + QUEUE_LEASE, rating: player.profiles[payload.format].rating }
+        const queue = { uid: identity.uid, name: identity.name, isGuest: identity.isGuest === true, ticket: id, format: payload.format, team, queuedAt: timestamp, expiresAt: timestamp + QUEUE_LEASE, rating: player.profiles[payload.format].rating }
         player.queueTicket = id
         player.activeMatchId = null
         remember(player, payload.requestId, requestHash)
@@ -388,7 +402,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (match.players.every(entry => match.selections[entry.uid])) {
           const selected = match.players.map(entry => match.selections[entry.uid].map(index => entry.team[index]))
           match.phase = 'battle'
-          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name), opponentName: maskRankedTrainerName(match.players[1].name), random: seededRandom(seed) })
+          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name, match.players[0].isGuest), opponentName: maskRankedTrainerName(match.players[1].name, match.players[1].isGuest), playerIsGuest: match.players[0].isGuest === true, opponentIsGuest: match.players[1].isGuest === true, random: seededRandom(seed) })
           if (usageEnabled === true) await recordRankedPokemonUsage(tx, match, selected, timestamp)
           await afterEngine(tx, match, { state, timeline: [] }, timestamp)
         } else tx.set('matches', match.id, match)

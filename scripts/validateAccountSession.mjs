@@ -12,6 +12,9 @@ import {
 // model. Separate browser objects model devices without shared client storage.
 const epoch = Date.parse('2026-01-01T00:00:00.000Z')
 const checks = []
+const useAccountApi = process.argv.includes('--supabase')
+const isReleaseRequest = request => useAccountApi
+  ? JSON.parse(request.body ?? '{}').action === 'sessionRelease' : request.method === 'DELETE'
 
 async function settle() {
   for (let index = 0; index < 4; index += 1) await nextTurn()
@@ -202,9 +205,60 @@ class FirestoreServer {
   }
 }
 
+class AccountApiServer extends FirestoreServer {
+  nextVersion() { this.revision += 1; return `account-version-${String(this.revision).padStart(10, '0')}` }
+  fetch = async (input, options = {}) => {
+    assert.equal(new URL(input).pathname, '/api/account', 'Supabase mode must never contact Firestore')
+    assert.equal(options.method, 'POST')
+    assert.equal(options.credentials, 'omit')
+    const token = options.headers.Authorization
+    assert.match(token, /^Bearer test-token-/)
+    this.requests.push({ url: input, method: options.method, keepalive: options.keepalive, body: options.body })
+    if (this.unavailable) throw new TypeError('Simulated account API failure')
+    const uid = token.replace('Bearer test-token-', '')
+    const key = `projects/test-project/databases/(default)/documents/accountSessions/${uid}`
+    const body = JSON.parse(options.body)
+    assert.ok(body.ownerId)
+    if (body.action === 'sessionRelease') {
+      if (this.delayedDelete) {
+        const pending = this.delayedDelete
+        this.delayedDelete = null
+        pending.started.resolve()
+        await pending.resume.promise
+      }
+      const current = this.documents.get(key)
+      const released = Boolean(current && current.updateTime === body.version && current.fields.ownerId.stringValue === body.ownerId)
+      if (released) this.documents.delete(key)
+      return jsonResponse(200, { released })
+    }
+    assert.ok(['sessionAcquire', 'sessionHeartbeat'].includes(body.action))
+    const current = this.documents.get(key)
+    const live = Boolean(current && Date.parse(current.fields.heartbeatAt.timestampValue) + ACCOUNT_SESSION_LEASE_MS > this.timers.now)
+    if (body.action === 'sessionAcquire' && live && current.fields.ownerId.stringValue !== body.ownerId) {
+      return jsonResponse(409, { error: { code: ACCOUNT_SESSION_ERROR_CODES.occupied } })
+    }
+    if (body.action === 'sessionHeartbeat' && (!live || current.updateTime !== body.version || current.fields.ownerId.stringValue !== body.ownerId)) {
+      return jsonResponse(409, { error: { code: ACCOUNT_SESSION_ERROR_CODES.lost } })
+    }
+    const version = this.nextVersion()
+    this.documents.set(key, { name: key, updateTime: version, fields: {
+      ownerId: { stringValue: body.ownerId }, heartbeatAt: { timestampValue: new Date(this.timers.now).toISOString() },
+    } })
+    const response = jsonResponse(200, { ownerId: body.ownerId, version, leaseMs: ACCOUNT_SESSION_LEASE_MS,
+      expiresAt: this.timers.now + ACCOUNT_SESSION_LEASE_MS })
+    if (this.delayedCommitResponse) {
+      const pending = this.delayedCommitResponse
+      this.delayedCommitResponse = null
+      pending.started.resolve()
+      await pending.resume.promise
+    }
+    return response
+  }
+}
+
 function fixture() {
   const timers = new FakeTimers()
-  const server = new FirestoreServer(timers)
+  const server = useAccountApi ? new AccountApiServer(timers) : new FirestoreServer(timers)
   const handles = []
   const user = (uid = 'google-user') => ({
     uid,
@@ -220,6 +274,8 @@ function fixture() {
     now: () => timers.now,
     setTimeoutImpl: timers.setTimeout,
     clearTimeoutImpl: timers.clearTimeout,
+    storageProvider: useAccountApi ? 'supabase' : 'firestore',
+    apiUrl: 'http://127.0.0.1:9999/api/account',
     ...extra,
   })
   const acquire = async (account = user(), browser, extra) => {
@@ -261,7 +317,7 @@ await check('closing the active window releases its lease and permits another de
   await settle()
   assert.equal(first.isActive(), false)
   assert.equal(test.server.documents.size, 0)
-  assert.ok(test.server.requests.some((request) => request.method === 'DELETE' && request.keepalive === true))
+  assert.ok(test.server.requests.some((request) => isReleaseRequest(request) && request.keepalive === true))
   const next = await test.acquire()
   assert.equal(next.isActive(), true)
   assert.notEqual(next.ownerId, first.ownerId)
@@ -273,7 +329,7 @@ await check('hiding a window keeps the owner and blocks concurrent login', async
   browser.hide()
   await settle()
   assert.equal(session.isActive(), true)
-  assert.equal(test.server.requests.filter((request) => request.method === 'DELETE').length, 0)
+  assert.equal(test.server.requests.filter(isReleaseRequest).length, 0)
   await assert.rejects(test.acquire(), { code: ACCOUNT_SESSION_ERROR_CODES.occupied })
 })
 
@@ -473,4 +529,11 @@ await check('different local accounts cannot concurrently edit shared browser ga
   assert.equal((await test.acquire({ uid: 'local-guest-other', isLocalGuest: true }, new Browser({ locks }))).isActive(), true)
 })
 
-console.log(`Account session validation passed (${checks.length} checks).`)
+if (useAccountApi) await check('unsafe account API addresses are rejected before credentials leave the browser', async test => {
+  for (const apiUrl of ['http://example.invalid/api/account', 'https://user:pass@example.invalid/api/account', 'file:///api/account']) {
+    await assert.rejects(test.acquire(test.user(), new Browser(), { apiUrl }), { code: ACCOUNT_SESSION_ERROR_CODES.unavailable })
+  }
+  assert.equal(test.server.requests.length, 0)
+})
+
+console.log(`Account session validation passed (${checks.length} checks, ${useAccountApi ? 'Supabase account API' : 'Firestore'}).`)

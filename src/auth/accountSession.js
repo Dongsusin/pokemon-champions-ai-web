@@ -72,9 +72,22 @@ export async function acquireAccountSession(user, options = {}) {
     now = createLeaseClock(),
     setTimeoutImpl = globalThis.setTimeout.bind(globalThis),
     clearTimeoutImpl = globalThis.clearTimeout.bind(globalThis),
+    storageProvider = gameStorageProvider,
+    apiUrl = accountApiUrl,
   } = options
-  if (!user?.uid || (!user.isLocalGuest && (!projectId || !fetchImpl || !user.getIdToken))) {
+  const serverStorage = storageProvider === 'supabase'
+  if (!user?.uid || (!user.isLocalGuest && ((!serverStorage && !projectId) || !fetchImpl || !user.getIdToken))) {
     throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
+  }
+  if (serverStorage && !user.isLocalGuest) {
+    try {
+      const endpoint = new URL(apiUrl)
+      const loopback = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(endpoint.hostname)
+      if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password
+        || (endpoint.protocol === 'http:' && !loopback)) throw new Error('Invalid account API endpoint')
+    } catch (cause) {
+      throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable, cause)
+    }
   }
 
   // Never persist this ID: duplicated tabs can inherit sessionStorage.
@@ -106,6 +119,7 @@ export async function acquireAccountSession(user, options = {}) {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...init?.headers },
         signal: abortController.signal,
         keepalive,
+        ...(serverStorage ? { credentials: 'omit', cache: 'no-store', redirect: 'error' } : {}),
       })
       let data = null
       if (init?.method !== 'DELETE') data = await response.json().catch(() => null)
@@ -119,6 +133,10 @@ export async function acquireAccountSession(user, options = {}) {
     if (!expectedVersion || !token || user.isLocalGuest) return
     try {
       // A delayed close request must never remove a replacement session.
+      if (serverStorage) {
+        await request(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'sessionRelease', ownerId, version: expectedVersion }) }, { keepalive })
+        return
+      }
       await request(`${documentUrl}?currentDocument.updateTime=${encodeURIComponent(expectedVersion)}`, {
         method: 'DELETE',
       }, { keepalive })
@@ -182,7 +200,11 @@ export async function acquireAccountSession(user, options = {}) {
 
   async function writeLease(expectedVersion) {
     const requestStartedAt = now()
-    const { response, data } = await request(commitUrl, {
+    const { response, data } = serverStorage ? await request(apiUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: expectedVersion ? 'sessionHeartbeat' : 'sessionAcquire', ownerId,
+        ...(expectedVersion ? { version: expectedVersion } : {}) }),
+    }) : await request(commitUrl, {
       method: 'POST',
       body: JSON.stringify({ writes: [{
         update: { name: documentName, fields: { ownerId: { stringValue: ownerId } } },
@@ -190,16 +212,20 @@ export async function acquireAccountSession(user, options = {}) {
         currentDocument: expectedVersion ? { updateTime: expectedVersion } : { exists: false },
       }] }),
     })
-    if (!response.ok) {
+    if (!response.ok || data?.error) {
       const occupied = response.status === 409
         || response.status === 412
         || data?.error?.status === 'FAILED_PRECONDITION'
         || data?.error?.status === 'ABORTED'
         || (response.status === 403 && expectedVersion)
+        || [ACCOUNT_SESSION_ERROR_CODES.occupied, ACCOUNT_SESSION_ERROR_CODES.lost].includes(data?.error?.code)
       throw sessionError(occupied ? ACCOUNT_SESSION_ERROR_CODES.occupied : ACCOUNT_SESSION_ERROR_CODES.unavailable)
     }
-    const nextVersion = data?.writeResults?.[0]?.updateTime
-    if (!nextVersion) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
+    const nextVersion = serverStorage ? data?.version : data?.writeResults?.[0]?.updateTime
+    if (typeof nextVersion !== 'string' || !nextVersion || (serverStorage
+      && (data?.ownerId !== ownerId || data?.leaseMs !== ACCOUNT_SESSION_LEASE_MS || !Number.isFinite(data?.expiresAt)))) {
+      throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
+    }
     version = nextVersion
     if (ended) {
       await deleteVersion(nextVersion, true)
@@ -245,11 +271,17 @@ export async function acquireAccountSession(user, options = {}) {
       if (navigatorObject?.onLine === false) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
       token = await user.getIdToken()
       if (ended) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
-      const { response, data } = await request(documentUrl, { method: 'GET' })
-      if (!response.ok && response.status !== 404) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
-      if (ended) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
-      // Always let server rules determine expiry, regardless of the local clock.
-      await writeLease(response.ok ? data?.updateTime : null)
+      if (serverStorage) {
+        // One atomic server operation decides ownership and expiry. A failed
+        // account API request must never fall back to the former Firestore lease.
+        await writeLease(null)
+      } else {
+        const { response, data } = await request(documentUrl, { method: 'GET' })
+        if (!response.ok && response.status !== 404) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
+        if (ended) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
+        // Always let server rules determine expiry, regardless of the local clock.
+        await writeLease(response.ok ? data?.updateTime : null)
+      }
       if (now() >= deadline) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
     }
     admitted = true
@@ -262,3 +294,4 @@ export async function acquireAccountSession(user, options = {}) {
       : sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable, error)
   }
 }
+import { accountApiUrl, gameStorageProvider } from './gameStorageConfig.js'

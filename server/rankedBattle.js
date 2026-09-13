@@ -84,15 +84,15 @@ export function canonicalizeRankedTeam(entries, { format = 'single', requireRegi
   })
 }
 
-export function createRankedBattle({ playerTeam, opponentTeam, format = 'single', playerName = '트레이너 1', opponentName = '트레이너 2', random = Math.random }) {
+export function createRankedBattle({ playerTeam, opponentTeam, format = 'single', playerName = '트레이너 1', opponentName = '트레이너 2', playerIsGuest = false, opponentIsGuest = false, random = Math.random }) {
   const double = formatId(format) === 'double'
   const canonical = (team, sideId) => canonicalizeRankedTeam(team, { format, requireRegisteredTeam: false })
     .map((pokemon, index) => ({ ...pokemon, captureId: `ranked-${sideId}-${index}` }))
-  return createBattle({
+  const state = createBattle({
     random,
     playerPokemon: canonical(playerTeam, 'player'),
-    playerName: maskRankedTrainerName(playerName),
-    opponent: { id: 'ranked-human', name: maskRankedTrainerName(opponentName), tier: '레이팅' },
+    playerName: maskRankedTrainerName(playerName, playerIsGuest),
+    opponent: { id: 'ranked-human', name: maskRankedTrainerName(opponentName, opponentIsGuest), isGuest: opponentIsGuest === true, tier: '레이팅' },
     opponentTeam: { pokemon: canonical(opponentTeam, 'opponent'), battleGimmicks: [], strategy: {} },
     rules: {
       pvp: true,
@@ -103,6 +103,9 @@ export function createRankedBattle({ playerTeam, opponentTeam, format = 'single'
       aiDifficulty: { id: 'normal', label: '레이팅', boostStage: 0 },
     },
   })
+  state.player.isGuest = playerIsGuest === true
+  state.opponent.isGuest = opponentIsGuest === true
+  return state
 }
 
 function assertSide(state, sideId) {
@@ -169,7 +172,7 @@ const PUBLIC_POKEMON = [
   'leechSeedSourceSideId', 'leechSeedSourceSlot', 'tauntTurns', 'trappedTurns', 'trapSourceName',
   'ingrainActive', 'aquaRingActive', 'magnetRiseTurns', 'telekinesisTurns',
 ]
-const PUBLIC_SIDE = ['name', 'activeIndex', 'activeIndexes', 'rotationSlot', 'usedMechanics',
+const PUBLIC_SIDE = ['name', 'isGuest', 'activeIndex', 'activeIndexes', 'rotationSlot', 'usedMechanics',
   'hazards', 'auroraVeilTurns', 'lightScreenTurns', 'reflectTurns', 'safeguardTurns',
   'mistTurns', 'tailwindTurns', 'luckyChantTurns', 'wideGuardTurns', 'quickGuardTurns',
   'craftyShieldTurns', 'matBlockTurns', 'firePledgeTurns', 'grassPledgeTurns', 'waterPledgeTurns', 'gmaxResidual']
@@ -250,7 +253,7 @@ export function getRankedBattleView(state, sideId, { includeCommandOptions = tru
   const rawView = {
     turn: state.turn, phase: state.phase, rules: structuredClone(state.rules),
     environment: structuredClone(state.environment), player, opponent,
-    opponentMeta: { id: 'ranked-human', name: enemy.name, tier: '레이팅' },
+    opponentMeta: { id: 'ranked-human', name: enemy.name, isGuest: enemy.isGuest === true, tier: '레이팅' },
     opponentStrategy: {}, winner: state.winner,
     log: structuredClone(state.log), eventNonce: state.eventNonce,
     lastEvent: null, lastConsumedItem: null, lastUsedMove: null,

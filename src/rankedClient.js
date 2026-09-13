@@ -42,7 +42,7 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
     const timeout = setTimeout(abort, 12_000)
     try {
       const token = localTestIdentity ? `ranked-test-${localTestIdentity}` : await getIdToken?.()
-      if (!token) throw new RankedRequestError('실제 유저 대전은 Google 로그인 후 참가할 수 있습니다.', 'authentication-required', 401)
+      if (!token) throw new RankedRequestError('게스트 또는 Google 로그인 연결을 확인한 뒤 다시 시도해주세요.', 'authentication-required', 401)
       const url = new URL(endpoint)
       const readOnly = action === 'status' || action === 'fixtures' || action === 'usage' || action === 'factoryLeaderboard'
       if (readOnly) {

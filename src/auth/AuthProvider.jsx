@@ -12,9 +12,12 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   deleteUser,
+  linkWithPopup,
   onAuthStateChanged,
   reauthenticateWithPopup,
   setPersistence,
+  signInAnonymously,
+  signInWithCredential,
   signInWithPopup,
   signOut as firebaseSignOut,
 } from 'firebase/auth'
@@ -25,9 +28,12 @@ import {
 } from './firebaseClient'
 import {
   clearLocalPlayerData,
+  backupGuestPlayerData,
   clearPendingGoogleMigration,
   markPendingGoogleMigration,
+  readPlayerSyncState,
 } from './accountStorage'
+import { resolveGuestIdentity } from './guestIdentityClient'
 import { deletePlayerProfile, ensurePlayerProfile } from './playerProfile'
 import { acquireAccountSession, ACCOUNT_SESSION_ERROR_CODES } from './accountSession'
 
@@ -40,7 +46,7 @@ const AUTH_ERROR_MESSAGES = {
   'auth/account-exists-with-different-credential': '같은 이메일로 연결된 다른 로그인 방식이 있습니다.',
   'auth/cancelled-popup-request': 'Google 로그인 요청이 취소되었습니다.',
   'auth/network-request-failed': '네트워크 연결을 확인한 뒤 다시 시도해주세요.',
-  'auth/operation-not-allowed': 'Firebase Console에서 Google 로그인을 활성화해주세요.',
+  'auth/operation-not-allowed': '현재 로그인 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.',
   'auth/popup-blocked': '브라우저에서 로그인 팝업이 차단되었습니다.',
   'auth/popup-closed-by-user': 'Google 로그인 창이 닫혔습니다.',
   'auth/too-many-requests': '로그인 요청이 너무 많습니다. 잠시 뒤 다시 시도해주세요.',
@@ -132,7 +138,8 @@ function authErrorMessage(error) {
   if (error?.code === ACCOUNT_SESSION_ERROR_CODES.unavailable) {
     return '접속 상태를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 잠시 후 다시 시도해주세요.'
   }
-  return AUTH_ERROR_MESSAGES[error?.code] ?? 'Google 로그인 중 오류가 발생했습니다.'
+  if (error?.code?.startsWith('guest/') || error?.code === 'GUEST_NAMES_EXHAUSTED') return error.message
+  return AUTH_ERROR_MESSAGES[error?.code] ?? '로그인 중 오류가 발생했습니다. 연결을 확인한 뒤 다시 시도해주세요.'
 }
 
 function accountDeletionErrorMessage(error) {
@@ -186,6 +193,13 @@ export function AuthProvider({ children }) {
   const activateUser = useCallback((nextUser) => {
     if (!nextUser) return Promise.resolve(false)
     if (sessionRef.current?.uid === nextUser.uid && userRef.current && sessionRef.current.handle.isActive()) {
+      // Linking an anonymous user keeps its UID and lease, but changes its
+      // identity. Do not retain the anonymous wrapper after a successful link.
+      if (userRef.current.isAnonymous && !nextUser.isAnonymous) {
+        candidateRef.current = nextUser
+        setCurrentUser(nextUser)
+        void ensurePlayerProfile(nextUser).catch(() => setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.'))
+      }
       return Promise.resolve(true)
     }
     if (admissionRef.current?.uid === nextUser.uid) return admissionRef.current.promise
@@ -225,6 +239,14 @@ export function AuthProvider({ children }) {
           return false
         }
 
+        let admittedUser = nextUser
+        if (nextUser.isAnonymous) {
+          admittedUser = await resolveGuestIdentity(nextUser)
+          if (!isCurrent()) {
+            await handle.release()
+            return false
+          }
+        }
         sessionRef.current = { uid: nextUser.uid, handle }
         if (nextUser.isLocalGuest) {
           storeLocalGuest(nextUser, autoLoginRef.current)
@@ -236,12 +258,22 @@ export function AuthProvider({ children }) {
             await handle.release()
             return false
           }
+          if (nextUser.isAnonymous) {
+            const rememberedGuest = readLocalGuest(autoLoginRef.current)
+            // Only the explicitly remembered guest may transfer its own data.
+            // Never copy another account's shared-browser save into a new UID.
+            if (rememberedGuest && readPlayerSyncState()?.ownerUid === rememberedGuest.uid) {
+              backupGuestPlayerData(rememberedGuest.uid)
+              markPendingGoogleMigration(rememberedGuest.uid, nextUser.uid)
+            }
+          }
           clearLocalGuest()
         }
         setProfileSyncError('')
-        setCurrentUser(nextUser)
+        candidateRef.current = admittedUser
+        setCurrentUser(admittedUser)
         if (!nextUser.isLocalGuest) {
-          void ensurePlayerProfile(nextUser).catch(() => {
+          void ensurePlayerProfile(admittedUser).catch(() => {
             if (isCurrent()) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
           })
         }
@@ -267,9 +299,29 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     mountedRef.current = true
-    const restore = (firebaseUser) => {
+    const restore = async (firebaseUser) => {
       if (!mountedRef.current || manualAuthRef.current) return
-      const nextUser = candidateRef.current?.isLocalGuest ? candidateRef.current : firebaseUser
+      let nextUser = firebaseUser ?? (candidateRef.current?.isLocalGuest ? candidateRef.current : null)
+      if (nextUser?.isLocalGuest && firebaseAuth) {
+        // Upgrade legacy guest saves once, using persisted Firebase credentials
+        // from then on. The profile/owner checks happen after session admission.
+        manualAuthRef.current = true
+        setReady(false)
+        setBusy(true)
+        try {
+          nextUser = (await signInAnonymously(firebaseAuth)).user
+        } catch (authError) {
+          if (mountedRef.current) {
+            setError(authErrorMessage(authError))
+            setBusy(false)
+            setReady(true)
+          }
+          return
+        } finally {
+          manualAuthRef.current = false
+        }
+        if (!mountedRef.current) return
+      }
       if (nextUser) {
         void activateUser(nextUser)
       } else {
@@ -335,7 +387,7 @@ export function AuthProvider({ children }) {
     manualAuthRef.current = true
     try {
       let firebaseUser = firebaseAuth.currentUser
-      if (!firebaseUser || userRef.current?.isLocalGuest) {
+      if (!firebaseUser || firebaseUser.isAnonymous || userRef.current?.isLocalGuest) {
         const provider = new GoogleAuthProvider()
         provider.setCustomParameters({ prompt: 'select_account' })
         firebaseUser = (await signInWithPopup(firebaseAuth, provider)).user
@@ -352,28 +404,88 @@ export function AuthProvider({ children }) {
 
   const connectGuestToGoogle = useCallback(async () => {
     const currentGuest = userRef.current
-    if (!currentGuest?.isLocalGuest) return false
+    if (!currentGuest?.isLocalGuest && !currentGuest?.isAnonymous) return false
     try {
-      markPendingGoogleMigration(currentGuest.uid)
+      backupGuestPlayerData(currentGuest.uid)
+      // Preflight storage before opening authentication. The destination is
+      // bound below, so a later unrelated login cannot claim this guest's save.
+      markPendingGoogleMigration(currentGuest.uid, '__awaiting_google_link__')
     } catch {
       setError('게스트 진행 기록의 이전 설정을 저장하지 못했습니다. 브라우저 저장 공간을 확인해주세요.')
       return false
     }
-    const connected = await signInWithGoogle()
-    if (!connected) clearPendingGoogleMigration()
-    return connected
-  }, [signInWithGoogle])
+    if (!firebaseAuth) {
+      clearPendingGoogleMigration()
+      setError('Firebase 연결 설정이 필요합니다.')
+      return false
+    }
+    setBusy(true)
+    setError('')
+    manualAuthRef.current = true
+    let destinationBound = false
+    try {
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: 'select_account' })
+      let firebaseUser
+      let preserveExistingCloud = false
+      if (currentGuest.isAnonymous && firebaseAuth.currentUser?.uid === currentGuest.uid) {
+        try {
+          firebaseUser = (await linkWithPopup(firebaseAuth.currentUser, provider)).user
+        } catch (authError) {
+          if (!['auth/credential-already-in-use', 'auth/email-already-in-use'].includes(authError?.code)) throw authError
+          const credential = GoogleAuthProvider.credentialFromError(authError)
+          if (!credential) throw authError
+          preserveExistingCloud = true
+          firebaseUser = (await signInWithCredential(firebaseAuth, credential)).user
+        }
+      } else {
+        preserveExistingCloud = true
+        firebaseUser = (await signInWithPopup(firebaseAuth, provider)).user
+      }
+      if (firebaseUser.uid === currentGuest.uid) {
+        clearPendingGoogleMigration()
+      } else {
+        markPendingGoogleMigration(currentGuest.uid, firebaseUser.uid, { preserveExistingCloud })
+        destinationBound = true
+      }
+      const connected = await activateUser(firebaseUser)
+      if (connected && preserveExistingCloud) {
+        setProfileSyncError('기존 Google 계정의 저장 기록을 우선 불러옵니다. 게스트 기록은 이전 백업으로 이 기기에 보관했습니다.')
+      }
+      return connected
+    } catch (authError) {
+      setError(authErrorMessage(authError))
+      return false
+    } finally {
+      if (!destinationBound) clearPendingGoogleMigration()
+      manualAuthRef.current = false
+      setBusy(false)
+    }
+  }, [activateUser])
 
   const signInAsGuest = useCallback(async () => {
     setBusy(true)
     setError('')
+    manualAuthRef.current = true
     try {
-      // Reuse a remembered guest; creating a fresh UID must not bypass its window lock.
+      if (firebaseAuth) {
+        // Reuse persisted anonymous credentials; a fresh UID must never bypass
+        // the current guest's single-window session lock.
+        const currentFirebaseUser = firebaseAuth.currentUser
+        if (currentFirebaseUser && !currentFirebaseUser.isAnonymous) {
+          setError('현재 계정에서 로그아웃한 뒤 게스트로 시작해주세요.')
+          return false
+        }
+        const firebaseUser = currentFirebaseUser ?? (await signInAnonymously(firebaseAuth)).user
+        return await activateUser(firebaseUser)
+      }
       const localGuest = readLocalGuest(autoLoginRef.current) ?? createLocalGuest()
       return await activateUser(localGuest)
-    } catch {
-      setError('이 PC에 게스트 정보를 저장하지 못했습니다.')
+    } catch (authError) {
+      setError(authErrorMessage(authError))
+      return false
     } finally {
+      manualAuthRef.current = false
       setBusy(false)
     }
   }, [activateUser])
@@ -424,12 +536,14 @@ export function AuthProvider({ children }) {
       const firebaseUser = firebaseAuth?.currentUser
       if (!firebaseUser) throw new Error('Firebase user is not available.')
 
-      const provider = new GoogleAuthProvider()
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        ...(firebaseUser.email ? { login_hint: firebaseUser.email } : {}),
-      })
-      await reauthenticateWithPopup(firebaseUser, provider)
+      if (!firebaseUser.isAnonymous) {
+        const provider = new GoogleAuthProvider()
+        provider.setCustomParameters({
+          prompt: 'select_account',
+          ...(firebaseUser.email ? { login_hint: firebaseUser.email } : {}),
+        })
+        await reauthenticateWithPopup(firebaseUser, provider)
+      }
       await deletePlayerProfile(firebaseUser)
       // Release while the ID token is still valid; deleteUser revokes authentication.
       candidateRef.current = null

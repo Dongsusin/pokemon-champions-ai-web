@@ -8,7 +8,7 @@ const BEST_COLLECTION = 'factoryPersonalBest'
 const ownerKey = uid => createHash('sha256').update(`factory-owner:${uid}`).digest('hex')
 const copy = value => structuredClone(value)
 const publicEntry = entry => entry ? Object.fromEntries([
-  'id', 'runId', 'trainerName', 'floor', 'wins', 'recordedAt', 'party',
+  'id', 'runId', 'trainerName', 'isGuest', 'floor', 'wins', 'recordedAt', 'party',
 ].map(key => [key, copy(entry[key])])) : null
 
 function view(board, best) {
@@ -39,7 +39,8 @@ export async function reportFactoryRun(tx, identity, report, timestamp, entryId 
     id: best?.id ?? entryId,
     owner,
     runId: report.runId,
-    trainerName: maskRankedTrainerName(identity.name),
+    trainerName: maskRankedTrainerName(identity.name, identity.isGuest),
+    isGuest: identity.isGuest === true,
     floor: report.floor,
     wins: report.wins,
     recordedAt: Math.max(timestamp, board?.updatedAt ?? 0),

@@ -1,5 +1,6 @@
 import { createRankedService, RankedError } from './rankedService.js'
-import { createFirestoreRankedStore } from './rankedStore.js'
+import { getProductionServices } from './productionServices.js'
+import { createAccountRankedTeamResolver } from './accountService.js'
 
 const MAX_BODY = 128 * 1024
 const localHost = hostname => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)
@@ -23,7 +24,7 @@ const DIAGNOSTIC_CODES = new Set([
   'ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND', 'ERR_REQUIRE_ESM',
   'ERR_PACKAGE_PATH_NOT_EXPORTED', 'ERR_REQUIRE_ASYNC_MODULE',
 ])
-const STARTUP_STEPS = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'battle-engine', 'credential-json', 'credential', 'firebase-client', 'store'])
+const STARTUP_STEPS = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'battle-engine', 'credential-json', 'credential', 'firebase-client', 'store', 'postgres-store'])
 
 function logFailure(stage, error) {
   // SDK error messages/stacks may contain credentials, tokens, or private paths.
@@ -159,30 +160,14 @@ export async function handleProductionRankedRequest(request) {
   if (process.env.RANKED_ENABLED !== 'true') return createRankedHttpHandler()(request)
   if (!productionHandler) {
     productionHandler = (async () => {
-      if (!process.env.RANKED_FIREBASE_PROJECT_ID || !process.env.RANKED_FIRESTORE_PREFIX) throw Object.assign(new Error('Ranked production configuration is incomplete'), { code: 'ranked/configuration-incomplete' })
-      const [{ initializeApp, getApps, applicationDefault, cert }, { getAuth }, { getFirestore }, engine] = await Promise.all([
-        startupModule('firebase-app', import('firebase-admin/app')),
-        startupModule('firebase-auth', import('firebase-admin/auth')),
-        startupModule('firebase-firestore', import('firebase-admin/firestore')),
+      const [services, engine] = await Promise.all([
+        getProductionServices(),
         startupModule('battle-engine', import('./rankedBattle.js')),
       ])
-      const options = { projectId: process.env.RANKED_FIREBASE_PROJECT_ID }
-      if (process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON) {
-        let credential
-        try { credential = JSON.parse(process.env.RANKED_FIREBASE_SERVICE_ACCOUNT_JSON) }
-        catch (error) { error.rankedStartupStep = 'credential-json'; throw error }
-        if (credential.project_id !== options.projectId) throw Object.assign(new Error('Ranked service account project mismatch'), { code: 'ranked/project-mismatch' })
-        options.credential = cert(credential)
-      } else options.credential = applicationDefault()
-      const app = getApps().find(candidate => candidate.name === 'ranked-server') ?? initializeApp(options, 'ranked-server')
-      const firestore = getFirestore(app)
-      const store = createFirestoreRankedStore(firestore, { prefix: process.env.RANKED_FIRESTORE_PREFIX })
-      const service = createRankedService({ store, engine, resolveTeam: createFirebaseRankedTeamResolver(firestore), usageEnabled: process.env.POKEMON_USAGE_ENABLED === 'true' })
-      return createRankedHttpHandler({ enabled: true, service, authenticate: async (_request, token) => {
-        // Revoked/disabled accounts must not continue submitting commands.
-        const verified = await getAuth(app).verifyIdToken(token, true)
-        return { uid: verified.uid, name: verified.name || '트레이너' }
-      } })
+      const { rankedStore: store, accountStore, guestRegistry, firestore, authenticate } = services
+      const resolveTeam = accountStore ? createAccountRankedTeamResolver(accountStore) : createFirebaseRankedTeamResolver(firestore)
+      const service = createRankedService({ store, engine, guestRegistry, resolveTeam, usageEnabled: process.env.POKEMON_USAGE_ENABLED === 'true' })
+      return createRankedHttpHandler({ enabled: true, service, authenticate })
     })().catch(error => {
       logFailure('initialization', error)
       productionHandler = null

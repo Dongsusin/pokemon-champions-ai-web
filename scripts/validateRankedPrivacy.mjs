@@ -17,6 +17,29 @@ test('trainer masking preserves one normalized grapheme and exactly two stars', 
   }
 })
 
+test('only verified guest identities retain their unique six-digit public identifier', () => {
+  assert.equal(maskRankedTrainerName('guest-000007', true), 'guest-000007')
+  for (const name of ['guest-000007', 'guest-00000', 'guest-0000000', 'guest-abcdef']) {
+    assert.equal(maskRankedTrainerName(name), 'g**', 'A Google nickname never opts itself into guest display')
+  }
+  for (const name of ['guest-00000', 'guest-0000000', 'guest-abcdef', ' guest-000007 ', 'guest-000007\u202e']) {
+    assert.equal(maskRankedTrainerName(name, true), 'g**', 'Guest format must exactly match the issued identifier')
+  }
+  const match = { you: { name: 'guest-000007', isGuest: true }, opponent: { name: '김트레이너', isGuest: false },
+    state: { player: { name: 'guest-000007' }, opponent: { name: '김트레이너' }, opponentMeta: { name: '김트레이너' },
+      log: [{ message: 'guest-000007 vs 김트레이너, 레이팅 배틀 시작!' }] },
+    timeline: [{ message: 'guest-000007은(는) 피카츄을(를) 내보냈다!' }] }
+  const masked = maskRankedMatch(match)
+  assert.equal(masked.you.name, 'guest-000007')
+  assert.equal(masked.state.player.name, 'guest-000007')
+  assert.equal(masked.state.player.isGuest, true)
+  assert.equal(masked.opponent.name, '김**')
+  assert.equal(masked.state.log[0].message, 'guest-000007 vs 김**, 레이팅 배틀 시작!')
+  assert.equal(masked.timeline[0].message, 'guest-000007은(는) 피카츄을(를) 내보냈다!')
+  assert.deepEqual(maskRankedMatch(masked), masked)
+  assert.equal(maskRankedMatch({ you: { name: 'guest-000007', isGuest: false } }).you.name, 'g**')
+})
+
 const messages = [
   ['피카츄 vs 신동수, 레이팅 배틀 시작!', '피** vs 신**, 레이팅 배틀 시작!'],
   ['피카츄은(는) 피카츄, 잠만보을(를) 내보냈다!', '피**은(는) 피카츄, 잠만보을(를) 내보냈다!'],

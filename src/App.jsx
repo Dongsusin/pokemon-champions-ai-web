@@ -342,12 +342,12 @@ export function GameApp({
   const soundEnabled = settings.audio.enabled
   const factoryBattleVisible = screen === 'factory' && factoryRun?.phase === 'battle'
   const battleMusicActive = screen === 'battle' || rankedBattleActive || factoryBattleVisible
-  const isGuest = Boolean(user.isLocalGuest)
+  const isGuest = Boolean(user.isAnonymous || user.isLocalGuest)
   const trainerName = user.displayName?.trim()
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
-  const displayedTrainerName = screen === 'ranked' ? maskRankedTrainerName(trainerName) : trainerName
+  const displayedTrainerName = screen === 'ranked' ? maskRankedTrainerName(trainerName, user.isAnonymous === true) : trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
     if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {

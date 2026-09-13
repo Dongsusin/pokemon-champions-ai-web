@@ -301,6 +301,44 @@ test('single and doubles queues never mix', async () => {
   assert.equal(paired.match.opponent.name, 'a**')
   assert.equal((await env.call('bob', 'status')).queue.format, 'double')
 })
+test('waiting queue polls write only once per ten-second heartbeat and retain the thirty-second lease', async () => {
+  const actual = createMemoryRankedStore()
+  let writes = 0, scans = 0
+  const store = { transaction: work => actual.transaction(tx => work({
+    get: (...args) => tx.get(...args),
+    list: (...args) => { scans += 1; return tx.list(...args) },
+    set: (...args) => { writes += 1; return tx.set(...args) },
+    delete: (...args) => { writes += 1; return tx.delete(...args) },
+  })), inspect: () => actual.inspect() }
+  const env = environment({ store })
+  const initial = await env.call('alice', 'join', { format: 'single', team: team('a') })
+  const before = await actual.inspect()
+  writes = 0; scans = 0
+  for (let poll = 0; poll < 60; poll += 1) {
+    env.advance(150)
+    const status = await env.call('alice', 'status')
+    assert.equal(status.queue.ticket, initial.queue.ticket)
+    assert.equal(status.queue.expiresAt, initial.queue.expiresAt)
+  }
+  assert.equal(writes, 0)
+  assert.equal(scans, 0)
+  assert.deepEqual(await actual.inspect(), before)
+  env.advance(1_000)
+  const renewed = await env.call('alice', 'status')
+  assert.equal(renewed.queue.expiresAt, renewed.serverTime + 30_000)
+  assert.equal(renewed.queue.expiresAt, initial.queue.expiresAt + 10_000)
+  assert.equal(writes, 2, 'Only the lobby lock and queue lease are written')
+  assert.equal(scans, 1)
+  writes = 0; scans = 0
+  await Promise.all(Array.from({ length: 30 }, () => env.call('alice', 'status')))
+  assert.equal(writes, 0)
+  assert.equal(scans, 0)
+  // Matching must not wait for the next heartbeat when someone joins now.
+  const paired = await env.call('bob', 'join', { format: 'single', team: team('b') })
+  assert(paired.match)
+  assert.equal(paired.match.opponent.name, 'a**')
+  assert.equal((await env.call('alice', 'status')).match.id, paired.match.id)
+})
 test('matching search expands by wait time and expired queues cannot match', async () => {
   const env = environment()
   await env.call('bob', 'status')

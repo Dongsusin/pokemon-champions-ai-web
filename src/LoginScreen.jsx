@@ -111,7 +111,7 @@ function LoginScreen({
             <span className="guest-login-mark"><UserRound size={22} aria-hidden="true" /></span>
             <span>
               <strong>{busy ? '로그인 처리 중' : '게스트로 시작'}</strong>
-              <small>이 PC 브라우저에만 임시 저장</small>
+              <small>{configured ? '전용 게스트 번호로 레이팅·통계까지 이용' : '이 브라우저에 임시 저장 · 온라인 기능 제외'}</small>
             </span>
             <ChevronRight size={21} aria-hidden="true" />
           </button>
@@ -154,7 +154,7 @@ function LoginScreen({
 
         <footer className="auth-login-footer">
           <ShieldCheck size={16} aria-hidden="true" />
-          <span>Google은 Firebase 연결 · 게스트는 이 PC에만 저장</span>
+          <span>{configured ? '게스트도 온라인 플레이 · Google 연결로 계정 보관' : '오프라인 게스트는 이 브라우저에만 저장'}</span>
         </footer>
       </section>
     </main>

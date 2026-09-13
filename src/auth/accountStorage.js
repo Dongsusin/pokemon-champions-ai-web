@@ -15,6 +15,7 @@ export const PLAYER_STORAGE_KEYS = [
 
 export const PLAYER_SYNC_STORAGE_KEY = 'champions-cloud-sync-v1'
 export const PENDING_GOOGLE_MIGRATION_STORAGE_KEY = 'champions-google-migration-v1'
+export const GUEST_MIGRATION_BACKUP_PREFIX = 'champions-guest-migration-backup-v1-'
 
 function readJsonStorage(key) {
   if (typeof window === 'undefined') return null
@@ -153,11 +154,22 @@ export function markLocalPlayerDataSynced(ownerUid, revision = '') {
   })
 }
 
-export function markPendingGoogleMigration(sourceUid) {
+export function backupGuestPlayerData(sourceUid) {
+  const syncState = readPlayerSyncState()
+  if (!sourceUid || syncState?.ownerUid !== sourceUid) return false
+  writeJsonStorage(`${GUEST_MIGRATION_BACKUP_PREFIX}${encodeURIComponent(sourceUid)}`, {
+    version: 1, sourceUid, payload: readLocalPlayerData(), syncState, createdAt: Date.now(),
+  })
+  return true
+}
+
+export function markPendingGoogleMigration(sourceUid, targetUid = '', { preserveExistingCloud = false } = {}) {
   if (!sourceUid) return
   writeJsonStorage(PENDING_GOOGLE_MIGRATION_STORAGE_KEY, {
     version: 1,
     sourceUid,
+    ...(targetUid ? { targetUid } : {}),
+    ...(preserveExistingCloud ? { preserveExistingCloud: true } : {}),
     createdAt: Date.now(),
   })
 }

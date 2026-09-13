@@ -134,13 +134,14 @@ export default function RankedBattleScreen({
     if (!isRankedLocalTest) return
     try { window.sessionStorage.setItem(LOCAL_IDENTITY_KEY, identity) } catch { /* Storage is optional in local tests. */ }
   }, [identity])
-  const canAuthenticate = isRankedLocalTest || Boolean(user && !user.isLocalGuest)
+  const canAuthenticate = isRankedLocalTest || Boolean(user?.uid && !user.isLocalGuest)
   const client = useMemo(() => createRankedClient({
     localTestIdentity: isRankedLocalTest ? identity : undefined,
     getIdToken: async () => {
       const current = firebaseAuth?.currentUser
       if (!current || current.uid !== user?.uid) return null
-      return current.getIdToken()
+      const token = await current.getIdToken()
+      return firebaseAuth?.currentUser?.uid === user?.uid ? token : null
     },
   }), [identity, user?.uid])
   const accept = useCallback(value => {
@@ -327,7 +328,7 @@ export default function RankedBattleScreen({
       <div><span>TRAINER VS TRAINER</span><h1>레이팅 배틀</h1></div><span className="ranked-mode-tag">{isRankedLocalTest ? '로컬 테스트' : '온라인 대전'}</span></header>
     {notices}
     {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>현재 환경에서는 참가할 수 없습니다.</p></section>
-      : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>Google 계정으로 참가하세요</h2><p>레이팅과 경기 기록은 로그인한 계정에 저장됩니다.</p></section>
+      : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>온라인 계정으로 참가하세요</h2><p>게스트 또는 Google 로그인 후 레이팅과 경기 기록을 저장하며 참가할 수 있습니다.</p></section>
       : resultReady ? <section className={`ranked-result outcome-${match.result?.outcome}`}>
         <Trophy size={48} /><span>{currentFormat.label} · 결과 확정</span><h2>{resultNames[match.result?.outcome] ?? '대전 종료'}</h2>
         <p>{reasonNames[match.result?.reason] ?? '서버에서 대전 결과를 확정했습니다.'}</p>

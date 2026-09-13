@@ -1,14 +1,16 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import { isServerGameStorage } from './gameStorageConfig.js'
 
+const environment = import.meta.env ?? {}
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: environment.VITE_FIREBASE_API_KEY,
+  authDomain: environment.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: environment.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: environment.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: environment.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: environment.VITE_FIREBASE_APP_ID,
 }
 
 const requiredConfiguration = [
@@ -29,4 +31,4 @@ const firebaseApp = isFirebaseConfigured
   : null
 
 export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null
-export const firebaseDb = firebaseApp ? getFirestore(firebaseApp) : null
+export const firebaseDb = firebaseApp && !isServerGameStorage ? getFirestore(firebaseApp) : null

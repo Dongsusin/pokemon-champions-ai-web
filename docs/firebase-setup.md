@@ -1,3 +1,7 @@
+# 운영 저장소 안내
+
+게임 저장·세션·대전·통계는 Supabase로 이전하며 Firebase는 Google/익명 Auth와 기존 UID 유지에 사용합니다. 현재 구성과 이전·검증 절차는 [SUPABASE_STORAGE.md](SUPABASE_STORAGE.md)를 먼저 확인하세요. 아래 Firestore 설정은 이전 구성 및 명시적인 복구 작업의 참고입니다.
+
 # Firebase Google 로그인 설정
 
 ## 1. Firebase 프로젝트 연결
