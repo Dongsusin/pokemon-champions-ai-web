@@ -6,7 +6,21 @@ async function startupModule(step, promise) {
 }
 const configurationError = () => Object.assign(new Error('Game storage configuration is incomplete'), { code: 'ranked/configuration-incomplete' })
 
-export async function initializeProductionServices({ env = process.env, loadModule = specifier => import(specifier) } = {}) {
+// Vercel traces literal imports when it packages a function. A variable import
+// can work locally while omitting the Firebase SDK or SQL adapter in production.
+// Keep provider modules lazy while making every deployable dependency explicit.
+const productionModules = {
+  'firebase-admin/app': () => import('firebase-admin/app'),
+  'firebase-admin/auth': () => import('firebase-admin/auth'),
+  'firebase-admin/firestore': () => import('firebase-admin/firestore'),
+  './postgresStore.js': () => import('./postgresStore.js'),
+}
+async function loadProductionModule(specifier) {
+  if (!Object.hasOwn(productionModules, specifier)) throw Object.assign(new Error('Unsupported production module'), { code: 'MODULE_NOT_FOUND' })
+  return productionModules[specifier]()
+}
+
+export async function initializeProductionServices({ env = process.env, loadModule = loadProductionModule } = {}) {
   const provider = env.GAME_STORAGE_PROVIDER || 'firestore'
   if (!['firestore', 'supabase'].includes(provider) || !env.RANKED_FIREBASE_PROJECT_ID
     || (provider === 'firestore' && !env.RANKED_FIRESTORE_PREFIX)

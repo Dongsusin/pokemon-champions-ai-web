@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { generateKeyPairSync } from 'node:crypto'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
 import { createGuestIdentityRegistry } from '../server/guestIdentity.js'
 import { ACCOUNT_LEASE_MS, ACCOUNT_PAYLOAD_MAX_BYTES, createAccountService, createAccountRankedTeamResolver } from '../server/accountService.js'
@@ -257,6 +258,37 @@ test('Supabase startup shares one pool, retains Firebase revoked-token verificat
     return loadModule(name)
   } }), /never fallback/)
   assert(!loaded.includes('firebase-admin/firestore'))
+})
+
+test('real production module loader initializes Firebase and PostgreSQL adapters without network or account writes', async () => {
+  // This is an ephemeral signing key for an intentionally nonexistent project.
+  // No real credentials are read, and neither auth verification nor SQL is run.
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048,
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } })
+  const { getApps, deleteApp } = await import('firebase-admin/app')
+  assert(!getApps().some(app => app.name === 'ranked-server'), 'Test requires an isolated Firebase app registry')
+  let services
+  try {
+    services = await initializeProductionServices({ env: {
+      GAME_STORAGE_PROVIDER: 'supabase',
+      DATABASE_URL: 'postgresql://validation:unusable@storage-validation.invalid:5432/postgres',
+      RANKED_FIREBASE_PROJECT_ID: 'production-loader-validation',
+      RANKED_FIRESTORE_PREFIX: 'production_loader_validation',
+      RANKED_FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify({ project_id: 'production-loader-validation',
+        client_email: 'validation@production-loader-validation.iam.gserviceaccount.com', private_key: privateKey }),
+    } })
+    assert.equal(services.provider, 'supabase')
+    assert.equal(services.firestore, null)
+    assert.equal(typeof services.authenticate, 'function')
+    assert.equal(typeof services.accountStore.transaction, 'function')
+    assert.equal(typeof services.rankedStore.transaction, 'function')
+    assert.equal(typeof services.guestRegistry.create, 'function')
+    assert.equal(getApps().find(app => app.name === 'ranked-server')?.options.projectId, 'production-loader-validation')
+  } finally {
+    await services?.close()
+    const app = getApps().find(candidate => candidate.name === 'ranked-server')
+    if (app && app.options.projectId === 'production-loader-validation') await deleteApp(app)
+  }
 })
 
 for (const { name, run } of tests) {

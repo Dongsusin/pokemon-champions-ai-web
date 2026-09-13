@@ -8,6 +8,8 @@ const response = (body, status = 200, headers = {}) => Response.json(body, {
 })
 const authRejected = new Set(['auth/argument-error', 'auth/invalid-argument', 'auth/invalid-id-token', 'auth/id-token-expired', 'auth/id-token-revoked', 'auth/user-disabled', 'auth/user-not-found'])
 const unavailable = (headers = {}) => response({ error: { code: 'account-session/unavailable', message: '게임 저장 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.' } }, 503, headers)
+const startupCodes = new Set(['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND', 'ERR_REQUIRE_ESM', 'ERR_PACKAGE_PATH_NOT_EXPORTED', 'ERR_REQUIRE_ASYNC_MODULE', 'ranked/configuration-incomplete', 'ranked/project-mismatch', 'app/invalid-credential'])
+const startupSteps = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'postgres-store', 'credential-json'])
 
 async function readPayload(request) {
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) throw new AccountError('INVALID_CONTENT_TYPE', 'JSON 형식의 요청이 필요합니다.', 415)
@@ -81,6 +83,14 @@ export async function handleProductionAccountRequest(request) {
   if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, guestRegistry, authenticate }) => {
     if (!accountStore) throw new Error('Account storage is unavailable')
     return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry }), authenticate })
-  }).catch(() => { productionHandler = null; return () => unavailable() })
+  }).catch(error => {
+    // Restrict diagnostics to known labels; never log SDK messages or secrets.
+    console.error('Account server initialization failed', {
+      code: startupCodes.has(error?.code) ? error.code : 'unknown',
+      step: startupSteps.has(error?.rankedStartupStep) ? error.rankedStartupStep : 'configuration',
+    })
+    productionHandler = null
+    return () => unavailable()
+  })
   return (await productionHandler)(request)
 }
