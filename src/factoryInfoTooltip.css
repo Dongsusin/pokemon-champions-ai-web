@@ -1,0 +1,6 @@
+.factory-tooltip-anchor { cursor: help; }
+.factory-tooltip-anchor:focus-visible { outline: 2px solid #ffe29a; outline-offset: 3px; border-radius: 5px; }
+.factory-info-tooltip { position: fixed; z-index: 600; width: 310px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; margin: 0; padding: 14px 16px; color: #eaf5ff; background: linear-gradient(135deg, #203d50, #101f31); border: 1px solid #c4b47b; border-radius: 11px; box-shadow: 0 12px 32px #02091780; text-align: left; font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+.factory-info-tooltip .factory-info-tooltip-title { display: block; color: #ffe29a; font-size: 14px; line-height: 1.4; }
+.factory-info-tooltip .factory-info-tooltip-description { margin: 8px 0 0; color: #eaf5ff; font-size: 12px; }
+.factory-info-tooltip .factory-info-tooltip-meta { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid #9fc2d233; color: #a9cadb; font-size: 11px; }

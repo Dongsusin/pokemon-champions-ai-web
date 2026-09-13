@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, Check, ChevronUp, Factory, Flag, Heart, Info, Layers3, RefreshCw, Shuffle, Swords, Trophy, X } from 'lucide-react'
 import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
+import FactoryInfoTooltip from './FactoryInfoTooltip'
 import { createBattlePreviewPokemon } from './data/battleEngine'
 import { getBattleItem } from './data/shopData'
-import { getSpeciesProfile, STAT_META, typeClassName } from './data/trainingData'
+import { getAbility, getSpeciesProfile, NATURE_OPTIONS, STAT_META, typeClassName } from './data/trainingData'
 import './battleFactory.css'
 
 const TRAINER_IMAGE = '/assets/trainers/factory-clown-cutout.png'
@@ -16,6 +17,12 @@ export function RentalDetails({ pokemon, onClose }) {
   const dialog = useRef(null)
   const preview = useMemo(() => createBattlePreviewPokemon(pokemon), [pokemon])
   const item = getBattleItem(preview.heldItemId)
+  const ability = getAbility(preview.ability)
+  const nature = NATURE_OPTIONS.find(option => option.label === preview.nature)
+  const statLabel = key => STAT_META.find(stat => stat.key === key)?.label ?? key
+  const natureDescription = nature?.up && nature?.down
+    ? `${statLabel(nature.up)} 10% 상승 · ${statLabel(nature.down)} 10% 하락`
+    : '올라가거나 내려가는 능력치 없이 모든 능력치가 그대로 적용됩니다.'
 
   useEffect(() => {
     const element = dialog.current
@@ -34,15 +41,17 @@ export function RentalDetails({ pokemon, onClose }) {
         </div>
       </header>
       <dl className="factory-details-meta">
-        <div><dt>특성</dt><dd>{preview.ability}</dd></div><div><dt>성격</dt><dd>{preview.nature}</dd></div>
-        <div><dt>지닌 도구</dt><dd>{item && <BattleItemSprite item={item} size={22} />}{item?.name ?? '없음'}</dd></div>
+        <div><dt>특성</dt><dd><FactoryInfoTooltip title={preview.ability} description={ability.description} meta={`발동 조건 · ${ability.trigger}`}><span>{preview.ability}</span></FactoryInfoTooltip></dd></div>
+        <div><dt>성격</dt><dd><FactoryInfoTooltip title={`${preview.nature} 성격`} description={natureDescription}><span>{preview.nature}</span></FactoryInfoTooltip></dd></div>
+        <div><dt>지닌 도구</dt><FactoryInfoTooltip title={item?.name} description={item?.description ?? item?.effect}><dd>{item && <BattleItemSprite item={item} size={22} />}{item?.name ?? '없음'}</dd></FactoryInfoTooltip></div>
         <div><dt>테라타입</dt><dd>{preview.teraType ?? '—'}</dd></div>
       </dl>
       <div className="factory-stat-grid" aria-label="능력치">{STAT_META.map(stat => <div key={stat.key}><small>{stat.shortLabel}</small><strong>{preview.stats?.[stat.key] ?? '—'}</strong></div>)}</div>
       <h3 className="factory-moves-title">배틀 기술</h3>
-      <div className="factory-move-list">{preview.moves.map(move => <div key={move.id}>
+      <div className="factory-move-list">{preview.moves.map(move => <FactoryInfoTooltip key={move.id} title={move.name} description={move.description}
+        meta={`${move.type} · ${move.category} · 위력 ${move.power || '—'} · 명중 ${move.accuracyLabel ?? move.accuracy ?? '—'} · PP ${move.maxPp}`}><div>
         <span className={`type-${typeClassName(move.type)}`}>{move.type}</span><div><strong>{move.name}</strong><small>{move.category} · 위력 {move.power || '—'} · 명중 {move.accuracyLabel ?? move.accuracy ?? '—'}</small></div><b>PP {move.maxPp}</b>
-      </div>)}</div>
+      </div></FactoryInfoTooltip>)}</div>
     </div>
   </dialog>, document.body)
 }
@@ -55,12 +64,12 @@ function RentalCard({ pokemon, order, selected = false, disabled = false, onSele
     <span className="factory-card-number">{selected ? <><Check size={13} />{order ? `${order}번` : selectedLabel}</> : label}</span>
     <SpriteImage src={pokemon.icon ?? profile?.icon} fallbackSrc={pokemon.iconFallback ?? profile?.iconFallback} alt="" draggable="false" />
     <strong>{name}</strong><span className="factory-card-types">{(pokemon.types ?? profile?.types ?? []).join(' · ')}</span>
-    <span className="factory-card-item">{item && <BattleItemSprite item={item} size={18} />}{item?.name ?? '지닌 도구 없음'}</span>
   </>
   return <article className={`factory-rental-card${selected ? ' selected' : ''}${disabled ? ' unavailable' : ''}${compact ? ' compact' : ''}`}>
     {onSelect ? <button type="button" className="factory-rental-select" aria-label={selectAriaLabel ?? `${name} ${selected ? '선택 해제' : '선택'}${disabled ? ' 불가' : ''}`}
       aria-pressed={selected} disabled={disabled} onClick={onSelect}>{content}</button>
       : <div className="factory-rental-select">{content}</div>}
+    <FactoryInfoTooltip title={item?.name} description={item?.description ?? item?.effect}><span className="factory-card-item">{item && <BattleItemSprite item={item} size={18} />}{item?.name ?? '지닌 도구 없음'}</span></FactoryInfoTooltip>
     <button type="button" className="factory-rental-info" aria-label={`${name} 능력치와 기술 정보`} onClick={() => onDetails(pokemon)}><Info size={17} /></button>
   </article>
 }

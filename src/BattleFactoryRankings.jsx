@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ChevronDown, Crown, Flag, Info, Layers3, LoaderCircle, RefreshCw, Trophy, Wifi, X } from 'lucide-react'
 import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
+import FactoryInfoTooltip from './FactoryInfoTooltip'
 import { RentalDetails } from './BattleFactoryLobby'
 import { normalizePokemon } from './data/trainingData'
 import { getBattleItem } from './data/shopData'
@@ -29,7 +30,7 @@ function FinalPokemon({ pokemon, onDetails }) {
     <header><SpriteImage src={pokemon.icon} fallbackSrc={pokemon.iconFallback} alt="" /><div><strong>{pokemon.name}</strong><small>{pokemon.types.join(' · ')}</small></div>
       <button type="button" aria-label={`${pokemon.name} 능력치와 기술 정보`} onClick={() => onDetails(pokemon)}><Info size={16} /></button>
     </header>
-    <div className="factory-ranking-held-item"><span>지닌 도구</span><strong>{item && <BattleItemSprite item={item} size={20} />}{item?.name ?? '없음'}</strong></div>
+    <div className="factory-ranking-held-item"><span>지닌 도구</span><FactoryInfoTooltip title={item?.name} description={item?.description ?? item?.effect}><strong>{item && <BattleItemSprite item={item} size={20} />}{item?.name ?? '없음'}</strong></FactoryInfoTooltip></div>
     <div className="factory-ranking-move-names" aria-label={`${pokemon.name} 최종 기술`}>{pokemon.moves.slice(0, 4).map((move, index) => <span key={`${index}:${typeof move === 'string' ? move : move.id}`} title={typeof move === 'string' ? move : move.name}><i />{typeof move === 'string' ? move : move.name}</span>)}</div>
   </article>
 }
@@ -44,7 +45,7 @@ function RankingRow({ entry, position, isOwn, open, onToggle, onDetails, regionI
       <span className="factory-ranking-floor"><strong>{entry.floor}<em>F</em></strong><small>{entry.wins}층 클리어</small></span>
       <span className="factory-ranking-team-preview" aria-label="최종 렌탈 팀">{entry.party.map(pokemon => {
         const item = getBattleItem(pokemon.heldItemId)
-        return <span key={pokemon.captureId} title={`${pokemon.name} · ${item?.name ?? '도구 없음'}`}><SpriteImage src={pokemon.icon} fallbackSrc={pokemon.iconFallback} alt={pokemon.name} />{item && <span className="factory-ranking-mini-item"><BattleItemSprite item={item} size={15} /></span>}</span>
+        return <span key={pokemon.captureId}><SpriteImage src={pokemon.icon} fallbackSrc={pokemon.iconFallback} alt={pokemon.name} />{item && <FactoryInfoTooltip title={item.name} description={item.description ?? item.effect} focusable={false}><span className="factory-ranking-mini-item"><BattleItemSprite item={item} size={15} /></span></FactoryInfoTooltip>}</span>
       })}</span>
       <span className="factory-ranking-expand"><span>{open ? '접기' : '팀 보기'}</span><ChevronDown size={18} /></span>
     </button>

@@ -86,6 +86,7 @@
     "factory:test": "node scripts/startBattleFactoryTest.mjs",
     "validate:battle-factory": "node scripts/validateBattleFactory.mjs",
     "validate:battle-factory-ui": "node scripts/validateBattleFactoryUi.mjs",
+    "validate:battle-factory-tooltips": "node scripts/validateFactoryTooltips.mjs",
     "validate:battle-factory-ranking": "node scripts/validateBattleFactoryRanking.mjs",
     "validate:battle-factory-ranking-client": "node scripts/validateBattleFactoryRankingClient.mjs",
     "validate:guest-identity": "node scripts/validateGuestIdentity.mjs",

@@ -61,17 +61,17 @@
 .factory-selection-progress > div > span > b { color: var(--factory-gold); font-size: 9px; }
 .factory-selection-progress small { color: #9ab0c2; font-size: 11px; }
 .factory-rental-grid, .factory-team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.factory-rental-card { position: relative; min-width: 0; min-height: 170px; border: 1px solid #88afca40; border-radius: 14px; background: radial-gradient(ellipse at 50% 40%, #37667b25, transparent 60%), #0d2032b3; transition: border-color .15s ease, background .15s ease; }
+.factory-rental-card { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 170px; border: 1px solid #88afca40; border-radius: 14px; background: radial-gradient(ellipse at 50% 40%, #37667b25, transparent 60%), #0d2032b3; transition: border-color .15s ease, background .15s ease; }
 .factory-rental-card:has(.factory-rental-select:hover:not(:disabled)) { border-color: #d5c487a3; background-color: #2944517d; }
 .factory-rental-card.selected { border-color: #f4d182; background: radial-gradient(ellipse at 50% 45%, #eac46d22, transparent 75%), #243a42e8; box-shadow: inset 0 0 0 1px #f4d18235; }
 .factory-rental-card.unavailable .factory-rental-select { opacity: .5; }
-.factory-rental-select { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: inherit; padding: 27px 10px 12px; color: #edf5fd; border: 0; border-radius: inherit; background: none; font: inherit; }
+.factory-rental-select { display: flex; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 0; padding: 27px 10px 0; color: #edf5fd; border: 0; border-radius: inherit; background: none; font: inherit; }
 .factory-rental-select > :is(img, svg.sprite-image-viewport) { width: 82px; height: 70px; object-fit: contain; margin: 0 0 5px; image-rendering: pixelated; }
 .factory-rental-select > strong { max-width: 100%; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .factory-card-number { position: absolute; top: 11px; left: 12px; display: flex; align-items: center; gap: 4px; color: #90a9bd; font-size: 10px; font-weight: 700; }
 .selected .factory-card-number { color: var(--factory-gold); }
 .factory-card-types { color: #9cb7ca; font-size: 10px; margin-top: 4px; }
-.factory-card-item { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; color: #c5d4dd; font-size: 11px; }
+.factory-card-item { display: inline-flex; flex-shrink: 0; align-self: center; align-items: center; gap: 5px; max-width: calc(100% - 16px); margin: 8px 8px 12px; color: #c5d4dd; font-size: 11px; }
 .factory-card-item > img { width: 18px; height: 18px; image-rendering: pixelated; }
 .factory-rental-info { position: absolute; display: grid; place-items: center; right: 6px; top: 6px; width: 31px; height: 31px; padding: 0; background: #163249c9; color: #9dbccc; border: 1px solid #afdef023; border-radius: 8px; }
 .factory-rental-info:hover { background: #30566a; color: #e8ffff; }
@@ -81,7 +81,7 @@
 .factory-team-groups h3 > span { color: #95adbf; font-size: 10px; font-weight: 500; margin-left: auto; }
 .factory-team-groups .factory-rental-card { min-height: 142px; }
 .factory-team-groups .factory-rental-select > :is(img, svg.sprite-image-viewport) { height: 56px; width: 68px; }
-.factory-team-groups .factory-rental-select { padding-bottom: 9px; }
+.factory-team-groups .factory-card-item { margin-bottom: 9px; }
 .factory-enemy-group .factory-rental-card { background-color: #3c303535; border-color: #e2b37a32; }
 .factory-enemy-group h3 svg { color: #f3c384; }
 .factory-exchange-groups { gap: 9px; }
@@ -197,13 +197,13 @@
   .factory-selection-progress > div > span > b { font-size: 7px; }
   .factory-rental-grid, .factory-team-grid { gap: 6px; }
   .factory-rental-card, .factory-team-groups .factory-rental-card { min-height: 95px; border-radius: 8px; }
-  .factory-rental-select, .factory-team-groups .factory-rental-select { padding: 17px 7px 6px; }
+  .factory-rental-select, .factory-team-groups .factory-rental-select { padding: 17px 7px 0; }
   .factory-rental-select > :is(img, svg.sprite-image-viewport), .factory-team-groups .factory-rental-select > :is(img, svg.sprite-image-viewport) { width: 44px; height: 36px; margin-bottom: 1px; }
   .factory-rental-select > strong { font-size: 10px; }
   .factory-card-number { top: 5px; left: 7px; font-size: 7px; gap: 2px; }
   .factory-card-number svg { width: 9px; height: 9px; }
   .factory-card-types { font-size: 7px; margin-top: 2px; }
-  .factory-card-item { margin-top: 3px; font-size: 8px; gap: 3px; }
+  .factory-card-item, .factory-team-groups .factory-card-item { margin-top: 3px; margin-bottom: 6px; font-size: 8px; gap: 3px; }
   .factory-card-item > .battle-item-sheet-sprite { zoom: .65; }
   .factory-card-item > img { width: 12px; height: 12px; }
   .factory-rental-info { width: 23px; height: 23px; top: 3px; right: 3px; border-radius: 5px; }
