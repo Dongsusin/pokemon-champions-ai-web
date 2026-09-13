@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-09-13T01:49:32.347Z",
+  "generatedAt": "2026-09-13T02:06:10.704Z",
+  "expectedDuration": 96,
   "metadata": {
-    "duration": 101,
+    "duration": 96,
     "width": 1920,
     "height": 1080,
     "chapters": [
@@ -16,8 +17,7 @@
       66,
       71,
       81,
-      89,
-      94
+      89
     ]
   },
   "playback": {
@@ -27,31 +27,31 @@
     "stalls": [],
     "errors": [],
     "ended": true,
-    "startedAt": 755.8000000119209,
-    "endedAt": 102028.5,
-    "currentTime": 101,
+    "startedAt": 773.5999999642372,
+    "endedAt": 97069.19999998808,
+    "currentTime": 96,
     "quality": {
-      "totalVideoFrames": 3030,
-      "droppedVideoFrames": 4,
+      "totalVideoFrames": 2880,
+      "droppedVideoFrames": 3,
       "corruptedVideoFrames": 0
     }
   },
   "chapterChecks": [
     {
       "requested": 36,
-      "actual": 36.019234
+      "actual": 36.00809
     },
     {
       "requested": 71,
-      "actual": 71.018415
+      "actual": 71.015487
     },
     {
       "requested": 81,
-      "actual": 81.014203
+      "actual": 81.013147
     },
     {
-      "requested": 94,
-      "actual": 94.019884
+      "requested": 89,
+      "actual": 89.019607
     }
   ],
   "cancelledMediaRequests": [
@@ -62,11 +62,5 @@
   "errors": [],
   "passed": true,
   "scope": "Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening.",
-  "testedContainerSha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
-  "finalAudioRemux": {
-    "finalContainerSha256": "3795dd8c198b6136199086f1910d0728cd05e710534b9625b09e5bbb82d2a26f",
-    "unchangedVideoPayload": true,
-    "videoPayloadSha256": "1406df3b6cafbddd86ec1584f0dcc86254cb73ca6e4b730561efeb60ca75d661",
-    "audioAndContainerDecodeRevalidatedIn": "validation.json"
-  }
+  "testedContainerSha256": "b9b51467c5287f671f83fbf9dbdc5eb6125df08985bbd060f79a7282061a8b90"
 }

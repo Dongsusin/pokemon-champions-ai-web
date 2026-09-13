@@ -5,6 +5,10 @@ import { resolveChromiumExecutable } from '../../scripts/browserRuntime.mjs'
 const require = createRequire(import.meta.url)
 const { chromium } = require('playwright')
 const base = process.env.PROMO_BASE_URL || 'http://127.0.0.1:5184'
+const timeline = JSON.parse(await fs.readFile(new URL('../timeline.json', import.meta.url), 'utf8'))
+const expectedDuration = timeline.reduce((sum, shot) => sum + shot.duration, 0)
+let chapterStart = 0
+const expectedChapters = timeline.map(shot => { const start = chapterStart; chapterStart += shot.duration; return start })
 const browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true,
   args: ['--autoplay-policy=no-user-gesture-required', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] })
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
@@ -43,15 +47,15 @@ try {
   })
   // Exercise the actual preview's chapter controls after the uninterrupted run.
   const chapterChecks = []
-  for (const time of [36, 71, 81, 94]) {
+  for (const time of [36, 71, 81, metadata.chapters.at(-1)]) {
     await page.locator(`[data-time="${time}"]`).click()
     await page.waitForFunction(t => Math.abs(document.querySelector('video').currentTime - t) < 1.5, time)
     await page.waitForFunction(() => { const v = document.querySelector('video'); return v.readyState >= 3 && !v.paused && !v.seeking })
     await page.evaluate(() => document.querySelector('video').pause())
     chapterChecks.push({ requested: time, actual: await page.locator('video').evaluate(v => v.currentTime) })
   }
-  report = { generatedAt: new Date().toISOString(), metadata, playback, chapterChecks, cancelledMediaRequests, errors,
-    passed: metadata.duration >= 60 && metadata.duration <= 120 && metadata.width === 1920 && metadata.height === 1080 && playback.ended && !playback.errors.length && !errors.length,
+  report = { generatedAt: new Date().toISOString(), expectedDuration, metadata, playback, chapterChecks, cancelledMediaRequests, errors,
+    passed: metadata.duration === expectedDuration && JSON.stringify(metadata.chapters) === JSON.stringify(expectedChapters) && metadata.width === 1920 && metadata.height === 1080 && playback.ended && !playback.errors.length && !errors.length,
     scope: 'Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening.' }
 } catch (error) { report = { passed: false, errors: [...errors, error.message] } }
 finally { await browser.close() }

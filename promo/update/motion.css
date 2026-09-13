@@ -58,17 +58,6 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden}
 .stats-copy h1{font-size:96px;letter-spacing:-5px;font-weight:950;margin:0;line-height:1.2;text-shadow:0 6px 24px #000a}
 .stats-copy h2{font-size:43px;color:#b8f5f0;font-weight:750;letter-spacing:-1.4px;margin:29px 0 0}
 .stats-shade{position:absolute;left:0;right:0;top:650px;bottom:0;background:linear-gradient(0deg,#050e21e0,#050e21e3 30%,transparent)}
-.rewards .backdrop{filter:blur(3px);opacity:.55}
-.rewards{--accent:#fff0ac}
-.rewards .wash{background:radial-gradient(ellipse at 50% 42%,#d69c252b,transparent 58%),linear-gradient(115deg,#00b9ff05,transparent 50%,#a059ff12)}
-.rewards-copy{position:absolute;inset:140px 100px auto;text-align:center}
-.rewards-start{font-size:73px;font-weight:850;letter-spacing:-3px;margin:0}
-.rewards-number{font-family:Arial,sans-serif;line-height:1;font-size:224px;font-weight:950;letter-spacing:-13px;margin:37px 0 0;color:#fff1b6;text-shadow:0 0 90px #ffe68e25,0 15px 50px #0007}
-.rewards-number .unit{font-size:95px;letter-spacing:-4px;margin-left:19px;color:#fff8df}
-.rewards-double{display:inline-block;font-size:84px;font-weight:950;letter-spacing:-4px;margin:98px 0 0;border-top:1px solid #ffd68855;padding:36px 74px 0;color:#fff}
-.rewards-double em{color:#ffe28a;font-style:normal}
-.reward-disc{position:absolute;width:510px;height:510px;border:2px solid #ffeab712;border-radius:50%;box-shadow:inset 0 0 60px #ffe38205,0 0 60px #ffd36208;left:-280px;top:245px;transform:rotateY(30deg) rotateX(-10deg)}
-.reward-disc.two{left:auto;right:-280px;top:80px;width:630px;height:630px;transform:rotateY(-30deg) rotateX(10deg)}
 .outro .brand{top:88px}
 .outro .brand-logo{width:232px;height:232px}
 .outro .brand-name{margin-top:27px}

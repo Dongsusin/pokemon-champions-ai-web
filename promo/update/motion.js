@@ -1,8 +1,7 @@
 import { RANKED_TIERS } from '../../src/data/rankedRules.js'
-import { INITIAL_VP_BALANCE } from '../../src/data/pokemonPool.js'
 import spriteManifest from './assets/manifest.json' with { type: 'json' }
 
-const SCENES = Object.freeze({intro:5,update:5,ranks:8,stats:5,rewards:5,outro:7})
+const SCENES = Object.freeze({intro:5,update:5,ranks:8,stats:5,outro:7})
 const requested = new URLSearchParams(location.search).get('scene') || 'intro'
 if (!(requested in SCENES)) throw new Error(`Unknown update motion scene: ${requested}`)
 const sceneId = requested
@@ -18,7 +17,6 @@ if (sceneId === 'outro') content.innerHTML = `${brand}<p class="outro-tagline">�
 if (sceneId === 'update') content.innerHTML = '<div class="vs-mark" aria-hidden="true">VS</div><h1 class="headline update-copy">새로운 승부의 시작</h1><p class="update-sub">레이팅 배틀 업데이트</p><div class="title-rule"></div>'
 if (sceneId === 'ranks') content.innerHTML = `<h1 class="headline">승부를 쌓아.<em>마스터볼로.</em></h1><div class="rank-track">${RANKED_TIERS.map((tier,index)=>`<article class="rank-card tier-${tier.id}" style="--rank-color:${tier.color}" data-tier="${tier.id}"><span class="rank-icon" aria-hidden="true"><i></i></span><h2>${tier.name}</h2><p>${index === 3 ? 'MASTER' : 'IV → III → II → I'}</p></article>`).join('')}</div><div class="rank-link"><div class="rank-link-fill"></div><i></i></div>`
 if (sceneId === 'stats') content.innerHTML = '<div class="orbit-ring"></div><div class="orbit-ring ring-inner"></div><div class="orbit"></div><div class="stats-shade"></div><div class="stats-copy"><h1>데이터로 완성하는 전략</h1><h2>포켓몬 사용률 · 인기 아이템 TOP 3</h2></div>'
-if (sceneId === 'rewards') content.innerHTML = `<div class="reward-disc"></div><div class="reward-disc two"></div><div class="rewards-copy"><p class="rewards-start">시작은</p><h1 class="rewards-number"><span>${INITIAL_VP_BALANCE.toLocaleString('en-US')}</span><span class="unit">VP</span></h1><p class="rewards-double">배틀 보상 <em>2배</em></p></div>`
 
 const clamp = (value,min=0,max=1) => Math.min(max,Math.max(min,value))
 const easeOut = value => 1-(1-clamp(value))**3
@@ -44,7 +42,7 @@ function words(element) {
   return groups
 }
 const titleWords = words(q('.headline,.stats-copy h1,.outro-tagline'))
-const subWords = words(q('.update-sub,.stats-copy h2,.rewards-double'))
+const subWords = words(q('.update-sub,.stats-copy h2'))
 const orbitObjects=[]
 if(sceneId==='stats') {
   const positions=[
@@ -135,12 +133,6 @@ function seek(value){
       node.style.transform=`translate3d(${x-size/2+driftX}px,${y-size/2+driftY+(1-p)*28}px,0) scale(${.76+.24*p}) rotate(${hero?0:Math.sin(time*.35+index)*1.7}deg)`
     })
     revealWords(titleWords,time,.52);revealWords(subWords,time,.95)
-  }
-  if(sceneId==='rewards'){
-    reveal(q('.rewards-start'),time,.12,.8,{y:35,blur:5})
-    reveal(q('.rewards-number'),time,.36,1.05,{y:38,scale:.88,blur:8})
-    revealWords(subWords,time,1.05)
-    qa('.reward-disc').forEach((node,index)=>node.style.transform=`translateY(${Math.sin(time*.4+index)*14}px) rotateY(${index?-30:30}deg) rotateZ(${time*3}deg)`)
   }
   return {sceneId,time,duration}
 }

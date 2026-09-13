@@ -8,8 +8,7 @@
   { "id": "ranked-double", "kind": "footage", "duration": 13, "lines": ["둘이 만드는", "새로운 승부."], "title": "둘이 만드는 새로운 승부.", "accent": "#c7a5ff", "transition": "smoothleft" },
   { "id": "ranked-result", "kind": "footage", "duration": 5, "lines": ["승리를 쌓아,", "다음 랭크로."], "title": "승리를 쌓아, 다음 랭크로.", "accent": "#ffe29a", "transition": "fade" },
   { "id": "stats", "kind": "motion", "scene": "stats", "duration": 5, "title": "데이터로 완성하는 전략. 포켓몬 사용률 · 인기 아이템 TOP 3.", "transition": "smoothup" },
-  { "id": "usage", "kind": "footage", "duration": 10, "camera": { "from": 1, "to": 1.15 }, "lines": ["누가 선택받고", "있을까?"], "title": "실제 선택으로 바뀌는 포켓몬·아이템 사용률.", "accent": "#91edd9", "transition": "fade" },
-  { "id": "equipment", "kind": "footage", "duration": 8, "sourceCutoff": 6.5, "camera": { "from": 1.15, "to": 1.4, "centerY": 0.46 }, "lines": ["인기 도구 TOP 3.", "장착은 빠르게."], "title": "인기 도구 TOP 3. 장착은 빠르게.", "accent": "#ffe39d", "transition": "smoothleft" },
-  { "id": "rewards", "kind": "motion", "scene": "rewards", "duration": 5, "title": "시작은 50,000 VP. 배틀 보상 2배.", "transition": "smoothup" },
+  { "id": "usage", "kind": "footage", "duration": 10, "camera": { "scale": 1.12 }, "lines": ["누가 선택받고", "있을까?"], "title": "실제 선택으로 바뀌는 포켓몬·아이템 사용률.", "accent": "#91edd9", "transition": "fade" },
+  { "id": "equipment", "kind": "footage", "duration": 8, "sourceCutoff": 6.5, "camera": { "scale": 1.28, "centerY": 0.46 }, "lines": ["인기 도구 TOP 3.", "장착은 빠르게."], "title": "인기 도구 TOP 3. 장착은 빠르게.", "accent": "#ffe39d", "transition": "smoothleft" },
   { "id": "outro", "kind": "motion", "scene": "outro", "duration": 7, "title": "당신의 팀으로. 다음 랭크로.", "description": "pokemon-champions-area-web.co.kr", "transition": "fade" }
 ]

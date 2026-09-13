@@ -1,39 +1,38 @@
 {
-  "generatedAt": "2026-09-13T01:56:14.006Z",
+  "generatedAt": "2026-09-13T02:04:31.921Z",
   "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\update\\output\\champions-arena-update-ranked-usage-1080p.mp4",
   "passed": true,
   "failures": [],
   "warnings": [
-    "2 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
+    "3 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
   ],
   "review": {
     "required": true,
     "completed": true,
     "evidence": [
       "visual-review.json",
-      "playback-validation.json",
-      "render.json#audioRemaster"
+      "playback-validation.json"
     ],
-    "note": "All scene samples and 12 transitions were visually inspected. The two still intervals are intentional readable lobby/selection screens. Full 101-second muted Chromium playback and chapter controls passed; the final audio-only remux preserves the exact video payload and passed full audio/video decode again. No subjective listening is claimed."
+    "note": "Full 96-second playback and chapter controls passed. Fixed panel edges match at 0.5, 4 and 8 seconds of each enlarged clip. The 89-second transition leads directly from equipment to the outro. Three static intervals are intentional reading/hold frames; no unexpected black or silent intervals were detected."
   },
   "embeddedSubtitleTracks": 0,
-  "durationSeconds": 101,
+  "durationSeconds": 96,
   "video": {
     "codec": "h264",
     "width": 1920,
     "height": 1080,
     "fps": 30,
     "pixelFormat": "yuv420p",
-    "decodedFrames": 3030,
-    "frameDurationSeconds": 101
+    "decodedFrames": 2880,
+    "frameDurationSeconds": 96
   },
   "audio": {
     "codec": "aac",
     "sampleRate": 48000,
     "channelLayout": "stereo",
     "integratedLUFS": -16.07,
-    "truePeakDbTP": -4.82,
-    "loudnessRangeLU": 5.8
+    "truePeakDbTP": -4.85,
+    "loudnessRangeLU": 5.7
   },
   "decode": {
     "passed": true,
@@ -51,6 +50,11 @@
         "start": 33.3333,
         "end": 35.9333,
         "duration": 2.6000000000000014
+      },
+      {
+        "start": 85.8667,
+        "end": 89.0333,
+        "duration": 3.1666000000000025
       }
     ],
     "silenceSegments": []
@@ -60,24 +64,24 @@
     "rows": 4,
     "columns": 4,
     "approximateSampleSeconds": [
-      3.156,
-      9.469,
-      15.781,
-      22.094,
-      28.406,
-      34.719,
-      41.031,
-      47.344,
-      53.656,
-      59.969,
-      66.281,
-      72.594,
-      78.906,
-      85.219,
-      91.531,
-      97.844
+      3,
+      9,
+      15,
+      21,
+      27,
+      33,
+      39,
+      45,
+      51,
+      57,
+      63,
+      69,
+      75,
+      81,
+      87,
+      93
     ]
   },
-  "bytes": 33932824,
-  "sha256": "3795dd8c198b6136199086f1910d0728cd05e710534b9625b09e5bbb82d2a26f"
+  "bytes": 27231725,
+  "sha256": "b9b51467c5287f671f83fbf9dbdc5eb6125df08985bbd060f79a7282061a8b90"
 }

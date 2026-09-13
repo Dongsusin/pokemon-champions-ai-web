@@ -1,39 +1,98 @@
 {
-  "file": "promo/update/output/champions-arena-update-ranked-usage-1080p.mp4",
-  "sha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
-  "recheckedSeconds": [
-    80.9,
-    81.1,
-    81.3,
-    81.5,
-    88.7,
-    88.9,
-    89.1,
-    89.3,
-    89.5,
-    93.9,
-    94.1,
-    94.3,
-    94.5,
-    100.7
+  "reviewedAtUtc": "2026-09-13T02:06:23.875000+00:00",
+  "output": "promo\\update\\output\\champions-arena-update-ranked-usage-1080p.mp4",
+  "sha256": "b9b51467c5287f671f83fbf9dbdc5eb6125df08985bbd060f79a7282061a8b90",
+  "durationSeconds": 96,
+  "status": "passed",
+  "clipSamples": {
+    "usage": [
+      0.5,
+      4,
+      8
+    ],
+    "equipment": [
+      0.5,
+      4,
+      8
+    ]
+  },
+  "edgePositionMethod": "RGB adjacent-pixel gradient summed over a stable panel-border strip; strongest edge position measured on extracted full-resolution PNGs. Pixel coordinates use a top-left origin.",
+  "edgePositions": {
+    "usage": [
+      {
+        "seconds": 0.5,
+        "leftPanelEdgeX": 174,
+        "rightPanelEdgeX": 1744,
+        "dividerY": 416
+      },
+      {
+        "seconds": 4,
+        "leftPanelEdgeX": 174,
+        "rightPanelEdgeX": 1744,
+        "dividerY": 416
+      },
+      {
+        "seconds": 8,
+        "leftPanelEdgeX": 174,
+        "rightPanelEdgeX": 1744,
+        "dividerY": 416
+      }
+    ],
+    "equipment": [
+      {
+        "seconds": 0.5,
+        "leftPanelEdgeX": 333,
+        "rightPanelEdgeX": 1585,
+        "dividerY": 504
+      },
+      {
+        "seconds": 4,
+        "leftPanelEdgeX": 333,
+        "rightPanelEdgeX": 1585,
+        "dividerY": 504
+      },
+      {
+        "seconds": 8,
+        "leftPanelEdgeX": 333,
+        "rightPanelEdgeX": 1585,
+        "dividerY": 504
+      }
+    ]
+  },
+  "visualFindings": [
+    "Usage panel framing is unchanged while the actual single/double tab and table contents change. Pokemon names and three item recommendation columns remain inside the frame.",
+    "Equipment panel framing is unchanged while the search results change. All three recommendation cards, item names and 40.0/40.0/20.0 percent labels are readable and fully in frame.",
+    "Large promotional title overlays fade away by 4 seconds; the underlying panel geometry remains stationary.",
+    "Final 88.8 seconds shows equipment, 89.2 seconds shows a direct dissolve to the logo, 89.6 seconds shows the outro logo/title, and 91/94 seconds show the outro tagline and URL. No VP-increase scene appears at this boundary."
   ],
-  "scope": "Codex visual inspection of all 13 scene samples, opening overlays, 12 transitions at four consecutive samples each, final equipment tail and outro; final AAC remux retains the exact reviewed video payload.",
-  "findings": [],
-  "reviewedPictureContainerSha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
-  "finalContainerSha256": "3795dd8c198b6136199086f1910d0728cd05e710534b9625b09e5bbb82d2a26f",
-  "videoPayloadSha256": "1406df3b6cafbddd86ec1584f0dcc86254cb73ca6e4b730561efeb60ca75d661",
-  "unchangedAfterAudioRemaster": true,
-  "stableScenesReviewed": [
+  "finalBoundarySamples": [
+    88.8,
+    89.2,
+    89.6,
+    91,
+    94
+  ],
+  "scope": "Manual review of 11 full-resolution sampled frames plus clip border-position measurements. Full playback and decode validation are recorded separately.",
+  "completed": true,
+  "contactSheetReviewed": true,
+  "stillIntervalsReviewed": [
     {
       "start": 15.9667,
       "end": 19.1667,
-      "reason": "Ranked lobby held for reading the team and tooltip."
+      "duration": 3.1999999999999993,
+      "reason": "Readable lobby/party selection UI."
     },
     {
       "start": 33.3333,
       "end": 35.9333,
-      "reason": "Selected party held before the match begins."
+      "duration": 2.6000000000000014,
+      "reason": "Readable lobby/party selection UI."
+    },
+    {
+      "start": 85.8667,
+      "end": 89.0333,
+      "duration": 3.1666000000000025,
+      "reason": "Requested stationary equipment close-up and readable final hold."
     }
-  ],
-  "completed": true
+  ]
 }

@@ -117,16 +117,16 @@
     "source": "public/assets/audio/battle/battle-theme.ogg",
     "sourceSha256": "5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540",
     "output": "promo/update/generated/music.wav",
-    "outputSha256": "62e3215b1d1831bb08ddd40c282515d1274df2eeabc6da9bd955b62582352dcd",
+    "outputSha256": "f96bfa4dce182310a88fcaa6e2a57c2308a4736d66189812560bd741d1d05432",
     "sourceStartSeconds": 0,
-    "durationSeconds": 101,
+    "durationSeconds": 96,
     "fadeInSeconds": 0.2,
     "fadeOutSeconds": 1.6,
     "sampleRate": 48000,
     "channels": 2,
     "targetIntegratedLUFS": -18,
     "measuredIntegratedLUFS": -18,
-    "measuredTruePeakDbTP": -7.15,
+    "measuredTruePeakDbTP": -7.09,
     "soundEffects": [
       {
         "name": "whoosh",
@@ -256,8 +256,7 @@
       "kind": "footage",
       "duration": 10,
       "camera": {
-        "from": 1,
-        "to": 1.15
+        "scale": 1.12
       },
       "lines": [
         "누가 선택받고",
@@ -273,8 +272,7 @@
       "duration": 8,
       "sourceCutoff": 6.5,
       "camera": {
-        "from": 1.15,
-        "to": 1.4,
+        "scale": 1.28,
         "centerY": 0.46
       },
       "lines": [
@@ -284,14 +282,6 @@
       "title": "인기 도구 TOP 3. 장착은 빠르게.",
       "accent": "#ffe39d",
       "transition": "smoothleft"
-    },
-    {
-      "id": "rewards",
-      "kind": "motion",
-      "scene": "rewards",
-      "duration": 5,
-      "title": "시작은 50,000 VP. 배틀 보상 2배.",
-      "transition": "smoothup"
     },
     {
       "id": "outro",

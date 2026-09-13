@@ -132,8 +132,15 @@ async function renderFootage(shot, manifest) {
   const inputs = ['-ss', String(start), '-i', source, ...layers.flatMap(l => ['-loop', '1', '-framerate', String(fps), '-i', l.file])]
   const camera = shot.camera
   const hold = shot.sourceCutoff ? `,trim=duration=${shot.sourceCutoff},tpad=stop_mode=clone:stop_duration=${length-shot.sourceCutoff}` : ''
-  const zoom = camera ? `,zoompan=z='${camera.from}+(${camera.to}-${camera.from})*min(1,on/${Math.round(shot.duration*fps)})':x='iw/2-iw/zoom/2':y='max(0,ih*${camera.centerY || .5}-ih/zoom/2)':d=1:s=1920x1080:fps=30` : ''
-  const filters = [`[0:v]setpts=PTS-STARTPTS,fps=30${hold},scale=1920:1080:flags=lanczos${zoom},setsar=1,format=yuv420p[raw]`]
+  if (camera && (!Number.isFinite(camera.scale) || camera.scale < 1 || camera.scale > 2)) throw new Error(`Invalid fixed framing: ${shot.id}`)
+  // A single scale/crop keeps UI edges at identical pixel coordinates every frame.
+  // Animated zoompan rounds its crop origin, which made fine text visibly jitter.
+  const width = camera ? Math.round(1920 * camera.scale / 2) * 2 : 1920
+  const height = camera ? Math.round(1080 * camera.scale / 2) * 2 : 1080
+  const x = Math.round((width - 1920) / 4) * 2
+  const y = Math.max(0, Math.min(height - 1080, Math.round((height * (camera?.centerY ?? .5) - 540) / 2) * 2))
+  const framing = `scale=${width}:${height}:flags=lanczos,crop=1920:1080:${x}:${y}`
+  const filters = [`[0:v]setpts=PTS-STARTPTS,fps=30${hold},${framing},setsar=1,format=yuv420p[raw]`]
   let previous = 'raw'
   for (let i = 0; i < layers.length; i++) {
     const layer = layers[i]
@@ -192,7 +199,7 @@ const cues = []
 let at = 0
 for (const shot of timeline) {
   if (at > 0 && await has(`${generated}/whoosh.wav`)) cues.push({ file: `${generated}/whoosh.wav`, at: Math.max(0, at-.08), volume: .4 })
-  if (['update', 'ranks', 'stats', 'rewards'].includes(shot.id) && await has(`${generated}/impact.wav`)) cues.push({ file: `${generated}/impact.wav`, at: at+.5, volume: .35 })
+  if (['update', 'ranks', 'stats'].includes(shot.id) && await has(`${generated}/impact.wav`)) cues.push({ file: `${generated}/impact.wav`, at: at+.5, volume: .35 })
   if (['ranked-result', 'outro'].includes(shot.id) && await has(`${generated}/chime.wav`)) cues.push({ file: `${generated}/chime.wav`, at: at+1.1, volume: .5 })
   at += shot.duration
 }
