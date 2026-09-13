@@ -116,7 +116,10 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
       }
       limit(identity.uid, request.method === 'POST')
       const payload = request.method === 'GET'
-        ? { action: url.searchParams.get('action') || 'status', ...(url.searchParams.has('matchId') ? { matchId: url.searchParams.get('matchId') } : {}), ...(url.searchParams.has('timelineRevision') ? { timelineRevision: url.searchParams.get('timelineRevision') } : {}) }
+        ? { action: url.searchParams.get('action') || 'status', ...(url.searchParams.has('matchId') ? { matchId: url.searchParams.get('matchId') } : {}), ...(url.searchParams.has('timelineRevision') ? { timelineRevision: url.searchParams.get('timelineRevision') } : {}),
+          ...(url.searchParams.has('spectateMatchId') ? { spectateMatchId: url.searchParams.get('spectateMatchId') } : {}),
+          ...(url.searchParams.has('spectateTimelineRevision') ? { spectateTimelineRevision: url.searchParams.get('spectateTimelineRevision') } : {}),
+        }
         : await readPayload(request)
       if (request.method === 'GET' && !['status', 'rooms', 'fixtures', 'usage', 'factoryLeaderboard'].includes(payload.action)) throw new RankedError('METHOD_NOT_ALLOWED', '상태 변경은 POST 요청만 허용됩니다.', 405)
       return response(await service.execute(identity, payload), 200, headers)

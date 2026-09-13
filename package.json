@@ -78,6 +78,8 @@
     "rooms:test": "node scripts/startRankedTest.mjs --rooms",
     "validate:battle-rooms": "node scripts/validateBattleRooms.mjs",
     "validate:battle-rooms-ui": "node scripts/validateBattleRoomsUi.mjs",
+    "validate:room-spectators": "node scripts/validateRoomSpectators.mjs",
+    "validate:room-spectators-ui": "node scripts/validateRoomSpectatorsUi.mjs",
     "usage:test": "node scripts/startPokemonUsageTest.mjs",
     "validate:pokemon-usage": "node scripts/validatePokemonUsage.mjs && node scripts/validatePokemonUsageServer.mjs && node scripts/validatePokemonUsageClient.mjs",
     "validate:pokemon-usage-ui": "node scripts/validatePokemonUsageUi.mjs",

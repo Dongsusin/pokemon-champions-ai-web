@@ -183,7 +183,41 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     })
   }
 
-  async function snapshot(tx, uid, { knownTimelineRevision, knownMatchId, includeRooms = false } = {}) {
+  async function spectatorView(tx, uid, matchId, knownTimelineRevision) {
+    if (!matchId) return null
+    const target = await tx.get('matches', matchId)
+    if (!target) return null
+    if (!target.roomId) fail('SPECTATOR_FORBIDDEN', '같은 방에서 진행 중인 경기만 관전할 수 있습니다.', 403)
+    const player = await tx.get('players', uid)
+    const room = player?.activeRoomId ? await tx.get('battleRooms', player.activeRoomId) : null
+    if (!room || room.id !== target.roomId) {
+      // A completed/deleted room or a voluntary departure cannot resume the
+      // old stream. A different room's ID remains an authorization error.
+      if (!room && (player?.lastRoomId === target.roomId || player?.roomResult?.roomId === target.roomId)) return null
+      fail('SPECTATOR_FORBIDDEN', '같은 방에 참가한 대기자만 관전할 수 있습니다.', 403)
+    }
+    const member = room.members.find(entry => entry.uid === uid)
+    if (!member || member.withdrawn) fail('SPECTATOR_FORBIDDEN', '이 방의 대기 참가자만 관전할 수 있습니다.', 403)
+    const own = player.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
+    if (room.phase !== 'active' || (own && own.phase !== 'finished') || indexOf(target, uid) >= 0 || target.phase === 'finished') return null
+    if (!room.fixtures.some(entry => entry.id === target.id && entry.round === room.round && ['select', 'battle'].includes(entry.phase))) return null
+    const timeline = []
+    if (Number(knownTimelineRevision) !== target.timelineRevision) {
+      for (let index = 0; index < (target.timelineChunks ?? 0); index += 1) {
+        const chunk = await tx.get('timelines', `${target.id}_${target.timelineRevision}_${index}`)
+        if (chunk) timeline.push(...chunk.frames)
+      }
+    }
+    return {
+      id: target.id, roomId: target.roomId, format: target.format, phase: target.phase,
+      revision: target.revision, timelineRevision: target.timelineRevision, deadlineAt: target.deadlineAt,
+      players: target.players.map(player => ({ name: maskRankedTrainerName(player.name, player.isGuest), isGuest: player.isGuest === true })),
+      state: target.state ? engine.getRoomSpectatorBattleView(target.state, target.id) : null,
+      timeline: timeline.length ? engine.getRoomSpectatorTimelineView(timeline, target.id) : [], result: null,
+    }
+  }
+
+  async function snapshot(tx, uid, { knownTimelineRevision, knownMatchId, includeRooms = false, spectateMatchId, spectateTimelineRevision } = {}) {
     let player = await tx.get('players', uid)
     const knownRoomMatch = knownMatchId ? await tx.get('matches', knownMatchId) : null
     const roomContext = includeRooms || Boolean(player?.activeRoomId || knownRoomMatch?.roomId)
@@ -192,7 +226,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     let match = player?.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
     if (knownMatchId) {
       const known = await tx.get('matches', knownMatchId)
-      if (known?.roomId && known.phase === 'finished' && indexOf(known, uid) >= 0) match = known
+      if (known?.roomId && known.phase === 'finished' && indexOf(known, uid) >= 0 && !(spectateMatchId && match && match.phase !== 'finished')) match = known
     }
     if (match?.phase === 'finished') {
       // Lazy migration for matches settled before active pointers were cleared.
@@ -222,7 +256,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       queue: queue ? { ticket: queue.ticket, format: queue.format, queuedAt: queue.queuedAt, expiresAt: queue.expiresAt, rating: queue.rating } : null,
       match: viewMatch(match, uid, timeline), serverTime: now(),
       ...(roomContext ? await rooms.context(tx, uid) : { room: null, roomResult: clone(player?.roomResult ?? null) }),
-      ...(includeRooms ? { rankedConflict } : {}),
+      ...(includeRooms ? { rankedConflict, spectator: await spectatorView(tx, uid, spectateMatchId, spectateTimelineRevision) } : {}),
     }
   }
 
@@ -395,6 +429,8 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       const existingPlayer = await tx.get('players', identity.uid)
       if (!['status', 'rooms'].includes(action) && (action.startsWith('room') || existingPlayer?.activeRoomId)) await rooms.cleanup(tx, timestamp, existingPlayer?.activeRoomId)
       if (action === 'status' || action === 'rooms') {
+        if (action === 'rooms' && payload.spectateMatchId !== undefined && !isId(payload.spectateMatchId)) fail('INVALID_SPECTATOR_MATCH', '관전할 경기 식별자가 올바르지 않습니다.')
+        if (action === 'rooms' && payload.spectateTimelineRevision !== undefined && (!/^\d+$/.test(String(payload.spectateTimelineRevision)) || !Number.isSafeInteger(Number(payload.spectateTimelineRevision)))) fail('INVALID_SPECTATOR_REVISION', '관전 연출 버전이 올바르지 않습니다.')
         await sync(tx, identity, timestamp, id)
         if (payload.matchId) {
           if (!isId(payload.matchId)) fail('INVALID_MATCH', '대전 식별자가 올바르지 않습니다.')
@@ -402,7 +438,9 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
           if (!requested) fail('MATCH_NOT_FOUND', '대전을 찾을 수 없습니다.', 404)
           if (indexOf(requested, identity.uid) < 0) fail('MATCH_FORBIDDEN', '이 대전에 참여한 계정만 조회할 수 있습니다.', 403)
         }
-        return snapshot(tx, identity.uid, { knownTimelineRevision: payload.timelineRevision, knownMatchId: payload.matchId, includeRooms: action === 'rooms' })
+        return snapshot(tx, identity.uid, { knownTimelineRevision: payload.timelineRevision, knownMatchId: payload.matchId, includeRooms: action === 'rooms',
+          ...(action === 'rooms' ? { spectateMatchId: payload.spectateMatchId, spectateTimelineRevision: payload.spectateTimelineRevision } : {}),
+        })
       }
       let player = await loadPlayer(tx, identity)
       if (hasRequest(player, payload.requestId, requestHash)) return snapshot(tx, identity.uid, { includeRooms: action.startsWith('room') })

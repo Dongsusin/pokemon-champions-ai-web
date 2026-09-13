@@ -49,6 +49,12 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
         url.searchParams.set('action', action)
         if (payload.matchId) url.searchParams.set('matchId', payload.matchId)
         if (Number.isSafeInteger(payload.timelineRevision)) url.searchParams.set('timelineRevision', String(payload.timelineRevision))
+        if (action === 'rooms' && payload.spectateMatchId) {
+          url.searchParams.set('spectateMatchId', payload.spectateMatchId)
+          if (Number.isSafeInteger(payload.spectateTimelineRevision) && payload.spectateTimelineRevision >= 0) {
+            url.searchParams.set('spectateTimelineRevision', String(payload.spectateTimelineRevision))
+          }
+        }
       }
       const response = await fetchImpl(url.href, {
         method: readOnly ? 'GET' : 'POST', signal: controller.signal, credentials: 'omit', cache: 'no-store', redirect: 'error',

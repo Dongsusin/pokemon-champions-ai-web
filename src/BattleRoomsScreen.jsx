@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, ChevronRight, Clock3, Crown, Flag, LoaderCircle, LockKeyhole, Plus, RefreshCw, Shield, Swords, Trophy, UsersRound, Wifi, WifiOff, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Clock3, Crown, Eye, Flag, LoaderCircle, LockKeyhole, Plus, RefreshCw, Shield, Swords, Trophy, UsersRound, Wifi, WifiOff, X } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import RankedTeamRoster from './RankedTeamRoster'
 import SpriteImage from './SpriteImage'
@@ -12,7 +12,7 @@ import { createRankedClient, createRankedRequestId, isRankedEnabled } from './ra
 import './ranked.css'
 import './battleRooms.css'
 
-const EMPTY = { rooms: [], room: null, roomResult: null, match: null }
+const EMPTY = { rooms: [], room: null, roomResult: null, match: null, spectator: null }
 const modeName = mode => mode === 'league' ? '리그전' : '토너먼트'
 const clockText = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, '0')}`
 const timeValue = value => typeof value === 'number' ? value : Date.parse(value)
@@ -89,6 +89,8 @@ export default function BattleRoomsScreen({
   const [selection, setSelection] = useState([])
   const [playedRevision, setPlayedRevision] = useState(null)
   const [returnSeconds, setReturnSeconds] = useState(null)
+  const [spectateTarget, setSpectateTarget] = useState(null)
+  const spectateRef = useRef(null)
   const snapshotRef = useRef(EMPTY)
   const operationRef = useRef(false)
   const generationRef = useRef(0)
@@ -106,11 +108,27 @@ export default function BattleRoomsScreen({
   const accept = useCallback(value => {
     if (Number.isFinite(value.serverTime)) setServerOffset(value.serverTime - Date.now())
     const previous = snapshotRef.current
-    let next = { ...EMPTY, ...value, match: maskRankedMatch(value.match) }
+    let next = { ...EMPTY, ...value, match: maskRankedMatch(value.match), spectator: maskRankedMatch(value.spectator) }
     if (previous.match?.id && previous.match.id === next.match?.id) {
       if (previous.match.revision > next.match.revision) next = { ...next, match: previous.match }
       else if (previous.match.timelineRevision === next.match.timelineRevision && previous.match.timeline?.length && !next.match.timeline?.length) {
         next.match = { ...next.match, timeline: previous.match.timeline }
+      }
+    }
+    const target = spectateRef.current
+    const watchable = target && next.room?.phase === 'active' && !next.roomResult
+      && !(next.match && next.match.phase !== 'finished')
+      && next.room.matches?.some(entry => entry.id === target && entry.canSpectate && ['select', 'battle'].includes(entry.phase))
+    if (!watchable || next.spectator?.id !== target || !['select', 'battle'].includes(next.spectator?.phase)) {
+      next.spectator = null
+      if (target) { spectateRef.current = null; setSpectateTarget(null) }
+    } else if (previous.spectator?.id === next.spectator.id) {
+      // Lightweight room polls omit an already received timeline. Keep it for
+      // the current playback; BattleScreen uses timelineRevision to play once.
+      if (previous.spectator.revision > next.spectator.revision) next.spectator = previous.spectator
+      else if (previous.spectator.timelineRevision === next.spectator.timelineRevision
+        && previous.spectator.timeline?.length && !next.spectator.timeline?.length) {
+        next.spectator = { ...next.spectator, timeline: previous.spectator.timeline }
       }
     }
     snapshotRef.current = next
@@ -122,7 +140,9 @@ export default function BattleRoomsScreen({
     mountedRef.current = true
     generationRef.current += 1
     snapshotRef.current = EMPTY
+    spectateRef.current = null
     setSnapshot(EMPTY)
+    setSpectateTarget(null)
     setConnected(false)
     setDialog(null)
     setPassword('')
@@ -139,10 +159,31 @@ export default function BattleRoomsScreen({
       const generation = generationRef.current
       try {
         const known = snapshotRef.current.match
-        const value = await client.request('rooms', known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}, { signal: controller.signal })
+        const target = spectateRef.current
+        const spectator = snapshotRef.current.spectator
+        const value = await client.request('rooms', {
+          ...(!target && known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}),
+          ...(target ? { spectateMatchId: target,
+            ...(spectator?.id === target ? { spectateTimelineRevision: spectator.timelineRevision } : {}) } : {}),
+        }, { signal: controller.signal })
         if (active && generation === generationRef.current) accept(value)
       } catch (failure) {
-        if (active && failure.name !== 'AbortError' && generation === generationRef.current) { setConnected(false); setRefreshError(failure.message) }
+        if (active && failure.name !== 'AbortError' && generation === generationRef.current) {
+          setConnected(false)
+          setRefreshError(failure.message)
+          // A revoked room membership or invalid stream is terminal for this
+          // target. Resume ordinary room polling instead of retaining a frozen
+          // spectator view or retrying the same unauthorized match forever.
+          if (spectateRef.current && ([401, 403, 404].includes(failure.status)
+            || ['SPECTATOR_FORBIDDEN', 'INVALID_SPECTATOR_MATCH', 'INVALID_SPECTATOR_REVISION', 'ROOM_NOT_FOUND'].includes(failure.code))) {
+            generationRef.current += 1
+            spectateRef.current = null
+            setSpectateTarget(null)
+            const next = { ...snapshotRef.current, spectator: null }
+            snapshotRef.current = next
+            setSnapshot(next)
+          }
+        }
       } finally {
         running = false
         if (active) timer = setTimeout(refresh, snapshotRef.current.room?.phase === 'active' || snapshotRef.current.match ? 1500 : 5000)
@@ -159,7 +200,10 @@ export default function BattleRoomsScreen({
   useEffect(() => { setSelection([]); setPlayedRevision(null); setDialog(null) }, [match?.id])
   const resultReady = match?.phase === 'finished' && (!match.state || !match.timeline?.length || playedRevision === (match.timelineRevision ?? match.revision))
   const battleVisible = Boolean(match?.state && !resultReady)
-  useEffect(() => { onBattleActiveChange?.(battleVisible); return () => onBattleActiveChange?.(false) }, [battleVisible, onBattleActiveChange])
+  const ownMatchActive = Boolean(match && match.phase !== 'finished')
+  const spectating = Boolean(spectateTarget && !ownMatchActive)
+  const arenaVisible = battleVisible || spectating
+  useEffect(() => { onBattleActiveChange?.(arenaVisible); return () => onBattleActiveChange?.(false) }, [arenaVisible, onBattleActiveChange])
 
   const mutate = async (action, payload = {}, before) => {
     if (operationRef.current) throw new Error('요청을 처리하고 있습니다.')
@@ -200,6 +244,23 @@ export default function BattleRoomsScreen({
     : secondsLeft === 0 ? '제한 시간 종료 · 서버 판정을 확인하고 있습니다.' : match?.state?.awaitingPlayerSwitch ? '다음 포켓몬을 선택하세요.' : '이번 턴의 행동을 선택하세요.'
   const openDialog = next => { setError(''); setPassword(''); setDialog(next) }
   const closeDialog = () => { if (!busy) { setDialog(null); setPassword(''); setError('') } }
+  const changeSpectator = useCallback(target => {
+    const current = snapshotRef.current
+    if (operationRef.current) return
+    if (target && (!current.room?.matches?.some(entry => entry.id === target && entry.canSpectate)
+      || current.room.phase !== 'active' || (current.match && current.match.phase !== 'finished'))) return
+    // Invalidate any poll sent for the former target before changing the
+    // observed match. This also protects leave/re-enter of the same target.
+    generationRef.current += 1
+    spectateRef.current = target
+    setSpectateTarget(target)
+    const next = { ...current, spectator: null, ...(target && current.match?.phase === 'finished' ? { match: null } : {}) }
+    snapshotRef.current = next
+    setSnapshot(next)
+    setError('')
+    setRefreshError('')
+    refreshRef.current?.()
+  }, [])
   const closeMatchResult = useCallback(() => {
     generationRef.current += 1
     const next = { ...snapshotRef.current, match: null }
@@ -225,6 +286,30 @@ export default function BattleRoomsScreen({
     <div className="rooms-forfeit-copy"><Flag size={30} /><p>이번 경기는 패배로 기록됩니다.<br />리그전의 남은 경기는 계속 진행합니다.</p></div>{notice}
     <div className="rooms-dialog-actions"><button type="button" className="ranked-quiet" disabled={busy} onClick={closeDialog}>계속 대전</button><button type="button" className="rooms-danger" disabled={busy} onClick={() => fire('forfeit', { matchId: match.id })}>기권하기</button></div>
   </Dialog>
+
+  if (spectating) {
+    const spectator = snapshot.spectator
+    const fixture = room?.matches?.find(entry => entry.id === spectateTarget)
+    const players = spectator?.players ?? fixture?.players ?? []
+    const names = players.map(player => player.name).join(' vs ')
+    const spectatorFormat = RANKED_FORMATS.find(entry => entry.id === (spectator?.format ?? room?.format)) ?? RANKED_FORMATS[0]
+    const spectatorStatus = !connected ? '연결 복구 중 · 관전 상태를 확인하고 있습니다.'
+      : !spectator ? '경기를 불러오고 있습니다.' : spectator.phase === 'select' ? '두 트레이너가 출전 포켓몬을 고르고 있습니다.' : '실시간 관전 중'
+    return <div className="ranked-live-battle rooms-live-battle rooms-spectator-view">
+      <header className="rooms-spectator-bar"><div><span><Eye size={16} /> 관전 중 · {fixture?.round ?? room?.round ?? 1}라운드</span><strong>{names || '대전 정보 확인 중'}</strong></div>
+        <button type="button" className="ranked-quiet" onClick={() => changeSpectator(null)}><ArrowLeft size={15} /> 대기실로 돌아가기</button></header>
+      {notice && <div className="ranked-notices">{notice}</div>}
+      {spectator?.state ? <BattleScreen key={`spectator-${spectator.id}`} competitionLabel={`${spectatorFormat.label} · ${modeName(room?.mode)} 관전`}
+        playerPokemon={spectator.state.player.team} opponent={players[1] ?? spectator.state.opponentMeta}
+        opponentTeam={{ pokemon: spectator.state.opponent.team }} rules={spectator.state.rules}
+        soundEnabled={soundEnabled} gameSettings={gameSettings} playerGender={playerGender} audioSettings={audioSettings} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings}
+        online={{ spectator: true, state: spectator.state, timeline: spectator.timeline ?? [], revision: spectator.revision, timelineRevision: spectator.timelineRevision,
+          playerName: players[0]?.name, canAct: false, waitingMessage: spectatorStatus }} />
+        : <section className="rooms-spectator-waiting" role="status"><Eye size={44} /><span>{spectatorFormat.label} · {modeName(room?.mode)}</span>
+          <h2>{spectator?.phase === 'select' ? '두 트레이너가 출전 포켓몬을 고르고 있습니다' : '관전할 경기를 불러오고 있습니다'}</h2>
+          <p>선출이 끝나면 배틀이 자동으로 표시됩니다.</p><LoaderCircle className="ranked-spin" size={25} /></section>}
+    </div>
+  }
 
   if (battleVisible) return <div className="ranked-live-battle rooms-live-battle">
     <div className="ranked-battle-connection" role="status"><span>{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{waitingMessage}</span><span className={secondsLeft !== null && secondsLeft <= 15 ? 'is-urgent' : ''}><Clock3 size={14} />{secondsLeft === null ? '—' : clockText(secondsLeft)}</span>
@@ -262,11 +347,11 @@ export default function BattleRoomsScreen({
         <div className="rooms-member-list">{Array.from({ length: 4 }, (_, index) => { const member = room.members?.[index]; return <div key={member?.uid ?? index} className={`rooms-member${member?.uid === user?.uid ? ' is-me' : ''}${!member ? ' empty' : ''}`}><span className="rooms-member-avatar">{member ? <UsersRound size={20} /> : <Plus size={18} />}</span><div><strong>{member?.name ?? '빈 자리'}</strong><small>{!member ? '트레이너를 기다리는 중' : member.withdrawn ? '대회에서 나감' : member.uid === room.hostUid ? '방장' : '참가자'}{member?.uid === user?.uid ? ' · 나' : ''}</small></div>{member?.uid === room.hostUid && <Crown size={17} />}</div> })}</div>
         {room.phase === 'waiting' ? <><div className={`rooms-deadline${roomSeconds !== null && roomSeconds <= 60 ? ' is-urgent' : ''}`}><Clock3 size={17} /><span>자동 삭제까지</span><strong>{roomSeconds === null ? '—' : clockText(roomSeconds)}</strong></div><p className="rooms-help">생성 후 10분, 또는 4명이 모인 뒤 1분 안에 시작하세요. 먼저 도달하는 제한이 적용됩니다.</p>
           {room.hostUid === user?.uid ? <button className="ranked-primary" type="button" disabled={busy || !connected || (room.members?.length ?? 0) < 2 || roomSeconds === 0} onClick={() => fire('roomStart', { roomId: room.id })}><Swords size={18} />{(room.members?.length ?? 0) < 2 ? '2명부터 시작할 수 있습니다' : '대회 시작'}</button> : <p className="rooms-waiting" role="status"><LoaderCircle size={18} className="ranked-spin" />방장이 시작하기를 기다립니다.</p>}</>
-          : <p className="rooms-waiting" role="status"><LoaderCircle size={18} className="ranked-spin" />{room.members?.find(member => member.uid === user?.uid)?.withdrawn ? '남은 경기 결과를 확인하고 있습니다.' : '다른 경기 종료 후 다음 대진이 시작됩니다.'}</p>}
+          : <p className="rooms-waiting" role="status"><LoaderCircle size={18} className="ranked-spin" />{room.members?.find(member => member.uid === user?.uid)?.withdrawn ? '남은 경기 결과를 확인하고 있습니다.' : (room.matches ?? []).some(entry => entry.canSpectate) ? '대진표의 관전하기를 눌러 다른 경기를 볼 수 있습니다. 부전승도 관전하며 기다리세요.' : '다른 경기 종료 후 다음 대진이 시작됩니다.'}</p>}
         <button className="ranked-quiet" type="button" disabled={busy} onClick={() => room.phase === 'waiting' ? fire('roomLeave', { roomId: room.id }) : openDialog({ type: 'leave' })}>방 나가기</button>
       </section><section className="rooms-panel rooms-progress-panel"><div className="rooms-panel-title"><span><Trophy size={18} />{room.phase === 'waiting' ? '대회 진행 안내' : '대진 및 순위'}</span><span>{modeName(room.mode)}</span></div>
         {room.phase === 'waiting' ? <div className="rooms-rules"><Swords size={44} /><h2>{modeName(room.mode)}를 준비하세요</h2><p>{room.mode === 'league' ? '모든 참가자와 한 번씩 대전합니다. 승점으로 최종 순위를 결정합니다.' : '승리한 트레이너가 다음 라운드에 진출합니다. 3명이 참가하면 첫 라운드에서 1명은 부전승하며, 무승부는 추첨으로 진출자를 결정합니다.'}</p><div><span>참가 인원<strong>2–4명</strong></span><span>대전 형식<strong>{currentFormat.label}</strong></span><span>출전 선출<strong>6마리 중 {currentFormat.battleSize}마리</strong></span></div><p className="rooms-help">팀은 참가할 때 고정됩니다. 맑음 · 일반 필드 · Lv.50으로 시작하며, 대회가 끝나면 방이 자동으로 삭제됩니다.</p></div>
-          : <><div className="rooms-match-list">{(room.matches ?? []).map((entry, index) => <article key={entry.id ?? index} className={`rooms-match phase-${entry.phase}`}><header><span>{entry.round}라운드</span><b>{entry.phase === 'bye' ? '부전승' : entry.phase === 'finished' ? '경기 종료' : entry.phase === 'pending' ? '대기' : '대전 중'}</b></header><div>{(entry.players ?? []).map((player, playerIndex) => <span key={player.uid}>{playerIndex > 0 && <small>VS</small>}<strong className={entry.winnerUid === player.uid ? 'winner' : ''}>{player.name}{entry.winnerUid === player.uid && <Crown size={13} />}</strong></span>)}</div>{entry.phase === 'bye' && <p>다음 라운드 자동 진출</p>}{entry.reason === 'draw-tiebreak-lottery' && <p>무승부 · 추첨으로 다음 라운드 진출</p>}</article>)}</div><Standings rows={room.standings} userId={user?.uid} /></>}
+          : <><div className="rooms-match-list">{(room.matches ?? []).map((entry, index) => <article key={entry.id ?? index} className={`rooms-match phase-${entry.phase}`}><header><span>{entry.round}라운드</span><b>{entry.phase === 'bye' ? '부전승' : entry.phase === 'finished' ? '경기 종료' : entry.phase === 'pending' ? '대기' : '대전 중'}</b></header><div>{(entry.players ?? []).map((player, playerIndex) => <span key={player.uid}>{playerIndex > 0 && <small>VS</small>}<strong className={entry.winnerUid === player.uid ? 'winner' : ''}>{player.name}{entry.winnerUid === player.uid && <Crown size={13} />}</strong></span>)}</div>{entry.phase === 'bye' && <p>다음 라운드 자동 진출</p>}{entry.reason === 'draw-tiebreak-lottery' && <p>무승부 · 추첨으로 다음 라운드 진출</p>}{entry.canSpectate && !ownMatchActive && <button type="button" className="rooms-spectate-button" disabled={busy || !connected} aria-label={`관전하기: ${(entry.players ?? []).map(player => player.name).join(' vs ')}`} onClick={() => changeSpectator(entry.id)}><Eye size={15} /> 관전하기</button>}</article>)}</div><Standings rows={room.standings} userId={user?.uid} /></>}
       </section></div>
       : <div className="rooms-lobby-grid"><section className="rooms-panel rooms-list-panel"><div className="rooms-panel-title"><span><UsersRound size={19} />참가할 방</span><span>{snapshot.rooms.length} / 10개<button className="rooms-icon-button" type="button" aria-label="방 목록 새로고침" disabled={busy} onClick={() => refreshRef.current?.()}><RefreshCw size={16} /></button></span></div>
         <div className="rooms-list">{snapshot.rooms.length ? snapshot.rooms.map(entry => { const left = secondsUntil(entry.startDeadlineAt); return <article key={entry.id} className="rooms-room-card"><div className="rooms-room-heading"><span className="rooms-room-icon">{entry.locked ? <LockKeyhole size={19} /> : <Swords size={19} />}</span><div><h2>{entry.title}</h2><div className="rooms-tags"><span>{modeName(entry.mode)}</span><span>{entry.format === 'double' ? '더블배틀' : '싱글배틀'}</span><span>{entry.phase === 'waiting' ? '참가 가능' : '대전 중'}</span></div></div><b>{entry.memberCount} / 4</b></div><footer><span><Clock3 size={13} />{entry.phase === 'waiting' ? `${left === null ? '—' : clockText(left)} 후 삭제` : '대회 종료 후 삭제'}</span><button className="ranked-quiet" type="button" disabled={busy || !connected || !teamReady || joinBlocked || entry.phase !== 'waiting' || entry.memberCount >= 4 || left === 0} onClick={() => entry.locked ? openDialog({ type: 'join', room: entry }) : fire('roomJoin', { roomId: entry.id, password: '', team: roster }, onBeforeJoin)}>참가하기<ChevronRight size={14} /></button></footer></article> })

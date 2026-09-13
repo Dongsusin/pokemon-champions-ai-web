@@ -41,7 +41,7 @@ export function battleStatStageEntries(pokemon) {
     .filter(({ stage }) => stage !== 0)
 }
 
-function battleConditionEntries(pokemon) {
+function battleConditionEntries(pokemon, publicView = false) {
   const chargingMove = pokemon.chargingMove
     ? pokemon.moves?.[pokemon.chargingMove.moveIndex]
     : null
@@ -51,7 +51,7 @@ function battleConditionEntries(pokemon) {
 
   return [
     pokemon.status && { id: `status-${pokemon.status.id}`, label: pokemon.status.label, tone: 'status' },
-    pokemon.confusionTurns > 0 && { id: 'confusion', label: `혼란 ${pokemon.confusionTurns}턴`, tone: 'status' },
+    pokemon.confusionTurns > 0 && { id: 'confusion', label: publicView ? '혼란' : `혼란 ${pokemon.confusionTurns}턴`, tone: 'status' },
     pokemon.yawnTurns > 0 && { id: 'yawn', label: '졸음', tone: 'warning' },
     pokemon.perishCount != null && { id: 'perish', label: `멸망 ${pokemon.perishCount}`, tone: 'danger' },
     pokemon.rechargeTurns > 0 && { id: 'recharge', label: '반동 대기', tone: 'warning' },
@@ -83,13 +83,14 @@ function BattlePokemonStatusTooltip({
   visible,
   anchorElement = null,
   showBattleState = true,
+  publicView = false,
 }) {
   const tooltipRef = useRef(null)
   const [anchorPosition, setAnchorPosition] = useState(null)
   const hpPercent = Math.ceil(hpRatio(pokemon))
   const teraType = getBattleTeraType(pokemon)
   const statStages = battleStatStageEntries(pokemon)
-  const conditions = battleConditionEntries(pokemon)
+  const conditions = battleConditionEntries(pokemon, publicView)
   const gimmicks = battleGimmickEntries(pokemon)
   const heldItem = getBattleItem(pokemon.heldItemId)
   const heldItemName = heldItem?.name || pokemon.heldItemName || '없음'
@@ -192,11 +193,11 @@ function BattlePokemonStatusTooltip({
           alt={pokemon.name}
         />
         <span>
-          <small>{side === 'player' ? 'MY POKÉMON' : `${trainerName} · OPPONENT`}</small>
+          <small>{publicView ? `${trainerName} · 관전` : side === 'player' ? 'MY POKÉMON' : `${trainerName} · OPPONENT`}</small>
           <strong>{pokemon.name}</strong>
           <em>
             Lv.{pokemon.level ?? 50}
-            {side === 'player' ? ` · ${pokemon.nature ?? '노력'} 성격` : ''}
+            {side === 'player' && !publicView ? ` · ${pokemon.nature ?? '노력'} 성격` : ''}
           </em>
         </span>
         <b>STATUS</b>
@@ -218,7 +219,7 @@ function BattlePokemonStatusTooltip({
         </span>
       </div>
 
-      {side === 'player' && (
+      {side === 'player' && !publicView && (
         <div className="battle-pokemon-inspector-meta">
           <span>
             <small>특성</small>
@@ -238,7 +239,7 @@ function BattlePokemonStatusTooltip({
         </div>
       )}
 
-      {side !== 'player' && pokemon.teraActive && (
+      {(side !== 'player' || publicView) && pokemon.teraActive && (
         <div className="battle-inspector-revealed-tera">
           <small>테라타입 · 사용 중</small>
           <strong>{teraType}</strong>
@@ -265,7 +266,7 @@ function BattlePokemonStatusTooltip({
         </div>
       )}
 
-      {side === 'player' && (
+      {side === 'player' && !publicView && (
         <section className="battle-pokemon-inspector-moves">
           <header><small>배틀 기술</small><span>현재 PP</span></header>
           <div>

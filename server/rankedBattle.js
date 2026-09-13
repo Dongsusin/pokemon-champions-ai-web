@@ -4,6 +4,7 @@ import {
   getBattleMoveTargets, getBattleStruggleAction, getBattleSwitchIndexes,
   getForcedBattleAction, resumeHumanBattleTurnTimeline,
 } from '../src/data/battleEngine.js'
+import { createHash } from 'node:crypto'
 import {
   getSpeciesProfile, getMove, getMoveById, getLearnableMoves, normalizePokemon,
   isSavablePokemonForm, NATURE_OPTIONS, STAT_META, STAT_POINT_TOTAL,
@@ -312,5 +313,87 @@ export function getRankedTimelineView(timeline, sideId) {
     }
     return maskRankedTimelineStep({ ...remapSideReferences(safe, sideId), state: getRankedBattleView(step.state, sideId, { includeCommandOptions: false }) },
       [step.state?.player?.name, step.state?.opponent?.name])
+  })
+}
+
+const spectatorId = (scope, value) => `spectator-${createHash('sha256').update(`${scope}:${value}`).digest('hex').slice(0, 20)}`
+const spectatorMessage = message => typeof message === 'string' ? message
+  .replace(/\bHP를\s+\d+(?:\.\d+)?\s+회복/g, 'HP를 회복')
+  .replace(/\d+(?:\.\d+)?(?:의)?\s*데미지/g, '데미지') : ''
+const PUBLIC_ENVIRONMENT = ['weatherTurns', 'terrainTurns', 'weatherStrong', 'gravityTurns', 'trickRoomTurns',
+  'wonderRoomTurns', 'magicRoomTurns', 'mudSportTurns', 'waterSportTurns', 'fairyLockTurns', 'ionDelugeTurns']
+
+// A spectator has no privileged player side. Build both sides from public
+// field information; never clone an own-player ranked view and try to redact it.
+export function getRoomSpectatorBattleView(state, scope = 'room-spectator') {
+  if (!state) return null
+  assertSide(state, 'player')
+  const ids = new Map(['player', 'opponent'].flatMap(sideId => state[sideId].team.map(pokemon => [pokemon.battleId, spectatorId(scope, pokemon.battleId)])))
+  const sideView = sideId => {
+    const side = state[sideId]
+    const active = side.activeIndexes ?? [side.activeIndex]
+    const ordered = side.team.map((pokemon, index) => ({ pokemon, index, id: ids.get(pokemon.battleId) })).sort((a, b) => a.id.localeCompare(b.id))
+    const publicIndex = index => ordered.findIndex(entry => entry.index === index)
+    const safe = pick(side, PUBLIC_SIDE.filter(key => !['activeIndex', 'activeIndexes', 'usedMechanics', 'hazards', 'gmaxResidual'].includes(key)))
+    safe.id = sideId
+    safe.activeIndexes = active.map(publicIndex)
+    safe.activeIndex = publicIndex(side.activeIndex)
+    safe.usedMechanics = pick(side.usedMechanics ?? {}, ['tera', 'dynamax', 'mega', 'zmove', 'primal'])
+    safe.hazards = pick(side.hazards ?? {}, ['stealthRock', 'steelsurge', 'toxicSpikes', 'spikes', 'stickyWeb'])
+    safe.gmaxResidual = side.gmaxResidual ? pick(side.gmaxResidual, ['moveId', 'moveName', 'immuneType', 'turns']) : null
+    safe.team = ordered.map(({ pokemon, index, id }) => {
+      // A bench's recovery/status can change without public announcements. Do
+      // not expose its current HP, status, identity, loadout or selection order.
+      if (!active.includes(index) || !pokemon.rankedRevealed) return {
+        battleId: id, name: '미공개 포켓몬', speciesId: 0, originalSpeciesId: 0, types: [], level: 50,
+        hp: pokemon.rankedRevealed && pokemon.fainted ? 0 : 100, maxHp: 100, originalMaxHp: 100,
+        fainted: Boolean(pokemon.rankedRevealed && pokemon.fainted), moves: [], stats: {}, statStages: {}, status: null,
+        ability: '', heldItemId: '', heldItemName: '', teraType: null, hidden: true,
+      }
+      const visible = publicPokemon(pokemon, side)
+      visible.battleId = id
+      if (pokemon.illusionSnapshot && pokemon.teraActive) visible.types = [pokemon.teraType]
+      for (const key of ['commandedByBattleId', 'commanderHostBattleId']) if (visible[key]) visible[key] = ids.get(visible[key]) ?? null
+      for (const key of ['confusionTurns', 'tauntTurns', 'trappedTurns']) if (visible[key] > 0) visible[key] = 1
+      return visible
+    })
+    return safe
+  }
+  const rule = key => pick(state.rules[key] ?? {}, ['id', 'label', 'shortLabel', 'activeSlots', 'actionSlots', 'battleSize', 'rotation'])
+  const view = {
+    turn: state.turn, phase: state.phase, spectator: true,
+    rules: { pvp: true, weather: rule('weather'), terrain: rule('terrain'), format: rule('format'), teamRule: rule('teamRule'),
+      disabledGimmickId: state.rules.disabledGimmickId ?? null, gimmickRestriction: rule('gimmickRestriction'), aiDifficulty: rule('aiDifficulty') },
+    environment: pick(state.environment ?? {}, PUBLIC_ENVIRONMENT),
+    player: sideView('player'), opponent: sideView('opponent'),
+    opponentMeta: { id: 'room-spectated-human', name: state.opponent.name, isGuest: state.opponent.isGuest === true, tier: '관전' },
+    opponentStrategy: {}, winner: state.winner, eventNonce: state.eventNonce,
+    log: (state.log ?? []).map(entry => ({ id: spectatorId(scope, entry.id), message: spectatorMessage(entry.message), tone: entry.tone })),
+    lastEvent: null, lastConsumedItem: null, lastUsedMove: null,
+    awaitingPlayerSwitch: false, awaitingPlayerSwitchSlots: [], pendingPlayerSwitch: null,
+    pendingSwitches: [], pendingTurn: null, rankedWaitingForOpponent: false, replacementIndexes: [], commandOptions: [],
+  }
+  return JSON.parse(JSON.stringify(maskRankedBattleState(view)))
+}
+
+const SPECTATOR_TIMELINE_FIELDS = ['phase', 'actionOrder', 'sideId', 'targetSideId', 'actorSlot', 'targetSlot',
+  'moveName', 'moveId', 'moveType', 'moveCategory', 'moveTarget', 'animationType', 'animationVariant',
+  'animationVariantKey', 'animationReferenceKey', 'critical', 'effectiveness', 'hitIndex', 'hitCount',
+  'mechanicId', 'mechanicLabel', 'formSourceName']
+
+export function getRoomSpectatorTimelineView(timeline, scope = 'room-spectator') {
+  return (timeline ?? []).filter(step => step?.state).map((step, index) => {
+    const state = getRoomSpectatorBattleView(step.state, scope)
+    const safe = pick(step, SPECTATOR_TIMELINE_FIELDS)
+    const visible = (sideId, slot) => ['player', 'opponent'].includes(sideId) ? getActivePokemon(state, sideId, slot ?? 0) : null
+    const actor = visible(step.sideId, step.actorSlot)
+    const target = visible(step.targetSideId, step.targetSlot)
+    if (actor && !actor.hidden) Object.assign(safe, { actorName: actor.name, actorSpeciesId: actor.speciesId, actorSpeciesSlug: actor.slug ?? '' })
+    // switch-out metadata names the unannounced incoming bench Pokemon. The
+    // switch-in frame will reveal it when it actually appears on the field.
+    if (target && !target.hidden && step.phase !== 'switch-out') Object.assign(safe, { targetName: target.name, targetSpeciesId: target.speciesId })
+    safe.id = spectatorId(scope, `timeline:${step.id ?? index}`)
+    safe.message = spectatorMessage(step.message)
+    return maskRankedTimelineStep({ ...safe, state }, [step.state.player?.name, step.state.opponent?.name])
   })
 }

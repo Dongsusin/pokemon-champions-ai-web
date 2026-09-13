@@ -174,9 +174,13 @@ export function createBattleRoomService({ fail, loadPlayer, expireMatch, settleM
     const all = await tx.list('battleRooms')
     const player = await tx.get('players', uid)
     const room = all.find(entry => entry.id === player?.activeRoomId)
+    const ownMatch = player?.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
+    const waitingMember = room?.phase === 'active' && room.members.some(member => member.uid === uid && !member.withdrawn) && (!ownMatch || ownMatch.phase === 'finished')
     return {
       rooms: all.map(summary).sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)),
-      room: room ? { ...summary(room), hostUid: room.hostUid, members: room.members.map(publicMember), round: room.round ?? 0, totalRounds: room.totalRounds ?? 0, standings: standings(room), matches: room.fixtures.map(entry => ({ id: entry.id, round: entry.round, players: entry.uids.map(memberUid => publicMember(room.members.find(member => member.uid === memberUid))), phase: entry.phase, winnerUid: entry.winnerUid, winnerName: entry.winnerUid ? publicMember(room.members.find(member => member.uid === entry.winnerUid)).name : null, reason: entry.reason })) } : null,
+      room: room ? { ...summary(room), hostUid: room.hostUid, members: room.members.map(publicMember), round: room.round ?? 0, totalRounds: room.totalRounds ?? 0, standings: standings(room), matches: room.fixtures.map(entry => ({ id: entry.id, round: entry.round, players: entry.uids.map(memberUid => publicMember(room.members.find(member => member.uid === memberUid))), phase: entry.phase, winnerUid: entry.winnerUid, winnerName: entry.winnerUid ? publicMember(room.members.find(member => member.uid === entry.winnerUid)).name : null, reason: entry.reason,
+        canSpectate: Boolean(waitingMember && ['select', 'battle'].includes(entry.phase) && !entry.uids.includes(uid)),
+      })) } : null,
       roomResult: copy(player?.roomResult ?? null), serverTime: now(),
     }
   }

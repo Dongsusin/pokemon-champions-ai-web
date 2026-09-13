@@ -38,6 +38,7 @@ import {
 import { createBattleAudio } from './battleAudio'
 import { AchievementBattleRewards } from './AchievementsScreen'
 import BattlePokemonStatusTooltip, { battleStatStageEntries } from './BattlePokemonStatusTooltip'
+import './battleSpectator.css'
 import MoveChoreographyCanvas from './MoveChoreographyCanvas.jsx'
 import PokemonSprite from './PokemonSprite'
 import TrainerSprite from './TrainerSprite'
@@ -1346,7 +1347,7 @@ function BattleTeraBadge({ pokemon }) {
   )
 }
 
-function BattleStatusPanel({ pokemon, side, trainerName }) {
+function BattleStatusPanel({ pokemon, side, trainerName, publicView = false }) {
   return (
     <section className={`battle-hp-panel side-${side}`}>
       <header>
@@ -1362,7 +1363,7 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
         <span className="battle-current-types" title={`현재 타입: ${pokemon.types.join(' / ')}`}>
           <small>현재</small><b>{pokemon.types.join(' / ')}</b>
         </span>
-        {(side === 'player' || pokemon.teraActive) && <BattleTeraBadge pokemon={pokemon} />}
+        {((side === 'player' && !publicView) || pokemon.teraActive) && <BattleTeraBadge pokemon={pokemon} />}
       </div>
       <div className="battle-hp-meter-row">
         <small>HP</small>
@@ -1371,7 +1372,7 @@ function BattleStatusPanel({ pokemon, side, trainerName }) {
         </span>
       </div>
       <footer>
-        {side === 'player' ? <b>{pokemon.hp} / {pokemon.maxHp}</b> : <span>{trainerName}</span>}
+        {publicView ? <><span>{trainerName}</span><b>{Math.ceil(hpRatio(pokemon))}%</b></> : side === 'player' ? <b>{pokemon.hp} / {pokemon.maxHp}</b> : <span>{trainerName}</span>}
         {pokemon.status && <em className={`status-${pokemon.status.id}`}>{pokemon.status.label}</em>}
       </footer>
     </section>
@@ -1937,6 +1938,7 @@ function BattleScreen({
   onComplete,
   online = null,
 }) {
+  const spectating = online?.spectator === true
   const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, opponent, opponentTeam, rules }))
   const [introVisible, setIntroVisible] = useState(!online)
   const [menu, setMenu] = useState('command')
@@ -1984,10 +1986,10 @@ function BattleScreen({
   const battleLogHistory = battle.log
     .filter((entry) => entry.id !== currentLogEntry?.id || turnCue)
     .slice(-12)
-  const onlineLocked = Boolean(online && (!online.canAct || onlineSubmitting))
+  const onlineLocked = Boolean(online && (spectating || !online.canAct || onlineSubmitting))
   const commandLocked = isTurnAnimating || Boolean(battle.winner) || Boolean(activeTrainerDialogue) || onlineLocked
   const attackAnimationMode = gameSettings.attackAnimation ?? 'normal'
-  const showDamageNumbers = gameSettings.showDamageNumbers !== false
+  const showDamageNumbers = !spectating && gameSettings.showDamageNumbers !== false
   const hpBarDuration = HP_BAR_DURATIONS[gameSettings.hpBarSpeed] ?? HP_BAR_DURATIONS.normal
   const visualTurnCue = attackAnimationMode === 'skip' && ATTACK_ANIMATION_PHASES.has(turnCue?.phase)
     ? null
@@ -2091,9 +2093,9 @@ function BattleScreen({
 
   useEffect(() => {
     battleAudioRef.current?.setLowHpWarning(
-      !introVisible && !battle.winner && playerActive.hp > 0 && hpRatio(playerActive) <= 20,
+      !spectating && !introVisible && !battle.winner && playerActive.hp > 0 && hpRatio(playerActive) <= 20,
     )
-  }, [battle.winner, introVisible, playerActive.hp, playerActive.maxHp])
+  }, [spectating, battle.winner, introVisible, playerActive.hp, playerActive.maxHp])
 
   const playBattleCue = (cue) => {
     // Skipping the animation still keeps the attack and its result audible.
@@ -2176,7 +2178,7 @@ function BattleScreen({
   }, [Boolean(online), moveAssetsReady])
 
   const sendOnlineAction = async (kind, value) => {
-    if (!onlineRef.current?.canAct || turnLockedRef.current || onlineSubmitting) return
+    if (onlineRef.current?.spectator || !onlineRef.current?.canAct || turnLockedRef.current || onlineSubmitting) return
     turnLockedRef.current = true
     setOnlineSubmitting(true)
     try {
@@ -2383,6 +2385,7 @@ function BattleScreen({
   }
 
   const completeBattle = (forcedWinner) => {
+    if (onlineRef.current?.spectator) return
     if (online) {
       if (forcedWinner === 'opponent') online.onForfeit?.()
       else onComplete?.(summary)
@@ -2500,12 +2503,12 @@ function BattleScreen({
 
   return (
     <main
-      className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${activeTrainerDialogue ? ' has-trainer-dialogue' : ''}`}
+      className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${activeTrainerDialogue ? ' has-trainer-dialogue' : ''}${spectating ? ' is-spectating' : ''}`}
       style={{ '--battle-hp-duration': `${hpBarDuration}ms` }}
     >
       <header className="battle-game-header">
         <div className="battle-title-lockup">
-          <span><Swords size={14} /> {online ? 'RANKED BATTLE' : 'TRAINER BATTLE'}</span>
+          <span>{spectating ? <Eye size={14} /> : <Swords size={14} />} {spectating ? 'LIVE SPECTATE' : online ? 'RANKED BATTLE' : 'TRAINER BATTLE'}</span>
           <strong>{competitionLabel}</strong>
         </div>
         <div className="battle-game-turn">
@@ -2579,13 +2582,13 @@ function BattleScreen({
       >
         {opponentActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('opponent', pokemon, visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
-            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} />
+            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} publicView={spectating} />
             {slot === 0 && <PartyIndicators side={battle.opponent} />}
           </div>
         ))}
         {playerActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('player', pokemon, visualTurnCue, slot)} key={`player-status-${pokemon.battleId}`}>
-            <BattleStatusPanel pokemon={pokemon} side="player" trainerName={online?.playerName ?? 'PLAYER_01'} />
+            <BattleStatusPanel pokemon={pokemon} side="player" trainerName={online?.playerName ?? 'PLAYER_01'} publicView={spectating} />
             {slot === 0 && <PartyIndicators side={battle.player} />}
           </div>
         ))}
@@ -2597,6 +2600,7 @@ function BattleScreen({
             pokemon={pokemon}
             side="opponent"
             trainerName={opponent.name}
+            publicView={spectating}
             visible={!introVisible && inspectedPokemonSide === `opponent-${slot}`}
           />
         ))}
@@ -2607,6 +2611,7 @@ function BattleScreen({
             pokemon={pokemon}
             side="player"
             trainerName={online?.playerName ?? 'PLAYER_01'}
+            publicView={spectating}
             visible={!introVisible && inspectedPokemonSide === `player-${slot}`}
           />
         ))}
@@ -2707,7 +2712,15 @@ function BattleScreen({
         </aside>
 
         <div className={`battle-command-panel${commandLocked ? ' is-turn-locked' : ''}`} aria-busy={isTurnAnimating}>
-          {!commandLocked && (battle.awaitingPlayerSwitch || menu === 'party') ? (
+          {spectating ? (
+            <section className="battle-spectator-status" role="status" aria-label="관전 상태">
+              <Eye size={28} aria-hidden="true" />
+              <div><small>LIVE SPECTATE</small><strong>{isTurnAnimating ? '배틀 진행 중' : online.waitingMessage || '트레이너들이 다음 행동을 선택하고 있습니다.'}</strong>
+                <p>{online.playerName ?? battle.player.name} <span>VS</span> {opponent.name}</p>
+                <span className="battle-spectator-help">내 경기가 배정되면 출전 선택 화면으로 자동 이동합니다.</span>
+              </div>
+            </section>
+          ) : !commandLocked && (battle.awaitingPlayerSwitch || menu === 'party') ? (
             <PokemonPartyMenu
               battle={battle}
               forced={battle.awaitingPlayerSwitch}
