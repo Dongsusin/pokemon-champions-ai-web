@@ -54,10 +54,10 @@ npm run build
 
 관전 전용 검증은 서버 접근 권한·공개 정보 제한·중복 연출 생략을 확인하고, 실제 로컬 HTTP 서버와 브라우저에서 부전승 및 먼저 종료한 참가자의 관전, 양쪽 스프라이트와 실제 턴 연출, 관전 중 행동 요청 차단, 복귀와 다음 경기 자동 전환을 검사합니다.
 
-`codex/battle-factory` 브랜치는 `vercel.json`에서 자동 배포가 꺼져 있으며 운영 배포는 `main`으로 진행합니다. 최초 구현은 로컬 검증까지 완료한 뒤, 사용자의 배포 요청에 따라 2026-09-13 커밋 `ffa69dd`를 운영에 반영했습니다. Vercel 배포 `dpl_7Y5LNvZggLCruDd52FtUpXRFB1yc`의 Production Ready 상태와 대표 도메인 연결을 확인했습니다. 대전방 데이터는 기존 서버 전용 문서 저장소를 사용하므로 별도 DB 마이그레이션은 없습니다.
+`codex/battle-factory` 브랜치는 `vercel.json`에서 자동 배포가 꺼져 있으며 운영 배포는 `main`으로 진행합니다. 사용자가 승인한 대전방 배포에 이어 2026-09-13 관전 기능 커밋 `fd35770`을 운영에 반영했습니다. Vercel 배포 `dpl_w4iEzXQtRCZAaHxtkmBi2Txejbbs`의 Production Ready 상태와 `pokemon-champions-area-web.co.kr` 연결을 확인했습니다. 대전방 데이터는 기존 서버 전용 문서 저장소를 사용하므로 별도 DB 마이그레이션은 없습니다.
 
-운영 검증은 `scripts/validateDeployedBattleRooms.mjs`로 새 익명 계정 두 개만 생성하여 실행했습니다. 싱글 토너먼트·더블 리그전에서 비밀번호와 방장 권한 검사, 출전 선택, 서버의 실제 턴 처리, 기권, 최종 순위와 방 삭제를 통과했습니다. 레이팅 경기 수·추가 VP·사용률 기록이 증가하지 않았으며 테스트용 SQL 행 17개와 익명 계정 2개를 모두 정리했습니다. 상세 실행 기록은 Git에서 제외된 `scripts/.cache/room-live-validation/`에 있습니다.
+운영 검증은 `scripts/validateDeployedBattleRooms.mjs`로 새 익명 계정 세 개만 생성하여 실행했습니다. 싱글 토너먼트·더블 리그전에서 비밀번호와 방장 권한 검사, 출전 선택, 서버의 실제 턴 처리, 기권, 최종 순위와 방 삭제를 통과했습니다. 별도 3인 토너먼트에서는 부전승 참가자의 선출 중 관전, 실제 턴과 양측 공개 상태, 중복 연출 생략, 자신의 결승 출전 우선 전환, 탈락자의 결승 관전과 종료 후 스트림 해제를 확인했습니다. 레이팅 경기 수·추가 VP·사용률 기록이 증가하지 않았으며 테스트용 SQL 행 26개와 익명 계정 3개를 모두 정리했습니다. 상세 실행 기록은 Git에서 제외된 `scripts/.cache/room-live-validation/`에 있습니다.
 
-검증 스크립트는 운영에 테스트 데이터를 만드는 명시적인 실행 도구입니다. Vercel Production의 커밋과 Ready 상태를 먼저 확인하고 `--confirm-production`, `--url`, `--expected-commit`, `--expected-css`를 지정해야 합니다. 확인된 신규 계정과 이 계정들이 만든 비밀번호 방만 사용하고 정리합니다. 필요한 서버 연결 정보는 Git에서 제외된 `.env.storage.local`에서 읽습니다.
+검증 스크립트는 운영에 테스트 데이터를 만드는 명시적인 실행 도구입니다. Vercel Production의 커밋과 Ready 상태를 먼저 확인하고 `--confirm-production`, `--url`, `--expected-commit`, `--expected-css`를 지정해야 합니다. 확인된 신규 계정과 이 계정들이 만든 비밀번호 방만 사용하고 정리하며, 관전 대상도 이 실행에서 생성한 경기로 제한합니다. 필요한 서버 연결 정보는 Git에서 제외된 `.env.storage.local`에서 읽습니다.
 
 대전방 홍보 영상과 재생성 절차는 [`promo/rooms/README.md`](../promo/rooms/README.md)에 정리했습니다.
