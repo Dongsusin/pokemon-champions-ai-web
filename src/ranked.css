@@ -159,7 +159,7 @@ button.ranked-roster-card:not(:disabled):hover { transform: none; background: #1
 .ranked-confirm > svg { color: #e6b284; }
 .ranked-confirm h2 { font-size: 22px; }
 .ranked-confirm p { color: #a3bcd0; }
-.ranked-confirm > div { display: flex; gap: 10px; margin-top: 23px; }
+.ranked-confirm > div { display: flex; justify-content: center; gap: 10px; margin-top: 23px; }
 .ranked-confirm button { padding: 10px 16px; border-radius: 7px; border: 1px solid #627f94; color: #dff4ff; background: #254359; cursor: pointer; }
 .ranked-confirm button:last-child { color: #ffd6d6; border-color: #986e76; background: #593940; }
 @media (max-width: 900px) {
