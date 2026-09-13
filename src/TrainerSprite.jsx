@@ -18,7 +18,7 @@ function TrainerSprite({ trainer, isPlayer = false, playerGender = 'male', class
 
   return (
     <span
-      className={['trainer-sprite-frame', className].filter(Boolean).join(' ')}
+      className={['trainer-sprite-frame', trainer?.id === 'factory-clown' && 'factory-trainer-portrait', className].filter(Boolean).join(' ')}
       role="img"
       aria-label={alt ?? `${trainer?.name ?? '플레이어'} 트레이너`}
     >

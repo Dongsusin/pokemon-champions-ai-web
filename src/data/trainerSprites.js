@@ -6,6 +6,7 @@ export const PLAYER_TRAINER_SPRITES = {
 }
 
 export const TRAINER_LOCAL_SPRITES = {
+  '팩토리 삐에로': '/assets/trainers/factory-clown.png',
   반디나: '/assets/trainers/generated/bandina-gen5.png',
   '덴트&콘&팟': '/assets/trainers/generated/striaton-trio-gen5.png',
   J: '/assets/trainers/generated/hunter-j-gen5.png',

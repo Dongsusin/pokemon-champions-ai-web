@@ -3,20 +3,64 @@
 .battle-hub-heading > div > span { color: #83eaff; font-size: 12px; font-weight: 850; letter-spacing: .22em; }
 .battle-hub-heading h1 { margin: 6px 0; font-size: clamp(25px, 3vw, 36px); }
 .battle-hub-heading p { color: #b5c6df; margin: 0; line-height: 1.6; }
-.battle-hub-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.battle-hub-card { --hub-accent: #ffe294; position: relative; display: flex; flex-direction: column; align-items: flex-start; min-height: 365px; padding: 34px; border: 1px solid #ffffff38; border-radius: 24px; color: #f3f8ff; text-align: left; font: inherit; background: radial-gradient(ellipse at 90% 5%, #bd91484a, transparent 60%), linear-gradient(145deg,#1d2e50,#131b35); box-shadow: inset 0 1px #ffffff1f, 0 15px 40px #0003; cursor: pointer; transition: transform .18s, border-color .18s; }
+.battle-hub-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.battle-hub-card { --hub-accent: #bec5ff; position: relative; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 385px; padding: clamp(22px, 2.5vw, 32px); border: 1px solid #ffffff38; border-radius: 24px; color: #f3f8ff; text-align: left; font: inherit; background: radial-gradient(ellipse at 90% 5%, #8174c34a, transparent 60%), linear-gradient(145deg,#252c50,#151b35); box-shadow: inset 0 1px #ffffff1f, 0 15px 40px #0003; cursor: pointer; transition: transform .18s, border-color .18s; }
 .battle-hub-card.ai { --hub-accent: #7cecfa; background: radial-gradient(ellipse at 90% 5%, #258a9340, transparent 60%), linear-gradient(145deg,#18394a,#152338); }
+.battle-hub-card.factory { --hub-accent: #ffdb80; background: radial-gradient(ellipse at 90% 5%, #e5b64445, transparent 60%), linear-gradient(145deg,#403627,#232233); }
 .battle-hub-card:hover { transform: translateY(-3px); border-color: var(--hub-accent); }
 .battle-hub-card:focus-visible { outline: 3px solid var(--hub-accent); outline-offset: 4px; }
 .battle-hub-emblem { display: grid; place-items: center; width: 86px; height: 86px; margin-bottom: 24px; border: 1px solid #ffffff38; border-radius: 22px; background: #ffffff0a; color: var(--hub-accent); }
 .battle-hub-card > small { color: var(--hub-accent); font-weight: 850; letter-spacing: .17em; font-size: 12px; }
-.battle-hub-card h2 { font-size: 32px; margin: 9px 0 10px; }
-.battle-hub-card p { color: #bfcee4; font-size: 17px; line-height: 1.7; margin: 0 0 22px; }
+.battle-hub-card h2 { font-size: clamp(27px, 2.5vw, 32px); margin: 9px 0 10px; word-break: keep-all; }
+.battle-hub-card p { color: #bfcee4; font-size: 15px; line-height: 1.75; margin: 0 0 22px; word-break: keep-all; }
 .battle-hub-tags { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 28px; }
 .battle-hub-tags > span { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ffffff24; padding: 7px 11px; border-radius: 8px; background: #06152944; font-size: 13px; }
 .battle-hub-card > strong { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: auto; padding-top: 20px; border-top: 1px solid #ffffff20; color: var(--hub-accent); }
 .app-shell.ranked-view { overflow: auto; }
 .app-shell.ranked-view.battle-view { overflow: hidden; }
-@media (max-height: 600px) { .battle-hub { padding: 16px 24px; } .battle-hub-heading { margin-bottom: 16px; } .battle-hub-card { min-height: 300px; padding: 22px; } .battle-hub-emblem { position: absolute; right: 24px; top: 24px; width: 62px; height: 62px; } .battle-hub-emblem svg { width: 35px; } .battle-hub-card p { margin-top: 16px; } }
-@media (max-width: 650px) { .battle-hub-options { grid-template-columns: 1fr; } .battle-hub-heading { align-items: flex-start; } .battle-hub-card { min-height: 300px; } }
+@media (max-width: 1050px) and (min-height: 601px) {
+  .battle-hub { padding-inline: 22px; }
+  .battle-hub-options { gap: 14px; }
+  .battle-hub-card { padding: 22px; }
+  .battle-hub-card p br { display: none; }
+}
+@media (max-height: 600px) {
+  .battle-hub { padding: 16px 24px; }
+  .battle-hub-heading { margin-bottom: 16px; }
+  .battle-hub-options { gap: 14px; }
+  .battle-hub-card { min-height: 285px; padding: 20px; }
+  .battle-hub-emblem { position: absolute; right: 17px; top: 17px; width: 48px; height: 48px; border-radius: 13px; }
+  .battle-hub-emblem svg { width: 28px; }
+  .battle-hub-card > small { padding-right: 52px; font-size: 9px; }
+  .battle-hub-card h2 { font-size: 24px; padding-right: 45px; margin-top: 12px; }
+  .battle-hub-card p { font-size: 13px; margin-top: 18px; }
+  .battle-hub-card p br { display: none; }
+  .battle-hub-tags { margin-bottom: 18px; gap: 6px; }
+  .battle-hub-tags > span { font-size: 11px; padding: 6px 7px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .battle-hub { padding: 10px 18px 12px; }
+  .battle-hub-heading { margin-bottom: 10px; gap: 15px; }
+  .battle-hub-heading > div > span { font-size: 8px; }
+  .battle-hub-heading h1 { margin: 3px 0 0; font-size: 22px; }
+  .battle-hub-heading p { display: none; }
+  .battle-hub-options { gap: 12px; }
+  .battle-hub-card { min-height: 215px; padding: 15px; border-radius: 17px; }
+  .battle-hub-emblem { width: 39px; height: 39px; right: 12px; top: 12px; }
+  .battle-hub-emblem svg { width: 24px; }
+  .battle-hub-card > small { font-size: 8px; padding-right: 38px; letter-spacing: .1em; }
+  .battle-hub-card h2 { font-size: 21px; padding-right: 28px; margin: 9px 0 7px; }
+  .battle-hub-card p { font-size: 11px; line-height: 1.65; margin: 11px 0 12px; }
+  .battle-hub-tags { margin-bottom: 12px; gap: 5px; }
+  .battle-hub-tags > span { font-size: 9px; padding: 4px 5px; gap: 4px; }
+  .battle-hub-tags svg { width: 12px; height: 12px; }
+  .battle-hub-card > strong { padding-top: 11px; font-size: 12px; }
+  html[data-mobile-layout="landscape"] .battle-hub { height: calc(100dvh - var(--mobile-topbar-height, 60px)); overflow-y: auto; }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  .battle-hub-options { grid-template-columns: 1fr; }
+  .battle-hub-heading { align-items: flex-start; }
+  .battle-hub-heading p { font-size: 13px; }
+  .battle-hub-card { min-height: 300px; }
+}
 @media (prefers-reduced-motion: reduce) { .battle-hub-card { transition: none; } }

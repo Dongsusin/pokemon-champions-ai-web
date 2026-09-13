@@ -19,6 +19,7 @@ import {
 import BattleSelectScreen from './BattleSelectScreen'
 import BattleHub from './BattleHub'
 import RankedBattleScreen from './RankedBattleScreen'
+import BattleFactoryScreen from './BattleFactoryScreen'
 import { isRankedLocalTest } from './rankedClient'
 import BattleScreen from './BattleScreen'
 import AchievementsScreen from './AchievementsScreen'
@@ -331,6 +332,7 @@ export function GameApp({
   const [competition, setCompetition] = useState(null)
   const [battleMatch, setBattleMatch] = useState(null)
   const [rankedBattleActive, setRankedBattleActive] = useState(false)
+  const [factoryRun, setFactoryRun] = useState(null)
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
   const rankedRewardSyncPending = useRef(false)
@@ -338,7 +340,8 @@ export function GameApp({
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
   const soundEnabled = settings.audio.enabled
-  const battleMusicActive = screen === 'battle' || rankedBattleActive
+  const factoryBattleVisible = screen === 'factory' && factoryRun?.phase === 'battle'
+  const battleMusicActive = screen === 'battle' || rankedBattleActive || factoryBattleVisible
   const isGuest = Boolean(user.isLocalGuest)
   const trainerName = user.displayName?.trim()
     || user.email?.split('@')[0]
@@ -431,7 +434,7 @@ export function GameApp({
   }, [battleMusicActive])
 
   useEffect(() => {
-    if (screen === 'battle' || rankedBattleActive) return undefined
+    if (battleMusicActive) return undefined
 
     const interactiveSelector = 'button, [role="button"], select, input[type="checkbox"], input[type="radio"], input[type="range"]'
     const findInteractive = (target) => target instanceof Element ? target.closest(interactiveSelector) : null
@@ -462,7 +465,7 @@ export function GameApp({
       document.removeEventListener('pointerover', playHoverSound, true)
       document.removeEventListener('keydown', activateFromKeyboard, true)
     }
-  }, [screen, rankedBattleActive])
+  }, [battleMusicActive])
 
   useEffect(() => {
     try {
@@ -1039,7 +1042,7 @@ export function GameApp({
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${screen === 'battle' || rankedBattleActive ? ' battle-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -1106,7 +1109,7 @@ export function GameApp({
             <Settings size={21} />
           </button>
 
-          {screen !== 'battle' && screen !== 'ranked' && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
+          {!battleMusicActive && screen !== 'ranked' && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
             <Trophy size={21} />
           </button>}
 
@@ -1161,13 +1164,18 @@ export function GameApp({
         </section>
       </main>
       ) : screen === 'battle-hub' ? (
-        <BattleHub onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')} />
+        <BattleHub onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
+          onSelectFactory={() => setScreen('factory')} />
       ) : screen === 'ranked' ? (
         <RankedBattleScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRanked} onBack={() => setScreen('battle-hub')}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
           onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards} />
+      ) : screen === 'factory' ? (
+        <BattleFactoryScreen run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
+          soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
+          audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
       ) : screen === 'battle-select' ? (
         <BattleSelectScreen
           pokemon={boxPokemon}
@@ -1436,14 +1444,21 @@ function AccountGameApp({ user, accountError, ...props }) {
 export function RankedTestApp() {
   const [page, setPage] = useState('hub')
   const [battleActive, setBattleActive] = useState(false)
+  const [factoryRun, setFactoryRun] = useState(null)
   const [sound, setSound] = useState(false)
+  const battleVisible = page === 'factory' ? factoryRun?.phase === 'battle' : page === 'ranked' && battleActive
   if (!isRankedLocalTest) return null
   if (page === 'ai') return <AuthProvider><App /></AuthProvider>
   return <>
     <LandscapeOrientationGate />
-    <div className={`app-shell ranked-view${battleActive ? ' battle-view' : ''}`}>
+    <div className={`app-shell${page === 'factory' ? ' factory-view' : ' ranked-view'}${battleVisible ? ' battle-view' : ''}`}>
       {page === 'hub'
-        ? <BattleHub onBack={() => setPage('ai')} onSelectAi={() => setPage('ai')} onSelectRanked={() => setPage('ranked')} />
+        ? <BattleHub onBack={() => setPage('ai')} onSelectAi={() => setPage('ai')} onSelectRanked={() => setPage('ranked')}
+            onSelectFactory={() => setPage('factory')} />
+        : page === 'factory'
+          ? <BattleFactoryScreen run={factoryRun} onRunChange={setFactoryRun} onBack={() => setPage('hub')}
+              soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
+              playerGender="male" gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />
         : <RankedBattleScreen onBack={() => setPage('hub')} onBattleActiveChange={setBattleActive}
             soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
             gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />}

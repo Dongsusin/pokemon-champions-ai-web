@@ -82,7 +82,10 @@
     "validate:ranked-privacy": "node scripts/validateRankedPrivacy.mjs",
     "validate:ranked-saved-teams-ui": "node scripts/validateRankedSavedTeamsUi.mjs",
     "validate:ranked-firestore": "node scripts/validateRankedFirestore.mjs",
-    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedPrivacy.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs && node scripts/validateRankedSavedTeamsUi.mjs"
+    "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedPrivacy.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs && node scripts/validateRankedSavedTeamsUi.mjs",
+    "factory:test": "node scripts/startBattleFactoryTest.mjs",
+    "validate:battle-factory": "node scripts/validateBattleFactory.mjs",
+    "validate:battle-factory-ui": "node scripts/validateBattleFactoryUi.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",
