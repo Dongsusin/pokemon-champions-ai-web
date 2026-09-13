@@ -1,0 +1,16 @@
+{
+  "source": "public/assets/trainers/factory-clown.png",
+  "output": "public/assets/trainers/factory-clown-cutout.png",
+  "sourceSha256": "1607e050bc75604700e2693073cce27df293ae3f143d1368ea32205e6a2d510f",
+  "outputSha256": "08f920fe1ffa091e0bf6fbe07506547a3b6e7979eba61e4b9b648f6b03d7c547",
+  "size": [
+    440,
+    440
+  ],
+  "mode": "RGBA",
+  "transparentPixels": 135404,
+  "opaquePixels": 51705,
+  "partialAlphaPixels": 6491,
+  "interiorRgbUnchanged": true,
+  "method": "Edge-connected near-white matte extraction, four-pixel edge decontamination; original RGB interior, pose, composition and resolution preserved."
+}

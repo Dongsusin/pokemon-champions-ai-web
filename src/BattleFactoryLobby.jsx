@@ -8,7 +8,7 @@ import { getBattleItem } from './data/shopData'
 import { getSpeciesProfile, STAT_META, typeClassName } from './data/trainingData'
 import './battleFactory.css'
 
-const TRAINER_IMAGE = '/assets/trainers/factory-clown.png'
+const TRAINER_IMAGE = '/assets/trainers/factory-clown-cutout.png'
 const speciesKey = pokemon => Number(pokemon?.dexSpeciesId ?? pokemon?.speciesId)
 const nameOf = pokemon => pokemon?.name ?? getSpeciesProfile(pokemon?.speciesId)?.name ?? '포켓몬'
 

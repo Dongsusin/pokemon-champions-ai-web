@@ -137,6 +137,32 @@ window.__fixtureFactoryVictory = () => {
     const click = locator => device.hasTouch ? locator.tap() : locator.click()
     const readRun = () => page.evaluate(() => window.__readFactoryRun())
     const readBattle = () => page.evaluate(() => window.__readFactoryBattle())
+    const checkTrainerCutout = async image => {
+      await image.evaluate(element => element.decode())
+      const visual = await image.evaluate(element => {
+        const frame = getComputedStyle(element.parentElement)
+        const canvas = document.createElement('canvas')
+        canvas.width = element.naturalWidth
+        canvas.height = element.naturalHeight
+        const context = canvas.getContext('2d', { willReadFrequently: true })
+        context.drawImage(element, 0, 0)
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+        let transparent = 0
+        let opaque = 0
+        for (let index = 3; index < pixels.length; index += 4) {
+          if (pixels[index] === 0) transparent++
+          if (pixels[index] === 255) opaque++
+        }
+        return {
+          background: frame.backgroundColor, border: frame.borderTopWidth,
+          transparent: transparent / (canvas.width * canvas.height),
+          opaque: opaque / (canvas.width * canvas.height),
+        }
+      })
+      assert.equal(visual.background, 'rgba(0, 0, 0, 0)', 'Trainer must stand directly on the scene without a photo-card background')
+      assert.equal(visual.border, '0px', 'Trainer cutout must not retain the old picture-frame border')
+      assert(visual.transparent > 0.15 && visual.opaque > 0.1, `Trainer PNG needs both transparent background and an opaque subject: ${JSON.stringify(visual)}`)
+    }
     const snapshotProtectedStorage = () => page.evaluate(() => Object.fromEntries(
       Object.keys(localStorage).filter(key => key === 'champions-dex-v2' || key === 'champions-battle-items-v1'
         || key === 'champions-vp-v1' || key === 'champions-achievements-v1' || key.startsWith('champions-usage'))
@@ -187,6 +213,7 @@ window.__fixtureFactoryVictory = () => {
         assert.equal(run.phase, 'selection')
         assert.equal(run.floor, 1)
         assert.equal(run.offers.length, 6)
+        await checkTrainerCutout(page.locator('.factory-trainer-image img'))
         protectedBefore = await snapshotProtectedStorage()
         await page.screenshot({ path: path.join(output, `${device.id}-selection.png`) })
       })
@@ -224,9 +251,15 @@ window.__fixtureFactoryVictory = () => {
       await check(`${device.id}: real 3-v-3 BattleScreen uses the supplied trainer and full battle viewport`, 'real-battle', async () => {
         await click(page.getByRole('button', { name: '1층 배틀 시작', exact: true }))
         await page.locator('.battle-intro-overlay.is-ready').waitFor({ timeout: 30_000 })
-        const image = page.locator('.battle-intro-trainer.opponent img[src$="/factory-clown.png"]')
+        const image = page.locator('.battle-intro-trainer.opponent img[src$="/factory-clown-cutout.png"]')
         assert.equal(await image.count(), 1)
         assert(await image.evaluate(element => element.complete && element.naturalWidth > 0))
+        await checkTrainerCutout(image)
+        await page.locator('.battle-intro-trainer.opponent').evaluate(element => Promise.all(
+          element.getAnimations().filter(animation => animation.effect.getTiming().iterations !== Infinity)
+            .map(animation => animation.finished.catch(() => {})),
+        ))
+        await page.screenshot({ path: path.join(output, `${device.id}-battle-intro.png`) })
         assert(await page.locator('.topbar').isHidden())
         assert.equal((await readBattle()).player.team.length, 3)
         assert.equal((await readBattle()).opponent.team.length, 3)
