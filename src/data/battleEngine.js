@@ -1447,15 +1447,18 @@ function setTemporaryEnvironment(state, kind, environmentId, sourceName, sourceP
   return true
 }
 
-function restoreBaseEnvironment(state, kind, sourceName = '') {
+function resetBattleEnvironment(state, kind, sourceName = '') {
   const environmentState = ensureEnvironmentState(state)
   const baseKey = kind === 'weather' ? 'baseWeather' : 'baseTerrain'
   const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
   const sourceKey = kind === 'weather' ? 'weatherSource' : 'terrainSource'
-  const baseEnvironment = environmentState[baseKey]
+  // Replacing or clearing an environment does not preserve the opening field as
+  // a fallback. This also handles battles restored from older non-neutral saves.
+  const baseEnvironment = environmentDefinition(kind, kind === 'weather' ? 'clear' : 'neutral')
   const previousEnvironment = state.rules[kind]
 
   state.rules[kind] = { ...baseEnvironment }
+  environmentState[baseKey] = { ...baseEnvironment }
   environmentState[turnsKey] = null
   environmentState[sourceKey] = null
   if (kind === 'weather') {
@@ -1526,7 +1529,7 @@ function refreshStrongWeatherSource(state) {
     return false
   }
 
-  restoreBaseEnvironment(state, 'weather', environmentState.weatherSourceAbility ?? '')
+  resetBattleEnvironment(state, 'weather', environmentState.weatherSourceAbility ?? '')
   return true
 }
 
@@ -1539,7 +1542,7 @@ function advanceEnvironmentTimers(state, timeline = null) {
     environmentState[turnsKey] -= 1
     if (environmentState[turnsKey] > 0) return
 
-    restoreBaseEnvironment(state, kind)
+    resetBattleEnvironment(state, kind)
     pushTimelineStep(timeline, state, {
       phase: 'status',
       message: latestLogMessage(state, '배틀 환경이 원래 상태로 돌아왔다.'),
@@ -3807,11 +3810,11 @@ function applyEnvironmentFromMove(state, attacker, move) {
   if (move.id === 'defog') {
     const environmentState = ensureEnvironmentState(state)
     if (state.rules?.terrain?.id !== 'neutral' || environmentState.terrainTurns != null) {
-      restoreBaseEnvironment(state, 'terrain', move.name)
+      resetBattleEnvironment(state, 'terrain', move.name)
       applied = true
     }
     if (state.rules?.weather?.id === 'fog' || environmentState.weatherTurns != null && effectiveWeatherId(state) === 'fog') {
-      restoreBaseEnvironment(state, 'weather', move.name)
+      resetBattleEnvironment(state, 'weather', move.name)
       applied = true
     }
   }
@@ -3873,7 +3876,7 @@ function applyZMoveEffect(state, attacker, move) {
   if (effect.kind === 'clearTerrain') {
     const environmentState = ensureEnvironmentState(state)
     if (state.rules?.terrain?.id === 'neutral' && environmentState.terrainTurns == null) return false
-    restoreBaseEnvironment(state, 'terrain', move.name)
+    resetBattleEnvironment(state, 'terrain', move.name)
     return true
   }
   return false
@@ -3993,7 +3996,7 @@ function applyMaxMoveEffect(state, sideId, attacker, defender, move, random) {
     return true
   }
   if (effect.kind === 'clearField') {
-    restoreBaseEnvironment(state, 'terrain', move.name)
+    resetBattleEnvironment(state, 'terrain', move.name)
     ;[sourceSide, targetSide].forEach((side) => {
       side.auroraVeilTurns = 0
       side.gmaxResidual = null
@@ -8641,7 +8644,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       if (landedHits > 0 && !attacker.dynamaxActive && TERRAIN_CLEARING_MOVE_IDS.has(move.id)) {
         const environmentState = ensureEnvironmentState(state)
         if (state.rules?.terrain?.id !== 'neutral' || environmentState.terrainTurns != null) {
-          restoreBaseEnvironment(state, 'terrain', move.name)
+          resetBattleEnvironment(state, 'terrain', move.name)
         }
       }
       if (connectedDamagingMove) {

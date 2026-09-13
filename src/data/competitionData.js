@@ -75,6 +75,7 @@ export function createCompetition(
   teamName,
   difficultyOrRandom = 'normal',
   fallbackRandom = Math.random,
+  battleFormat = 'single',
 ) {
   const random = typeof difficultyOrRandom === 'function' ? difficultyOrRandom : fallbackRandom
   const aiDifficulty = normalizeAiBattleDifficulty(
@@ -87,6 +88,7 @@ export function createCompetition(
   const player = createPlayerParticipant(teamName)
   const participants = shuffle([player, ...trainers], random)
   const competitionId = `${mode}-${Date.now()}-${Math.floor(random() * 1_000_000)}`
+  const currentMatchRules = createBattleMatchRules(random, aiDifficulty, battleFormat)
   const baseCompetition = {
     id: competitionId,
     mode,
@@ -97,7 +99,8 @@ export function createCompetition(
     status: 'active',
     championId: null,
     aiDifficulty,
-    currentMatchRules: createBattleMatchRules(random, aiDifficulty),
+    battleFormat: currentMatchRules.format.id,
+    currentMatchRules,
     achievementRun: {
       version: 1,
       competitionId,
@@ -183,8 +186,9 @@ export function getCompetitionOpponentTeam(competition) {
   return getTrainerTeam(match.opponent.name, match.opponent.teamNumber)
 }
 
-function randomRemainingPokemon(random) {
-  return Math.max(1, Math.ceil(random() * 5))
+function randomRemainingPokemon(random, competition) {
+  const battleSize = competition.currentMatchRules?.teamRule?.battleSize ?? 6
+  return Math.max(1, Math.ceil(random() * battleSize))
 }
 
 function tournamentResult(competition, playerWon, random, battleSummary) {
@@ -201,7 +205,7 @@ function tournamentResult(competition, playerWon, random, battleSummary) {
     const loserId = winnerId === firstId ? secondId : firstId
     const winnerRemaining = isPlayerMatch
       ? Math.max(1, Number(playerWon ? battleSummary?.playerRemaining : battleSummary?.opponentRemaining) || 1)
-      : randomRemainingPokemon(random)
+      : randomRemainingPokemon(random, competition)
 
     winners.push(winnerId)
     matches.push({
@@ -279,7 +283,7 @@ function leagueResult(competition, playerWon, random, battleSummary) {
       ? Math.max(1, Math.abs(
         Number(battleSummary?.playerRemaining ?? 0) - Number(battleSummary?.opponentRemaining ?? 0),
       ) || 1)
-      : Math.max(1, Math.ceil(random() * 4))
+      : randomRemainingPokemon(random, competition)
 
     standings = updateStanding(standings, winnerId, loserId, differential)
 
@@ -384,7 +388,8 @@ export function resolveCompetitionMatch(
   return resolvedCompetition.status === 'active'
     ? {
         ...resolvedCompetition,
-        currentMatchRules: createBattleMatchRules(random, resolvedCompetition.aiDifficulty),
+        currentMatchRules: createBattleMatchRules(random, resolvedCompetition.aiDifficulty,
+          resolvedCompetition.battleFormat ?? resolvedCompetition.currentMatchRules?.format?.id ?? 'single'),
       }
     : resolvedCompetition
 }

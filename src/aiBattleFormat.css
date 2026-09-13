@@ -1,0 +1,102 @@
+.app-shell:has(> .ai-format-selection-screen),
+.app-shell:has(> .ai-format-competition-screen) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.app-shell:is(.battle-select-view, .competition-view) > .topbar {
+  flex: 0 0 auto;
+}
+
+.app-shell:is(.battle-select-view, .competition-view) > :is(.ai-format-selection-screen, .ai-format-competition-screen) {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ai-format-selection-screen .battle-mode-select-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+}
+
+.ai-battle-format-selector {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ai-battle-format-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-battle-format-options > button {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 43px;
+  padding: 8px 12px;
+  border: 1px solid #627aa855;
+  border-radius: 11px;
+  color: #a7bbd8;
+  background: #070f2c99;
+  cursor: pointer;
+}
+
+.ai-battle-format-options > button[aria-pressed="true"] {
+  border-color: #7de7ff99;
+  color: #dcfaff;
+  background: #235b7380;
+  box-shadow: inset 0 0 0 1px #7de7ff22;
+}
+
+.ai-battle-format-options > button:focus-visible {
+  outline: 2px solid #dfff67;
+  outline-offset: 2px;
+}
+
+.ai-battle-format-options strong { font-size: 12px; }
+.ai-battle-format-options span { font-size: 9px; text-align: right; }
+.ai-battle-format-rules { display: grid; gap: 3px; padding-inline: 3px; }
+.ai-battle-format-rules strong { color: #cbeafb; font-size: 10px; }
+.ai-battle-format-rules span { color: #93accb; font-size: 9px; line-height: 1.5; }
+
+.ai-format-competition-screen .ai-battle-selection-help {
+  margin: 0 0 8px;
+  color: #aecbe3;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.ai-format-competition-screen .competition-team-selection button > b.ai-selection-lead {
+  width: auto;
+  min-width: 18px;
+  padding-inline: 5px;
+  border-radius: 6px;
+}
+
+.ai-format-competition-screen .competition-team-selection button[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (min-width: 1081px) and (max-height: 800px) {
+  .ai-format-selection-screen .battle-mode-option-list { grid-template-rows: repeat(2, minmax(110px, 1fr)); }
+  .ai-format-selection-screen .battle-mode-option-card { min-height: 110px; padding-block: 8px; }
+  .ai-format-selection-screen .battle-mode-option-copy > em { display: none; }
+  .ai-format-selection-screen .battle-mode-option-art { width: 72px; height: 72px; }
+}
+
+html[data-mobile-layout="landscape"] .ai-format-selection-screen .battle-mode-select-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+}
+
+@media (max-width: 1080px) {
+  .ai-battle-format-options > button { grid-template-columns: auto minmax(0, 1fr); gap: 3px 7px; }
+  .ai-battle-format-options > button > svg { grid-row: span 2; }
+  .ai-battle-format-options span { text-align: left; }
+}

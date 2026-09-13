@@ -1,3 +1,5 @@
+import { getRankedFormat } from './rankedRules.js'
+
 export const BATTLE_WEATHERS = [
   { id: 'clear', label: '맑음', shortLabel: '맑음', description: '특별한 날씨 보정이 적용되지 않는 기본 상태입니다.' },
   { id: 'sun', label: '쾌청', shortLabel: '쾌청', description: '불꽃타입 기술은 1.5배, 물타입 기술은 0.5배가 됩니다. 솔라빔과 솔라블레이드는 즉시 발동합니다.' },
@@ -49,6 +51,7 @@ export const BATTLE_FORMATS = [
 export const BATTLE_TEAM_RULES = [
   { id: 'full', label: '6대6', shortLabel: '6대6', battleSize: 6, description: '등록한 포켓몬 6마리를 모두 사용합니다.' },
   { id: 'pick3', label: '3대3', shortLabel: '3대3', battleSize: 3, description: '등록한 포켓몬 6마리 중 대전에 참가할 3마리를 선택합니다.' },
+  { id: 'pick4', label: '4대4', shortLabel: '4대4', battleSize: 4, description: '등록한 포켓몬 6마리 중 대전에 참가할 4마리를 선택합니다. 먼저 고른 2마리가 선봉으로 나갑니다.' },
 ]
 
 export const BATTLE_GIMMICK_RESTRICTIONS = [
@@ -123,10 +126,6 @@ export function getBattleRuleDescription(kind, rule) {
   return BATTLE_RULE_COLLECTIONS[kind]?.find((entry) => entry.id === rule.id)?.description ?? ''
 }
 
-function randomEntry(entries, random) {
-  return entries[Math.floor(random() * entries.length)]
-}
-
 function stableShuffle(entries, seed) {
   const shuffled = [...entries]
   let value = Math.max(1, Number(seed) || 1) >>> 0
@@ -145,19 +144,25 @@ function stableShuffle(entries, seed) {
   return shuffled
 }
 
-export function createBattleMatchRules(random = Math.random, aiDifficulty = 'normal') {
-  const weather = randomEntry(BATTLE_WEATHERS, random)
-  const terrain = randomEntry(BATTLE_TERRAINS, random)
-  const format = randomEntry(BATTLE_FORMATS, random)
-  const teamRule = randomEntry(BATTLE_TEAM_RULES, random)
-  const gimmickRestriction = randomEntry(BATTLE_GIMMICK_RESTRICTIONS, random)
+export function createBattleMatchRules(random = Math.random, aiDifficulty = 'normal', formatId = 'single') {
+  const registeredFormat = getRankedFormat(formatId) ?? getRankedFormat('single')
+  const weather = BATTLE_WEATHERS.find(entry => entry.id === 'clear')
+  const terrain = BATTLE_TERRAINS.find(entry => entry.id === 'neutral')
+  const format = BATTLE_FORMATS.find(entry => entry.id === registeredFormat.id)
+  const teamRule = BATTLE_TEAM_RULES.find(entry => entry.id === `pick${registeredFormat.battleSize}`)
+  const gimmickRestriction = {
+    ...BATTLE_GIMMICK_RESTRICTIONS[0],
+    label: '기믹별 1회',
+    shortLabel: '기믹별 1회',
+    description: '메가진화·Z기술·다이맥스·테라스탈·원시회귀를 각각 대전당 1회 사용할 수 있습니다.',
+  }
 
   return {
     id: `rules-${Date.now()}-${Math.floor(random() * 1_000_000)}`,
-    weather,
-    terrain,
-    format,
-    teamRule,
+    weather: { ...weather },
+    terrain: { ...terrain },
+    format: { ...format },
+    teamRule: { ...teamRule },
     disabledGimmickId: gimmickRestriction.id,
     gimmickRestriction,
     aiDifficulty: normalizeAiBattleDifficulty(aiDifficulty),
@@ -190,7 +195,7 @@ export function getPlayerBattleSelectionCount(rules, pokemonCount = 0) {
     rosterSize,
     Math.max(0, Math.floor(Number(rules?.teamRule?.battleSize) || rosterSize)),
   )
-  if (rules?.teamRule?.id === 'pick3') return battleSize
+  if (rules?.teamRule && rules.teamRule.id !== 'full') return battleSize
   return Math.min(
     battleSize,
     Math.max(1, Math.floor(Number(rules?.format?.activeSlots) || 1)),

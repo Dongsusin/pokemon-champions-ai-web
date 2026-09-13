@@ -687,7 +687,7 @@ export function GameApp({
     setActiveTeamId(teamId)
   }
 
-  const startBattleMode = (battleMode, aiDifficulty = 'normal') => {
+  const startBattleMode = (battleMode, aiDifficulty = 'normal', battleFormat = 'single') => {
     if (teamIds.length !== BATTLE_TEAM_SIZE) {
       gameAudioRef.current?.playEvent('error')
       showNotice(`배틀에 참가하려면 ${activeTeam?.name ?? '선택한 팀'}에 포켓몬 6마리를 편성해주세요.`)
@@ -702,6 +702,8 @@ export function GameApp({
       activeTeamPokemon,
       activeTeam.name,
       aiDifficulty,
+      Math.random,
+      battleFormat,
     )
     const battleModeName = battleMode === 'league' ? '8인 리그전' : '128강 토너먼트'
 

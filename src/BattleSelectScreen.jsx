@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { ALL_BATTLE_ITEMS as BATTLE_ITEMS } from './data/shopData'
 import { BATTLE_TEAM_SIZE } from './data/teamData'
+import { getRankedFormat, RANKED_FORMATS } from './data/rankedRules'
+import './aiBattleFormat.css'
 import { typeClassName } from './data/trainingData'
 import {
   AI_BATTLE_DIFFICULTIES,
@@ -60,6 +62,7 @@ function BattleSelectScreen({
   onStartMode,
 }) {
   const [selectedModeId, setSelectedModeId] = useState(BATTLE_MODES[0].id)
+  const [selectedFormatId, setSelectedFormatId] = useState('single')
   const [selectedDifficultyId, setSelectedDifficultyId] = useState('normal')
   const [hardBoostStage, setHardBoostStage] = useState(HARD_AI_BOOST_STAGES[0])
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
@@ -69,6 +72,7 @@ function BattleSelectScreen({
       .filter(Boolean)
   ), [activeTeam?.pokemonIds, pokemon])
   const selectedMode = BATTLE_MODES.find((mode) => mode.id === selectedModeId) ?? BATTLE_MODES[0]
+  const selectedFormat = getRankedFormat(selectedFormatId)
   const selectedDifficulty = normalizeAiBattleDifficulty({
     id: selectedDifficultyId,
     boostStage: hardBoostStage,
@@ -80,7 +84,7 @@ function BattleSelectScreen({
   const isBattleReady = activeTeamPokemon.length === BATTLE_TEAM_SIZE
 
   return (
-    <main className="battle-select-screen">
+    <main className="battle-select-screen ai-format-selection-screen">
       <header className="battle-select-header">
         <button className="screen-back-button" type="button" aria-label="배틀 종류 선택으로 돌아가기" onClick={onBack}>
           <ArrowLeft size={19} />
@@ -186,6 +190,27 @@ function BattleSelectScreen({
             <span className="battle-mode-count"><Swords size={16} /> 2 MODES</span>
           </div>
 
+          <section className="ai-battle-format-selector" aria-label="AI 대전 배틀 형식 선택">
+            <div className="ai-battle-format-options" role="group" aria-label="싱글 또는 더블 선택">
+              {RANKED_FORMATS.map((format) => (
+                <button
+                  type="button"
+                  key={format.id}
+                  aria-pressed={selectedFormatId === format.id}
+                  onClick={() => setSelectedFormatId(format.id)}
+                >
+                  {format.id === 'single' ? <Swords size={18} /> : <UsersRound size={18} />}
+                  <strong>{format.label}</strong>
+                  <span>{format.registeredSize}마리 중 {format.battleSize}마리 선출</span>
+                </button>
+              ))}
+            </div>
+            <div className="ai-battle-format-rules">
+              <strong>Lv.50 · 맑음 · 일반 필드 · 기믹별 1회</strong>
+              <span>선택한 형식으로 대회 끝까지 진행합니다. 기술·특성으로 생긴 날씨와 필드는 정상 지속시간을 따릅니다.</span>
+            </div>
+          </section>
+
           <div className="battle-mode-option-list">
             {BATTLE_MODES.map((mode) => {
               const ModeIcon = mode.icon
@@ -272,13 +297,13 @@ function BattleSelectScreen({
               <small>SELECTED COMPETITION</small>
               <strong>{selectedMode.title}</strong>
               <em>
-                {activeTeam?.name ?? '팀 1'} · {activeTeamPokemon.length}/{BATTLE_TEAM_SIZE}마리 · AI {getAiBattleDifficultyLabel(selectedDifficulty)}
+                {activeTeam?.name ?? '팀 1'} · {selectedFormat.label} · {selectedFormat.battleSize}마리 선출 · AI {getAiBattleDifficultyLabel(selectedDifficulty)}
               </em>
             </span>
             <button
               type="button"
               disabled={!isBattleReady}
-              onClick={() => onStartMode(selectedMode.id, selectedDifficulty)}
+              onClick={() => onStartMode(selectedMode.id, selectedDifficulty, selectedFormatId)}
             >
               <Swords size={18} />
               {isBattleReady ? '이 모드로 시작' : '팀 편성 후 참가'}

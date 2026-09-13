@@ -25,6 +25,7 @@ import { createBattlePreviewPokemon } from './data/battleEngine'
 import { getTrainerTeam } from './data/trainerTeams'
 import { getSpeciesProfile } from './data/trainingData'
 import { getBattleRuleSummary, getPlayerBattleSelectionCount } from './data/battleRules'
+import './aiBattleFormat.css'
 
 function pokemonIconSources(slot) {
   const profile = getSpeciesProfile(slot.speciesId)
@@ -113,13 +114,14 @@ function BattleRuleBoard({ rules }) {
   )
 }
 
-function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label, getInspectorProps, onToggle }) {
+function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, activeSlots, label, getInspectorProps, onToggle }) {
   return (
     <section className="competition-team-selection" aria-label={label}>
       <header>
         <span>{label}</span>
         <strong>{selectedCaptureIds.length} / {requiredCount}</strong>
       </header>
+      <p className="ai-battle-selection-help">선택한 순서대로 출전하며 {activeSlots === 2 ? '1·2번이 함께 선봉' : '1번이 선봉'}입니다. 다시 누르면 선택을 취소합니다.</p>
       <div>
         {pokemon.map((entry, index) => {
           const selectedIndex = selectedCaptureIds.indexOf(entry.captureId)
@@ -133,12 +135,14 @@ function BattleTeamSelection({ pokemon, selectedCaptureIds, requiredCount, label
               type="button"
               key={entry.captureId}
               aria-pressed={selected}
+              aria-disabled={!selected && selectedCaptureIds.length >= requiredCount}
+              aria-label={`${entry.name}${selected ? `, ${selectedIndex + 1}번 ${selectedIndex < activeSlots ? '선봉' : '출전'}` : ', 출전 선택'}`}
               onClick={() => onToggle(entry.captureId)}
             >
               <small>{String(index + 1).padStart(2, '0')}</small>
               <SpriteImage src={sources.primary} alt="" draggable="false" fallbackSrc={sources.fallback} />
               <span>{entry.name}</span>
-              {selected && <b>{selectedIndex + 1}</b>}
+              {selected && <b className={selectedIndex < activeSlots ? 'ai-selection-lead' : ''}>{selectedIndex + 1}{selectedIndex < activeSlots && ' 선봉'}</b>}
             </button>
           )
         })}
@@ -487,9 +491,8 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   const matchRules = currentMatch?.rules
   const requiredPokemonCount = getPlayerBattleSelectionCount(matchRules, competition.playerTeam.length)
   const requiresPokemonSelection = Boolean(matchRules && requiredPokemonCount > 0)
-  const pokemonSelectionLabel = matchRules?.teamRule?.id === 'pick3'
-    ? 'SELECT BATTLE TEAM'
-    : '선발 포켓몬 선택'
+  const activeSlots = matchRules?.format?.id === 'double' ? 2 : 1
+  const pokemonSelectionLabel = `${requiredPokemonCount}마리를 출전 순서대로 선택하세요`
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
   const [isBracketOpen, setIsBracketOpen] = useState(false)
   const [hoveredPokemonInspection, setHoveredPokemonInspection] = useState(null)
@@ -498,9 +501,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   const inspectedPokemonKey = inspectedPokemon?.key ?? null
 
   useEffect(() => {
-    setSelectedCaptureIds(competition.playerTeam
-      .slice(0, requiredPokemonCount)
-      .map((pokemon) => pokemon.captureId))
+    setSelectedCaptureIds([])
   }, [competition.id, competition.round, matchRules?.id, requiredPokemonCount])
 
   useEffect(() => {
@@ -523,7 +524,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   const toggleSelectedPokemon = (captureId) => {
     setSelectedCaptureIds((currentIds) => {
       if (currentIds.includes(captureId)) return currentIds.filter((id) => id !== captureId)
-      if (currentIds.length >= requiredPokemonCount) return [...currentIds.slice(1), captureId]
+      if (currentIds.length >= requiredPokemonCount) return currentIds
       return [...currentIds, captureId]
     })
   }
@@ -566,7 +567,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   }
 
   return (
-    <main className="competition-screen">
+    <main className="competition-screen ai-format-competition-screen">
       <header className="competition-header">
         <button className="screen-back-button" type="button" onClick={onBack}>
           <ArrowLeft size={19} />
@@ -631,6 +632,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
               pokemon={playerPreviewPokemon}
               selectedCaptureIds={selectedCaptureIds}
               requiredCount={requiredPokemonCount}
+              activeSlots={activeSlots}
               label={pokemonSelectionLabel}
               getInspectorProps={getInspectorProps}
               onToggle={toggleSelectedPokemon}

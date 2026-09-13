@@ -2491,14 +2491,12 @@ function BattleScreen({
   })
   const weatherTurns = battle.environment?.weatherTurns
   const terrainTurns = battle.environment?.terrainTurns
-  const baseWeatherLabel = battle.environment?.baseWeather?.label ?? battle.rules.weather.label
-  const baseTerrainLabel = battle.environment?.baseTerrain?.label ?? battle.rules.terrain.label
   const weatherDescription = `${getBattleRuleDescription('weather', battle.rules.weather)} ${Number.isFinite(weatherTurns)
-    ? `현재 임시 날씨이며 ${weatherTurns}턴 뒤 기본 날씨인 ${baseWeatherLabel} 상태로 돌아갑니다.`
-    : `이 대전의 기본 날씨는 ${baseWeatherLabel}입니다.`}`
+    ? `현재 날씨는 ${weatherTurns}턴 뒤 종료되어 맑음 상태로 돌아갑니다.`
+    : ''}`.trim()
   const terrainDescription = `${getBattleRuleDescription('terrain', battle.rules.terrain)} ${Number.isFinite(terrainTurns)
-    ? `현재 임시 필드이며 ${terrainTurns}턴 뒤 기본 필드인 ${baseTerrainLabel} 상태로 돌아갑니다.`
-    : `이 대전의 기본 필드는 ${baseTerrainLabel}입니다.`}`
+    ? `현재 필드는 ${terrainTurns}턴 뒤 종료되어 일반 필드로 돌아갑니다.`
+    : ''}`.trim()
 
   return (
     <main
