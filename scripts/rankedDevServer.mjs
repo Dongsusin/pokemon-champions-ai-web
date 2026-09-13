@@ -35,11 +35,11 @@ export function createRankedTestTeams() {
 }
 
 export async function startRankedDevServer({ port = 8787, host = '127.0.0.1', testAccounts = false,
-  filename = 'scripts/.cache/ranked-test/state.json', store: suppliedStore, engine: suppliedEngine, timeouts, usageEnabled = false } = {}) {
+  filename = 'scripts/.cache/ranked-test/state.json', store: suppliedStore, engine: suppliedEngine, fixtures: suppliedFixtures, timeouts, usageEnabled = false } = {}) {
   if (!['127.0.0.1', '::1'].includes(host)) throw new Error('Ranked development server must bind a loopback address')
   const authenticate = createLocalRankedAuthenticator({ enabled: testAccounts })
   const engine = suppliedEngine ?? await import('../server/rankedBattle.js')
-  const fixtures = createRankedTestTeams().map(team => ({ ...team, pokemon: engine.canonicalizeRankedTeam(team.pokemon, { format: 'single' }) }))
+  const fixtures = (suppliedFixtures ?? createRankedTestTeams()).map(team => ({ ...team, pokemon: engine.canonicalizeRankedTeam(team.pokemon, { format: 'single' }) }))
   const store = suppliedStore ?? await createFileRankedStore(filename)
   const service = createRankedService({ store, engine, fixtures, timeouts, usageEnabled })
   const handler = createRankedHttpHandler({ service, authenticate, enabled: true, allowLocalOrigins: true })

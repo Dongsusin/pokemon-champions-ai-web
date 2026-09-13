@@ -5,7 +5,9 @@ import { join } from 'node:path'
 import { createRankedService } from '../server/rankedService.js'
 import { createMemoryRankedStore, createFileRankedStore, createFirestoreRankedStore } from '../server/rankedStore.js'
 import { createLocalRankedAuthenticator, createRankedHttpHandler } from '../server/rankedHttp.js'
-import { createEmptyUsageSnapshot } from '../src/data/pokemonUsage.js'
+import { createEmptyUsageSnapshot, getPokemonItemUsage } from '../src/data/pokemonUsage.js'
+import * as realBattleEngine from '../server/rankedBattle.js'
+import { createRankedTestTeams } from './rankedDevServer.mjs'
 
 const tests = []
 const test = (name, run) => tests.push({ name, run })
@@ -297,6 +299,180 @@ test('Firestore adapter commits usage only after reads and retries AI commands w
   assert.equal(usage.buckets['ai-single'].teamCount, 1)
   assert.equal(documents.size, 2)
   assert.ok([...documents.keys()].every(path => path.startsWith('usageValidation_')))
+})
+
+test('AI reports count actual item-bearing individuals, explicit no-item and unknown legacy history separately', async () => {
+  const env = environment()
+  await env.call('alice', 'reportAiUsage', report('legacy-before-item-records', 'single', [25, 6]))
+  const payload = { ...report('items-in-ai-battle-0001', 'single', [25, 6, 10034]), team: [
+    { speciesId: 25, heldItemId: 'light-ball' },
+    { speciesId: 6, heldItemId: 'life-orb' },
+    { speciesId: 10034, heldItemId: null },
+  ] }
+  // 10034 is Charizard Mega X: two selected forms produce one species/team
+  // observation and two independently observed item samples.
+  const first = await env.call('alice', 'reportAiUsage', payload)
+  const bucket = first.usage.buckets['ai-single']
+  assert.equal(bucket.teamCount, 2)
+  assert.equal(bucket.counts[6], 2)
+  assert.equal(bucket.itemSamples[6], 2)
+  assert.equal(bucket.itemSamples[25], 1)
+  assert.deepEqual(getPokemonItemUsage(bucket, 6), {
+    sampleCount: 2, noItemCount: 1, items: [{ rank: 1, itemId: 'life-orb', count: 1, rate: 50 }],
+  })
+  assert.equal(first.usage.buckets['ai-double'].teamCount, 0)
+  const second = await env.call('alice', 'reportAiUsage', {
+    ...report('items-in-ai-battle-0002', 'single', [25]), team: [{ speciesId: 25, heldItemId: 'focus-sash' }],
+  })
+  assert.deepEqual(getPokemonItemUsage(second.usage.buckets['ai-single'], 25).items, [
+    { rank: 1, itemId: 'focus-sash', count: 1, rate: 50 },
+    { rank: 2, itemId: 'light-ball', count: 1, rate: 50 },
+  ])
+})
+
+test('ranked item usage records each selected human Pokémon at battle start and excludes benched items', async () => {
+  for (const format of ['single', 'double']) {
+    const env = environment()
+    const left = team('alice').map((entry, index) => ({ ...entry, heldItemId: ['light-ball', 'life-orb', null, 'leftovers', 'choice-specs', 'assault-vest'][index] }))
+    const right = team('bob').map((entry, index) => ({ ...entry, heldItemId: ['focus-sash', 'leftovers', 'choice-scarf', null, 'life-orb', 'sitrus-berry'][index] }))
+    await env.call('alice', 'join', { format, team: left })
+    const match = (await env.call('bob', 'join', { format, team: right })).match
+    const selection = format === 'single' ? [0, 1, 2] : [0, 1, 2, 3]
+    const selected = { matchId: match.id, revision: match.revision, selection }
+    await env.call('alice', 'select', selected)
+    assert.deepEqual((await env.call('alice', 'usage')).buckets[`ranked-${format}`].itemSamples, {})
+    await env.call('bob', 'select', selected)
+    const result = await env.call('alice', 'usage')
+    const bucket = result.buckets[`ranked-${format}`]
+    assert.deepEqual(getPokemonItemUsage(bucket, 25), {
+      sampleCount: 2, noItemCount: 0, items: [
+        { rank: 1, itemId: 'focus-sash', count: 1, rate: 50 },
+        { rank: 2, itemId: 'light-ball', count: 1, rate: 50 },
+      ],
+    })
+    assert.equal(getPokemonItemUsage(bucket, 149).noItemCount, 1)
+    assert.equal(bucket.itemSamples[94], undefined, 'Unselected team members must not contribute item samples')
+    assert.equal(bucket.itemSamples[9], undefined)
+    assert.equal(Object.values(bucket.itemSamples).reduce((sum, count) => sum + count, 0), selection.length * 2)
+    await env.call('alice', 'status', { matchId: match.id })
+    await env.call('bob', 'forfeit', { matchId: match.id })
+    assert.deepEqual(await env.call('alice', 'usage'), result)
+  }
+})
+
+test('real ranked team canonicalization starts battles and records empty-string equipment as observed no-item', async () => {
+  for (const format of ['single', 'double']) {
+    const env = environment({ engine: realBattleEngine })
+    const fixtures = createRankedTestTeams()
+    const rawTeams = fixtures.map(fixture => fixture.pokemon)
+    rawTeams[0][0].heldItemId = 'light-ball'
+    const canonical = rawTeams.map(entries => realBattleEngine.canonicalizeRankedTeam(entries, { format }))
+    assert.equal(canonical[0][0].heldItemId, 'light-ball')
+    assert(canonical[0].slice(1).every(entry => entry.heldItemId === ''), 'Exercise the real canonicalizer unequipped representation')
+    assert(canonical[1].every(entry => entry.heldItemId === ''))
+    await env.call('alice', 'join', { format, team: rawTeams[0] })
+    const match = (await env.call('bob', 'join', { format, team: rawTeams[1] })).match
+    const selection = format === 'single' ? [0, 1, 2] : [0, 1, 2, 3]
+    const selected = { matchId: match.id, revision: match.revision, selection }
+    await env.call('alice', 'select', selected)
+    const started = await env.call('bob', 'select', selected)
+    assert.equal(started.match.phase, 'battle', 'Both selections must successfully create a real battle')
+    const bucket = (await env.call('alice', 'usage')).buckets[`ranked-${format}`]
+    assert.equal(bucket.teamCount, 2)
+    for (const entries of canonical) for (const index of selection) {
+      const entry = entries[index]
+      const actual = getPokemonItemUsage(bucket, entry.speciesId)
+      assert.equal(actual.sampleCount, 1)
+      assert.equal(actual.noItemCount, entry.heldItemId ? 0 : 1)
+      assert.equal(actual.items.length, entry.heldItemId ? 1 : 0)
+      if (entry.heldItemId) assert.equal(actual.items[0].itemId, entry.heldItemId)
+    }
+    assert.equal(Object.values(bucket.itemSamples).reduce((sum, count) => sum + count, 0), selection.length * 2)
+    await env.call('alice', 'forfeit', { matchId: match.id })
+    assert.deepEqual((await env.call('bob', 'usage')).buckets[`ranked-${format}`], bucket)
+  }
+})
+
+test('item report replay hashes are order-independent but reject changed items or individual counts', async () => {
+  const env = environment()
+  const payload = { ...report('detailed-repeat-0001', 'double', [25, 6, 6]), team: [
+    { speciesId: 25, heldItemId: 'light-ball' },
+    { speciesId: 6, heldItemId: 'life-orb' },
+    { speciesId: 6, heldItemId: null },
+  ] }
+  const first = await env.call('alice', 'reportAiUsage', payload)
+  assert.equal((await env.call('alice', 'reportAiUsage', { ...payload, speciesIds: [6, 25, 6], team: [...payload.team].reverse() })).accepted, false)
+  await rejectsCode(env.call('alice', 'reportAiUsage', { ...payload, team: payload.team.map((entry, index) => index === 0 ? { ...entry, heldItemId: 'focus-sash' } : entry) }), 'USAGE_EVENT_REUSED')
+  await rejectsCode(env.call('alice', 'reportAiUsage', { ...payload, speciesIds: [25, 6], team: payload.team.slice(0, 2) }), 'USAGE_EVENT_REUSED')
+  assert.deepEqual(await env.call('alice', 'usage'), first.usage)
+})
+
+test('legacy receipt and outbox retries remain compatible without retroactive item samples or duplicate counts', async () => {
+  const env = environment()
+  const oldPayload = report('old-itemless-event-0001', 'single', [25])
+  const oldResult = await env.call('alice', 'reportAiUsage', oldPayload)
+  assert.equal((await env.call('alice', 'reportAiUsage', { ...oldPayload, team: [{ speciesId: 25, heldItemId: 'light-ball' }] })).accepted, false)
+  assert.deepEqual(await env.call('alice', 'usage'), oldResult.usage)
+  const newPayload = { ...report('new-detailed-event-0001', 'single', [25]), team: [{ speciesId: 25, heldItemId: 'focus-sash' }] }
+  const newResult = await env.call('alice', 'reportAiUsage', newPayload)
+  assert.equal((await env.call('alice', 'reportAiUsage', report(newPayload.battleId, 'single', [25]))).accepted, false)
+  assert.deepEqual(await env.call('alice', 'usage'), newResult.usage)
+  assert.equal(newResult.usage.buckets['ai-single'].itemSamples[25], 1)
+})
+
+test('malformed or mismatched item teams reject the entire event before persistence', async () => {
+  const env = environment()
+  const payload = report('invalid-item-team-0001', 'single', [25, 6])
+  const validTeam = [{ speciesId: 25, heldItemId: 'light-ball' }, { speciesId: 6, heldItemId: null }]
+  for (const team of [null, {}, [], [validTeam[0]], [25, 6], [validTeam[0], { speciesId: 6 }],
+    [validTeam[0], { speciesId: 9, heldItemId: null }],
+    [validTeam[0], { speciesId: 25, heldItemId: null }],
+    [validTeam[0], { speciesId: '6', heldItemId: null }],
+    [validTeam[0], { speciesId: 6, heldItemId: 'unknown-item' }],
+    [validTeam[0], { speciesId: 6, heldItemId: '' }],
+    [validTeam[0], { speciesId: 6, heldItemId: '__proto__' }],
+    [validTeam[0], { speciesId: 6, heldItemId: {} }],
+    [validTeam[0], { speciesId: 6, heldItemId: 123 }],
+    [validTeam[0], { speciesId: 6, heldItemId: undefined }],
+  ]) await rejectsCode(env.call('alice', 'reportAiUsage', { ...payload, team }), 'INVALID_USAGE_TEAM')
+  assert.deepEqual((await env.store.inspect()).collections, {})
+})
+
+test('concurrent item reports accumulate exactly once and preserve their actual item mix', async () => {
+  const env = environment()
+  const payloads = Array.from({ length: 30 }, (_, index) => ({
+    ...report(`concurrent-item-report-${index}`, 'single', [25]),
+    team: [{ speciesId: 25, heldItemId: index % 3 === 0 ? null : index % 3 === 1 ? 'light-ball' : 'focus-sash' }],
+  }))
+  const responses = await Promise.all(payloads.flatMap(payload => [env.call('alice', 'reportAiUsage', payload), env.call('alice', 'reportAiUsage', payload)]))
+  assert.equal(responses.filter(response => response.accepted).length, 30)
+  const bucket = (await env.call('alice', 'usage')).buckets['ai-single']
+  assert.equal(bucket.teamCount, 30)
+  assert.equal(bucket.itemSamples[25], 30)
+  assert.deepEqual(bucket.itemCounts[25], { 'light-ball': 10, 'focus-sash': 10 })
+  assert.equal(getPokemonItemUsage(bucket, 25).noItemCount, 10)
+})
+
+test('file-store restart preserves item counters and detailed item receipt conflicts', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'pokemon-item-usage-validation-'))
+  const filename = join(directory, 'state.json')
+  let store
+  try {
+    store = await createFileRankedStore(filename)
+    const env = environment({ store })
+    const payload = { ...report('durable-item-event-0001', 'single', [25]), team: [{ speciesId: 25, heldItemId: 'light-ball' }] }
+    const first = await env.call('alice', 'reportAiUsage', payload)
+    await store.close()
+    store = await createFileRankedStore(filename)
+    const restarted = environment({ store })
+    assert.equal((await restarted.call('alice', 'reportAiUsage', payload)).accepted, false)
+    assert.deepEqual(await restarted.call('alice', 'usage'), first.usage)
+    await rejectsCode(restarted.call('alice', 'reportAiUsage', { ...payload, team: [{ speciesId: 25, heldItemId: null }] }), 'USAGE_EVENT_REUSED')
+  } finally {
+    await store?.close()
+    await unlink(filename)
+    await rmdir(directory)
+  }
 })
 
 for (const { name, run } of tests) {

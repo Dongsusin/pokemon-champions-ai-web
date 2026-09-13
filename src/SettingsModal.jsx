@@ -243,6 +243,7 @@ function SettingsModal({
   settings,
   achievementProgress,
   pokemonUsage,
+  itemInventory = {},
   balance = 0,
   initialTab = 'game',
   user,
@@ -455,7 +456,7 @@ function SettingsModal({
             </div>
           ) : activeTab === 'usage' ? (
             <div className="settings-usage-panel" id="settings-usage-panel" role="tabpanel" aria-labelledby="settings-usage-tab">
-              {pokemonUsage ? <PokemonUsagePanel usage={pokemonUsage} embedded /> : <p>사용률 집계를 준비하고 있습니다.</p>}
+              {pokemonUsage ? <PokemonUsagePanel usage={pokemonUsage} inventory={itemInventory} embedded /> : <p>사용률 집계를 준비하고 있습니다.</p>}
             </div>
           ) : (
             <AccountPanel

@@ -1,6 +1,6 @@
 import { createServer } from 'vite'
 import { createFileRankedStore } from '../server/rankedStore.js'
-import { createDemoUsageSnapshot } from '../src/data/pokemonUsage.js'
+import { assertUsageBucket, createDemoUsageSnapshot } from '../src/data/pokemonUsage.js'
 import { startRankedDevServer } from './rankedDevServer.mjs'
 
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
@@ -26,11 +26,24 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
 try {
   store = await createFileRankedStore('scripts/.cache/pokemon-usage-test/state.json')
   await store.transaction(async tx => {
-    if (await tx.get('pokemonUsageDemo', 'seed-v1')) return
+    const seeded = await tx.get('pokemonUsageDemo', 'seed-v1')
+    const itemsSeeded = await tx.get('pokemonUsageDemo', 'items-v1')
+    if (seeded && itemsSeeded) return
     for (const [key, bucket] of Object.entries(createDemoUsageSnapshot().buckets)) {
-      if (!await tx.get('pokemonUsage', key)) tx.set('pokemonUsage', key, bucket)
+      const current = await tx.get('pokemonUsage', key)
+      if (!current) tx.set('pokemonUsage', key, bucket)
+      else if (seeded && !itemsSeeded && current.itemSamples === undefined && current.itemCounts === undefined
+        && current.teamCount >= bucket.teamCount
+        && Object.entries(bucket.counts).every(([id, count]) => (current.counts[id] ?? 0) >= count)) {
+        // Enrich only the known synthetic seed. Existing played teams/counts
+        // remain unchanged, and their historical items remain unknown.
+        const enriched = { ...current, itemSamples: bucket.itemSamples, itemCounts: bucket.itemCounts }
+        assertUsageBucket(enriched)
+        tx.set('pokemonUsage', key, enriched)
+      }
     }
     tx.set('pokemonUsageDemo', 'seed-v1', { seeded: true })
+    tx.set('pokemonUsageDemo', 'items-v1', { seeded: true })
   })
   backend = await startRankedDevServer({ port: 8788, store, testAccounts: true, usageEnabled: true })
   frontend = await createServer({ mode: 'ranked-test', plugins: [{ name: 'usage-demo-offline-auth', enforce: 'pre',

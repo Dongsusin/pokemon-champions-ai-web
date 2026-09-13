@@ -740,7 +740,8 @@ export function GameApp({
     settledBattleRef.current = null
     setScreen('battle')
     if (!pokemonUsage.recordAiBattle({ battleId: usageBattleId, format: rules.format.id,
-      speciesIds: playerTeam.map(pokemon => pokemon.speciesId) })) {
+      speciesIds: playerTeam.map(pokemon => pokemon.speciesId),
+      team: playerTeam.map(pokemon => ({ speciesId: pokemon.speciesId, heldItemId: pokemon.heldItemId || null })) })) {
       showNotice('대전은 시작됐지만 사용률 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인해주세요.')
     }
   }
@@ -1224,7 +1225,7 @@ export function GameApp({
       ) : screen === 'achievements' ? (
         <AchievementsScreen progress={achievementProgress} balance={vp} onBack={() => setScreen(achievementReturnScreen)} />
       ) : screen === 'usage' ? (
-        <PokemonUsagePanel usage={pokemonUsage} onBack={returnToLobby} />
+        <PokemonUsagePanel usage={pokemonUsage} inventory={itemInventory} onBack={returnToLobby} />
       ) : screen === 'shop' ? (
         <ShopScreen
           progress={achievementProgress}
@@ -1241,6 +1242,7 @@ export function GameApp({
           teamIds={teamIds}
           inventory={itemInventory}
           onBack={returnFromBox}
+          pokemonUsage={pokemonUsage}
           backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : '로비'}
           onEquipItem={equipBattleItem}
           onSetTeraType={setPokemonTeraType}
@@ -1271,6 +1273,7 @@ export function GameApp({
           balance={vp}
           settings={settings}
           pokemonUsage={pokemonUsage}
+          itemInventory={itemInventory}
           user={user}
           accountError={accountError}
           authBusy={authBusy}

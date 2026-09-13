@@ -30,7 +30,9 @@ export function createUsageOutbox({ uid, storage, send, onSnapshot = () => {}, k
       const entries = read()
       if (entries.some(entry => entry.battleId === report.battleId)) return true
       if (entries.length >= 200) throw new Error('사용률 전송 대기 기록이 가득 찼습니다. 연결 후 다시 시도해주세요.')
-      write([...entries, { battleId: report.battleId, format: report.format, speciesIds: [...report.speciesIds] }])
+      const selected = { battleId: report.battleId, format: report.format, speciesIds: [...report.speciesIds] }
+      if (report.team !== undefined) selected.team = report.team.map(member => ({ speciesId: member.speciesId, heldItemId: member.heldItemId }))
+      write([...entries, selected])
       return true
     },
     flush() {

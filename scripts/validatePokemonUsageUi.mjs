@@ -5,8 +5,9 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
-import { startRankedDevServer } from './rankedDevServer.mjs'
-import { canonicalUsageSpeciesId, createDemoUsageSnapshot, getUsageRanking, recordUsageTeams } from '../src/data/pokemonUsage.js'
+import { createRankedTestTeams, startRankedDevServer } from './rankedDevServer.mjs'
+import { canonicalUsageSpeciesId, createDemoUsageSnapshot, getCombinedPokemonItemUsage, getUsageRanking, recordUsageTeams } from '../src/data/pokemonUsage.js'
+import { getBattleItem, getVisibleBattleItems } from '../src/data/shopData.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
@@ -63,6 +64,10 @@ async function verifyRows(page, bucket, label) {
       rate: element.querySelector('.pokemon-usage-rate > strong').textContent,
       delta: element.querySelector('.pokemon-usage-change .pokemon-usage-rate-change').getAttribute('aria-label'),
       rankChange: element.querySelector('.pokemon-usage-rank-change').getAttribute('aria-label'),
+      items: [...element.querySelectorAll('.pokemon-usage-item-column [data-item-rank]')].map(item => ({
+        itemId: item.dataset.itemId, rank: Number(item.dataset.itemRank),
+        rate: item.querySelector('.pokemon-usage-item-copy > span').textContent,
+      })),
     })))
     assert.equal(rows.length, 20)
     actual.push(...rows)
@@ -78,6 +83,7 @@ async function verifyRows(page, bucket, label) {
     assert.equal(actual[index].delta, `직전 집계 대비 사용률 ${delta > 0 ? '+' : ''}${delta.toFixed(1)} 퍼센트포인트`)
     assert.equal(actual[index].rankChange, row.isNew ? '직전 집계에 없던 신규 사용'
       : row.rankDelta ? `직전 집계 대비 ${Math.abs(row.rankDelta)}위 ${row.rankDelta > 0 ? '상승' : '하락'}` : '직전 집계 대비 순위 유지')
+    assert.deepEqual(actual[index].items, row.itemUsage.items.map(item => ({ itemId: item.itemId, rank: item.rank, rate: `${item.rate.toFixed(1)}%` })), `${label}: per-Pokémon item ranking and percentages`)
   })
   await page.getByRole('button', { name: '1~20위 보기', exact: true }).click()
 }
@@ -126,7 +132,11 @@ async function submitMove(page) {
 }
 
 try {
+  const rankedItems = [['focus-sash', 'life-orb', 'assault-vest', '', '', ''], ['leftovers', 'sitrus-berry', '', 'choice-specs', '', '']]
+  const rankedFixtures = createRankedTestTeams().map((team, side) => ({ ...team,
+    pokemon: team.pokemon.map((member, index) => ({ ...member, heldItemId: rankedItems[side][index] })) }))
   backend = await startRankedDevServer({ port: 0, store, testAccounts: true, usageEnabled: true,
+    fixtures: rankedFixtures,
     timeouts: { selection: 180_000, turn: 180_000, playbackGrace: 0 } })
   Object.assign(process.env, { VITE_POKEMON_USAGE_ENABLED: 'true', VITE_POKEMON_USAGE_DEMO: 'true',
     VITE_RANKED_ENABLED: 'true', VITE_RANKED_LOCAL_TEST: 'true', VITE_RANKED_API_URL: backend.url })
@@ -190,6 +200,55 @@ try {
 
   step = 'start and play actual AI competition battle'
   await alice.locator('.pokemon-usage-back').click()
+  await alice.locator('.mode-collection').click()
+  await alice.locator('.pc-party-card').filter({ hasText: '피카츄' }).locator('button').first().click()
+  await alice.locator('.pokedex-held-item-button').click()
+  await alice.locator('.item-recommendation-card').first().waitFor()
+  await alice.waitForFunction(() => !document.querySelector('.item-recommendations [role="status"]'))
+  const demoInventory = await alice.evaluate(() => JSON.parse(localStorage.getItem('champions-battle-items-v1')))
+  const pikaRecommended = getCombinedPokemonItemUsage(seed, 25, { allowedItemIds: getVisibleBattleItems(demoInventory).map(item => item.id) })
+  const recommendationCards = alice.locator('.item-recommendation-card')
+  assert.deepEqual(await recommendationCards.evaluateAll(cards => cards.map(card => card.dataset.itemId)), pikaRecommended.items.map(item => item.itemId))
+  assert.deepEqual(await alice.locator('.item-equip-card[data-item-id]').evaluateAll(cards => cards.slice(0, 3).map(card => card.dataset.itemId)), pikaRecommended.items.map(item => item.itemId), 'Recommended owned items stay first in the inventory')
+  const berryCard = alice.locator('.item-recommendation-card[data-item-id="sitrus-berry"]')
+  assert.equal(await berryCard.isDisabled(), true, 'An item used by another Pokémon must not become equippable through recommendations')
+  await alice.getByRole('searchbox', { name: '보유 아이템 검색', exact: true }).fill('구애')
+  assert.equal(await recommendationCards.count(), 3, 'Search does not displace the pinned recommendations')
+  assert(await alice.locator('.item-equip-card[data-item-id]').count() > 0)
+  assert((await alice.locator('.item-equip-card[data-item-id]').allTextContents()).every(text => text.includes('구애')))
+  await alice.getByRole('searchbox', { name: '보유 아이템 검색', exact: true }).fill('')
+  await alice.screenshot({ path: path.join(output, '00-item-recommendations-before-equip.png') })
+  const equippedRecommendation = pikaRecommended.items.find(item => item.itemId === 'life-orb')
+  assert(equippedRecommendation)
+  await alice.locator('.item-recommendation-card[data-item-id="life-orb"]').click()
+  await alice.locator('.item-equip-panel').waitFor({ state: 'hidden' })
+  assert.match(await alice.locator('.pokedex-held-item-button').textContent(), new RegExp(getBattleItem('life-orb').name))
+  assert.equal(await alice.evaluate(() => JSON.parse(localStorage.getItem('champions-dex-v2')).find(member => member.speciesId === 25).heldItemId), 'life-orb')
+  await alice.setViewportSize({ width: 844, height: 390 })
+  await alice.locator('.pokedex-held-item-button').click()
+  await alice.locator('.item-recommendation-card').first().waitFor()
+  const equipMobile = await alice.locator('.item-equip-panel').evaluate(panel => {
+    const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height } }
+    const cards = [...panel.querySelectorAll('.item-recommendation-card')].map(card => {
+      const r = card.getBoundingClientRect()
+      return { ...rect(card), receivesPointer: card.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)) }
+    })
+    return { panel: rect(panel), list: rect(panel.querySelector('.item-equip-grid')), cards }
+  })
+  assert(equipMobile.panel.top >= 0 && equipMobile.panel.bottom <= 390 && equipMobile.panel.left >= 0 && equipMobile.panel.right <= 844, `Item picker fits landscape: ${JSON.stringify(equipMobile)}`)
+  assert(equipMobile.list.height >= 40, `Owned items retain a scrollable area: ${JSON.stringify(equipMobile)}`)
+  assert(equipMobile.cards.every(card => card.top >= 0 && card.bottom <= 390 && card.receivesPointer), `Recommendations stay visible and reachable: ${JSON.stringify(equipMobile)}`)
+  await alice.screenshot({ path: path.join(output, '00-item-recommendations-mobile.png') })
+  await alice.getByRole('button', { name: '지닌 도구 선택창 닫기', exact: true }).click()
+  await alice.setViewportSize({ width: 1440, height: 960 })
+  await alice.locator('.pc-party-card').filter({ hasText: '거북왕' }).locator('button').first().click()
+  await alice.locator('.pokedex-held-item-button').click()
+  await alice.locator('.item-equip-current').getByRole('button', { name: '장착 해제', exact: true }).click()
+  await alice.locator('.item-equip-panel').waitFor({ state: 'hidden' })
+  assert.equal(await alice.evaluate(() => JSON.parse(localStorage.getItem('champions-dex-v2')).find(member => member.speciesId === 9).heldItemId || null), null)
+  assert.match(await alice.locator('.pokedex-held-item-button').textContent(), /지닌 도구 없음/)
+  await alice.locator('.pc-header .screen-back-button').click()
+  log('item recommendations match weighted usage, stay first during search and equip through the real inventory', { speciesId: 25, topItems: pikaRecommended.items, equippedItemId: 'life-orb', equipMobile })
   await alice.locator('.mode-start').click()
   await alice.locator('.battle-hub-card.ai').click()
   await alice.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }).click()
@@ -206,8 +265,11 @@ try {
   const aiState = await alice.evaluate(() => window.__usageBattle.battle)
   const aiKey = `ai-${aiState.rules.format.id}`
   const selectedIds = aiState.player.team.map(member => canonicalUsageSpeciesId(member.speciesId))
+  const aiSelectedTeam = aiState.player.team.map(member => ({ speciesId: member.speciesId, heldItemId: member.heldItemId || null }))
+  assert.equal(aiSelectedTeam.find(member => member.speciesId === 25).heldItemId, 'life-orb')
+  assert.equal(aiSelectedTeam.find(member => member.speciesId === 9).heldItemId, null)
   const afterAi = await waitBucket(aiKey, beforeAi.buckets[aiKey].teamCount + 1)
-  assert.deepEqual(afterAi.buckets[aiKey], recordUsageTeams(beforeAi.buckets[aiKey], [selectedIds], afterAi.buckets[aiKey].updatedAt))
+  assert.deepEqual(afterAi.buckets[aiKey], recordUsageTeams(beforeAi.buckets[aiKey], [aiSelectedTeam], afterAi.buckets[aiKey].updatedAt))
   for (const key of Object.keys(beforeAi.buckets)) if (key !== aiKey) assert.deepEqual(afterAi.buckets[key], beforeAi.buckets[key])
   await waitBattleReady(alice)
   await submitMove(alice)
@@ -225,6 +287,7 @@ try {
   const firstReport = aiReports.find(entry => entry.format === aiState.rules.format.id)
   assert(firstReport, 'The actual GameApp must report its selected AI team')
   assert.deepEqual(firstReport.speciesIds.map(canonicalUsageSpeciesId), selectedIds)
+  assert.deepEqual(firstReport.team, aiSelectedTeam)
   log('actual AI move, forfeit and report produce exactly one selected human team', { bucket: aiKey, before: 298, after: 299, selectedIds })
 
   step = 'verify reload and result revisit do not report the same AI battle again'
@@ -270,7 +333,7 @@ try {
     }
     await Promise.all([alice, bob].map(waitBattleReady))
     const states = await Promise.all([alice, bob].map(page => page.evaluate(() => window.__usageBattle.battle)))
-    const teams = states.map(state => state.player.team.map(member => canonicalUsageSpeciesId(member.speciesId)))
+    const teams = states.map(state => state.player.team.map(member => ({ speciesId: member.speciesId, heldItemId: member.heldItemId || null })))
     const afterRanked = await waitBucket(rankedKey, beforeRanked.buckets[rankedKey].teamCount + 2)
     assert.deepEqual(afterRanked.buckets[rankedKey], recordUsageTeams(beforeRanked.buckets[rankedKey], teams, afterRanked.buckets[rankedKey].updatedAt))
     for (const key of Object.keys(beforeRanked.buckets)) if (key !== rankedKey) assert.deepEqual(afterRanked.buckets[key], beforeRanked.buckets[key])
@@ -328,7 +391,7 @@ try {
       closeButton: modalButton('.settings-close-button'), doneButton: modalButton('.settings-modal-footer button'),
       viewport: { width: innerWidth, height: innerHeight }, pageButtonReceivesPointer: Boolean(hit && pageButton.contains(hit)) }
   })
-  assert(mobileBounds.list.height >= 60, `The embedded ranking needs a usable scroll area: ${JSON.stringify(mobileBounds)}`)
+  assert(mobileBounds.list.height >= mobileBounds.lastRow.height, `The embedded ranking must fit a complete Pokémon row with its items: ${JSON.stringify(mobileBounds)}`)
   assert(mobileBounds.lastRow.top >= mobileBounds.list.top - 1 && mobileBounds.lastRow.bottom <= mobileBounds.list.bottom + 1, `The last ranked row must be reachable within the list: ${JSON.stringify(mobileBounds)}`)
   assert(mobileBounds.pagination.top >= 0 && mobileBounds.pagination.bottom <= 390, `Pagination must be visible without leaving the modal: ${JSON.stringify(mobileBounds)}`)
   assert(mobileBounds.pageButtonReceivesPointer, 'The page buttons must not be covered by another element')

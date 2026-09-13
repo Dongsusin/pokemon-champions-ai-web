@@ -4,10 +4,13 @@ import {
   USAGE_MODES,
   USAGE_FORMATS,
   canonicalUsageSpeciesId,
+  canonicalUsageTeamEntry,
   createDemoUsageSnapshot,
   createEmptyUsageSnapshot,
   createUsageBucket,
   getUsageRanking,
+  getPokemonItemUsage,
+  getCombinedPokemonItemUsage,
   mergeUsageSnapshots,
   recordUsageTeams,
   usageBucketKey,
@@ -187,4 +190,127 @@ for (const invalid of [null, {}, { ...oldResponse, buckets: {} }, { ...oldRespon
   assert.throws(() => mergeUsageSnapshots(invalid, newResponse), TypeError)
 }
 
-console.log('PASS Pokémon usage arithmetic, 100-place ranking, ties, deltas, forms, immutability, strict event/persistence validation, four isolated modes, deterministic demo data, and out-of-order snapshot merging')
+const legacyBucket = deepFreeze({ teamCount: 2, counts: { 25: 2, 6: 1 }, previous: { teamCount: 0, counts: {} }, updatedAt: 100 })
+assert.deepEqual(getPokemonItemUsage(legacyBucket, 25), { sampleCount: 0, noItemCount: 0, items: [] },
+  'Historical species-only samples must not be mislabeled as unequipped Pokémon')
+assert.deepEqual(canonicalUsageTeamEntry(25), { speciesId: 25 })
+assert.deepEqual(canonicalUsageTeamEntry({ speciesId: 25, heldItemId: null }), { speciesId: 25, heldItemId: null })
+const itemBefore = deepFreeze(recordUsageTeams(legacyBucket, [
+  [{ speciesId: 25, heldItemId: 'light-ball' }, { speciesId: 6, heldItemId: 'life-orb' }],
+  [{ speciesId: 25, heldItemId: 'focus-sash' }],
+  [{ speciesId: 25, heldItemId: null }],
+  [{ speciesId: 25, heldItemId: 'light-ball' }],
+  [{ speciesId: 25, heldItemId: 'life-orb' }],
+  [{ speciesId: 25, heldItemId: 'leftovers' }],
+], 6000))
+const pikachuItems = getPokemonItemUsage(itemBefore, 25)
+assert.equal(itemBefore.counts[25], 8)
+assert.equal(itemBefore.itemSamples[25], 6, 'Only six newly explicit item observations count toward item usage')
+assert.deepEqual({ ...pikachuItems, items: pikachuItems.items.map(({ rate, ...item }) => item) }, {
+  sampleCount: 6, noItemCount: 1,
+  items: [
+    { rank: 1, itemId: 'light-ball', count: 2 },
+    { rank: 2, itemId: 'focus-sash', count: 1 },
+    { rank: 3, itemId: 'leftovers', count: 1 },
+  ],
+})
+close(pikachuItems.items[0].rate, 100 / 3)
+close(pikachuItems.items[1].rate, 100 / 6)
+close(pikachuItems.items[2].rate, 100 / 6)
+assert.deepEqual(getUsageRanking(itemBefore).find(row => row.speciesId === 25).itemUsage, pikachuItems)
+const allowedItems = getPokemonItemUsage(itemBefore, 25, { allowedItemIds: new Set(['life-orb', 'leftovers']) })
+assert.deepEqual(allowedItems.items.map(item => item.itemId), ['leftovers', 'life-orb'])
+close(allowedItems.items[0].rate, 100 / 6)
+assert.equal(allowedItems.noItemCount, 1, 'Hidden/ineligible items must not be misrepresented as no item')
+assert.equal(getPokemonItemUsage(itemBefore, 25, { limit: 10 }).items.length, 4)
+assert.deepEqual(getPokemonItemUsage(itemBefore, 25, { limit: 0 }).items, [])
+assert.deepEqual(getPokemonItemUsage(itemBefore, 25, { allowedItemIds: [] }).items, [])
+assert.deepEqual(getPokemonItemUsage(itemBefore, 149), { sampleCount: 0, noItemCount: 0, items: [] })
+const itemAfter = recordUsageTeams(itemBefore, [[{ speciesId: 25, heldItemId: 'focus-sash' }]], 7000)
+assert.equal(itemAfter.itemSamples[25], 7)
+assert.equal(itemBefore.itemSamples[25], 6)
+assert.equal(itemBefore.itemCounts[25]['focus-sash'], 1, 'Nested item counts must not mutate the previous snapshot')
+assert.deepEqual(getPokemonItemUsage(itemAfter, 25).items.map(item => item.itemId), ['focus-sash', 'light-ball', 'leftovers'],
+  'The new observation must reorder tied items deterministically')
+const itemForms = recordUsageTeams(createUsageBucket(), [[
+  { speciesId: 6, heldItemId: 'life-orb' },
+  { speciesId: charizardForms[0].id, heldItemId: 'charizardite-x' },
+  { speciesId: charizardForms[1].id, heldItemId: null },
+  6,
+]], 7000)
+assert.equal(itemForms.counts[6], 1, 'Canonical species must still be deduplicated per team')
+assert.equal(itemForms.itemSamples[6], 3, 'Distinct selected individuals each supply one item observation')
+assert.equal(getPokemonItemUsage(itemForms, charizardForms[0].id).noItemCount, 1)
+close(getPokemonItemUsage(itemForms, 6).items[0].rate, 100 / 3)
+const unknownExtension = recordUsageTeams(itemBefore, [[25, { speciesId: 25 }]], 7000)
+assert.deepEqual(unknownExtension.itemSamples, itemBefore.itemSamples)
+assert.deepEqual(unknownExtension.itemCounts, itemBefore.itemCounts)
+for (const heldItemId of ['', 'not-an-item', '__proto__', undefined, 123, {}, []]) {
+  assert.throws(() => recordUsageTeams(itemBefore, [[{ speciesId: 25, heldItemId }]], 7000), TypeError)
+}
+for (const limit of [-1, 1.5, '3', NaN, Infinity]) assert.throws(() => getPokemonItemUsage(itemBefore, 25, { limit }), TypeError)
+for (const corrupt of [
+  { ...legacyBucket, itemSamples: {} },
+  { ...legacyBucket, itemCounts: {} },
+  { ...itemBefore, itemSamples: null },
+  { ...itemBefore, itemCounts: [] },
+  { ...itemBefore, itemSamples: { ...itemBefore.itemSamples, 999999: 1 } },
+  { ...itemBefore, itemSamples: { ...itemBefore.itemSamples, '025': 1 } },
+  { ...itemBefore, itemSamples: { ...itemBefore.itemSamples, 149: 1 } },
+  { ...itemBefore, itemSamples: { ...itemBefore.itemSamples, 25: 49 } },
+  { ...itemBefore, itemSamples: { ...itemBefore.itemSamples, 25: -1 } },
+  { ...itemBefore, itemSamples: { ...itemBefore.itemSamples, 25: 1.5 } },
+  { ...itemBefore, itemCounts: { ...itemBefore.itemCounts, 149: {} } },
+  { ...itemBefore, itemCounts: { ...itemBefore.itemCounts, 25: { 'not-an-item': 1 } } },
+  { ...itemBefore, itemCounts: { ...itemBefore.itemCounts, 25: { 'light-ball': 7 } } },
+  { ...itemBefore, itemCounts: { ...itemBefore.itemCounts, 25: { 'light-ball': -1 } } },
+  { ...itemBefore, itemCounts: { ...itemBefore.itemCounts, 25: { 'light-ball': '1' } } },
+  { ...createUsageBucket(), teamCount: 1, counts: { 25: 1, 6: 1 }, itemSamples: { 25: 6, 6: 6 } },
+]) {
+  assert.throws(() => getPokemonItemUsage(corrupt, 25), TypeError)
+  assert.throws(() => getUsageRanking(corrupt), TypeError)
+  assert.throws(() => recordUsageTeams(corrupt, [[25]], 8000), TypeError)
+}
+const itemSnapshot = createEmptyUsageSnapshot()
+itemSnapshot.buckets['ai-single'] = itemBefore
+itemSnapshot.buckets['ranked-double'] = recordUsageTeams(createUsageBucket(), Array.from({ length: 14 }, () => [{ speciesId: 25, heldItemId: 'focus-sash' }]), 7000)
+const pooled = getCombinedPokemonItemUsage(itemSnapshot, 25)
+assert.equal(pooled.sampleCount, 20)
+assert.equal(pooled.items[0].itemId, 'focus-sash')
+assert.equal(pooled.items[0].count, 15)
+assert.equal(pooled.items[0].rate, 75, 'Combined recommendations must pool counts instead of averaging four category percentages')
+assert.equal(pooled.noItemCount, 1)
+assert.equal(getCombinedPokemonItemUsage(itemSnapshot, 25, { allowedItemIds: ['light-ball'] }).items[0].rate, 10)
+assert.throws(() => getCombinedPokemonItemUsage({ buckets: {} }, 25), TypeError)
+
+const itemSnapshotOld = createEmptyUsageSnapshot()
+itemSnapshotOld.buckets['ai-single'] = structuredClone(itemBefore)
+delete itemSnapshotOld.buckets['ai-single'].itemSamples
+delete itemSnapshotOld.buckets['ai-single'].itemCounts
+const itemSnapshotNew = structuredClone(itemSnapshotOld)
+itemSnapshotNew.buckets['ai-single'] = structuredClone(itemBefore)
+assert.deepEqual(mergeUsageSnapshots(itemSnapshotOld, itemSnapshotNew), mergeUsageSnapshots(itemSnapshotNew, itemSnapshotOld),
+  'A legacy snapshot of the same event must not erase item fields in either arrival order')
+const itemSnapshotLaterLegacy = structuredClone(itemSnapshotOld)
+itemSnapshotLaterLegacy.buckets['ai-single'].teamCount += 1
+itemSnapshotLaterLegacy.buckets['ai-single'].counts[25] += 1
+itemSnapshotLaterLegacy.buckets['ai-single'].updatedAt += 1
+for (const args of [[itemSnapshotLaterLegacy, itemSnapshotNew], [itemSnapshotNew, itemSnapshotLaterLegacy]]) {
+  const mergedItems = mergeUsageSnapshots(...args).buckets['ai-single']
+  assert.equal(mergedItems.teamCount, itemBefore.teamCount + 1)
+  assert.deepEqual(mergedItems.itemSamples, itemBefore.itemSamples)
+  assert.deepEqual(mergedItems.itemCounts, itemBefore.itemCounts)
+}
+const itemSnapshotLatest = structuredClone(itemSnapshotNew)
+itemSnapshotLatest.buckets['ai-single'] = itemAfter
+assert.deepEqual(mergeUsageSnapshots(itemSnapshotLatest, itemSnapshotNew).buckets['ai-single'].itemCounts, itemAfter.itemCounts,
+  'A delayed old GET must not overwrite a newer item observation')
+for (const bucket of Object.values(demo.buckets)) {
+  assert.equal(Object.values(bucket.itemSamples).reduce((sum, count) => sum + count, 0), 298 * 6)
+  const first = getUsageRanking(bucket)[0]
+  assert.equal(first.itemUsage.items.length, 3)
+  assert(first.itemUsage.noItemCount > 0)
+  assert(first.itemUsage.items.every(item => item.rate > 0 && item.rate <= 100))
+}
+
+console.log('PASS Pokémon usage arithmetic, 100-place ranking, ties, deltas, forms, immutability, strict event/persistence validation, four isolated modes, deterministic demo data, out-of-order snapshot merging, actual equipped-item sampling, top-three item rates, weighted recommendations, and legacy compatibility')

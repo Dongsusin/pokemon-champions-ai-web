@@ -33,7 +33,9 @@ import {
   SHOP_CATEGORIES,
   getEquippedBattleItemCounts,
   getOwnedBattleItems,
+  getVisibleBattleItems,
 } from './data/shopData'
+import { getCombinedPokemonItemUsage } from './data/pokemonUsage.js'
 import { getPokemonSkin } from './data/rareRewards'
 import {
   DYNAMAX_MODES,
@@ -43,6 +45,7 @@ import {
   getSpeciesProfile,
   typeClassName,
 } from './data/trainingData'
+import './itemRecommendations.css'
 
 const PARTY_SIZE = 6
 const BATTLE_LEVEL = 50
@@ -121,6 +124,7 @@ function BoxScreen({
   activeTeamId,
   teamIds = [],
   inventory = {},
+  pokemonUsage,
   onBack,
   backLabel = '로비',
   onEquipItem,
@@ -215,6 +219,20 @@ function BoxScreen({
     () => getOwnedBattleItems(inventory),
     [inventory],
   )
+  const ownedItemIds = useMemo(() => new Set(ownedItems.map((item) => item.id)), [ownedItems])
+  const visibleItemIds = useMemo(() => getVisibleBattleItems(inventory).map((item) => item.id), [inventory])
+  const itemUsage = useMemo(() => (
+    pokemonUsage?.snapshot && selectedPokemon
+      ? getCombinedPokemonItemUsage(pokemonUsage.snapshot, selectedPokemon.speciesId, { limit: 3, allowedItemIds: visibleItemIds })
+      : { sampleCount: 0, noItemCount: 0, items: [] }
+  ), [pokemonUsage?.snapshot, selectedPokemon?.speciesId, visibleItemIds])
+  const recommendedItems = useMemo(() => itemUsage.items.flatMap((entry) => {
+    const item = ITEM_BY_ID.get(entry.itemId)
+    return item ? [{ ...entry, item }] : []
+  }), [itemUsage])
+  const recommendationRanks = useMemo(() => new Map(recommendedItems.map((entry) => [entry.itemId, entry.rank])), [recommendedItems])
+  const hasUnownedRecommendation = recommendedItems.some((entry) => !ownedItemIds.has(entry.itemId))
+  const recommendationError = typeof pokemonUsage?.error === 'string' ? pokemonUsage.error : pokemonUsage?.error?.message
   const itemCategoryCounts = useMemo(() => Object.fromEntries(SHOP_CATEGORIES.map((category) => [
     category.id,
     category.id === 'all'
@@ -229,8 +247,8 @@ function BoxScreen({
       if (!normalizedSearch) return true
       return [item.name, item.englishName, item.id]
         .some((value) => normalizeItemSearch(value).includes(normalizedSearch))
-    })
-  }, [itemCategory, itemSearch, ownedItems])
+    }).sort((left, right) => (recommendationRanks.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (recommendationRanks.get(right.id) ?? Number.MAX_SAFE_INTEGER))
+  }, [itemCategory, itemSearch, ownedItems, recommendationRanks])
   const partySlots = Array.from({ length: PARTY_SIZE }, (_, index) => teamPokemon[index] ?? null)
   const selectedSkin = getPokemonSkin(selectedPokemon?.skinId)
   const selectedSprite = selectedSkin?.spriteFront ?? (selectedProfile
@@ -272,6 +290,11 @@ function BoxScreen({
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [dynamaxPickerOpen, itemPickerOpen, teraPickerOpen])
+
+  const refreshItemUsage = pokemonUsage?.refresh
+  useEffect(() => {
+    if (itemPickerOpen) refreshItemUsage?.()
+  }, [itemPickerOpen, refreshItemUsage])
 
   const availableItemQuantity = (itemId) => (
     (inventory[itemId] ? 1 : 0)
@@ -790,7 +813,7 @@ function BoxScreen({
           }}
         >
           <section
-            className="item-equip-panel"
+            className={`item-equip-panel${pokemonUsage ? ' has-item-recommendations' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="item-equip-title"
@@ -818,6 +841,34 @@ function BoxScreen({
                 <CircleOff size={16} /> 장착 해제
               </button>
             </div>
+
+            {pokemonUsage && <section className="item-recommendations" aria-label={`${selectedPokemon.name} 인기 도구 추천`} aria-busy={pokemonUsage.loading} data-recommendation-species-id={selectedPokemon.speciesId}>
+              <header className="item-recommendations-heading">
+                <strong><Star size={13} /> 인기 도구 TOP 3</strong>
+                <span>AI·레이팅 · 싱글·더블 합산</span>
+                {pokemonUsage.snapshot?.source === 'demo' && <em>임의 표본 포함</em>}
+                <small>{pokemonUsage.loading ? '집계 확인 중' : `도구 기록 ${itemUsage.sampleCount.toLocaleString('ko-KR')}건`}</small>
+              </header>
+              {recommendedItems.length ? <div className="item-recommendations-grid">{recommendedItems.map((entry) => {
+                const isSelected = selectedHeldItem?.id === entry.itemId
+                const isOwned = ownedItemIds.has(entry.itemId)
+                const isUnavailable = !isOwned || (!isSelected && availableItemQuantity(entry.itemId) <= 0)
+                const status = !isOwned ? '미보유 · 상점에서 구매' : isSelected ? '현재 장착' : isUnavailable ? '다른 포켓몬 사용 중' : '장착 가능'
+                const rate = Number(entry.rate).toFixed(1)
+                return <button type="button" className={`item-recommendation-card${isSelected ? ' is-equipped' : ''}${isUnavailable ? ' is-unavailable' : ''}`} key={entry.itemId}
+                  data-item-id={entry.itemId} data-recommendation-rank={entry.rank} disabled={isUnavailable} aria-pressed={isSelected}
+                  aria-label={`추천 ${entry.rank}위 ${entry.item.name}, 사용률 ${rate}%, ${status}`} title={`${entry.item.name} · ${entry.count.toLocaleString('ko-KR')}건 · ${status}`}
+                  onClick={() => chooseHeldItem(entry.itemId)}>
+                  <span className="item-recommendation-art" aria-hidden="true"><BattleItemSprite item={entry.item} size={30} fallback={<Package size={22} />} /></span>
+                  <span className="item-recommendation-copy"><small>추천 {entry.rank}위</small><strong>{entry.item.name}</strong><em>{status}</em></span>
+                  <span className="item-recommendation-rate"><strong>{rate}<small>%</small></strong><span>사용률</span></span>
+                </button>
+              })}</div> : <p className="item-recommendations-empty" role="status">{pokemonUsage.loading ? '포켓몬의 인기 도구를 확인하고 있습니다.' : recommendationError && !pokemonUsage.snapshot ? '추천 집계를 불러오지 못했습니다. 장착할 보유 도구는 아래에서 선택할 수 있습니다.' : '추천할 도구 표본이 부족합니다. 도구를 지닌 출전 기록이 모이면 표시됩니다.'}</p>}
+              <div className="item-recommendations-note">
+                {recommendationError ? <span role="alert" title={recommendationError}>집계 알림 · {recommendationError}</span> : <span>{itemUsage.sampleCount > 0 ? `미장착 ${itemUsage.noItemCount.toLocaleString('ko-KR')}건을 포함한 기록 기준` : '이 포켓몬의 출전 기록을 기준으로 집계합니다.'}{itemUsage.sampleCount > 0 && itemUsage.sampleCount < 10 ? ' · 표본이 적어 순위가 달라질 수 있습니다.' : ''}</span>}
+                {hasUnownedRecommendation && onOpenShop && <button type="button" onClick={onOpenShop} aria-label="추천 도구를 구매할 상점 열기"><ShoppingBag size={11} /> 미보유 도구는 상점에서</button>}
+              </div>
+            </section>}
 
             <div className="item-equip-toolbar">
               <label className="item-equip-search">
@@ -877,11 +928,14 @@ function BoxScreen({
                 const isUnavailable = !isSelected && available <= 0
                 const categoryMeta = ITEM_CATEGORY_BY_ID.get(item.category)
                 const tooltipId = `item-equip-tooltip-${item.id}`
+                const recommendationRank = recommendationRanks.get(item.id)
 
                 return (
                   <div
                     className={`item-equip-card-shell category-${item.category}`}
                     key={item.id}
+                    data-item-id={item.id}
+                    data-recommendation-rank={recommendationRank}
                     {...itemTooltipAnchorProps(item, categoryMeta, tooltipId)}
                   >
                     <button
@@ -890,12 +944,14 @@ function BoxScreen({
                       role="option"
                       aria-selected={isSelected}
                       aria-describedby={tooltipId}
+                      data-item-id={item.id}
+                      data-recommendation-rank={recommendationRank}
                       disabled={isUnavailable}
                       onClick={() => chooseHeldItem(item.id)}
                     >
                       <BattleItemArtwork item={item} />
                       <span className="item-equip-card-copy">
-                        <small>{categoryMeta?.eyebrow}</small>
+                        <small>{recommendationRank ? <span className="item-owned-recommendation-rank">추천 {recommendationRank}위</span> : categoryMeta?.eyebrow}</small>
                         <strong>{item.name}</strong>
                         <em>{item.effect}</em>
                       </span>

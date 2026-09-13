@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import {
-  canonicalUsageSpeciesId, createEmptyUsageSnapshot, createUsageBucket,
+  canonicalUsageSpeciesId, canonicalUsageTeamEntry, createEmptyUsageSnapshot, createUsageBucket,
   recordUsageTeams, usageBucketKey,
 } from '../src/data/pokemonUsage.js'
 
@@ -24,7 +24,13 @@ export async function recordRankedPokemonUsage(tx, match, selectedTeams, timesta
   if (match.usageRecordedAt != null) return
   const key = usageBucketKey('ranked', match.format)
   const bucket = await tx.get('pokemonUsage', key) ?? createUsageBucket()
-  tx.set('pokemonUsage', key, recordUsageTeams(bucket, selectedTeams, Math.max(timestamp, bucket.updatedAt)))
+  // The trusted battle canonicalizer represents an unequipped slot as ''.
+  // Telemetry uses explicit null so this is an observed no-item sample; the
+  // stricter client-report validator must still reject arbitrary empty IDs.
+  const usageTeams = selectedTeams.map(team => team.map(entry => ({
+    speciesId: entry.speciesId, heldItemId: entry.heldItemId || null,
+  })))
+  tx.set('pokemonUsage', key, recordUsageTeams(bucket, usageTeams, Math.max(timestamp, bucket.updatedAt)))
   // The caller saves this marker in the same transaction as starting the match.
   // Already-running matches are deliberately never backfilled during polling.
   match.usageRecordedAt = timestamp
@@ -42,24 +48,48 @@ export function validateAiPokemonUsage(payload) {
     fail('INVALID_USAGE_TEAM', '실제로 출전한 포켓몬 1~6마리의 종 번호가 필요합니다.')
   }
   let speciesIds
-  try { speciesIds = [...new Set(payload.speciesIds.map(canonicalUsageSpeciesId))].sort((a, b) => a - b) }
+  let selectedSpecies
+  try {
+    selectedSpecies = payload.speciesIds.map(canonicalUsageSpeciesId).sort((a, b) => a - b)
+    speciesIds = [...new Set(selectedSpecies)]
+  }
   catch { fail('INVALID_USAGE_TEAM', '존재하는 포켓몬 종 번호만 기록할 수 있습니다.') }
-  return { battleId: payload.battleId, format: payload.format, speciesIds }
+  let team
+  if (Object.hasOwn(payload, 'team')) {
+    if (!Array.isArray(payload.team) || payload.team.length !== payload.speciesIds.length
+      || payload.team.some(entry => !entry || typeof entry !== 'object' || Array.isArray(entry) || !Object.hasOwn(entry, 'heldItemId'))) {
+      fail('INVALID_USAGE_TEAM', '출전 포켓몬마다 실제 장착 아이템 또는 미장착 상태가 필요합니다.')
+    }
+    try { team = payload.team.map(canonicalUsageTeamEntry) }
+    catch { fail('INVALID_USAGE_TEAM', '존재하는 포켓몬과 배틀 아이템만 기록할 수 있습니다.') }
+    if (JSON.stringify(team.map(entry => entry.speciesId).sort((a, b) => a - b)) !== JSON.stringify(selectedSpecies)) {
+      fail('INVALID_USAGE_TEAM', '아이템 기록은 실제 출전 포켓몬과 일치해야 합니다.')
+    }
+    team.sort((left, right) => left.speciesId - right.speciesId
+      || ((left.heldItemId ?? '') < (right.heldItemId ?? '') ? -1 : (left.heldItemId ?? '') > (right.heldItemId ?? '') ? 1 : 0))
+  }
+  return { battleId: payload.battleId, format: payload.format, speciesIds, ...(team ? { team } : {}) }
 }
 
 export async function reportAiPokemonUsage(tx, uid, report, timestamp) {
   // Authentication establishes the reporting account. AI battles run in the
   // browser, so these are client reports, not server-verified battle outcomes.
   const receiptId = digest([uid, report.battleId])
-  const reportHash = digest({ format: report.format, speciesIds: report.speciesIds })
+  const legacyHash = digest({ format: report.format, speciesIds: report.speciesIds })
+  const reportHash = report.team ? digest({ format: report.format, team: report.team }) : legacyHash
   const previous = await tx.get('pokemonUsageEvents', receiptId)
   if (previous) {
-    if (previous.hash !== reportHash) fail('USAGE_EVENT_REUSED', '같은 배틀의 사용률 기록을 변경할 수 없습니다.', 409)
+    // Old receipts did not retain item details. A retry from either version
+    // may acknowledge the original species-only event without backfilling it.
+    // A detailed receipt rejects changes to item assignments or sample counts.
+    const compatibleLegacy = previous.version !== 2 && previous.hash === legacyHash
+    const compatibleOldClient = !report.team && previous.legacyHash === legacyHash
+    if (previous.hash !== reportHash && !compatibleLegacy && !compatibleOldClient) fail('USAGE_EVENT_REUSED', '같은 배틀의 사용률 기록을 변경할 수 없습니다.', 409)
     return { accepted: false, usage: await readPokemonUsage(tx) }
   }
   const key = usageBucketKey('ai', report.format)
   const bucket = await tx.get('pokemonUsage', key) ?? createUsageBucket()
-  tx.set('pokemonUsage', key, recordUsageTeams(bucket, [report.speciesIds], Math.max(timestamp, bucket.updatedAt)))
-  tx.set('pokemonUsageEvents', receiptId, { hash: reportHash, recordedAt: timestamp })
+  tx.set('pokemonUsage', key, recordUsageTeams(bucket, [report.team ?? report.speciesIds], Math.max(timestamp, bucket.updatedAt)))
+  tx.set('pokemonUsageEvents', receiptId, { hash: reportHash, recordedAt: timestamp, ...(report.team ? { version: 2, legacyHash } : {}) })
   return { accepted: true, usage: await readPokemonUsage(tx) }
 }

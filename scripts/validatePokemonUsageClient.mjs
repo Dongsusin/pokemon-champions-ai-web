@@ -74,6 +74,29 @@ test('save before send and isolate the report from later caller mutations', asyn
   outbox.stop()
 })
 
+test('held items survive caller mutation, offline restart and retry without extra private fields', async () => {
+  const storage = new MemoryStorage()
+  const input = { ...report(), team: [
+    { speciesId: 6, heldItemId: 'life-orb', nickname: 'private' },
+    { speciesId: 25, heldItemId: 'focus-sash' },
+    { speciesId: 94, heldItemId: null },
+  ] }
+  const expected = { ...report(), team: input.team.map(({ speciesId, heldItemId }) => ({ speciesId, heldItemId })) }
+  const first = createUsageOutbox({ uid: 'alice', storage, send: async () => { throw new Error('offline') } })
+  first.enqueue(input)
+  input.team[0].heldItemId = 'leftovers'
+  input.team.push({ speciesId: 9, heldItemId: 'assault-vest' })
+  assert.deepEqual(entries(storage), [expected])
+  await assert.rejects(first.flush(), /offline/)
+  first.stop()
+  const sent = []
+  const retry = createUsageOutbox({ uid: 'alice', storage, send: async entry => { sent.push(entry); return { usage: usage(1) } } })
+  await retry.flush()
+  assert.deepEqual(sent, [expected])
+  assert.deepEqual(entries(storage), [])
+  retry.stop()
+})
+
 test('offline retry survives a fresh outbox instance', async () => {
   const storage = new MemoryStorage()
   const offline = createUsageOutbox({ uid: 'alice', storage, send: async () => { throw new Error('offline') } })
