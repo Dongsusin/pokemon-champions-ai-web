@@ -1,0 +1,153 @@
+{
+  "output": "promo/update/output/champions-arena-update-ranked-usage-1080p.mp4",
+  "duration": 101,
+  "fps": 30,
+  "sourceHashes": {
+    "intro": "54fa95f512c13b141c5985bf4ffc55d6cfb2ef306d4867a3839bec84e47080ce",
+    "update": "6da4905f2aff668e2cd440ddb42aaef66c99ae6e551942f7269b51cbdcd64ce9",
+    "ranked-lobby": "3d7b14f91527f5c6c819a61ebb0fa080816c03b610e1f29c3eaca22fe2b2d3c6",
+    "ranks": "1ad8f87d5eff9f31a037ae49be6014966ca763241d3baebd507085aba1e395c8",
+    "ranked-select": "497dfa61cef3a8bb3f4e2ebbb64d6fcd3e140d045273c1c8c785c56fc12566f6",
+    "ranked-single": "9cfc9bc50ba29e5cb92844e5089bbce1004a3b28fd44675b11ae7668f393e982",
+    "ranked-double": "9bc78532733731349188b9ca1f1cafaf5229b565fa3bb3e269886db5d1dbb879",
+    "ranked-result": "86662f14f18085a3cf6c0d33626a6faa4fdc11aa7ad8d51b2ac3be6eda87162b",
+    "stats": "716f34264f9f8d1d5587f4cf6ffbc876bb35a3adfa925379f69d29d94db9e36d",
+    "usage": "8084bbd1e956aceb98fabd9fc8ca7335313dbb401fe59cc2fefd9eba7ffeff7e",
+    "equipment": "cd3808b8dfcd0f908900248660d37ce219b1a3c699c0d8bf4db2f1ee3bbddea9",
+    "rewards": "781778737e7d73d0b84524a369e24cf9dbee70e857f06d0ad9b5b13f5ad5f28c",
+    "outro": "bc908e645bd01f0fe29ec65163d8014659fb266050e2ca264ec053ca552d285f"
+  },
+  "cues": [
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 4.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/impact.wav",
+      "at": 5.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 9.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 19.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/impact.wav",
+      "at": 20.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 27.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 35.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 47.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 60.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/chime.wav",
+      "at": 62.1,
+      "volume": 0.5
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 65.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/impact.wav",
+      "at": 66.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 70.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 80.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 88.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/impact.wav",
+      "at": 89.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/update/generated/whoosh.wav",
+      "at": 93.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/update/generated/chime.wav",
+      "at": 95.1,
+      "volume": 0.5
+    }
+  ],
+  "audioMeasuredBeforeMastering": {
+    "input_i": "-17.07",
+    "input_tp": "-6.24",
+    "input_lra": "5.80",
+    "input_thresh": "-27.17",
+    "output_i": "-14.32",
+    "output_tp": "-4.50",
+    "output_lra": "2.60",
+    "output_thresh": "-24.33",
+    "normalization_type": "dynamic",
+    "target_offset": "-1.68"
+  },
+  "sha256": "3795dd8c198b6136199086f1910d0728cd05e710534b9625b09e5bbb82d2a26f",
+  "bytes": 33932824,
+  "audioMeasuredAfterEncoding": {
+    "input_i": "-16.07",
+    "input_tp": "-4.82",
+    "input_lra": "5.80",
+    "input_thresh": "-26.16",
+    "output_i": "-14.05",
+    "output_tp": "-2.50",
+    "output_lra": "2.80",
+    "output_thresh": "-24.07",
+    "normalization_type": "dynamic",
+    "target_offset": "-1.95"
+  },
+  "audioEncoder": "aac-fast-256k",
+  "audioRemaster": {
+    "method": "Existing PCM master re-encoded once with AAC fast coder; original video and subtitle packets copied unchanged.",
+    "previousSha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
+    "videoPayloadSha256": "1406df3b6cafbddd86ec1584f0dcc86254cb73ca6e4b730561efeb60ca75d661",
+    "unchangedVideoPayload": true,
+    "measuredIntegratedLUFS": -16.07,
+    "measuredTruePeakDbTP": -4.82
+  },
+  "sidecarSubtitles": {
+    "removedEmbeddedTrack": true,
+    "previousContainerSha256": "2d8cac361739aef3f2843cecb65bc053861f29d55237392ca7a61a57b535a970",
+    "unchangedAudioVideoPayload": true,
+    "streamHashes": "0,v,SHA256=1406df3b6cafbddd86ec1584f0dcc86254cb73ca6e4b730561efeb60ca75d661\n1,a,SHA256=92a5b5e5ee12af877896010d71af2700a70c3e8e2d644e96db08c8534b8dd4c2"
+  }
+}

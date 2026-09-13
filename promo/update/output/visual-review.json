@@ -1,0 +1,39 @@
+{
+  "file": "promo/update/output/champions-arena-update-ranked-usage-1080p.mp4",
+  "sha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
+  "recheckedSeconds": [
+    80.9,
+    81.1,
+    81.3,
+    81.5,
+    88.7,
+    88.9,
+    89.1,
+    89.3,
+    89.5,
+    93.9,
+    94.1,
+    94.3,
+    94.5,
+    100.7
+  ],
+  "scope": "Codex visual inspection of all 13 scene samples, opening overlays, 12 transitions at four consecutive samples each, final equipment tail and outro; final AAC remux retains the exact reviewed video payload.",
+  "findings": [],
+  "reviewedPictureContainerSha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
+  "finalContainerSha256": "3795dd8c198b6136199086f1910d0728cd05e710534b9625b09e5bbb82d2a26f",
+  "videoPayloadSha256": "1406df3b6cafbddd86ec1584f0dcc86254cb73ca6e4b730561efeb60ca75d661",
+  "unchangedAfterAudioRemaster": true,
+  "stableScenesReviewed": [
+    {
+      "start": 15.9667,
+      "end": 19.1667,
+      "reason": "Ranked lobby held for reading the team and tooltip."
+    },
+    {
+      "start": 33.3333,
+      "end": 35.9333,
+      "reason": "Selected party held before the match begins."
+    }
+  ],
+  "completed": true
+}

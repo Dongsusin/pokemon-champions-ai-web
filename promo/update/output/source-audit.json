@@ -1,0 +1,306 @@
+{
+  "provenance": "Actual production GameApp and ranked battle engine; separate loopback API, memory-only store, isolated test accounts. Statistics produced only by real selections and one actual GameApp AI start. No seeded or edited usage counts. All browser state is isolated from the user and production.",
+  "sourceGameCommit": "3b15db6084c7348a6989c3bd76576fb4d1bc0ece",
+  "scenes": [
+    {
+      "id": "ranked-lobby",
+      "usableDuration": 11.013,
+      "visibleImages": 7,
+      "allVisibleImagesLoaded": true
+    },
+    {
+      "id": "ranked-select",
+      "usableDuration": 9.006,
+      "visibleImages": 13,
+      "allVisibleImagesLoaded": true
+    },
+    {
+      "id": "ranked-single",
+      "usableDuration": 15.008,
+      "visibleImages": 5,
+      "allVisibleImagesLoaded": true
+    },
+    {
+      "id": "ranked-double",
+      "usableDuration": 21.181,
+      "visibleImages": 14,
+      "allVisibleImagesLoaded": true
+    },
+    {
+      "id": "usage",
+      "usableDuration": 14.009,
+      "visibleImages": 46,
+      "allVisibleImagesLoaded": true
+    },
+    {
+      "id": "equipment",
+      "usableDuration": 11.008,
+      "visibleImages": 58,
+      "allVisibleImagesLoaded": true
+    },
+    {
+      "id": "ranked-result",
+      "usableDuration": 8.012,
+      "visibleImages": 1,
+      "allVisibleImagesLoaded": true
+    }
+  ],
+  "captureErrors": [],
+  "failedImageRequests": [],
+  "battleEvidence": [
+    {
+      "kind": "normal-win",
+      "actions": 36,
+      "result": "싱글배틀 · 결과 확정\n승리\n\n배틀 종료\n\nCURRENT RANK\n몬스터볼 IV\n30 RP\n레이팅\n1000\n1016\n+16\n획득 VP\n+600 VP\n지급 완료\n레이팅 로비로"
+    }
+  ],
+  "normalVictory": {
+    "phase": "finished",
+    "winner": "player",
+    "completedTurn": 19,
+    "opponentPokemon": [
+      {
+        "speciesId": 130,
+        "name": "갸라도스",
+        "hp": 0,
+        "fainted": true
+      },
+      {
+        "speciesId": 131,
+        "name": "라프라스",
+        "hp": 0,
+        "fainted": true
+      },
+      {
+        "speciesId": 59,
+        "name": "윈디",
+        "hp": 0,
+        "fainted": true
+      }
+    ],
+    "source": "Unedited actual local ranked engine state after UI-driven attack, Protect and replacement selections"
+  },
+  "localUsageBuckets": {
+    "ai-single": {
+      "teamCount": 0,
+      "pikachuItemCounts": {}
+    },
+    "ai-double": {
+      "teamCount": 1,
+      "pikachuItemCounts": {
+        "light-ball": 1
+      }
+    },
+    "ranked-single": {
+      "teamCount": 6,
+      "pikachuItemCounts": {
+        "life-orb": 1,
+        "focus-sash": 1,
+        "light-ball": 1
+      }
+    },
+    "ranked-double": {
+      "teamCount": 2,
+      "pikachuItemCounts": {
+        "life-orb": 1
+      }
+    }
+  },
+  "music": {
+    "title": "Face The Champion!",
+    "creator": "Spring Spring",
+    "attribution": "Produced by Julie Damsgaard / Spring Spring / Spring Enterprises",
+    "sourceUrl": "https://opengameart.org/content/face-the-champion",
+    "creatorUrl": "https://spring-enterprises.neocities.org",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "source": "public/assets/audio/battle/battle-theme.ogg",
+    "sourceSha256": "5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540",
+    "output": "promo/update/generated/music.wav",
+    "outputSha256": "62e3215b1d1831bb08ddd40c282515d1274df2eeabc6da9bd955b62582352dcd",
+    "sourceStartSeconds": 0,
+    "durationSeconds": 101,
+    "fadeInSeconds": 0.2,
+    "fadeOutSeconds": 1.6,
+    "sampleRate": 48000,
+    "channels": 2,
+    "targetIntegratedLUFS": -18,
+    "measuredIntegratedLUFS": -18,
+    "measuredTruePeakDbTP": -7.15,
+    "soundEffects": [
+      {
+        "name": "whoosh",
+        "file": "promo/update/generated/whoosh.wav",
+        "durationSeconds": 0.42,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      },
+      {
+        "name": "impact",
+        "file": "promo/update/generated/impact.wav",
+        "durationSeconds": 0.42,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      },
+      {
+        "name": "chime",
+        "file": "promo/update/generated/chime.wav",
+        "durationSeconds": 0.85,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      }
+    ],
+    "modifications": "Excerpted from the existing web-game BGM, faded in/out, normalized, and resampled. Final trailer may mix game effects over this music."
+  },
+  "timeline": [
+    {
+      "id": "intro",
+      "kind": "motion",
+      "scene": "intro",
+      "duration": 5,
+      "title": "POKÉMON CHAMPIONS ARENA",
+      "transition": "fade"
+    },
+    {
+      "id": "update",
+      "kind": "motion",
+      "scene": "update",
+      "duration": 5,
+      "title": "새로운 승부의 시작. 레이팅 배틀 업데이트.",
+      "transition": "smoothup"
+    },
+    {
+      "id": "ranked-lobby",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "진짜 트레이너와",
+        "맞붙다."
+      ],
+      "title": "진짜 트레이너와 맞붙다.",
+      "accent": "#86edff",
+      "transition": "smoothleft"
+    },
+    {
+      "id": "ranks",
+      "kind": "motion",
+      "scene": "ranks",
+      "duration": 8,
+      "title": "승부를 쌓아. 마스터볼로.",
+      "transition": "fade"
+    },
+    {
+      "id": "ranked-select",
+      "kind": "footage",
+      "duration": 8,
+      "lines": [
+        "팀은 다섯.",
+        "선택은 당신의 것."
+      ],
+      "title": "팀은 다섯. 선택은 당신의 것.",
+      "accent": "#a9f3c7",
+      "transition": "smoothright"
+    },
+    {
+      "id": "ranked-single",
+      "kind": "footage",
+      "duration": 12,
+      "lines": [
+        "서로의 한 수를",
+        "읽어라."
+      ],
+      "title": "서로의 한 수를 읽어라.",
+      "accent": "#8eeaff",
+      "transition": "fade"
+    },
+    {
+      "id": "ranked-double",
+      "kind": "footage",
+      "duration": 13,
+      "lines": [
+        "둘이 만드는",
+        "새로운 승부."
+      ],
+      "title": "둘이 만드는 새로운 승부.",
+      "accent": "#c7a5ff",
+      "transition": "smoothleft"
+    },
+    {
+      "id": "ranked-result",
+      "kind": "footage",
+      "duration": 5,
+      "lines": [
+        "승리를 쌓아,",
+        "다음 랭크로."
+      ],
+      "title": "승리를 쌓아, 다음 랭크로.",
+      "accent": "#ffe29a",
+      "transition": "fade"
+    },
+    {
+      "id": "stats",
+      "kind": "motion",
+      "scene": "stats",
+      "duration": 5,
+      "title": "데이터로 완성하는 전략. 포켓몬 사용률 · 인기 아이템 TOP 3.",
+      "transition": "smoothup"
+    },
+    {
+      "id": "usage",
+      "kind": "footage",
+      "duration": 10,
+      "camera": {
+        "from": 1,
+        "to": 1.15
+      },
+      "lines": [
+        "누가 선택받고",
+        "있을까?"
+      ],
+      "title": "실제 선택으로 바뀌는 포켓몬·아이템 사용률.",
+      "accent": "#91edd9",
+      "transition": "fade"
+    },
+    {
+      "id": "equipment",
+      "kind": "footage",
+      "duration": 8,
+      "sourceCutoff": 6.5,
+      "camera": {
+        "from": 1.15,
+        "to": 1.4,
+        "centerY": 0.46
+      },
+      "lines": [
+        "인기 도구 TOP 3.",
+        "장착은 빠르게."
+      ],
+      "title": "인기 도구 TOP 3. 장착은 빠르게.",
+      "accent": "#ffe39d",
+      "transition": "smoothleft"
+    },
+    {
+      "id": "rewards",
+      "kind": "motion",
+      "scene": "rewards",
+      "duration": 5,
+      "title": "시작은 50,000 VP. 배틀 보상 2배.",
+      "transition": "smoothup"
+    },
+    {
+      "id": "outro",
+      "kind": "motion",
+      "scene": "outro",
+      "duration": 7,
+      "title": "당신의 팀으로. 다음 랭크로.",
+      "description": "pokemon-champions-area-web.co.kr",
+      "transition": "fade"
+    }
+  ]
+}

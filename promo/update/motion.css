@@ -1,0 +1,80 @@
+:root{font-family:'Malgun Gothic','Noto Sans KR',sans-serif;color:#f6fbff;background:#050b19;font-synthesis:none}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:#070e20;--accent:#9befff}
+.backdrop{position:absolute;inset:-65px;background:linear-gradient(90deg,#050a20dd,#06192b99 50%,#0e0827d4),linear-gradient(0deg,#020817eb,transparent 76%),url('/assets/champions-lobby-bg.jpg') center/cover;transform-origin:50% 45%}
+.wash{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,#4aefff21,transparent 63%),linear-gradient(115deg,#00b9ff05,transparent 50%,#a059ff15);mix-blend-mode:screen}
+.arc{position:absolute;border:1px solid #b4f3ff2b;border-radius:50%;width:1390px;height:780px;left:265px;top:139px;box-shadow:0 0 80px #5fc7ff09,inset 0 0 100px #2eccff05;pointer-events:none}
+.arc-two{width:1580px;height:940px;left:170px;top:59px;border-color:#7abbff18}
+.beam{position:absolute;height:2px;width:2350px;left:-215px;top:730px;transform:rotate(-22deg);background:linear-gradient(90deg,transparent,#7fe6ff66,transparent);box-shadow:0 0 20px #73cfff2b;opacity:.65;pointer-events:none}
+.beam-two{top:260px;transform:rotate(-22deg);background:linear-gradient(90deg,transparent,#c794ff44,transparent)}
+.atmosphere{position:absolute;inset:0;pointer-events:none;opacity:.7}
+.scene-content{position:absolute;inset:0;z-index:3;perspective:1500px}
+.vignette{position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 160px #0307138c}
+.brand{position:absolute;left:70px;right:70px;text-align:center;top:154px}
+.brand-logo{display:block;object-fit:contain;width:330px;height:330px;margin:0 auto;filter:drop-shadow(0 20px 30px #0009) drop-shadow(0 0 30px #39c1ff25)}
+.brand-name{margin:34px 0 0;font-family:Arial,sans-serif;font-weight:950;line-height:1.04;letter-spacing:-2px;text-shadow:0 6px 30px #0008}
+.brand-name span{display:block}
+.brand-pokemon{font-size:92px}
+.brand-arena{font-size:123px;margin-top:9px;letter-spacing:-4px}
+.intro .backdrop{background:linear-gradient(90deg,#03071bd9,#071728a3 50%,#040818d5),linear-gradient(0deg,#030715cf,transparent 75%),url('/assets/champions-lobby-bg.jpg') center/cover}
+.intro .brand{top:172px}
+.intro .brand-logo{width:350px;height:350px}
+.intro .brand-name{margin-top:45px}
+.word{display:inline-block;transform-origin:center 75%;will-change:transform,opacity;white-space:pre}
+.headline{position:absolute;left:100px;right:100px;text-align:center;line-height:1.15;letter-spacing:-5px;font-weight:950;text-shadow:0 10px 40px #0009;margin:0}
+.headline em{font-style:normal;color:var(--accent)}
+.update .backdrop{filter:blur(2px);opacity:.65}
+.update-copy{top:308px;font-size:117px}
+.update-sub{position:absolute;left:90px;right:90px;top:500px;margin:0;text-align:center;font-size:73px;letter-spacing:-3px;font-weight:850;color:#99eaf8}
+.title-rule{position:absolute;left:calc(50% - 115px);top:653px;width:230px;height:5px;background:linear-gradient(90deg,#66d9ff,#cbb4ff);box-shadow:0 0 25px #8ff2ff55;transform-origin:center}
+.vs-mark{position:absolute;left:0;right:0;top:70px;text-align:center;font-family:Arial,sans-serif;font-size:820px;line-height:1;font-weight:950;font-style:italic;letter-spacing:-90px;color:#8feeff05;-webkit-text-stroke:2px #bcf5ff0b;pointer-events:none}
+.ranks .headline{top:129px;font-size:92px;line-height:1.3}
+.ranks .headline em{display:block;font-size:117px;letter-spacing:-6px}
+.rank-track{position:absolute;left:145px;right:145px;top:464px;display:grid;grid-template-columns:repeat(4,1fr);gap:31px;perspective:1600px}
+.rank-card{position:relative;height:373px;border-radius:30px;border:1px solid color-mix(in srgb,var(--rank-color) 34%,transparent);background:linear-gradient(140deg,#18354cea,#0b172aec 63%);text-align:center;box-shadow:0 30px 65px #0007;transform-style:preserve-3d;overflow:hidden;transform-origin:center 78%}
+.rank-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 28%,color-mix(in srgb,var(--rank-color) 23%,transparent),transparent 68%);opacity:var(--lit,.45)}
+.rank-card::after{content:'';position:absolute;inset:0;border-radius:30px;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--rank-color) 60%,transparent);opacity:var(--lit,0)}
+.rank-icon{position:relative;display:block;width:146px;height:146px;margin:44px auto 25px;border-radius:50%;background:linear-gradient(to bottom,var(--rank-color) 0 43%,#142136 43% 54%,#dae6ed 54%);border:8px solid #152135;outline:1px solid #94b1c56b;box-shadow:0 0 42px color-mix(in srgb,var(--rank-color) 30%,transparent),inset -16px -16px 24px #0003}
+.rank-icon i{position:absolute;inset:43px;border:10px solid #152135;background:#edfaff;border-radius:50%}
+.tier-greatball .rank-icon::before,.tier-ultraball .rank-icon::before,.tier-masterball .rank-icon::before{content:'';position:absolute;inset:11px 28px 74px;border-left:13px solid #243653;border-right:13px solid #243653;border-radius:50% 50% 0 0}
+.rank-card h2{position:relative;font-size:43px;font-weight:900;letter-spacing:-2px;margin:0;color:var(--rank-color)}
+.rank-card p{position:relative;font-size:29px;font-family:Arial,sans-serif;letter-spacing:4px;margin:21px 0 0;color:#e1edf6}
+.rank-link{position:absolute;left:320px;right:320px;top:914px;height:3px;background:#84ceee27}
+.rank-link-fill{height:100%;background:linear-gradient(90deg,#fb727e,#6cb9ff 33%,#ffe277 66%,#c99aff);box-shadow:0 0 22px #d3b1ff69;transform-origin:left}
+.rank-link i{position:absolute;width:13px;height:13px;top:-5px;border-radius:50%;background:#d7c5ff;box-shadow:0 0 25px #c08bff;transform:translateX(-50%)}
+.stats{--accent:#a8f2df}
+.stats .backdrop{opacity:.47;filter:blur(3px)}
+.stats .wash{background:radial-gradient(ellipse at 50% 37%,#35c2c031,transparent 65%)}
+.orbit-ring{position:absolute;border-radius:50%;border:1px solid #9febee30;left:360px;top:150px;width:1200px;height:555px;transform:rotate(-9deg);box-shadow:inset 0 0 75px #69dad405,0 0 70px #69dad405}
+.orbit-ring.ring-inner{left:530px;top:215px;width:860px;height:440px;border-color:#9febee21;transform:rotate(9deg)}
+.orbit-object{position:absolute;left:0;top:0;width:180px;height:190px;display:flex;justify-content:center;align-items:center;transform-origin:center;filter:drop-shadow(0 18px 18px #0009)}
+.orbit-object img{display:block;max-width:100%;width:180px;height:190px;object-fit:contain;image-rendering:pixelated}
+.orbit-object.item{width:95px;height:95px;border-radius:50%;background:radial-gradient(ellipse,#64d7ee29,transparent 70%)}
+.orbit-object.item img{width:94px;height:94px}
+.orbit-object.hero{width:320px;height:320px;filter:drop-shadow(0 25px 20px #0009) drop-shadow(0 0 35px #8befff27)}
+.orbit-object.hero img{width:320px;height:320px}
+.stats-copy{position:absolute;left:70px;right:70px;top:772px;text-align:center}
+.stats-copy h1{font-size:96px;letter-spacing:-5px;font-weight:950;margin:0;line-height:1.2;text-shadow:0 6px 24px #000a}
+.stats-copy h2{font-size:43px;color:#b8f5f0;font-weight:750;letter-spacing:-1.4px;margin:29px 0 0}
+.stats-shade{position:absolute;left:0;right:0;top:650px;bottom:0;background:linear-gradient(0deg,#050e21e0,#050e21e3 30%,transparent)}
+.rewards .backdrop{filter:blur(3px);opacity:.55}
+.rewards{--accent:#fff0ac}
+.rewards .wash{background:radial-gradient(ellipse at 50% 42%,#d69c252b,transparent 58%),linear-gradient(115deg,#00b9ff05,transparent 50%,#a059ff12)}
+.rewards-copy{position:absolute;inset:140px 100px auto;text-align:center}
+.rewards-start{font-size:73px;font-weight:850;letter-spacing:-3px;margin:0}
+.rewards-number{font-family:Arial,sans-serif;line-height:1;font-size:224px;font-weight:950;letter-spacing:-13px;margin:37px 0 0;color:#fff1b6;text-shadow:0 0 90px #ffe68e25,0 15px 50px #0007}
+.rewards-number .unit{font-size:95px;letter-spacing:-4px;margin-left:19px;color:#fff8df}
+.rewards-double{display:inline-block;font-size:84px;font-weight:950;letter-spacing:-4px;margin:98px 0 0;border-top:1px solid #ffd68855;padding:36px 74px 0;color:#fff}
+.rewards-double em{color:#ffe28a;font-style:normal}
+.reward-disc{position:absolute;width:510px;height:510px;border:2px solid #ffeab712;border-radius:50%;box-shadow:inset 0 0 60px #ffe38205,0 0 60px #ffd36208;left:-280px;top:245px;transform:rotateY(30deg) rotateX(-10deg)}
+.reward-disc.two{left:auto;right:-280px;top:80px;width:630px;height:630px;transform:rotateY(-30deg) rotateX(10deg)}
+.outro .brand{top:88px}
+.outro .brand-logo{width:232px;height:232px}
+.outro .brand-name{margin-top:27px}
+.outro .brand-pokemon{font-size:64px}
+.outro .brand-arena{font-size:90px;letter-spacing:-3px;margin-top:4px}
+.outro-tagline{position:absolute;left:70px;right:70px;top:583px;text-align:center;font-size:76px;font-weight:950;letter-spacing:-4px;margin:0;line-height:1.2;text-shadow:0 8px 35px #000a}
+.outro-tagline em{font-style:normal;color:#b8efff}
+.outro-url{position:absolute;left:50%;top:763px;display:flex;gap:26px;align-items:center;width:max-content;max-width:1750px;padding:29px 47px 32px;border:1px solid #b7f3ff7d;border-radius:18px;background:linear-gradient(120deg,#bbf6ff,#70dcfa);box-shadow:0 20px 50px #0005,0 0 60px #56ddff14;color:#09283a;font:850 48px/1.2 Arial,sans-serif;letter-spacing:-1px;text-decoration:none;transform:translateX(-50%)}
+.outro-url svg{width:48px;height:48px;flex:none}

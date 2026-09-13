@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-09-13T01:49:32.347Z",
+  "metadata": {
+    "duration": 101,
+    "width": 1920,
+    "height": 1080,
+    "chapters": [
+      0,
+      5,
+      10,
+      20,
+      28,
+      36,
+      48,
+      61,
+      66,
+      71,
+      81,
+      89,
+      94
+    ]
+  },
+  "playback": {
+    "waiting": [
+      0
+    ],
+    "stalls": [],
+    "errors": [],
+    "ended": true,
+    "startedAt": 755.8000000119209,
+    "endedAt": 102028.5,
+    "currentTime": 101,
+    "quality": {
+      "totalVideoFrames": 3030,
+      "droppedVideoFrames": 4,
+      "corruptedVideoFrames": 0
+    }
+  },
+  "chapterChecks": [
+    {
+      "requested": 36,
+      "actual": 36.019234
+    },
+    {
+      "requested": 71,
+      "actual": 71.018415
+    },
+    {
+      "requested": 81,
+      "actual": 81.014203
+    },
+    {
+      "requested": 94,
+      "actual": 94.019884
+    }
+  ],
+  "cancelledMediaRequests": [
+    "http://127.0.0.1:5184/promo/update/output/champions-arena-update-ranked-usage-1080p.mp4: net::ERR_ABORTED",
+    "http://127.0.0.1:5184/promo/update/output/champions-arena-update-ranked-usage-1080p.mp4: net::ERR_ABORTED",
+    "http://127.0.0.1:5184/promo/update/output/champions-arena-update-ranked-usage-1080p.mp4: net::ERR_ABORTED"
+  ],
+  "errors": [],
+  "passed": true,
+  "scope": "Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening.",
+  "testedContainerSha256": "c6d2695aeaa24144be243540c212f4f59e8f199113cf5b8e72b2bbd17387e9dc",
+  "finalAudioRemux": {
+    "finalContainerSha256": "3795dd8c198b6136199086f1910d0728cd05e710534b9625b09e5bbb82d2a26f",
+    "unchangedVideoPayload": true,
+    "videoPayloadSha256": "1406df3b6cafbddd86ec1584f0dcc86254cb73ca6e4b730561efeb60ca75d661",
+    "audioAndContainerDecodeRevalidatedIn": "validation.json"
+  }
+}

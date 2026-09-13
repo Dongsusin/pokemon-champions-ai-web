@@ -1,0 +1,101 @@
+{
+  "purpose": "Static copies of the same game sprite sources for deterministic promotional rendering; no usage counts or player data.",
+  "entries": [
+    {
+      "kind": "pokemon",
+      "id": 6,
+      "name": "리자몽",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/charizard.png",
+      "file": "pokemon-6.png",
+      "sha256": "d4b2802dd40b22ba668107e5dd4c0ac4eee33128d251502883c9148abd6a38f7"
+    },
+    {
+      "kind": "pokemon",
+      "id": 25,
+      "name": "피카츄",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/pikachu.png",
+      "file": "pokemon-25.png",
+      "sha256": "dd519d3bab2b8fd5710ea618c616ec5011dd0907586f9bd8c23bebe94333df56"
+    },
+    {
+      "kind": "pokemon",
+      "id": 149,
+      "name": "망나뇽",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/dragonite.png",
+      "file": "pokemon-149.png",
+      "sha256": "c97ebd19b812b5a2eca5319870fb74598805f698dd8249fa88b2d73f324a59be"
+    },
+    {
+      "kind": "pokemon",
+      "id": 384,
+      "name": "레쿠쟈",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/rayquaza.png",
+      "file": "pokemon-384.png",
+      "sha256": "b49d6bfbd19d08c839d63a85a8afcd637b0468a0143c615e9e0c49148172552b"
+    },
+    {
+      "kind": "pokemon",
+      "id": 445,
+      "name": "한카리아스",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/garchomp.png",
+      "file": "pokemon-445.png",
+      "sha256": "1ceb7b12f9c6e0ffb4fc6e7247aa50fd561789eb7b04927f2f0ff32463915363"
+    },
+    {
+      "kind": "pokemon",
+      "id": 448,
+      "name": "루카리오",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/lucario.png",
+      "file": "pokemon-448.png",
+      "sha256": "6648151b971eaf3aa2d6d437ac04f8eb0fa0ceff7675469ec5d206b89cfe1f41"
+    },
+    {
+      "kind": "pokemon",
+      "id": 658,
+      "name": "개굴닌자",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/greninja.png",
+      "file": "pokemon-658.png",
+      "sha256": "7d4986d5646a61ee426e7eb5eabfe7f9d656b34d6d95792336d10af07198d071"
+    },
+    {
+      "kind": "pokemon",
+      "id": 887,
+      "name": "드래펄트",
+      "source": "https://play.pokemonshowdown.com/sprites/gen5/dragapult.png",
+      "file": "pokemon-887.png",
+      "sha256": "9ee0ef4f45e85d53f587499ec6e0c48a14af5a989e9cb6680321349660743c96"
+    },
+    {
+      "kind": "item",
+      "id": "leftovers",
+      "name": "먹다남은음식",
+      "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png",
+      "file": "item-leftovers.png",
+      "sha256": "3ea874aaa17bbcb682131876763ca2f9a896644f7a2b5d9c51ea234f7aace558"
+    },
+    {
+      "kind": "item",
+      "id": "choice-scarf",
+      "name": "구애스카프",
+      "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png",
+      "file": "item-choice-scarf.png",
+      "sha256": "b9e564e71ff8369fca2764f243168655a89ea82444ae1ec367da13405b0d11c7"
+    },
+    {
+      "kind": "item",
+      "id": "focus-sash",
+      "name": "기합의띠",
+      "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png",
+      "file": "item-focus-sash.png",
+      "sha256": "8a8ab615483640419ca3ddf42c88944cb93b3d5d8286f07717dfbf4f1b562727"
+    },
+    {
+      "kind": "item",
+      "id": "life-orb",
+      "name": "생명의구슬",
+      "source": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png",
+      "file": "item-life-orb.png",
+      "sha256": "6a9aed6825c88c6ecce1f96c7584c32dc82f18873e6550303d1ae620982c38ef"
+    }
+  ]
+}
