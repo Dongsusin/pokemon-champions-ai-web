@@ -11,6 +11,7 @@ Firestore의 일일 쓰기 한도로 로그인 세션 저장이 HTTP 429로 실�
 - `SERIALIZABLE` 트랜잭션과 제한된 충돌 재시도로 세션·매칭·점수·게스트 번호 예약을 원자적으로 처리한다. 연결 풀 최대 3개, Vercel의 풀 수명 관리, 엄격한 인증서·호스트명 검증을 사용한다.
 - 게스트 이름은 검증된 익명 UID에 `guest-000000` 형식으로 배정한다. 숫자 6자리를 트랜잭션으로 예약하며 기존 번호는 재사용하지 않는다. Google 사용자의 이름은 첫 글자 뒤를 가린다.
 - 로그인 창은 90초 서버 세션과 20초 갱신으로 보호한다. 정상 종료에서는 해당 소유자와 버전의 세션만 해제하며, 비정상 종료는 임대 만료 후 복구된다.
+- 완료된 배틀의 큰 연출 데이터는 24시간 후 매시간 정리한다. 점수·VP·사용률·팩토리 기록과 작은 승패 결과는 보존한다. [보관 정책](BATTLE_RETENTION.md)
 
 ## 무료 범위
 
@@ -51,5 +52,6 @@ node --env-file=.env.storage.local scripts/migrateFirestoreToPostgres.mjs verify
 - `node scripts/validatePostgresStore.mjs`: DB 어댑터. `POSTGRES_STORE_INTEGRATION=true`와 비밀 환경변수가 있으면 실제 DB의 독립 검증 namespace를 사용하고 정리한다.
 - `node scripts/validateStorageMigration.mjs`: 백업 변환과 계정·VP·팀·아이템·업적·레이팅·통계·팩토리 값 보존.
 - 게스트 이름·실제 API·레이팅·팩토리 관련 검증은 package.json의 `validate:guest-*`, `validate:ranked`, `validate:battle-factory-*` 명령을 사용한다.
+- 배포 후 `node scripts/validateDeployedStorage.mjs --url https://pokemon-champions-area-web.co.kr`로 새 익명 계정 하나의 실제 API·SQL 저장·재접속·통계/팩토리 조회를 확인한다. 매칭 참가나 통계·랭킹 보고는 하지 않으며 테스트 계정의 행만 정리한다.
 
 로컬 `.env.storage.local`, 서비스 계정 파일, 백업과 실행 결과는 모두 무시된 경로에 보관한다. 테스트는 별도 namespace와 새로 만든 테스트 UID만 변경하고 실제 계정 기록을 수정하지 않는다.

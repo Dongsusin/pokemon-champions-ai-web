@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { initializeApp, cert, deleteApp } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { getFirestore, Firestore } from 'firebase-admin/firestore'
 
 const option = name => process.argv[process.argv.indexOf(name) + 1]
 const mode = process.argv[2]
@@ -74,19 +74,23 @@ async function main() {
   if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,48}$/.test(prefix)) throw new Error('Invalid source prefix')
   if (mode === 'export') {
     if (!sourceProject || (!process.argv.includes('--credentials') && !process.argv.includes('--oauth-token-file'))) throw new Error('Explicit source project and credential file are required')
-    let credential
+    let app, db
     if (process.argv.includes('--oauth-token-file')) {
       const token = JSON.parse(await fs.readFile(option('--oauth-token-file'), 'utf8'))
       if (token.projectId !== sourceProject || typeof token.access_token !== 'string' || token.expiresAt < Date.now() + 60_000) throw new Error('Source credential project mismatch or expired access')
-      credential = { getAccessToken: async () => ({ access_token: token.access_token, expires_in: Math.max(0, Math.floor((token.expiresAt - Date.now()) / 1000)) }) }
+      // Admin getFirestore only accepts certificate/ADC credentials. Use the
+      // underlying public client for this short-lived operator OAuth token.
+      const { OAuth2Client } = await import('google-auth-library')
+      const authClient = new OAuth2Client()
+      authClient.setCredentials({ access_token: token.access_token, expiry_date: token.expiresAt })
+      db = new Firestore({ projectId: sourceProject, authClient })
     } else {
       const credentials = JSON.parse(await fs.readFile(option('--credentials'), 'utf8'))
       if (credentials.project_id !== sourceProject) throw new Error('Source credential project mismatch')
-      credential = cert(credentials)
+      app = initializeApp({ credential: cert(credentials), projectId: sourceProject }, `migration-${Date.now()}`)
+      db = getFirestore(app)
     }
-    const app = initializeApp({ credential, projectId: sourceProject }, `migration-${Date.now()}`)
     try {
-      const db = getFirestore(app)
       const roots = await db.listCollections()
       const selected = roots.filter(ref => ['players', 'accountSessions'].includes(ref.id) || ref.id.startsWith(`${prefix}_`))
       const documents = []
@@ -111,7 +115,7 @@ async function main() {
       await fs.writeFile(`${backupPath}.sha256`, hash(serialized), { flag: 'wx', mode: 0o600 })
       const converted = convertBackup(backup, prefix)
       console.log(JSON.stringify({ mode, sourceProject, documents: documents.length, bytes: Buffer.byteLength(serialized), sha256: hash(serialized), counts: converted.counts, accountCount: converted.accountCount, omittedRoots: roots.length - selected.length }))
-    } finally { await deleteApp(app) }
+    } finally { if (app) await deleteApp(app); else await db.terminate() }
     return
   }
   const serialized = await fs.readFile(backupPath, 'utf8')
@@ -149,5 +153,5 @@ async function main() {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'))) {
-  main().catch(error => { console.error('Migration failed:', ['ECONNREFUSED','ENOTFOUND','ETIMEDOUT'].includes(error.code) ? error.code : error.message?.startsWith('Destination') || error.message?.startsWith('Backup') || error.message?.startsWith('Account') || error.message?.startsWith('Unexpected') ? error.message : 'Check source/destination access and the explicit migration arguments. No credentials were logged.'); process.exitCode = 1 })
+  main().catch(error => { console.error('Migration failed:', ['ECONNREFUSED','ENOTFOUND','ETIMEDOUT'].includes(error.code) ? error.code : error.message?.startsWith('Destination') || error.message?.startsWith('Backup') || error.message?.startsWith('Account') || error.message?.startsWith('Unexpected') ? error.message : 'Check source/destination access and the explicit migration arguments. No credentials were logged.'); if (/^[A-Z0-9_/-]{1,64}$/i.test(String(error.code))) console.error('Error code:', error.code); process.exitCode = 1 })
 }

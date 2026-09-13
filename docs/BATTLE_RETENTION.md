@@ -8,6 +8,8 @@
 
 ## 적용과 예약
 
+운영 프로젝트는 `202609130003_schedule_completed_battle_retention.sql`로 pg_cron을 활성화하고 `champions-completed-battle-retention` 작업을 매시간 15분에 실행하도록 등록한다. 대상은 운영 `ranked` namespace다.
+
 Supabase 공식 문서에 따르면 [Cron은 pg_cron을 사용](https://supabase.com/docs/guides/cron)하며 [데이터베이스 함수를 SQL 작업으로 예약](https://supabase.com/docs/guides/cron/quickstart)할 수 있습니다. 프로젝트에서 Cron 확장을 활성화한 뒤 운영자가 현재 `RANKED_FIRESTORE_PREFIX`와 동일한 네임스페이스를 지정합니다.
 
 아래는 `ranked` 네임스페이스에 대한 적용 예시이며, 운영 네임스페이스가 다르면 함수 인자를 바꿔야 합니다.
