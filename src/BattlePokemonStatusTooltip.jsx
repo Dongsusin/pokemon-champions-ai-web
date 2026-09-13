@@ -50,6 +50,11 @@ function battleConditionEntries(pokemon, publicView = false) {
     : null
 
   return [
+    pokemon.ability === '총대장' && pokemon.supremeOverlordFallen > 0 && {
+      id: 'supreme-overlord',
+      label: `총대장 · 기술 위력 ×${(1 + Math.min(5, pokemon.supremeOverlordFallen) / 10).toFixed(1)}`,
+      tone: 'positive',
+    },
     pokemon.status && { id: `status-${pokemon.status.id}`, label: pokemon.status.label, tone: 'status' },
     pokemon.confusionTurns > 0 && { id: 'confusion', label: publicView ? '혼란' : `혼란 ${pokemon.confusionTurns}턴`, tone: 'status' },
     pokemon.yawnTurns > 0 && { id: 'yawn', label: '졸음', tone: 'warning' },

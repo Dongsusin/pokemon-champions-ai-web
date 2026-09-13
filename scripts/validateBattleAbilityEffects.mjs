@@ -334,7 +334,9 @@ function damageAfterOpponentActs(attacker, mutate = null) {
   const ppBefore = state.player.team[0].moves[0].currentPp
   state = turn(state)
   assert.equal(state.player.team[0].moves[0].currentPp, ppBefore)
-  assert(state.log.some((entry) => entry.message.includes('봉인되어 있다')))
+  // With its only move disabled, the action selector correctly uses Struggle
+  // instead of attempting the disabled move in executeMove.
+  assert.equal(state.player.team[0].lastMoveId, 'struggle')
 }
 
 {

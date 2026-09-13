@@ -750,6 +750,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     pendingShedTailHp: 0,
     nextTurnOrderBias: 0,
     entryAbilityActivations: {},
+    supremeOverlordFallen: null,
     hadHeldItem: Boolean(entry.heldItemId),
     consumedItem: false,
     battleMechanics: [...(entry.battleMechanics ?? [])],
@@ -2624,13 +2625,30 @@ function movePowerItemMultiplier(attacker, move) {
   return multiplier
 }
 
-function supremeOverlordMultiplier(state, attacker) {
-  if (attacker.ability !== '총대장') return 1
-  const side = getPokemonSide(state, attacker)
-  const faintedAllies = side.team.filter((pokemon) => (
-    pokemon.battleId !== attacker.battleId && (pokemon.fainted || pokemon.hp <= 0)
-  )).length
-  return 1 + Math.min(5, faintedAllies) * 0.1
+function supremeOverlordFaintCount(state, pokemon) {
+  const side = getPokemonSide(state, pokemon)
+  // Count faint events, including a revived ally fainting again. Older saved
+  // battles without this counter can only recover their currently fainted team.
+  const count = side.faintCount ?? side.team.filter((ally) => ally.fainted || ally.hp <= 0).length
+  return Math.max(0, Math.min(5, Math.floor(Number(count) || 0)))
+}
+
+function activateSupremeOverlord(state, pokemon) {
+  pokemon.supremeOverlordFallen = pokemon.ability === '총대장'
+    ? supremeOverlordFaintCount(state, pokemon) : null
+  if (pokemon.supremeOverlordFallen > 0) {
+    appendLog(state, `${pokemon.name}의 총대장! 쓰러진 아군의 의지를 이어받아 기술 위력이 ${pokemon.supremeOverlordFallen * 10}% 강화되었다!`, 'ability')
+  }
+}
+
+function supremeOverlordPower(state, attacker, power) {
+  if (attacker.ability !== '총대장') return power
+  // Snapshot on ability activation, not when attacking. A benched AI candidate
+  // (or a pre-update battle) has no snapshot yet; project its own team's count.
+  const fallen = attacker.supremeOverlordFallen ?? supremeOverlordFaintCount(state, attacker)
+  if (!fallen) return power
+  const modifier = [4096, 4506, 4915, 5325, 5734, 6144][fallen] ?? 4096
+  return Math.max(1, Math.floor(power * modifier / 4096 + 0.5 - 1e-8))
 }
 
 function movePowerAbilityMultiplier(state, attacker, defender, move, effectiveness, critical = false) {
@@ -2719,7 +2737,7 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
     defender,
     move,
   )
-  const power = Math.max(1, Number(move.power) || 1) * powerMultiplier
+  const power = supremeOverlordPower(state, attacker, Math.max(1, Number(move.power) || 1) * powerMultiplier)
   const standardEffectiveness = getMoveTypeEffectiveness(state, attacker, defender, move)
   const ignoresDefenderAbility = moveIgnoresAbility(move, defender)
   const effectiveness = !ignoresDefenderAbility
@@ -2792,7 +2810,6 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   if (attacker.ability === '우격다짐' && hasSheerForceEffect(move)) modifier *= 1.3
   modifier *= movePowerAbilityMultiplier(state, attacker, defender, move, effectiveness, critical)
   modifier *= lowHpMoveAbilityMultiplier(attacker, move)
-  modifier *= supremeOverlordMultiplier(state, attacker)
   if (!ignoresDefenderAbility) {
     if (defender.ability === '멀티스케일' && defender.hp === defender.maxHp) modifier *= 0.5
     if (defender.ability === '두꺼운지방' && ['불꽃', '얼음'].includes(move.type)) modifier *= 0.5
@@ -4712,12 +4729,21 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
       attacker.ability = defender.ability
       defender.ability = ability
       appendLog(state, '서로의 특성을 맞바꿨다!', 'ability')
+      activateSupremeOverlord(state, attacker)
+      activateSupremeOverlord(state, defender)
     }
     return true
   }
   if (move.id === 'roleplay') {
-    if (abilityCanBeChanged(attacker) && !UNTRACEABLE_ABILITIES.has(defender.ability)) attacker.ability = defender.ability
-    appendLog(state, `${attacker.name}은(는) ${defender.ability} 특성을 따라 했다!`, 'ability')
+    if (abilityCanBeChanged(attacker) && !UNTRACEABLE_ABILITIES.has(defender.ability)
+      && attacker.ability !== defender.ability) {
+      attacker.ability = defender.ability
+      activateSupremeOverlord(state, attacker)
+      appendLog(state, `${attacker.name}은(는) ${defender.ability} 특성을 따라 했다!`, 'ability')
+    } else {
+      attacker.moveFailedThisTurn = true
+      appendLog(state, '특성을 바꿀 수 없어 실패했다!', 'muted')
+    }
     return true
   }
   if (move.id === 'simplebeam') {
@@ -4731,14 +4757,23 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
     return true
   }
   if (move.id === 'entrainment') {
-    if (abilityCanBeChanged(defender)) defender.ability = attacker.ability
-    appendLog(state, `${defender.name}의 특성이 ${attacker.ability}(으)로 바뀌었다!`, 'ability')
+    if (abilityCanBeChanged(defender) && defender.ability !== attacker.ability) {
+      defender.ability = attacker.ability
+      activateSupremeOverlord(state, defender)
+      appendLog(state, `${defender.name}의 특성이 ${attacker.ability}(으)로 바뀌었다!`, 'ability')
+    } else {
+      attacker.moveFailedThisTurn = true
+      appendLog(state, '특성을 바꿀 수 없어 실패했다!', 'muted')
+    }
     return true
   }
   if (move.id === 'doodle') {
     const side = getPokemonSide(state, attacker)
     getActivePokemonList(state, side.id).forEach((pokemon) => {
-      if (abilityCanBeChanged(pokemon)) pokemon.ability = defender.ability
+      if (abilityCanBeChanged(pokemon) && pokemon.ability !== defender.ability) {
+        pokemon.ability = defender.ability
+        activateSupremeOverlord(state, pokemon)
+      }
     })
     appendLog(state, `${attacker.name} 진영이 ${defender.ability} 특성을 베껴 그렸다!`, 'ability')
     return true
@@ -4989,6 +5024,7 @@ function applyStatusMove(state, attacker, defender, move, random, context = {}) 
 
   if (move.id === 'transform') {
     if (!applyTransform(state, attacker, defender)) appendLog(state, '그러나 변신에 실패했다!', 'muted')
+    else activateSupremeOverlord(state, attacker)
     return true
   }
 
@@ -6606,6 +6642,8 @@ function applyDamagingHitAbilityEffects(
       attacker.ability = defender.ability
       defender.ability = attackerAbility
       appendLog(state, `${defender.name}의 떠도는영혼! 서로의 특성이 뒤바뀌었다!`, 'ability')
+      activateSupremeOverlord(state, attacker)
+      activateSupremeOverlord(state, defender)
       applied = true
     } else if (
       contact
@@ -7243,14 +7281,23 @@ function applyMoveSwitching(state, sideId, move, random, timeline, actionOrder, 
 }
 
 function movePpCost(state, attacker, defender, move) {
-  if (['self', 'allySide', 'allyTeam'].includes(move.target)) return 1
-  const targetSide = getPokemonSide(state, defender)
-  const pressureTargets = ['all', 'allAdjacent', 'allAdjacentFoes', 'foeSide'].includes(move.target)
-    || move.flags?.includes('mustpressure')
-    ? getActivePokemonList(state, targetSide.id)
-    : [defender]
+  const attackerSide = getPokemonSide(state, attacker)
+  const foes = getActivePokemonList(state, getOtherSide(state, attackerSide.id).id)
+  let pressureTargets
+  // Explicit Pressure flags (including self-targeted Imprison/Snatch) use all
+  // foes. Ordinary spread moves use their actual adjacent targets instead.
+  if (move.flags?.includes('mustpressure') || move.target === 'all') {
+    pressureTargets = foes
+  } else if (['self', 'allies', 'allySide', 'allyTeam', 'foeSide'].includes(move.target)) {
+    pressureTargets = []
+  } else if (['allAdjacent', 'allAdjacentFoes'].includes(move.target)) {
+    const actorSlot = getActivePokemonList(state, attackerSide.id).indexOf(attacker)
+    pressureTargets = battleMoveTargetOptions(state, attackerSide.id, actorSlot, {
+      ...move, target: move.target === 'allAdjacentFoes' ? 'adjacentFoe' : 'normal',
+    }).map(({ target }) => target)
+  } else pressureTargets = [defender]
   const pressureCount = pressureTargets.filter((pokemon) => (
-    pokemon && !pokemon.fainted && pokemon.hp > 0 && pokemon.ability === '프레셔'
+    pokemon && foes.includes(pokemon) && !pokemon.fainted && pokemon.hp > 0 && pokemon.ability === '프레셔'
   )).length
   return 1 + pressureCount
 }
@@ -9156,6 +9203,7 @@ function inheritFaintedAllyAbility(state, sideId, faintedPokemon) {
       const receiverAbility = pokemon.ability
       pokemon.ability = faintedPokemon.ability
       appendLog(state, `${pokemon.name}의 ${receiverAbility}! ${faintedPokemon.name}의 ${pokemon.ability}을(를) 이어받았다!`, 'ability')
+      activateSupremeOverlord(state, pokemon)
       inherited = true
     })
   return inherited
@@ -9206,6 +9254,7 @@ function activateEntryAbility(state, sideId, activeSlot = null) {
   activateIllusion(state, sideId, pokemon)
   activateTraceAbility(state, sideId, activeSlot, pokemon)
   activateFormEntryAbility(state, sideId, activeSlot, pokemon)
+  activateSupremeOverlord(state, pokemon)
   const weatherRule = ENTRY_WEATHER_ABILITY_RULES[pokemon.ability]
   const terrainRule = ENTRY_TERRAIN_ABILITY_RULES[pokemon.ability]
   const weatherId = weatherRule?.weatherId
@@ -9323,6 +9372,7 @@ function activateEntryAbility(state, sideId, activeSlot = null) {
 }
 
 function clearSwitchVolatiles(pokemon) {
+  pokemon.supremeOverlordFallen = null
   restoreIllusion(pokemon)
   if (pokemon.transformSnapshot) {
     Object.assign(pokemon, pokemon.transformSnapshot)
@@ -10762,7 +10812,8 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
     if (effectiveWeatherFamilyId(state) === 'snow' && defenseKey === 'defense' && defender.types.includes('얼음')) defense *= 1.5
     if (effectiveWeatherFamilyId(state) === 'sandstorm' && defenseKey === 'specialDefense' && defender.types.includes('바위')) defense *= 1.5
 
-    const baseDamage = (((2 * 50) / 5 + 2) * Math.max(1, Number(move.power) || 1) * attack / defense) / 50 + 2
+    const power = supremeOverlordPower(state, attacker, Math.max(1, Number(move.power) || 1))
+    const baseDamage = (((2 * 50) / 5 + 2) * power * attack / defense) / 50 + 2
     const criticalRates = [1 / 24, 1 / 8, 1 / 2, 1]
     const criticalStage = Math.max(0, Math.min(
       3,
@@ -10788,7 +10839,6 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
     if (attacker.ability === '우격다짐' && hasSheerForceEffect(move)) modifier *= 1.3
     modifier *= movePowerAbilityMultiplier(state, attacker, defender, move, effectiveness)
     modifier *= lowHpMoveAbilityMultiplier(attacker, move)
-    modifier *= supremeOverlordMultiplier(state, attacker)
     if (!moveIgnoresAbility(move, defender)) {
       if (defender.ability === '멀티스케일' && defender.hp === defender.maxHp) modifier *= 0.5
       if (defender.ability === '두꺼운지방' && ['불꽃', '얼음'].includes(move.type)) modifier *= 0.5

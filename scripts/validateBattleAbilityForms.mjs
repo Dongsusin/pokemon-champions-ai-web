@@ -725,21 +725,25 @@ for (const [sourceSlug, expectedGmaxSlug] of [
   const createKingambitBattle = (faintedBench) => {
     const state = battle(
       [
+        pokemon('snorlax', ['protect']),
         pokemon('kingambit', ['kowtowcleave'], { ability: '총대장' }),
-        ...Array.from({ length: 5 }, (_, index) => (
+        ...Array.from({ length: 4 }, (_, index) => (
           pokemon('snorlax', ['protect'], { captureId: `overlord-bench-${faintedBench}-${index}` })
         )),
       ],
       [pokemon('snorlax', ['raindance'])],
+      { ...rules(), pvp: true },
     )
     state.opponent.team[0].hp = state.opponent.team[0].maxHp = 5000
     if (faintedBench) {
-      state.player.team.slice(1).forEach((entry) => {
+      state.player.team.slice(2).forEach((entry) => {
         entry.hp = 0
         entry.fainted = true
       })
+      state.player.faintCount = 4
     }
-    return state
+    // Supreme Overlord captures the history when Kingambit enters the field.
+    return turn(state, { type: 'switch', targetIndex: 1 }, { type: 'move', moveIndex: 0 })
   }
   const normalState = createKingambitBattle(false)
   const boostedState = createKingambitBattle(true)

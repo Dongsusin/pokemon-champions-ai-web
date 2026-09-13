@@ -44,6 +44,8 @@
     "validate:crowned-moves": "node scripts/validateCrownedMoves.mjs",
     "validate:crowned-moves-ui": "node scripts/validateCrownedMovesUi.mjs",
     "validate:no-retreat": "node scripts/validateNoRetreat.mjs",
+    "validate:kingambit-abilities": "node scripts/validateSupremeOverlord.mjs && node scripts/validateKingambitSecondaryAbilities.mjs && node scripts/validateKingambitAbilityDescriptions.mjs",
+    "validate:kingambit-abilities-ui": "node scripts/validateKingambitAbilityUi.mjs",
     "validate:battle-ability-effects": "node scripts/validateBattleAbilityEffects.mjs",
     "validate:season-megas": "node scripts/validateSeasonMegaAbilities.mjs && node scripts/validatePokemonForms.mjs",
     "validate:battle-status": "node scripts/validateBattleStatusAudit.mjs",
