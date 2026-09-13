@@ -64,6 +64,95 @@ html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .ranked-roster
   word-break: normal;
 }
 
+/* The pixel font's glyphs exceed a 1em line box even at the default size. */
+.training-roster-grid { grid-auto-rows: minmax(94px, max-content); align-content: start; }
+.training-roster-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 54px max-content max-content;
+  align-content: start;
+  justify-items: center;
+}
+.training-roster-card > :is(strong, .training-card-types) { flex-shrink: 0; line-height: 1.5; }
+
+/* Large text needs real layout space: the old fixed rows squeezed the name
+   and type lines after the non-shrinking sprite and clipped their glyphs. */
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.training-view {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.training-view > .topbar { flex-shrink: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.training-view > .training-screen {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-header { flex-shrink: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-heading {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-heading h2 {
+  line-height: 1.35;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-filter-row {
+  flex-shrink: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(110px * var(--game-text-scale))), 1fr));
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-sort-control > button {
+  padding-block: 4px;
+  line-height: 1.4;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-search {
+  padding-block: 4px;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-search input { line-height: 1.4; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-grid {
+  flex: 1 1 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(72px + 40px * var(--game-text-scale))), 1fr));
+  grid-auto-rows: auto;
+  align-content: start;
+  padding: 5px;
+  overflow-x: hidden;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-card {
+  height: max-content;
+  min-height: 0;
+  align-self: start;
+  padding: calc(12px + 10px * var(--game-text-scale)) 8px 10px;
+  gap: 4px;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-card > :is(strong, .training-card-types) {
+  flex: 0 0 auto;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  text-overflow: clip;
+  line-height: 1.4;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-card .training-card-types { margin-top: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-roster-card .training-card-level { line-height: 1.4; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-editor-heading {
+  flex-shrink: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-editor-heading > .training-editor-name {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-editor-name > div { min-width: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .training-editor-name h2 {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
 @media (max-width: 1000px) {
   html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-button {
     grid-template-columns: minmax(32px, max-content) minmax(0, 1fr) max-content max-content;

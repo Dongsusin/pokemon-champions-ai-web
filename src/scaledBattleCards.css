@@ -1,0 +1,100 @@
+/* Large text needs content-sized cards, while only the existing list/panel
+   scrolls. The default typography and sprite dimensions remain unchanged. */
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-entry-panel, .rooms-team-panel) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .ranked-ladder-panel {
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .ranked-ladder-panel > * { flex-shrink: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-entry-panel, .rooms-team-panel) > .ranked-six-grid {
+  flex: 1 0 180px;
+  min-height: 180px;
+  max-height: 45dvh;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: minmax(min-content, auto);
+  align-content: start;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #608ea2 #112336;
+  padding: 5px;
+}
+
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-entry-panel, .ranked-team-preview, .rooms-team-panel) .ranked-pokemon-card {
+  display: flex;
+  flex-direction: column;
+  min-height: min-content;
+  gap: 4px;
+  padding: 8px;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-entry-panel, .ranked-team-preview, .rooms-team-panel) .ranked-pokemon-number {
+  position: static;
+  align-self: stretch;
+  min-height: min-content;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-entry-panel, .ranked-team-preview, .rooms-team-panel) .ranked-pokemon-card > :is(img, svg.sprite-image-viewport) {
+  flex: 0 0 auto;
+  align-self: center;
+  max-width: 100%;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-entry-panel, .ranked-team-preview, .rooms-team-panel) .ranked-pokemon-card > :is(strong, small) {
+  flex-shrink: 0;
+  min-width: 0;
+  width: 100%;
+  margin-top: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.35;
+}
+
+/* Both team previews and the confirmation controls remain reachable even on a
+   short landscape screen. Cards grow inside the selection panel, not the page. */
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-selection, .rooms-selection) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) :is(.ranked-selection, .rooms-selection) > .ranked-team-preview {
+  flex: 0 0 auto;
+  min-height: min-content;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .ranked-team-preview > .ranked-six-grid {
+  flex: 0 0 auto;
+  min-height: min-content;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: minmax(min-content, auto);
+  gap: 8px;
+  padding: 5px;
+}
+
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .factory-rental-select > :is(strong, .factory-card-types) {
+  flex-shrink: 0;
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: center;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .factory-rental-select > :is(img, svg.sprite-image-viewport) { flex-shrink: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .factory-card-item {
+  display: block;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: center;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .factory-card-item > :is(img, span) { vertical-align: middle; }
