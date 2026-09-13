@@ -68,7 +68,6 @@
     "id": "climb",
     "kind": "footage",
     "duration": 9,
-    "stablePortrait": { "x": 231, "y": 942, "width": 82, "height": 91, "sourceFrame": 30 },
     "lines": [
       "교환은 선택",
       "도전은 계속"

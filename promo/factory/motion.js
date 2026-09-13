@@ -13,7 +13,7 @@ if (sceneId === 'intro') content.innerHTML = brand
 if (sceneId === 'outro') content.innerHTML = `${brand}<p class="outro-tagline">당신은 몇 층까지?</p><a class="outro-url" href="https://pokemon-champions-area-web.co.kr"><span>pokemon-champions-area-web.co.kr</span>${arrow}</a>`
 if (sceneId === 'factory') {
   const pokemon = [{ id: 445, name: '한카리아스' }, { id: 448, name: '루카리오' }, { id: 6, name: '리자몽' }]
-  content.innerHTML = `<div class="factory-copy"><h1 class="factory-title">배틀<span class="highlight">팩토리</span></h1><p class="factory-tagline">선택하고. 바꾸고. 올라가라.</p><div class="factory-rule"></div></div><div class="rental-trio">${pokemon.map(entry => `<div class="rental-sprite"><img src="/promo/update/assets/pokemon-${entry.id}.png" alt="${entry.name}"></div>`).join('')}</div><div class="trainer-card"><img class="trainer-portrait" src="/assets/trainers/factory-clown.png" alt="팩토리 삐에로"></div>`
+  content.innerHTML = `<div class="factory-copy"><h1 class="factory-title">배틀<span class="highlight">팩토리</span></h1><p class="factory-tagline">선택하고. 바꾸고. 올라가라.</p><div class="factory-rule"></div></div><div class="rental-trio">${pokemon.map(entry => `<div class="rental-sprite"><img src="/promo/update/assets/pokemon-${entry.id}.png" alt="${entry.name}"></div>`).join('')}</div><div class="trainer-figure"><img class="trainer-portrait" src="/assets/trainers/factory-clown-cutout.png" alt="팩토리 삐에로"></div>`
 }
 document.querySelector('.tower-structure').innerHTML = Array.from({ length: 10 }, (_, i) => `<i style="top:${i * 164}px"></i>`).join('')
 const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value))
@@ -76,7 +76,7 @@ function seek(value) {
     reveal(q('.brand-arena'), time, .48, .92, { y: 42, blur: 5 })
   }
   if (sceneId === 'factory') {
-    reveal(q('.trainer-card'), time, .04, 1.1, { x: 58, y: 22, scale: .97 })
+    reveal(q('.trainer-figure'), time, .04, 1.1, { x: 58, y: 22, scale: .97 })
     revealWords(titleWords, time, .2, 56)
     revealWords(subtitleWords, time, .72, 31)
     const rule = easeOut((time - .9) / .8)

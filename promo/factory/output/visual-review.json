@@ -1,143 +1,405 @@
 {
-  "reviewedAt": "2026-09-13T07:08:00.698Z",
-  "reviewer": "factory_review",
-  "scope": "Independent implementation-facts review and direct visual inspection of the listed still frames with view_image. This does not certify full video playback or audio.",
+  "reviewedAt": "2026-09-13T07:44:46.164Z",
+  "reviewer": "cutout_motion",
+  "scope": "Direct view_image inspection of 41 still frames extracted from the completed MP4, via three contact sheets, with seven scene frames also opened at full resolution. Scene framing and the fixed ranking crop were checked against the timeline and renderer. This is a sampled visual review, not full real-time viewing or listening.",
   "passedForReviewedScope": true,
   "fullVideoPlaybackReviewed": false,
   "audioListened": false,
-  "implementationSources": [
-    "src/data/battleFactory.js",
-    "src/BattleFactoryLobby.jsx",
-    "src/BattleFactoryRankings.jsx"
-  ],
-  "verifiedClaims": [
-    "Random rental offer contains six Pokemon; the player selects three.",
-    "The opponent team is visible before battle; the player selects the lead each floor.",
-    "Factory uses single battles with three Pokemon per side and a random AI team.",
-    "A victory allows one optional exchange with the immediately previous opponent team.",
-    "Skipping the exchange advances the floor while preserving the current party.",
-    "Rankings show up to ten records with final Pokemon, held items and move names.",
-    "Global rankings use one best result per trainer; equal floors sort by earlier record."
-  ],
+  "finalVideo": {
+    "file": "promo/factory/output/champions-arena-battle-factory-update-1080p.mp4",
+    "sha256": "709795dc852dbc7ed25c4e7dcf0d2a89928fb0dbe6eea95c45c44f17844d780d",
+    "bytes": 20277651,
+    "durationSeconds": 86
+  },
   "findings": [
     {
       "status": "pass",
-      "detail": "Factory and ending title cards have readable large text and no title or game-address clipping."
+      "detail": "The intro contains only the game emblem and title. The outro title, question and game address fit within the frame."
     },
     {
       "status": "pass",
-      "detail": "Rental, lead and exchange screenshots contain all six cards or both three-Pokemon groups and their relevant action buttons."
+      "detail": "The factory hero shows the transparent full-body NPC over the arena; no white rectangle or gold photo card remains. The raised hand, red ball, hat and both feet are inside the frame; white clothing remains visible."
     },
     {
       "status": "pass",
-      "detail": "Climb frames show floor 2 completion followed by floor 3 readiness; the skip-exchange action is visible."
+      "detail": "Rental, lead, swap and climb gameplay samples show the same transparent NPC directly over the dark sidebar with no white frame or empty image rectangle."
     },
     {
       "status": "pass",
-      "detail": "Expanded ranking source screenshot shows all three final Pokemon, held items and four moves each."
-    },
-    {
-      "status": "improved",
-      "detail": "Ranking footage was changed to a fixed 1.25 scale at centerY 0.48 after a readability recommendation. TOP 10 and the team row remain inside the image. Part of the bottom personal-record footer is cropped; this is outside the featured team-detail content."
+      "detail": "Large feature headings are readable and fit inside the frame. No added small production, promotion or scene-description labels appear along the upper or lower video edges. The original game UI labels are preserved."
     },
     {
       "status": "pass",
-      "detail": "Actual 2-second overlay frames for rentals, rankings and battle have legible two-line headings, sufficient contrast and no heading clipping. Four-second scene samples no longer contain the overlay."
+      "detail": "All eight transitions were sampled before, during and after their 0.4-second boundary. They contain blended or moving scene imagery, with no blank black gap in the sampled frames."
     },
     {
       "status": "pass",
-      "detail": "The README and credits identify the local capture ranking as filming data rather than production rankings or audience metrics."
+      "detail": "The battle samples show the real Dynamax animation followed by battle action and the next opposing Pokemon. Editorial battle footage retains the full field and lower command area."
+    },
+    {
+      "status": "pass",
+      "detail": "The lead scene shows both three-Pokemon teams and the selected Garchomp. The swap scene shows Baxcalibur exchanged for Vaporeon; the climb scene shows the new team on floor 3."
+    },
+    {
+      "status": "pass",
+      "detail": "Rankings show TOP 10, the one local record and its three final Pokemon with held items and four move names each. Vaporeon details remain entirely within the frame. The fixed 1.25 crop excludes the original top app header and part of the bottom personal-record footer, while keeping the featured content."
+    },
+    {
+      "status": "pass",
+      "detail": "The ranking timeline uses one constant scale of 1.25 and centerY 0.48. Renderer uses one static scale/crop expression without time-varying crop origin; the inspected ranking frames keep the framing stable. Sample inspection does not certify every frame against temporal jitter."
     }
   ],
   "reviewedImages": [
     {
-      "file": "promo/factory/generated/review/factory.png",
-      "sha256": "acbce555c38cb8dd8dadd28ed494b6a29e08cfd137f1ba8042cd692b2ebc18eb"
+      "id": "intro",
+      "timeSeconds": 2.5,
+      "file": "promo/factory/generated/review/final-cutout/intro.png",
+      "sha256": "41604e07ab060bafbf2d69227d843fcfffed45b932a7282941bfb6cdf0172db8",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/review/outro.png",
-      "sha256": "f44b49feafe06a0035db41646cb5bd1feb6517518b694b2ff899eefe2a516219"
+      "id": "factory",
+      "timeSeconds": 8,
+      "file": "promo/factory/generated/review/final-cutout/factory.png",
+      "sha256": "3b6c792ac296b68621f93f9df365df18ad3a31c5271d7e9fa583ef835c42e9e6",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/footage/rentals.png",
-      "sha256": "edeccd67a4558bc33555cfe4efe16403c83d515f06ffdbbab43e5c59bd28ffd7"
+      "id": "rentals-overlay",
+      "timeSeconds": 12.6,
+      "file": "promo/factory/generated/review/final-cutout/rentals-overlay.png",
+      "sha256": "62d60e7eadd72f9c7fd445668e441b6c0887a9d76cea009c4511d73fb5e85976",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/footage/lead-end.png",
-      "sha256": "3f93e384494abcb0a1342daecaa560d4b81c4ddd4c0abc666ad0caf7c7b34e22"
+      "id": "rentals",
+      "timeSeconds": 18,
+      "file": "promo/factory/generated/review/final-cutout/rentals.png",
+      "sha256": "0e91b118a72326c4161f0418564dad18066789f389a1ce5907b96ce85bbc3e69",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/footage/battle-end.png",
-      "sha256": "0819f027d64208d4b5657ef5aafcb039080a1b9ade28a4819f5d4f90a849e0fa"
+      "id": "lead-overlay",
+      "timeSeconds": 25,
+      "file": "promo/factory/generated/review/final-cutout/lead-overlay.png",
+      "sha256": "9275b2341eb6f1ca66100090dbfefe3b03848c609fca5195cad4e4e288346130",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/footage/swap.png",
-      "sha256": "71e330def51e7134811dc99e0000bedaf1448bfaecc008dea5dcc9b477cdab93"
+      "id": "lead",
+      "timeSeconds": 29,
+      "file": "promo/factory/generated/review/final-cutout/lead.png",
+      "sha256": "5ac8d9832e8b89d3653efb41481cf7fa996e7dedd058a5bbfa2a07c7ad26d1e6",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/footage/climb.png",
-      "sha256": "47c8863ab522c72d31e4448465cefcbc183f74283bc2b54f376583cca4d6dbf9"
+      "id": "battle-overlay",
+      "timeSeconds": 33,
+      "file": "promo/factory/generated/review/final-cutout/battle-overlay.png",
+      "sha256": "0f8cb0cbaafba4d7d88ead2b0f591f59b9ccc328674f8767abaac9664d8b179c",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/footage/climb-end.png",
-      "sha256": "72f37deaeda56c777aef78ee719dd7f7cea5d2a0183590ffb0629bee27acf5f8"
+      "id": "battle-impact",
+      "timeSeconds": 38,
+      "file": "promo/factory/generated/review/final-cutout/battle-impact.png",
+      "sha256": "45bcbd32860ce366dc04247dc89f609425f554dcc7b7a2316ddeb4479cfd849d",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/footage/rankings.png",
-      "sha256": "06e1d352513013e8666aa0cf057dbdba4369ee83c54ff7678f2f301d88baf12c"
+      "id": "battle",
+      "timeSeconds": 43,
+      "file": "promo/factory/generated/review/final-cutout/battle.png",
+      "sha256": "e380ea000a7a36cfb14f6d667d55a42ce8303af6e9fd34fbfee1bcd89ec2601f",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/footage/rankings-end.png",
-      "sha256": "bb451fbae1d2bfe7b40aa2f157d6526382e13b352011d47b816efc1d5296e3fd"
+      "id": "swap-overlay",
+      "timeSeconds": 47,
+      "file": "promo/factory/generated/review/final-cutout/swap-overlay.png",
+      "sha256": "1433ab2d165db15576d0046f4759a339c43c899221ea94245c2cad1aefebff59",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/scenes/rentals-sample.jpg",
-      "sha256": "b50702ef2e027f8969d83b568cbef8ff85899bbc100e191ec83ae3f97185d792"
+      "id": "swap",
+      "timeSeconds": 53,
+      "file": "promo/factory/generated/review/final-cutout/swap.png",
+      "sha256": "554c96ad46bb2b5f4c8ff5d46a39bf284aee5f87fcac891a10afd6309aaa4a91",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/scenes/swap-sample.jpg",
-      "sha256": "738a0b378944b4270a72e65dbddc4852a9e1afdc85453700eb35a7625c06794b"
+      "id": "climb-overlay",
+      "timeSeconds": 59,
+      "file": "promo/factory/generated/review/final-cutout/climb-overlay.png",
+      "sha256": "209b3517a20eb765682ef8f80a23bc9239a139e94f9d96ad69add9c2dd8ececa",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/scenes/climb-sample.jpg",
-      "sha256": "051ab3bf73efe5c0abac2abc351d6af848441105b287d3cde821fe3db7f4fb39",
-      "recheckedBy": "root after portrait stabilization"
+      "id": "climb",
+      "timeSeconds": 63,
+      "file": "promo/factory/generated/review/final-cutout/climb.png",
+      "sha256": "537408feb1c684d024b3af4a1c1e9b1c36e7b078335439686a60f289bae56e00",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/scenes/rankings-sample.jpg",
-      "sha256": "14202c4507b43ff309670052d71bce7b4d572c6d8c0ef47aa948a43def9a9fce"
+      "id": "rankings-overlay",
+      "timeSeconds": 68,
+      "file": "promo/factory/generated/review/final-cutout/rankings-overlay.png",
+      "sha256": "51d6747e0d11ae710f2b50a635ced02f5bc91b84a0988bc05be15f9af1b75965",
+      "inspection": "contact-sheet view_image"
     },
     {
-      "file": "promo/factory/generated/review/rentals-overlay.png",
-      "sha256": "b9a1e68aeb5e9f3bbc234c87a9393f5ace49b6178ca39bb3de7d972aa3731d87"
+      "id": "rankings",
+      "timeSeconds": 73,
+      "file": "promo/factory/generated/review/final-cutout/rankings.png",
+      "sha256": "d472ea3894200ad8c23656ba187432cc2811ca171a3608ae95e8763f57fb732f",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/review/rankings-overlay.png",
-      "sha256": "b560aa2af8f83de7ad73bb87342ab625d0a47a89ab93877609890053230141f6"
+      "id": "rankings-details",
+      "timeSeconds": 76,
+      "file": "promo/factory/generated/review/final-cutout/rankings-details.png",
+      "sha256": "135556275ed0bd28f8057ad4e23948e1933b9548ede3ec42a5b7d2bab13c7904",
+      "inspection": "contact sheet and full-frame view_image"
     },
     {
-      "file": "promo/factory/generated/review/battle-overlay.png",
-      "sha256": "773b2d72ab0df75f85ce17e95a8c2909b162c4f722e125c367a8a966476b23a5"
+      "id": "outro",
+      "timeSeconds": 82,
+      "file": "promo/factory/generated/review/final-cutout/outro.png",
+      "sha256": "16defed22db07dcde947713f8d7fae724ff341a77b5ef61086e757ea25f8c6b4",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-1-1",
+      "timeSeconds": 4.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-1-1.png",
+      "sha256": "cd882c27419b399dca8de86792b8a3183c7a997fd4bb2d33322dc49011b32d7e",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-1-2",
+      "timeSeconds": 5.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-1-2.png",
+      "sha256": "96bb4a90090b5423e862cf84891cfe0507db64ad9635e1c8a05d7f8cd8f69799",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-1-3",
+      "timeSeconds": 5.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-1-3.png",
+      "sha256": "b57317b9d5149712ad0d45c23128862e0b6d54493d930c2dfb0f9f727ed29dff",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-2-1",
+      "timeSeconds": 10.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-2-1.png",
+      "sha256": "9fa196daf294935d91a7a058d19b647161e0d07effaa9017c712fd23cf3af8b6",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-2-2",
+      "timeSeconds": 11.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-2-2.png",
+      "sha256": "a5743cf9c3ee5ade2cc4dd510ac169d870d19bdc269a01da48761eaca4450fd3",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-2-3",
+      "timeSeconds": 11.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-2-3.png",
+      "sha256": "976f5918652db933d6af674efcffaefcfd4b06b980483b24bae10615451a44fd",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-3-1",
+      "timeSeconds": 22.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-3-1.png",
+      "sha256": "00be6829f7ff10a512e0328f1a816b9b433444aab3c2708bc08f9287930c66cf",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-3-2",
+      "timeSeconds": 23.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-3-2.png",
+      "sha256": "4f65a2423a7faa5d8409e44d6e756bdfd9944c7b241ecbb0b54b7cfbd762f396",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-3-3",
+      "timeSeconds": 23.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-3-3.png",
+      "sha256": "560e9e73bc0f4395257ba950155b844a0355be783f737c907c3efa0d3fbd5dfa",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-4-1",
+      "timeSeconds": 30.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-4-1.png",
+      "sha256": "46e6d82575a64372b3ca864601ec47ca029bd10e891bea6579a1fe1f808c3113",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-4-2",
+      "timeSeconds": 31.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-4-2.png",
+      "sha256": "7b18502fc5bf707403750885a1f2df2983bdeb2012c1d169ea2a2ca5eec3ab1d",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-4-3",
+      "timeSeconds": 31.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-4-3.png",
+      "sha256": "fbaa5531ecda54088b207fd0a0d590fef0cf82fb2e96d79e11a4699b43f18afc",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-5-1",
+      "timeSeconds": 44.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-5-1.png",
+      "sha256": "bb160d94e327b7fb33e24709e23e260b5a3a9b4005f6ccb5d0f2415ee82c2fb1",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-5-2",
+      "timeSeconds": 45.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-5-2.png",
+      "sha256": "c2cf9175636ba8aa9e4f1d346216c396ffbe84d02c97c2d5fca140635559aea1",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-5-3",
+      "timeSeconds": 45.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-5-3.png",
+      "sha256": "3d78257e781fcdb617a6e16d9b939f1f8e8924ac680c3190e5d866dbf70db227",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-6-1",
+      "timeSeconds": 56.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-6-1.png",
+      "sha256": "f0375e281f1e50cef758479f09712e6aa6d13f562e66a3840f2d84c885bdbea2",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-6-2",
+      "timeSeconds": 57.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-6-2.png",
+      "sha256": "edb9e4d7e5e8308f919092e43cb427c17f7563e3d694451ab7fbee442e5ba046",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-6-3",
+      "timeSeconds": 57.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-6-3.png",
+      "sha256": "41c9fe2042bf004c4544c0e586ab92de134f388f464ca39e6cc93b248652d06e",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-7-1",
+      "timeSeconds": 65.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-7-1.png",
+      "sha256": "6fc462b2832400fb02e7c6452f0dbea10125aa4ca6ac9dc4d1f388efa862396a",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-7-2",
+      "timeSeconds": 66.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-7-2.png",
+      "sha256": "78c5d827ebd7d05e448a53c5e36e74174f854c5023d92293b4560bd82a776661",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-7-3",
+      "timeSeconds": 66.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-7-3.png",
+      "sha256": "b0495cedb6bca2c7833c3d7a743f25921fb277fdbdfd59edf32e72ef19a9ad4f",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-8-1",
+      "timeSeconds": 77.9,
+      "file": "promo/factory/generated/review/final-cutout/transition-8-1.png",
+      "sha256": "765235e41e1234d8313fab9b58c9cbb5b8d504fdedc4b228c7776e826bc330b5",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-8-2",
+      "timeSeconds": 78.2,
+      "file": "promo/factory/generated/review/final-cutout/transition-8-2.png",
+      "sha256": "b762ecac5bcfb06164b9a058c4a52f25350281a1bfbed1cc9f13dbcbd1d44d40",
+      "inspection": "contact-sheet view_image"
+    },
+    {
+      "id": "transition-8-3",
+      "timeSeconds": 78.5,
+      "file": "promo/factory/generated/review/final-cutout/transition-8-3.png",
+      "sha256": "9576a53cc77b892c1a34313c80fa009262d34947c0ca195a196fa594f4061e9d",
+      "inspection": "contact-sheet view_image"
     }
   ],
-  "remainingVerification": [
-    "Root reviewer to inspect the completed video contact sheet and transitions.",
-    "Automated final-file decode, timing and audio checks.",
-    "Full-duration browser playback and chapter controls."
-  ],
-  "rootReview": {
-    "reviewedAt": "2026-09-13T07:16:39.146Z",
-    "finalVideoSha256": "a34c2811bd4a8ac9f2afcaf62999e1fc56099f0940e7926d5decbd08525731f0",
-    "scope": "Direct visual review of the final contact sheet, full-frame climb sample and repaired thumbnail at 4.8 seconds; complete muted playback verified separately by Chromium.",
-    "contactSheetSha256": "254a8fecec6257cbb55bbcc8b4aa93993feb48422405e426496ccb2852a1ed5d",
-    "portraitRepair": {
-      "file": "promo/factory/generated/review/climb-portrait-fixed.jpg",
-      "sha256": "cbbafc3ecf691b97476c76adb4d44c8c88bacfddf3f985d54fb5b03ccc2389bf",
-      "method": "Use the same take’s already loaded trainer-image pixels in its fixed region while the real floor and team UI continues."
+  "contactSheets": [
+    {
+      "file": "promo/factory/generated/review/final-cutout/scenes-contact.png",
+      "sha256": "c206e22d3a048b0e79596d892512e33cfe94fd96181ebe2439afbd5f920d436a"
     },
-    "captionClipping": false,
-    "interiorBlackSegments": 0,
-    "interiorSilenceSegments": 0,
-    "automatedPlaybackPassed": true
-  }
+    {
+      "file": "promo/factory/generated/review/final-cutout/transitions-1-contact.png",
+      "sha256": "82915910e6f4e74c078951344d1f07524c36ddcdf39bffec82b3be50c247d1f9"
+    },
+    {
+      "file": "promo/factory/generated/review/final-cutout/transitions-2-contact.png",
+      "sha256": "69d065886ba8890a1706c4942073b757b3138e8b5ec602e07260877056816ccf"
+    }
+  ],
+  "contactSheetLayout": {
+    "scenes": "Three columns in sample-list order; 17 populated cells and one unused black tile. The unused tile is contact-sheet padding, not a video frame.",
+    "transitions": "Each row is one transition, with samples at boundary - 0.1, + 0.2 and + 0.5 seconds; first sheet has boundaries 5, 11, 23 and 31; second has 45, 57, 66 and 78."
+  },
+  "stillWarningsReviewed": [
+    {
+      "start": 11.8,
+      "end": 14.4,
+      "disposition": "Intentional reading dwell",
+      "evidence": "rentals-overlay at 12.6 seconds",
+      "detail": "The rental title is settled while the player sees all six options before selection begins."
+    },
+    {
+      "start": 45.8,
+      "end": 48.4,
+      "disposition": "Intentional reading dwell",
+      "evidence": "swap-overlay at 47 seconds",
+      "detail": "The swap feature heading and both teams remain visible before choosing the outgoing and incoming Pokemon."
+    },
+    {
+      "start": 54.4,
+      "end": 57.0333,
+      "disposition": "Intentional ready-screen dwell",
+      "evidence": "transition-6-1 at 56.9 seconds",
+      "detail": "The completed exchange is followed by the floor 2 lead-selection screen before the editorial cut to the next cleared floor."
+    },
+    {
+      "start": 74.6333,
+      "end": 77.2333,
+      "disposition": "Intentional details-card dwell",
+      "evidence": "rankings-details at 76 seconds",
+      "detail": "Vaporeon ability, held item, stats and four move descriptions remain readable in the open details modal."
+    }
+  ],
+  "separatelyReferencedCaptureReview": {
+    "file": "promo/factory/generated/footage/manifest.json",
+    "field": "footageReview",
+    "scope": "The capture reviewer separately checked real game commands and 50 native-rate samples during the NPC floor transition. Those source-footage claims were not independently re-run in this final still review."
+  },
+  "automatedValidationReference": {
+    "file": "promo/factory/output/validation.json",
+    "sha256": "709795dc852dbc7ed25c4e7dcf0d2a89928fb0dbe6eea95c45c44f17844d780d",
+    "passed": true,
+    "decodePassed": true,
+    "blackSegments": 0,
+    "silenceSegments": 0,
+    "scope": "Read from the separate current-file automated validation report; not a manual playback or listening claim."
+  },
+  "playbackVerification": "Full-duration muted browser playback and chapter seeking are verified separately by the root reviewer in playback-validation.json.",
+  "remainingVisualChanges": []
 }

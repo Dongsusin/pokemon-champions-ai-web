@@ -1,68 +1,155 @@
 {
-  "provenance": "Unchanged production GameApp, Factory UI and battle engine. Read-only state instrumentation; authentic rental generation seeded factory-promo-10. Every command is clicked in the shipped UI. Two actual wins, one real exchange, one skip and a voluntary floor-three retirement produce the sole local TOP 10 record via the real API handler and isolated in-memory store. No production data or cloud authentication.",
-  "sourceGameCommit": "14643996e8d744dba63fa8c7bae1ec6720d21a65",
+  "provenance": "Actual working-tree GameApp, Factory UI and battle engine, identified by sourceGameFiles SHA-256. Read-only state instrumentation; authentic rental generation seeded factory-promo-10. Every command is clicked in the game UI. Two actual wins, one real exchange, one skip and a voluntary floor-three retirement produce the sole local TOP 10 record via the real API handler and isolated in-memory store. No production data or cloud authentication.",
+  "sourceGameCommit": "483131308ca5ed176c4b4b96a31a7c96bee4c5c8",
+  "sourceWorkingTreeChanged": true,
+  "sourceGameFiles": [
+    {
+      "path": "src/App.jsx",
+      "bytes": 55477,
+      "sha256": "af08ccd870451e1ecdc8bf86ba7f02da085c1378b068eb68db9e118cc6520c78"
+    },
+    {
+      "path": "src/BattleFactoryScreen.jsx",
+      "bytes": 3510,
+      "sha256": "acb313b11473906f887068a9d06646c91dc5fcf252d763dc7d02edecd2b6150d"
+    },
+    {
+      "path": "src/BattleFactoryLobby.jsx",
+      "bytes": 15464,
+      "sha256": "695cbc8a1bf9fea8ce1af8699b57b8d4a58cbb13b10663a3a38091044ccb04eb"
+    },
+    {
+      "path": "src/BattleFactoryRankings.jsx",
+      "bytes": 9599,
+      "sha256": "55c861699cd959ecf7168e19ce4292ee197fe08b9bb97143483a0d45ded87007"
+    },
+    {
+      "path": "src/TrainerSprite.jsx",
+      "bytes": 1240,
+      "sha256": "d6509321f6a7c1001037ef61110aa9878510d0aef53df72f59e05438ddf4e6dd"
+    },
+    {
+      "path": "src/BattleScreen.jsx",
+      "bytes": 118538,
+      "sha256": "2a71316b38d3f1aaa50f37529245be00445c13ac862aedcc4684357998942e26"
+    },
+    {
+      "path": "src/data/trainerSprites.js",
+      "bytes": 7039,
+      "sha256": "5ace8cc0a763fad7a787539c1effbc5480fe0547ab6a3f9ad1cfc42eb182c6ee"
+    },
+    {
+      "path": "src/data/battleFactory.js",
+      "bytes": 10093,
+      "sha256": "92fa461e45fa411d56be00e669ceb1c0d486aa77ea079bea6c8cfaa9f2e9dfe9"
+    },
+    {
+      "path": "src/data/battleEngine.js",
+      "bytes": 557076,
+      "sha256": "5813799eb3304fe9392c1bbf86ec8f2365e77ca50b32d11d63867d3d418591a4"
+    },
+    {
+      "path": "src/battleFactory.css",
+      "bytes": 26573,
+      "sha256": "95979772843a9f392ad0a4eaee5fda01ef80bdb5af73fdac07b6bf74cb5898f1"
+    },
+    {
+      "path": "src/styles.css",
+      "bytes": 51518,
+      "sha256": "0d28fc73da2357c3032111ca02923156ee77ccddda86d196d86dec0292a6345a"
+    },
+    {
+      "path": "src/screenRedesign.css",
+      "bytes": 463531,
+      "sha256": "78a8fd1ebe0c3c25d59f85ba9a51c388fbc1ee8ea85889338097b2ddbcff0dfe"
+    },
+    {
+      "path": "src/battleGen5.css",
+      "bytes": 192771,
+      "sha256": "65593f7253d3395d9bf997259210f97edcb4365977eabe5cd6b4e4c332ab93f2"
+    },
+    {
+      "path": "src/battleGimmicks.css",
+      "bytes": 53674,
+      "sha256": "22465cb3a9c804f34e8304ed2639605249f281acac229578a46280a1e618ab87"
+    },
+    {
+      "path": "src/mobileLandscape.css",
+      "bytes": 15692,
+      "sha256": "4184f9bb10d02bb98b94ee85201cec2f33afa6ad3a46a5f62978984f14aa4d6b"
+    },
+    {
+      "path": "public/assets/trainers/factory-clown-cutout.png",
+      "bytes": 99624,
+      "sha256": "08f920fe1ffa091e0bf6fbe07506547a3b6e7979eba61e4b9b648f6b03d7c547"
+    },
+    {
+      "path": "promo/factory/capture/entry.jsx",
+      "bytes": 1259,
+      "sha256": "7f4aadd5d38d438c5355c626be8f079c8606d4b438c51b6d42ed27d8c628a5c1"
+    }
+  ],
   "scenes": [
     {
       "id": "rentals",
       "usableDuration": 13.01,
-      "visibleImages": null,
-      "allVisibleImagesLoaded": null,
+      "visibleImages": 14,
+      "allVisibleImagesLoaded": true,
       "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\generated\\footage\\rentals.mp4",
-      "cleanStartSeconds": 4.96,
+      "cleanStartSeconds": 4.6,
       "recommendedTrimOffset": 0
     },
     {
       "id": "lead",
-      "usableDuration": 9.003,
-      "visibleImages": null,
-      "allVisibleImagesLoaded": null,
+      "usableDuration": 9.009,
+      "visibleImages": 14,
+      "allVisibleImagesLoaded": true,
       "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\generated\\footage\\lead.mp4",
-      "cleanStartSeconds": 19.96,
+      "cleanStartSeconds": 19.24,
       "recommendedTrimOffset": 0
     },
     {
       "id": "battle",
       "usableDuration": 15,
-      "visibleImages": null,
-      "allVisibleImagesLoaded": null,
+      "visibleImages": 6,
+      "allVisibleImagesLoaded": true,
       "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\generated\\footage\\battle.mp4",
-      "cleanStartSeconds": 45,
+      "cleanStartSeconds": 43.387,
       "recommendedTrimOffset": 0
     },
     {
       "id": "swap",
-      "usableDuration": 13.007,
-      "visibleImages": null,
-      "allVisibleImagesLoaded": null,
+      "usableDuration": 13.009,
+      "visibleImages": 14,
+      "allVisibleImagesLoaded": true,
       "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\generated\\footage\\swap.mp4",
-      "cleanStartSeconds": 76.84,
+      "cleanStartSeconds": 72.56,
       "recommendedTrimOffset": 0
     },
     {
       "id": "climb",
-      "usableDuration": 10.009,
-      "visibleImages": null,
-      "allVisibleImagesLoaded": null,
+      "usableDuration": 10.005,
+      "visibleImages": 14,
+      "allVisibleImagesLoaded": true,
       "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\generated\\footage\\climb.mp4",
-      "cleanStartSeconds": 194.12,
+      "cleanStartSeconds": 141.76,
       "recommendedTrimOffset": 0
     },
     {
       "id": "rankings",
-      "usableDuration": 13.003,
-      "visibleImages": null,
-      "allVisibleImagesLoaded": null,
+      "usableDuration": 13.006,
+      "visibleImages": 7,
+      "allVisibleImagesLoaded": true,
       "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\generated\\footage\\rankings.mp4",
-      "cleanStartSeconds": 210.6,
+      "cleanStartSeconds": 157.72,
       "recommendedTrimOffset": 0
     }
   ],
   "captureErrors": [],
   "blockedExternalRequests": [],
   "imageVerification": {
-    "everyVisibleImageLoadedBeforeEachShot": true,
-    "method": "Playwright waitForFunction on all visible document.images requiring complete && naturalWidth > 0, timeout 60 seconds, immediately before each recording marker.",
-    "countsRecorded": false
+    "allVisibleImagesLoaded": true,
+    "countsRecorded": true
   },
   "battleEvidence": [
     {
@@ -104,7 +191,7 @@
           250
         ],
         "opponentTeamSize": 3,
-        "playerRemainingHpRatio": 0.4810810810810811,
+        "playerRemainingHpRatio": 0.4918918918918919,
         "opponentId": "factory-clown",
         "opponentTier": "B",
         "opponentRegion": "battle-factory"
@@ -255,16 +342,15 @@
     {
       "floor": 2,
       "winner": "player",
-      "playerRemaining": 2,
+      "playerRemaining": 3,
       "opponentRemaining": 0,
-      "turns": 13,
+      "turns": 7,
       "achievementFacts": {
         "version": 1,
         "completed": true,
         "playerTeamSize": 3,
-        "playerFaintCount": 1,
+        "playerFaintCount": 0,
         "playerUsedMechanics": [
-          "tera",
           "dynamax"
         ],
         "formatId": "single",
@@ -291,12 +377,17 @@
           250
         ],
         "opponentTeamSize": 3,
-        "playerRemainingHpRatio": 0.24413145539906103,
+        "playerRemainingHpRatio": 0.41621621621621624,
         "opponentId": "factory-clown",
         "opponentTier": "B",
         "opponentRegion": "battle-factory"
       },
       "log": [
+        {
+          "id": "1-0-팩토리 삐에로이(가) 승부를 걸어왔다!",
+          "message": "팩토리 삐에로이(가) 승부를 걸어왔다!",
+          "tone": "opponent"
+        },
         {
           "id": "1-1-맑음 · 일반 필드 · 싱글배틀",
           "message": "맑음 · 일반 필드 · 싱글배틀",
@@ -323,377 +414,182 @@
           "tone": "opponent"
         },
         {
-          "id": "1-6-효과가 굉장했다!",
-          "message": "효과가 굉장했다!",
-          "tone": "super"
+          "id": "1-6-아고용의 공격은 빗나갔다!",
+          "message": "아고용의 공격은 빗나갔다!",
+          "tone": "muted"
         },
         {
-          "id": "1-7-아고용의 특수공격 하락!",
-          "message": "아고용의 특수공격 하락!",
-          "tone": "status"
-        },
-        {
-          "id": "1-8-아고용은(는) 생명의구슬로 HP가 줄었다.",
-          "message": "아고용은(는) 생명의구슬로 HP가 줄었다.",
-          "tone": "item"
-        },
-        {
-          "id": "1-9-다이맥스 한카리아스의 다이어스!",
+          "id": "1-7-다이맥스 한카리아스의 다이어스!",
           "message": "다이맥스 한카리아스의 다이어스!",
           "tone": "player"
         },
         {
-          "id": "1-10-효과가 굉장했다!",
+          "id": "1-8-효과가 굉장했다!",
           "message": "효과가 굉장했다!",
           "tone": "super"
         },
         {
-          "id": "1-11-다이맥스 한카리아스의 특수방어 상승!",
+          "id": "1-9-다이맥스 한카리아스의 특수방어 상승!",
           "message": "다이맥스 한카리아스의 특수방어 상승!",
           "tone": "status"
         },
         {
-          "id": "1-12-다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "id": "1-10-다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
           "message": "다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
           "tone": "item"
         },
         {
-          "id": "1-13-아고용은(는) 쓰러졌다!",
+          "id": "1-11-아고용은(는) 쓰러졌다!",
           "message": "아고용은(는) 쓰러졌다!",
           "tone": "faint"
         },
         {
-          "id": "1-14-다이맥스 한카리아스은(는) 쓰러졌다!",
-          "message": "다이맥스 한카리아스은(는) 쓰러졌다!",
-          "tone": "faint"
-        },
-        {
-          "id": "1-15-팩토리 삐에로은(는) 얼루기을(를) 내보냈다!",
-          "message": "팩토리 삐에로은(는) 얼루기을(를) 내보냈다!",
-          "tone": "switch"
-        },
-        {
-          "id": "1-16-다음 포켓몬을 선택해 주세요.",
-          "message": "다음 포켓몬을 선택해 주세요.",
-          "tone": "prompt"
-        },
-        {
-          "id": "2-17-한카리아스의 다이맥스가 풀렸다.",
-          "message": "한카리아스의 다이맥스가 풀렸다.",
-          "tone": "muted"
-        },
-        {
-          "id": "2-18-칠색조! 부탁해!",
-          "message": "칠색조! 부탁해!",
-          "tone": "switch"
-        },
-        {
-          "id": "2-19-팩토리 삐에로은(는) 다부니을(를) 내보냈다!",
+          "id": "1-12-팩토리 삐에로은(는) 다부니을(를) 내보냈다!",
           "message": "팩토리 삐에로은(는) 다부니을(를) 내보냈다!",
+          "tone": "switch"
+        },
+        {
+          "id": "2-13-다부니의 방어!",
+          "message": "다부니의 방어!",
           "tone": "opponent"
         },
         {
-          "id": "2-20-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
+          "id": "2-14-다부니은(는) 몸을 지키고 있다!",
+          "message": "다부니은(는) 몸을 지키고 있다!",
+          "tone": "status"
+        },
+        {
+          "id": "2-15-다이맥스 한카리아스의 다이어스!",
+          "message": "다이맥스 한카리아스의 다이어스!",
           "tone": "player"
         },
         {
-          "id": "2-21-급소에 맞았다!",
+          "id": "2-16-다부니은(는) 방어했지만 맥스 기술의 충격을 완전히 막지 못했다!",
+          "message": "다부니은(는) 방어했지만 맥스 기술의 충격을 완전히 막지 못했다!",
+          "tone": "muted"
+        },
+        {
+          "id": "2-17-급소에 맞았다!",
           "message": "급소에 맞았다!",
           "tone": "critical"
         },
         {
-          "id": "2-22-칠색조은(는) 반동으로 38의 데미지를 입었다.",
-          "message": "칠색조은(는) 반동으로 38의 데미지를 입었다.",
-          "tone": "damage"
-        },
-        {
-          "id": "2-23-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "3-24-플레이어의 칠색조이(가) 풀타입으로 테라스탈했다!",
-          "message": "플레이어의 칠색조이(가) 풀타입으로 테라스탈했다!",
-          "tone": "gimmick"
-        },
-        {
-          "id": "3-25-다부니의 방어!",
-          "message": "다부니의 방어!",
-          "tone": "opponent"
-        },
-        {
-          "id": "3-26-다부니은(는) 몸을 지키고 있다!",
-          "message": "다부니은(는) 몸을 지키고 있다!",
+          "id": "2-18-다이맥스 한카리아스의 특수방어 상승!",
+          "message": "다이맥스 한카리아스의 특수방어 상승!",
           "tone": "status"
         },
         {
-          "id": "3-27-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
+          "id": "2-19-다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "message": "다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "tone": "item"
+        },
+        {
+          "id": "3-20-다이맥스 한카리아스의 다이어스!",
+          "message": "다이맥스 한카리아스의 다이어스!",
           "tone": "player"
         },
         {
-          "id": "3-28-다부니은(는) 공격을 막아냈다!",
-          "message": "다부니은(는) 공격을 막아냈다!",
-          "tone": "muted"
+          "id": "3-21-다이맥스 한카리아스의 특수방어 상승!",
+          "message": "다이맥스 한카리아스의 특수방어 상승!",
+          "tone": "status"
         },
         {
-          "id": "3-29-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
+          "id": "3-22-다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "message": "다이맥스 한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "tone": "item"
         },
         {
-          "id": "4-30-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
-          "tone": "player"
-        },
-        {
-          "id": "4-31-칠색조은(는) 반동으로 27의 데미지를 입었다.",
-          "message": "칠색조은(는) 반동으로 27의 데미지를 입었다.",
-          "tone": "damage"
-        },
-        {
-          "id": "4-32-다부니의 전기자석파!",
+          "id": "3-23-다부니의 전기자석파!",
           "message": "다부니의 전기자석파!",
           "tone": "opponent"
         },
         {
-          "id": "4-33-칠색조은(는) 마비 상태가 되었다!",
-          "message": "칠색조은(는) 마비 상태가 되었다!",
+          "id": "3-24-다이맥스 한카리아스은(는) 마비 상태가 되었다!",
+          "message": "다이맥스 한카리아스은(는) 마비 상태가 되었다!",
           "tone": "status"
         },
         {
-          "id": "4-34-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
+          "id": "3-25-한카리아스의 다이맥스가 풀렸다.",
+          "message": "한카리아스의 다이맥스가 풀렸다.",
+          "tone": "muted"
         },
         {
-          "id": "5-35-다부니의 방어!",
+          "id": "4-26-다부니의 방어!",
           "message": "다부니의 방어!",
           "tone": "opponent"
         },
         {
-          "id": "5-36-다부니은(는) 몸을 지키고 있다!",
+          "id": "4-27-다부니은(는) 몸을 지키고 있다!",
           "message": "다부니은(는) 몸을 지키고 있다!",
           "tone": "status"
         },
         {
-          "id": "5-37-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
+          "id": "4-28-한카리아스의 지진!",
+          "message": "한카리아스의 지진!",
           "tone": "player"
         },
         {
-          "id": "5-38-다부니은(는) 공격을 막아냈다!",
+          "id": "4-29-다부니은(는) 공격을 막아냈다!",
           "message": "다부니은(는) 공격을 막아냈다!",
           "tone": "muted"
         },
         {
-          "id": "5-39-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "6-40-다부니은(는) 재생력으로 HP를 70 회복했다.",
-          "message": "다부니은(는) 재생력으로 HP를 70 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "6-41-팩토리 삐에로은(는) 얼루기을(를) 내보냈다!",
-          "message": "팩토리 삐에로은(는) 얼루기을(를) 내보냈다!",
-          "tone": "opponent"
-        },
-        {
-          "id": "6-42-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
+          "id": "5-30-한카리아스의 스케일샷!",
+          "message": "한카리아스의 스케일샷!",
           "tone": "player"
         },
         {
-          "id": "6-43-칠색조은(는) 반동으로 46의 데미지를 입었다.",
-          "message": "칠색조은(는) 반동으로 46의 데미지를 입었다.",
-          "tone": "damage"
-        },
-        {
-          "id": "6-44-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "7-45-얼루기의 불꽃펀치!",
-          "message": "얼루기의 불꽃펀치!",
-          "tone": "opponent"
-        },
-        {
-          "id": "7-46-효과가 굉장했다!",
-          "message": "효과가 굉장했다!",
-          "tone": "super"
-        },
-        {
-          "id": "7-47-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
-          "tone": "player"
-        },
-        {
-          "id": "7-48-칠색조은(는) 반동으로 6의 데미지를 입었다.",
-          "message": "칠색조은(는) 반동으로 6의 데미지를 입었다.",
-          "tone": "damage"
-        },
-        {
-          "id": "7-49-얼루기은(는) 쓰러졌다!",
-          "message": "얼루기은(는) 쓰러졌다!",
-          "tone": "faint"
-        },
-        {
-          "id": "7-50-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "7-51-팩토리 삐에로은(는) 다부니을(를) 내보냈다!",
-          "message": "팩토리 삐에로은(는) 다부니을(를) 내보냈다!",
-          "tone": "switch"
-        },
-        {
-          "id": "8-52-다부니의 방어!",
-          "message": "다부니의 방어!",
-          "tone": "opponent"
-        },
-        {
-          "id": "8-53-다부니은(는) 몸을 지키고 있다!",
-          "message": "다부니은(는) 몸을 지키고 있다!",
+          "id": "5-31-한카리아스의 방어 하락 · 스피드 상승!",
+          "message": "한카리아스의 방어 하락 · 스피드 상승!",
           "tone": "status"
         },
         {
-          "id": "8-54-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
-          "tone": "player"
+          "id": "5-32-한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "message": "한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "tone": "item"
         },
         {
-          "id": "8-55-다부니은(는) 공격을 막아냈다!",
-          "message": "다부니은(는) 공격을 막아냈다!",
-          "tone": "muted"
-        },
-        {
-          "id": "8-56-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "9-57-다부니의 냉동빔!",
-          "message": "다부니의 냉동빔!",
-          "tone": "opponent"
-        },
-        {
-          "id": "9-58-효과가 굉장했다!",
-          "message": "효과가 굉장했다!",
-          "tone": "super"
-        },
-        {
-          "id": "9-59-칠색조은(는) 몸이 저려 움직일 수 없다!",
-          "message": "칠색조은(는) 몸이 저려 움직일 수 없다!",
-          "tone": "status"
-        },
-        {
-          "id": "9-60-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "10-61-다부니의 방어!",
-          "message": "다부니의 방어!",
-          "tone": "opponent"
-        },
-        {
-          "id": "10-62-다부니은(는) 몸을 지키고 있다!",
-          "message": "다부니은(는) 몸을 지키고 있다!",
-          "tone": "status"
-        },
-        {
-          "id": "10-63-칠색조은(는) 몸이 저려 움직일 수 없다!",
-          "message": "칠색조은(는) 몸이 저려 움직일 수 없다!",
-          "tone": "status"
-        },
-        {
-          "id": "10-64-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "11-65-다부니의 냉동빔!",
-          "message": "다부니의 냉동빔!",
-          "tone": "opponent"
-        },
-        {
-          "id": "11-66-효과가 굉장했다!",
-          "message": "효과가 굉장했다!",
-          "tone": "super"
-        },
-        {
-          "id": "11-67-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
-          "tone": "player"
-        },
-        {
-          "id": "11-68-칠색조은(는) 반동으로 25의 데미지를 입었다.",
-          "message": "칠색조은(는) 반동으로 25의 데미지를 입었다.",
-          "tone": "damage"
-        },
-        {
-          "id": "11-69-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "12-70-다부니의 방어!",
-          "message": "다부니의 방어!",
-          "tone": "opponent"
-        },
-        {
-          "id": "12-71-다부니은(는) 몸을 지키고 있다!",
-          "message": "다부니은(는) 몸을 지키고 있다!",
-          "tone": "status"
-        },
-        {
-          "id": "12-72-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
-          "tone": "player"
-        },
-        {
-          "id": "12-73-다부니은(는) 공격을 막아냈다!",
-          "message": "다부니은(는) 공격을 막아냈다!",
-          "tone": "muted"
-        },
-        {
-          "id": "12-74-칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "message": "칠색조은(는) 먹다남은음식으로 HP를 13 회복했다.",
-          "tone": "heal"
-        },
-        {
-          "id": "13-75-다부니의 냉동빔!",
-          "message": "다부니의 냉동빔!",
-          "tone": "opponent"
-        },
-        {
-          "id": "13-76-효과가 굉장했다!",
-          "message": "효과가 굉장했다!",
-          "tone": "super"
-        },
-        {
-          "id": "13-77-칠색조의 브레이브버드!",
-          "message": "칠색조의 브레이브버드!",
-          "tone": "player"
-        },
-        {
-          "id": "13-78-칠색조은(는) 반동으로 1의 데미지를 입었다.",
-          "message": "칠색조은(는) 반동으로 1의 데미지를 입었다.",
-          "tone": "damage"
-        },
-        {
-          "id": "13-79-다부니은(는) 쓰러졌다!",
+          "id": "5-33-다부니은(는) 쓰러졌다!",
           "message": "다부니은(는) 쓰러졌다!",
           "tone": "faint"
         },
         {
-          "id": "13-80-팩토리 삐에로과의 승부에서 이겼다!",
+          "id": "5-34-팩토리 삐에로은(는) 얼루기을(를) 내보냈다!",
+          "message": "팩토리 삐에로은(는) 얼루기을(를) 내보냈다!",
+          "tone": "switch"
+        },
+        {
+          "id": "6-35-얼루기의 기습!",
+          "message": "얼루기의 기습!",
+          "tone": "opponent"
+        },
+        {
+          "id": "6-36-얼루기은(는) 까칠한피부에 상처를 입었다!",
+          "message": "얼루기은(는) 까칠한피부에 상처를 입었다!",
+          "tone": "ability"
+        },
+        {
+          "id": "6-37-한카리아스은(는) 몸이 저려 움직일 수 없다!",
+          "message": "한카리아스은(는) 몸이 저려 움직일 수 없다!",
+          "tone": "status"
+        },
+        {
+          "id": "7-38-한카리아스의 지진!",
+          "message": "한카리아스의 지진!",
+          "tone": "player"
+        },
+        {
+          "id": "7-39-한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "message": "한카리아스은(는) 생명의구슬로 HP가 줄었다.",
+          "tone": "item"
+        },
+        {
+          "id": "7-40-얼루기은(는) 쓰러졌다!",
+          "message": "얼루기은(는) 쓰러졌다!",
+          "tone": "faint"
+        },
+        {
+          "id": "7-41-팩토리 삐에로과의 승부에서 이겼다!",
           "message": "팩토리 삐에로과의 승부에서 이겼다!",
           "tone": "victory"
         }
@@ -703,9 +599,12 @@
   "rankingEvidence": [
     {
       "action": "reportFactoryRun",
+      "method": "POST",
       "status": 200
     },
     {
+      "action": "factoryLeaderboard",
+      "method": "GET",
       "status": 200
     }
   ],
@@ -713,6 +612,7 @@
     {
       "floor": 1,
       "turn": 1,
+      "wallTime": 1789284877534,
       "type": "move",
       "moveIndex": 1,
       "actorSlot": 0,
@@ -722,6 +622,7 @@
     {
       "floor": 1,
       "turn": 2,
+      "wallTime": 1789284883437,
       "type": "move",
       "moveIndex": 0,
       "actorSlot": 0,
@@ -732,6 +633,7 @@
     {
       "floor": 1,
       "turn": 3,
+      "wallTime": 1789284894386,
       "type": "move",
       "moveIndex": 2,
       "actorSlot": 0,
@@ -742,6 +644,7 @@
     {
       "floor": 1,
       "turn": 4,
+      "wallTime": 1789284904298,
       "type": "move",
       "moveIndex": 3,
       "actorSlot": 0,
@@ -752,6 +655,7 @@
     {
       "floor": 2,
       "turn": 1,
+      "wallTime": 1789284930392,
       "type": "move",
       "moveIndex": 0,
       "actorSlot": 0,
@@ -762,14 +666,9 @@
     {
       "floor": 2,
       "turn": 2,
-      "type": "replacement",
-      "targetIndex": 2
-    },
-    {
-      "floor": 2,
-      "turn": 2,
+      "wallTime": 1789284943560,
       "type": "move",
-      "moveIndex": 2,
+      "moveIndex": 0,
       "actorSlot": 0,
       "targetSideId": "opponent",
       "targetSlot": 0,
@@ -778,18 +677,20 @@
     {
       "floor": 2,
       "turn": 3,
+      "wallTime": 1789284950091,
       "type": "move",
-      "moveIndex": 2,
+      "moveIndex": 0,
       "actorSlot": 0,
       "targetSideId": "opponent",
       "targetSlot": 0,
-      "gimmick": "tera"
+      "gimmick": null
     },
     {
       "floor": 2,
       "turn": 4,
+      "wallTime": 1789284957393,
       "type": "move",
-      "moveIndex": 2,
+      "moveIndex": 0,
       "actorSlot": 0,
       "targetSideId": "opponent",
       "targetSlot": 0,
@@ -798,6 +699,7 @@
     {
       "floor": 2,
       "turn": 5,
+      "wallTime": 1789284962703,
       "type": "move",
       "moveIndex": 2,
       "actorSlot": 0,
@@ -808,8 +710,9 @@
     {
       "floor": 2,
       "turn": 6,
+      "wallTime": 1789284969274,
       "type": "move",
-      "moveIndex": 2,
+      "moveIndex": 0,
       "actorSlot": 0,
       "targetSideId": "opponent",
       "targetSlot": 0,
@@ -818,68 +721,9 @@
     {
       "floor": 2,
       "turn": 7,
+      "wallTime": 1789284973690,
       "type": "move",
-      "moveIndex": 2,
-      "actorSlot": 0,
-      "targetSideId": "opponent",
-      "targetSlot": 0,
-      "gimmick": null
-    },
-    {
-      "floor": 2,
-      "turn": 8,
-      "type": "move",
-      "moveIndex": 2,
-      "actorSlot": 0,
-      "targetSideId": "opponent",
-      "targetSlot": 0,
-      "gimmick": null
-    },
-    {
-      "floor": 2,
-      "turn": 9,
-      "type": "move",
-      "moveIndex": 2,
-      "actorSlot": 0,
-      "targetSideId": "opponent",
-      "targetSlot": 0,
-      "gimmick": null
-    },
-    {
-      "floor": 2,
-      "turn": 10,
-      "type": "move",
-      "moveIndex": 2,
-      "actorSlot": 0,
-      "targetSideId": "opponent",
-      "targetSlot": 0,
-      "gimmick": null
-    },
-    {
-      "floor": 2,
-      "turn": 11,
-      "type": "move",
-      "moveIndex": 2,
-      "actorSlot": 0,
-      "targetSideId": "opponent",
-      "targetSlot": 0,
-      "gimmick": null
-    },
-    {
-      "floor": 2,
-      "turn": 12,
-      "type": "move",
-      "moveIndex": 2,
-      "actorSlot": 0,
-      "targetSideId": "opponent",
-      "targetSlot": 0,
-      "gimmick": null
-    },
-    {
-      "floor": 2,
-      "turn": 13,
-      "type": "move",
-      "moveIndex": 2,
+      "moveIndex": 0,
       "actorSlot": 0,
       "targetSideId": "opponent",
       "targetSlot": 0,
@@ -1008,13 +852,6 @@
       "id": "climb",
       "kind": "footage",
       "duration": 9,
-      "stablePortrait": {
-        "x": 231,
-        "y": 942,
-        "width": 82,
-        "height": 91,
-        "sourceFrame": 30
-      },
       "lines": [
         "교환은 선택",
         "도전은 계속"

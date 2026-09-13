@@ -4,13 +4,13 @@
   "fps": 30,
   "sourceHashes": {
     "intro": "ce6ec64572ea72065f4956935cfd09fa369c8493903df8aa72050655cc74b903",
-    "factory": "c6d864e84b9861393502d705aa814a14d9159e31dd6262c6f3f6b5b3a20d030d",
-    "rentals": "37c4fa6e0ba2da984506a6afa4905dfe7c6e173a31974806bf38695c47159151",
-    "lead": "4a1c8ae4a38d65c724b54aec103fa850ac553e77cfd747a3aaaf698e5d7b5234",
-    "battle": "3b1edc954876fb962749357bf694420987a08900c73c350eaabba0bb42652247",
-    "swap": "0c2fb738fa61e1fb1848e76af6938e9dccce003f811e79ffe0f4d7abaedcbd9c",
-    "climb": "2b16035fa5cf8871893a91c0b4f399220c947bd9d8fb40c177f051f814e36254",
-    "rankings": "91ffc9725fc0a18aef2a109a390b5a70eff93b3ecb6bdf1846e78d3b428742a1",
+    "factory": "cfa78c6eae1d2a3843718198e9d0d8ca93923f0b7d69ef2f97a46736c4409499",
+    "rentals": "b228e07e6dd5132b09dc874d193bcb5b34d2d4f2140d7984cf26dc98f3148bfd",
+    "lead": "50900f3e7ac120ab35c47e9436ca840442fe0aa32465f1f3bfe0348a57bf1cc5",
+    "battle": "b7da7b97464358113c9dc28f23acc9a9577a01ef877c1211baf657f03ecb0a49",
+    "swap": "e58a31ffbafbf0aadae4cebffa13bc139c725c41b9c1766b451abf824c9b65af",
+    "climb": "6330a2334a37a80dc3eb5270f615fbc486684582333019eb2c0340e8e062afb7",
+    "rankings": "8bcf41b9cd08261d7367a9ca46db183bc43c331db78fc68843d3514841d49744",
     "outro": "d13ba68efa3370c9580b77f46df34035f57e361e6d6e291d58dc6997a8a5a9a2"
   },
   "cues": [
@@ -46,15 +46,15 @@
     },
     {
       "file": "promo/factory/generated/whoosh.wav",
-      "at": 32.6,
+      "at": 31.45,
       "volume": 0.55,
-      "basis": "Observed Dynamax onset in continuous recording"
+      "basis": "Manual review of this capture: the magenta Dynamax orb and transformation begin in the first half-second."
     },
     {
       "file": "promo/factory/generated/impact.wav",
-      "at": 37.25,
+      "at": 36,
       "volume": 0.55,
-      "basis": "Observed Max Quake impact on Vaporeon; HP falls immediately after"
+      "basis": "Manual review at 4 fps around 4.5–6.5 seconds: Max Quake impact ring appears at the opponent around 5.0 seconds, followed by actual HP loss."
     },
     {
       "file": "promo/factory/generated/whoosh.wav",
@@ -105,10 +105,10 @@
     "target_offset": "-2.07"
   },
   "audioMeasuredAfterEncoding": {
-    "input_i": "-16.07",
-    "input_tp": "-5.08",
+    "input_i": "-16.08",
+    "input_tp": "-5.14",
     "input_lra": "7.00",
-    "input_thresh": "-26.17",
+    "input_thresh": "-26.18",
     "output_i": "-13.92",
     "output_tp": "-2.50",
     "output_lra": "2.80",
@@ -117,6 +117,6 @@
     "target_offset": "-2.08"
   },
   "audioEncoder": "aac-fast-256k",
-  "sha256": "a34c2811bd4a8ac9f2afcaf62999e1fc56099f0940e7926d5decbd08525731f0",
-  "bytes": 19922847
+  "sha256": "709795dc852dbc7ed25c4e7dcf0d2a89928fb0dbe6eea95c45c44f17844d780d",
+  "bytes": 20277651
 }

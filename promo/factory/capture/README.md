@@ -30,3 +30,7 @@
 전투 장면은 전체 연속 녹화에서 2턴의 실제 명령 직전부터 선택한다. 따라서 첫 준비 기술 뒤의 다이맥스·공격·HP 감소·상대 교체가 한 연속 장면에 들어간다. `markerStartSeconds`는 처음 촬영 마커 위치, `cleanStartSeconds`는 최종 사용 구간의 위치이다.
 
 `initial-run.json`, `completed-run.json`, `local-api-state.json`, `manifest.json`의 전투 요약·명령·API 결과가 실제 렌탈 구성부터 종료된 기록까지의 출처를 보존한다. `victory-1.png`, `victory-2.png`는 엔진이 판정한 승리 화면이다. 전체 연속 원본은 `session.webm`이다.
+
+투명 NPC 이미지는 문서의 이미지 preload와 시작 시 `decode()`로 미리 준비하고 참조를 유지한다. 층 이동 때도 같은 이미지를 사용하며 촬영 후 흰 배경이나 임시 이미지 조각을 덮어씌우지 않는다. 각 장면 시작 시 표시된 이미지의 주소와 정상 로드 여부도 `visibleImages`로 보존한다.
+
+`sourceGameCommit`은 촬영 시작 시점의 Git 기준 커밋이고, `sourceWorkingTreeChanged`는 촬영 대상에 아직 커밋하지 않은 수정이 있는지 나타낸다. 실제 촬영된 게임 UI·배틀 엔진·CSS·NPC 이미지 파일의 SHA-256은 `sourceGameFiles`에 기록한다. 따라서 기준 커밋 이후의 이미지 수정도 파일 해시로 확인할 수 있다.

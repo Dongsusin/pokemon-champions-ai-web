@@ -75,6 +75,7 @@ async function renderMotion(shot) {
   const dependencies = Object.fromEntries(await Promise.all(['motion.html', 'motion.css', 'motion.js'].map(async name => [name, await hashFile(`${project}/${name}`)])))
   const assets = await fs.readdir(`${project}/assets`).catch(() => [])
   for (const name of assets.sort()) dependencies[`assets/${name}`] = await hashFile(`${project}/assets/${name}`)
+  if (shot.scene === 'factory') dependencies['public/assets/trainers/factory-clown-cutout.png'] = await hashFile('public/assets/trainers/factory-clown-cutout.png')
   const fingerprint = hash(JSON.stringify({ sourceHash, shot, frames, dependencies }))
   const meta = `${generated}/scenes/${shot.id}.json`
   const cached = await readJson(meta).catch(() => null)
@@ -141,18 +142,7 @@ async function renderFootage(shot, manifest) {
   const y = Math.max(0, Math.min(height - 1080, Math.round((height * (camera?.centerY ?? .5) - 540) / 2) * 2))
   const framing = `scale=${width}:${height}:flags=lanczos,crop=1920:1080:${x}:${y}`
   const filters = []
-  let sourceLabel = '0:v'
-  if (shot.stablePortrait) {
-    const { x, y, width: w, height: h, sourceFrame } = shot.stablePortrait
-    if (![x,y,w,h,sourceFrame].every(Number.isInteger) || x < 0 || y < 0 || w < 1 || h < 1 || x+w > 1920 || y+h > 1080 || sourceFrame < 0) throw new Error('Invalid portrait stabilization region')
-    // A floor change briefly remounts the identical trainer image. Reuse its
-    // fully loaded pixels from this same take; gameplay and controls stay live.
-    filters.push('[0:v]split=2[liveSource][portraitSource]')
-    filters.push(`[portraitSource]select='eq(n,${sourceFrame})',crop=${w}:${h}:${x}:${y},loop=loop=-1:size=1:start=0,setpts=N/(30*TB)[stablePortrait]`)
-    filters.push(`[liveSource][stablePortrait]overlay=${x}:${y}:shortest=1[repairedSource]`)
-    sourceLabel = 'repairedSource'
-  }
-  filters.push(`[${sourceLabel}]setpts=PTS-STARTPTS,fps=30${hold},${framing},setsar=1,format=yuv420p[raw]`)
+  filters.push(`[0:v]setpts=PTS-STARTPTS,fps=30${hold},${framing},setsar=1,format=yuv420p[raw]`)
   let previous = 'raw'
   for (let i = 0; i < layers.length; i++) {
     const layer = layers[i]
@@ -249,7 +239,9 @@ await run(['-ss', '7.5', '-i', final, '-frames:v', '1', '-q:v', '2', `${output}/
 await fs.copyFile(`${project}/CREDITS.md`, `${output}/champions-arena-battle-factory-update-credits.txt`)
 const capture = await readJson(`${generated}/footage/manifest.json`)
 await fs.writeFile(`${output}/source-audit.json`, JSON.stringify({ provenance: capture.provenance,
-  sourceGameCommit: '14643996e8d744dba63fa8c7bae1ec6720d21a65',
+  sourceGameCommit: capture.sourceGameCommit,
+  sourceWorkingTreeChanged: capture.sourceWorkingTreeChanged,
+  sourceGameFiles: capture.sourceGameFiles,
   scenes: capture.shots.map(take => ({ id: take.id, usableDuration: take.usableDuration,
     visibleImages: take.visibleImages?.length ?? null,
     allVisibleImagesLoaded: take.visibleImages?.length ? take.visibleImages.every(i => i.loaded) : null,

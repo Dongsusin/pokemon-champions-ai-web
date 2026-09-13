@@ -4,6 +4,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { createServer } from 'vite'
 import { createMemoryRankedStore } from '../../../server/rankedStore.js'
 import { createRankedService } from '../../../server/rankedService.js'
@@ -15,6 +16,25 @@ import { resolveChromiumExecutable } from '../../scripts/browserRuntime.mjs'
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) throw Error('Local capture only')
 const root = fileURLToPath(new URL('../../../', import.meta.url))
 const output = path.join(root, 'promo/factory/generated/footage')
+const trainerImage = '/assets/trainers/factory-clown-cutout.png'
+const sourcePaths = [
+  'src/App.jsx', 'src/BattleFactoryScreen.jsx', 'src/BattleFactoryLobby.jsx',
+  'src/BattleFactoryRankings.jsx', 'src/TrainerSprite.jsx', 'src/BattleScreen.jsx',
+  'src/data/trainerSprites.js', 'src/data/battleFactory.js', 'src/data/battleEngine.js',
+  'src/battleFactory.css', 'src/styles.css', 'src/screenRedesign.css', 'src/battleGen5.css',
+  'src/battleGimmicks.css', 'src/mobileLandscape.css',
+  `public${trainerImage}`, 'promo/factory/capture/entry.jsx',
+]
+const gitCommit = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, windowsHide: true, encoding: 'utf8' })
+assert.equal(gitCommit.status, 0, gitCommit.stderr)
+const sourceGameCommit = gitCommit.stdout.trim()
+const sourceGameFiles = await Promise.all(sourcePaths.map(async relativePath => {
+  const content = await fs.readFile(path.join(root, relativePath))
+  return { path: relativePath, bytes: content.length, sha256: createHash('sha256').update(content).digest('hex') }
+}))
+const sourceStatus = spawnSync('git', ['status', '--porcelain', '--', ...sourcePaths], { cwd: root, windowsHide: true, encoding: 'utf8' })
+assert.equal(sourceStatus.status, 0, sourceStatus.stderr)
+const sourceWorkingTreeChanged = Boolean(sourceStatus.stdout.trim())
 await fs.mkdir(output, { recursive: true })
 const require = createRequire(new URL('../../package.json', import.meta.url))
 const { chromium } = require('playwright')
@@ -134,7 +154,7 @@ try {
   }], server: { host: '127.0.0.1', port: 5279, strictPort: false, hmr: false }, logLevel: 'error' })
   await frontend.listen()
   const url = `http://127.0.0.1:${frontend.httpServer.address().port}`
-  const html = await frontend.transformIndexHtml('/capture.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/promo/factory/capture/entry.jsx"></script></body></html>')
+  const html = await frontend.transformIndexHtml('/capture.html', `<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link rel="preload" as="image" href="${trainerImage}"></head><body><div id="root"></div><script type="module" src="/promo/factory/capture/entry.jsx"></script></body></html>`)
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true, args: ['--autoplay-policy=no-user-gesture-required', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] })
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, serviceWorkers: 'block', recordVideo: { dir: output, size: { width: 1920, height: 1080 } } })
   await context.addInitScript(({ user, owned }) => {
@@ -279,6 +299,21 @@ try {
       }
     }
   }
-  await fs.writeFile(path.join(output, 'manifest.json'), JSON.stringify({ shots, errors, blocked: [...blocked], apiAudit, actions, battles, provenance: 'Unchanged production GameApp, Factory UI and battle engine. Read-only state instrumentation; authentic rental generation seeded factory-promo-10. Every command is clicked in the shipped UI. Two actual wins, one real exchange, one skip and a voluntary floor-three retirement produce the sole local TOP 10 record via the real API handler and isolated in-memory store. No production data or cloud authentication.' }, null, 2))
+  const changedSourceFiles = []
+  for (const item of sourceGameFiles) {
+    const content = await fs.readFile(path.join(root, item.path))
+    if (createHash('sha256').update(content).digest('hex') !== item.sha256) changedSourceFiles.push(item.path)
+  }
+  if (changedSourceFiles.length) {
+    errors.push(`Source files changed during capture: ${changedSourceFiles.join(', ')}`)
+    process.exitCode = 1
+  }
+  await fs.writeFile(path.join(output, 'manifest.json'), JSON.stringify({
+    shots, errors, blocked: [...blocked], apiAudit, actions, battles,
+    sourceGameCommit, sourceWorkingTreeChanged, sourceGameFiles, sourceGameFilesUnchangedDuringCapture: changedSourceFiles.length === 0,
+    sourceGameCommitMeaning: 'Git base at capture start; sourceGameFiles contains the actual captured working-tree SHA-256 values, including the transparent trainer and current UI changes.',
+    imageVerification: { allVisibleImagesLoaded: shots.every(item => item.visibleImages.every(image => image.loaded)), countsRecorded: true },
+    provenance: 'Actual working-tree GameApp, Factory UI and battle engine, identified by sourceGameFiles SHA-256. Read-only state instrumentation; authentic rental generation seeded factory-promo-10. Every command is clicked in the game UI. Two actual wins, one real exchange, one skip and a voluntary floor-three retirement produce the sole local TOP 10 record via the real API handler and isolated in-memory store. No production data or cloud authentication.',
+  }, null, 2))
   await browser?.close(); await frontend?.close(); await store.close()
 }

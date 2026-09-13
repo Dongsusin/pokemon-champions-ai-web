@@ -1,17 +1,18 @@
 {
-  "generatedAt": "2026-09-13T07:14:14.387Z",
+  "generatedAt": "2026-09-13T07:41:28.566Z",
   "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\output\\champions-arena-battle-factory-update-1080p.mp4",
   "passed": true,
   "failures": [],
   "warnings": [
-    "6 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
+    "4 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
   ],
   "review": {
     "required": true,
     "completed": true,
-    "note": "Direct review of final contact sheet, title/caption samples and repaired floor-transition portrait; all 86 seconds also passed automated Chromium playback. Six detected still intervals are deliberate UI reading/selection holds. No subjective full-video listening is claimed.",
-    "evidence": "visual-review.json",
-    "playbackEvidence": "playback-validation.json"
+    "completedAt": "2026-09-13T07:46:28.330Z",
+    "note": "Final-video scene and transition stills reviewed in visual-review.json, including four intentional reading holds. Separate complete muted Chromium playback passed. No claim of subjective audio listening.",
+    "visualReview": "visual-review.json",
+    "playbackReview": "playback-validation.json"
   },
   "embeddedSubtitleTracks": 0,
   "durationSeconds": 86,
@@ -28,8 +29,8 @@
     "codec": "aac",
     "sampleRate": 48000,
     "channelLayout": "stereo",
-    "integratedLUFS": -16.07,
-    "truePeakDbTP": -5.08,
+    "integratedLUFS": -16.08,
+    "truePeakDbTP": -5.14,
     "loudnessRangeLU": 7
   },
   "decode": {
@@ -45,29 +46,19 @@
         "duration": 2.5999999999999996
       },
       {
-        "start": 16.3333,
-        "end": 18.9333,
-        "duration": 2.599999999999998
-      },
-      {
-        "start": 23.8,
-        "end": 26.4,
-        "duration": 2.599999999999998
-      },
-      {
         "start": 45.8,
         "end": 48.4,
         "duration": 2.6000000000000014
       },
       {
-        "start": 57.8,
-        "end": 60.3667,
-        "duration": 2.5667000000000044
+        "start": 54.4,
+        "end": 57.0333,
+        "duration": 2.6332999999999984
       },
       {
-        "start": 70.8667,
-        "end": 74.6667,
-        "duration": 3.8000000000000114
+        "start": 74.6333,
+        "end": 77.2333,
+        "duration": 2.5999999999999943
       }
     ],
     "silenceSegments": []
@@ -95,6 +86,6 @@
       83.313
     ]
   },
-  "bytes": 19922847,
-  "sha256": "a34c2811bd4a8ac9f2afcaf62999e1fc56099f0940e7926d5decbd08525731f0"
+  "bytes": 20277651,
+  "sha256": "709795dc852dbc7ed25c4e7dcf0d2a89928fb0dbe6eea95c45c44f17844d780d"
 }

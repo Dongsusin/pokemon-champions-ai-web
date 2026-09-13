@@ -30,10 +30,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden}
 .rental-sprite{position:relative;display:flex;align-items:center;justify-content:center;width:255px;height:257px;filter:drop-shadow(0 20px 20px #0009)}
 .rental-sprite::before{position:absolute;content:'';width:240px;height:78px;bottom:6px;border-radius:50%;border:1px solid #a8f6ff38;background:radial-gradient(ellipse,#83e2ff23,transparent 70%);box-shadow:0 10px 30px #70dfff0b;transform:rotate(-6deg)}
 .rental-sprite img{position:relative;display:block;width:236px;height:236px;object-fit:contain;image-rendering:pixelated}
-.trainer-card{position:absolute;right:121px;top:151px;width:570px;height:742px;border-radius:44px;border:2px solid #f9de967e;background:linear-gradient(145deg,#f9e8b8,#edf8fa 50%,#ffda8c);box-shadow:0 35px 80px #0008,0 0 65px #f9b94c14;overflow:hidden;transform-origin:50% 65%}
-.trainer-card::before{content:'';position:absolute;inset:15px;border-radius:29px;border:1px solid #b996513d;background:#fff}
-.trainer-portrait{position:absolute;left:14px;top:86px;width:540px;height:540px;object-fit:contain}
-.trainer-card::after{content:'';position:absolute;left:135px;right:135px;bottom:46px;height:3px;background:linear-gradient(90deg,transparent,#a58339b0,transparent)}
+.trainer-figure{position:absolute;right:68px;top:107px;width:710px;height:808px;transform-origin:50% 85%;isolation:isolate}
+.trainer-figure::before{content:'';position:absolute;inset:60px -65px 0;background:radial-gradient(ellipse at 53% 52%,#f4ce7821,transparent 67%);pointer-events:none}
+.trainer-portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 24px 18px #0008) drop-shadow(0 0 22px #ffd77f16);z-index:2}
+.trainer-figure::after{content:'';position:absolute;left:118px;right:72px;bottom:0;height:67px;border-radius:50%;background:radial-gradient(ellipse,#03101bb0 8%,#7de8f229 49%,transparent 72%);box-shadow:0 16px 30px #040a1633;transform:rotate(-4deg);pointer-events:none}
 .outro .brand{top:81px}
 .outro .brand-logo{width:239px;height:239px}
 .outro .brand-name{margin-top:31px}
