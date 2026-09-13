@@ -543,18 +543,25 @@ function moveRuntime(move, fallbackIndex) {
 }
 
 function buildBattlePokemon(entry, index, teamGimmicks = []) {
+  const hasConfiguredMoves = Array.isArray(entry.moveIds) || Array.isArray(entry.moves)
   const configuredMoveCount = Math.min(4, Math.max(
-    entry.moveIds?.length ?? 0,
-    entry.moves?.length ?? 0,
+    Array.isArray(entry.moveIds) ? entry.moveIds.length : 0,
+    Array.isArray(entry.moves) ? entry.moves.length : 0,
   ))
-  const resolvedMoves = Array.from({ length: configuredMoveCount }, (_, moveIndex) => (
-    getMoveById(entry.moveIds?.[moveIndex])
-      ?? getMove(entry.moves?.[moveIndex])
-  ))
+  const resolvedMoves = Array.from({ length: configuredMoveCount }, (_, moveIndex) => {
+    const byId = getMoveById(entry.moveIds?.[moveIndex])
+    if (byId) return byId
+    const name = entry.moves?.[moveIndex]
+    if (typeof name !== 'string' || !name) return null
+    const move = getMove(name)
+    // getMove has a catalog fallback for presentation callers. An empty or
+    // invalid battle slot must never turn that fallback into an extra attack.
+    return move.name === name ? move : null
+  }).filter(Boolean)
   const normalized = normalizePokemon({
     ...entry,
     captureId: entry.captureId ?? `ai-${entry.speciesId}-${index}`,
-    moves: resolvedMoves.map((move) => move.name),
+    moves: hasConfiguredMoves ? resolvedMoves.map((move) => move.name) : undefined,
   })
   const normalizedMoves = normalized.moves.map((moveName) => (
     resolveMoveForPokemon(getMove(moveName), normalized)

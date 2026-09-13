@@ -49,6 +49,7 @@ import {
 import { getTrainingCostBreakdown, TRAINING_COSTS } from './data/trainingCosts'
 import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
 import { getUnlockedPokemonSkins } from './data/rareRewards.js'
+import './trainingEmptyMoves.css'
 
 const MOVE_CATEGORY_FILTERS = ['전체', '물리', '특수', '변화']
 const STAT_LABEL_BY_KEY = Object.fromEntries(STAT_META.map(({ key, label }) => [key, label]))
@@ -248,10 +249,12 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   const displayedTrainingCostItems = trainingCost.items.filter((item) => !item.free)
   const trainingShortfall = Math.max(0, trainingCost.total - balance)
   const canAffordTraining = trainingShortfall === 0
-  const canSave = hasChanges && !isPreviewForm && canAffordTraining
-  const activePickerMove = movePickerSlot !== null && selectedPokemon
+  const canSave = hasChanges && !isPreviewForm && canAffordTraining && editablePokemon?.moves.length > 0
+  const moveSlots = Array.from({ length: 4 }, (_, index) => selectedPokemon?.moves[index] ?? null)
+  const activePickerMove = movePickerSlot !== null && selectedPokemon?.moves[movePickerSlot]
     ? resolveMoveForPokemon(getMove(selectedPokemon.moves[movePickerSlot]), selectedPokemon)
     : null
+  const canClearMove = Boolean(activePickerMove && selectedPokemon.moves.length > 1 && !isPreviewForm)
   const learnableMoves = useMemo(
     () => (selectedPokemon
       ? getLearnableMoves(selectedPokemon.speciesId).map((move) => resolveMoveForPokemon(move, selectedPokemon))
@@ -306,10 +309,21 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   }
 
   const updateMove = (slotIndex, moveName) => {
+    if (!selectedPokemon || isPreviewForm) return
     const moves = [...selectedPokemon.moves]
     moves[slotIndex] = moveName
     const speciesId = resolveMoveTriggeredFormSpeciesId(editableSpecies.id, moves)
     updateSelected({ moves, speciesId })
+  }
+
+  const clearMove = () => {
+    if (!canClearMove || movePickerSlot === null) return
+    const moves = editablePokemon.moves.filter((_, index) => index !== movePickerSlot)
+    const speciesId = resolveMoveTriggeredFormSpeciesId(editableSpecies.id, moves)
+    updateSelected({ moves, speciesId })
+    setMovePickerSlot(null)
+    setMovePickerTooltip(null)
+    setActiveTooltipId(null)
   }
 
   const openMovePicker = (slotIndex) => {
@@ -993,7 +1007,28 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                     <strong>1개 변경 · {TRAINING_COSTS.move} VP</strong>
                   </div>
                   <div className="training-move-list">
-                    {selectedPokemon.moves.map((moveName, index) => {
+                    {moveSlots.map((moveName, index) => {
+                      if (!moveName) return (
+                        <div className="training-move-card is-empty" key={`empty-${index}`}>
+                          <span className="training-move-slot">0{index + 1}</span>
+                          <div className="training-move-select">
+                            <span className="training-move-select-heading"><small>MOVE {index + 1}</small></span>
+                            <button
+                              className="training-move-select-button"
+                              type="button"
+                              disabled={isPreviewForm}
+                              aria-label={`${index + 1}번 기술 선택, 현재 빈 기술`}
+                              aria-haspopup="dialog"
+                              aria-expanded={movePickerSlot === index}
+                              onClick={() => openMovePicker(index)}
+                            >
+                              <span>빈 기술</span>
+                              <Plus size={13} />
+                            </button>
+                            <span className="training-empty-move-hint">기술을 선택해주세요</span>
+                          </div>
+                        </div>
+                      )
                       const move = resolveMoveForPokemon(getMove(moveName), selectedPokemon)
                       const tooltipId = `move-tooltip-${selectedPokemon.captureId}-${index}`
                       const accuracy = move.accuracyLabel ?? move.accuracy ?? '—'
@@ -1149,7 +1184,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                 </button>
               </div>
 
-              {movePickerSlot !== null && activePickerMove && (
+              {movePickerSlot !== null && selectedPokemon && (
                 <div
                   className="move-picker-backdrop"
                   onMouseDown={(event) => {
@@ -1158,8 +1193,8 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                 >
                   <section className="move-picker-panel" role="dialog" aria-modal="true" aria-labelledby="move-picker-title">
                     <header className="move-picker-header">
-                      <span className={`move-picker-current-type type-${typeClassName(activePickerMove.type)}`}>
-                        {activePickerMove.type}
+                      <span className={`move-picker-current-type${activePickerMove ? ` type-${typeClassName(activePickerMove.type)}` : ' is-empty'}`}>
+                        {activePickerMove?.type ?? '—'}
                       </span>
                       <div>
                         <small>MOVE LIBRARY · SLOT 0{movePickerSlot + 1}</small>
@@ -1262,9 +1297,17 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                       )}
                     </div>
 
-                    <footer className="move-picker-footer">
-                      <span>실제 게임에서 배울 수 있는 기술만 선택할 수 있으며 중복 등록은 불가능합니다.</span>
-                      <strong>ESC 닫기</strong>
+                    <footer className="move-picker-footer training-move-picker-footer">
+                      <p id="training-move-minimum">최소 1개의 기술은 반드시 설정해야 합니다. 같은 기술은 중복 등록할 수 없습니다.</p>
+                      <button
+                        className="training-move-clear"
+                        type="button"
+                        disabled={!canClearMove}
+                        aria-describedby="training-move-minimum"
+                        onClick={clearMove}
+                      >
+                        <Minus size={14} aria-hidden="true" />빈 기술로 설정
+                      </button>
                     </footer>
                     {movePickerTooltip && (
                       <BattleTooltip

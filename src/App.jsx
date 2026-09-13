@@ -65,6 +65,7 @@ import {
   DYNAMAX_MODES,
   TERA_TYPES,
   canGigantamax,
+  canPokemonLearnMove,
   getSpeciesProfile,
   isSavablePokemonForm,
   normalizeDynamaxMode,
@@ -1011,6 +1012,12 @@ export function GameApp({
 
   const saveTraining = (pokemon) => {
     const profile = getSpeciesProfile(pokemon.speciesId)
+
+    if (!Array.isArray(pokemon.moves) || !pokemon.moves.some((move) => canPokemonLearnMove(pokemon.speciesId, move))) {
+      gameAudioRef.current?.playEvent('error')
+      showNotice('최소 1개의 기술은 반드시 설정해야 합니다.')
+      return false
+    }
 
     if (profile?.parentSpeciesId && !isSavablePokemonForm(profile)) {
       gameAudioRef.current?.playEvent('error')

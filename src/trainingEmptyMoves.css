@@ -1,0 +1,45 @@
+.training-move-list > .training-move-card.is-empty {
+  grid-template-areas: "slot select";
+  grid-template-columns: 23px minmax(0, 1fr);
+  border-style: dashed;
+  background: linear-gradient(135deg, #eeeeFAc9, #dddaf1a3);
+}
+.training-empty-move-hint {
+  display: block;
+  padding: 3px 6px;
+  color: #656985;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.move-picker-current-type.is-empty { color: #c8c7e3; background: #ffffff14; }
+.move-picker-footer.training-move-picker-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 8px 11px;
+}
+.training-move-picker-footer p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.training-move-picker-footer .training-move-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  max-width: 190px;
+  padding: 6px 10px;
+  border: 1px solid #d8c9ef70;
+  border-radius: 8px;
+  color: #f6edff;
+  background: #72519b;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.training-move-clear svg { flex-shrink: 0; }
+.training-move-picker-footer .training-move-clear:disabled { opacity: .45; cursor: not-allowed; }
+.training-move-picker-footer .training-move-clear:focus-visible { outline: 2px solid #a5ece6; outline-offset: 2px; }

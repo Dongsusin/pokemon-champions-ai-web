@@ -32,18 +32,18 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
 
   const savedMoves = pokemonMoves(savedPokemon)
   const draftMoves = pokemonMoves(draftPokemon)
-  const moveSlotCount = Math.max(savedMoves.length, draftMoves.length)
-  const changedMoveSlots = Array.from({ length: moveSlotCount }, (value, moveIndex) => moveIndex)
-    .filter((moveIndex) => savedMoves[moveIndex] !== draftMoves[moveIndex])
+  // Removing a move compacts the remaining slots. Charge for changed moves,
+  // not for the unchanged moves that simply shift up to fill the gap.
+  const removedMoves = savedMoves.filter((move) => !draftMoves.includes(move))
+  const addedMoves = draftMoves.filter((move) => !savedMoves.includes(move))
+  const changedMoveCount = Math.max(removedMoves.length, addedMoves.length)
 
   const hiddenPowerConfigurationChanged = (
     savedPokemon.hiddenPowerType !== draftPokemon.hiddenPowerType
     || Boolean(savedPokemon.hiddenPowerTypeConfigured) !== Boolean(draftPokemon.hiddenPowerTypeConfigured)
   )
-  const hiddenPowerMoveAlreadyChanged = changedMoveSlots.some((moveIndex) => (
-    isHiddenPower(savedMoves[moveIndex]) || isHiddenPower(draftMoves[moveIndex])
-  ))
-  const moveUnits = changedMoveSlots.length + Number(
+  const hiddenPowerMoveAlreadyChanged = [...removedMoves, ...addedMoves].some(isHiddenPower)
+  const moveUnits = changedMoveCount + Number(
     hiddenPowerConfigurationChanged && !hiddenPowerMoveAlreadyChanged,
   )
   const savedProfile = getSpeciesProfile(savedPokemon.speciesId)

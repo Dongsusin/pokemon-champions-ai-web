@@ -863,7 +863,8 @@ export function normalizePokemon(pokemon) {
 
   const defaultMoves = getDefaultMoves(species.id)
   const learnableMoveNames = new Set(getLearnableMoves(species.id).map((move) => move.name))
-  const requestedMoves = Array.isArray(pokemon.moves) ? pokemon.moves : []
+  const hasConfiguredMoves = Array.isArray(pokemon.moves)
+  const requestedMoves = hasConfiguredMoves ? pokemon.moves : []
   const requestedLearnableMoves = [...new Set(
     requestedMoves.filter((moveName) => learnableMoveNames.has(moveName)),
   )].slice(0, 4)
@@ -872,7 +873,12 @@ export function normalizePokemon(pokemon) {
     if (requestedLearnableMoves.length < 4) requestedLearnableMoves.push(requiredMove)
     else requestedLearnableMoves[requestedLearnableMoves.length - 1] = requiredMove
   }
-  const moves = [...new Set([...requestedLearnableMoves, ...defaultMoves])].slice(0, 4)
+  // A compact array is an intentional 1–4-move loadout. Only legacy entries
+  // without an array receive the generated full loadout. Damaged/empty saved
+  // arrays recover one legal move, rather than creating an unusable Pokemon.
+  const moves = hasConfiguredMoves
+    ? requestedLearnableMoves.length > 0 ? requestedLearnableMoves : defaultMoves.slice(0, 1)
+    : [...new Set([...requestedLearnableMoves, ...defaultMoves])].slice(0, 4)
   const defaultTrainingPoints = getDefaultTrainingPoints(species)
   const trainingPoints = Object.fromEntries(STAT_META.map(({ key }) => [
     key,
@@ -930,6 +936,7 @@ export function normalizePokemon(pokemon) {
     gender,
     nature,
     moves,
+    ...(Array.isArray(pokemon.moveIds) ? { moveIds: moves.map((name) => MOVE_BY_NAME[name].id) } : {}),
     trainingPoints,
     level: BATTLE_LEVEL,
   }
