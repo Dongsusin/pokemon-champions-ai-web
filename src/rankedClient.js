@@ -44,7 +44,7 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
       const token = localTestIdentity ? `ranked-test-${localTestIdentity}` : await getIdToken?.()
       if (!token) throw new RankedRequestError('실제 유저 대전은 Google 로그인 후 참가할 수 있습니다.', 'authentication-required', 401)
       const url = new URL(endpoint)
-      const readOnly = action === 'status' || action === 'fixtures' || action === 'usage'
+      const readOnly = action === 'status' || action === 'fixtures' || action === 'usage' || action === 'factoryLeaderboard'
       if (readOnly) {
         url.searchParams.set('action', action)
         if (payload.matchId) url.searchParams.set('matchId', payload.matchId)

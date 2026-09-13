@@ -3,6 +3,7 @@ import { createRankedProfile, getRankedFormat, settleRankedRatings } from '../sr
 import { getRankedVpReward } from '../src/data/rankedRewards.js'
 import { maskRankedMatch, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 import { readPokemonUsage, recordRankedPokemonUsage, reportAiPokemonUsage, validateAiPokemonUsage } from './pokemonUsageService.js'
+import { readFactoryLeaderboard, reportFactoryRun, validateFactoryRankingReport } from './battleFactoryRankingService.js'
 
 const QUEUE_LEASE = 30_000
 const SELECT_TIMEOUT = 90_000
@@ -282,7 +283,14 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (!identity || !isId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
     identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32) }
     const action = payload?.action ?? 'status'
-    if (!['status', 'fixtures', 'usage', 'reportAiUsage', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (!['status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (action === 'factoryLeaderboard') return store.transaction(tx => readFactoryLeaderboard(tx, identity.uid))
+    if (action === 'reportFactoryRun') {
+      const report = validateFactoryRankingReport(payload.report)
+      const recordedAt = now()
+      const entryId = newId()
+      return store.transaction(tx => reportFactoryRun(tx, identity, report, recordedAt, entryId))
+    }
     if (action === 'fixtures') {
       if (!fixtures) fail('NOT_FOUND', '테스트 팀은 로컬 테스트에서만 제공됩니다.', 404)
       return { teams: clone(fixtures) }

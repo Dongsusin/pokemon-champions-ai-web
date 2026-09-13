@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import BattleScreen from './BattleScreen'
 import BattleFactoryLobby from './BattleFactoryLobby'
+import BattleFactoryRankings from './BattleFactoryRankings'
+import useBattleFactoryRankings from './useBattleFactoryRankings'
 import {
   FACTORY_TRAINER,
   createFactoryRun,
@@ -12,14 +14,20 @@ import {
 } from './data/battleFactory'
 
 export default function BattleFactoryScreen({
-  run, onRunChange, onBack, soundEnabled = true, gameSettings = {},
+  run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
   playerGender = 'male', audioSettings = {}, onToggleSound, onOpenSettings,
 }) {
   const currentRun = useRef(run)
   currentRun.current = run
   const initialRun = useRef(null)
   const [error, setError] = useState('')
+  const [showRankings, setShowRankings] = useState(false)
+  const ranking = useBattleFactoryRankings(user)
   const active = run?.phase === 'battle'
+
+  useEffect(() => {
+    if (run?.phase === 'finished') ranking.recordRun(run)
+  }, [run, ranking.recordRun])
 
   useEffect(() => {
     if (run) return
@@ -67,6 +75,8 @@ export default function BattleFactoryScreen({
     onComplete={summary => transition(current => resolveFactoryBattle(current, { ...summary, battleId: run.battleId }))}
   />
 
+  if (showRankings) return <BattleFactoryRankings ranking={ranking} onBack={() => setShowRankings(false)} />
+
   return <BattleFactoryLobby
     key={`${run.id}:${run.phase}:${run.floor}`}
     run={run}
@@ -77,5 +87,8 @@ export default function BattleFactoryScreen({
     onAdvanceFloor={exchange => transition(current => advanceFactoryFloor(current, exchange))}
     onRestart={() => transition(() => createFactoryRun())}
     onBack={onBack}
+    onOpenRankings={() => setShowRankings(true)}
+    rankingError={ranking.recordError}
+    onRetryRanking={ranking.retry}
   />
 }

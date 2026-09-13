@@ -12,7 +12,7 @@ const TRAINER_IMAGE = '/assets/trainers/factory-clown.png'
 const speciesKey = pokemon => Number(pokemon?.dexSpeciesId ?? pokemon?.speciesId)
 const nameOf = pokemon => pokemon?.name ?? getSpeciesProfile(pokemon?.speciesId)?.name ?? '포켓몬'
 
-function RentalDetails({ pokemon, onClose }) {
+export function RentalDetails({ pokemon, onClose }) {
   const dialog = useRef(null)
   const preview = useMemo(() => createBattlePreviewPokemon(pokemon), [pokemon])
   const item = getBattleItem(preview.heldItemId)
@@ -79,7 +79,7 @@ function FloorRail({ run }) {
   </aside>
 }
 
-function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, onAdvanceFloor, onRestart, onBack, error }) {
+function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, onAdvanceFloor, onRestart, onBack, onOpenRankings, rankingError, onRetryRanking, error }) {
   const [chosenIds, setChosenIds] = useState([])
   const [giveId, setGiveId] = useState(null)
   const [takeId, setTakeId] = useState(null)
@@ -109,7 +109,10 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
     <header className="factory-heading">
       <button className="factory-back" type="button" onClick={onBack}><ArrowLeft size={18} /><span>배틀 선택</span></button>
       <div><span>BUILD YOUR TEAM. CLIMB HIGHER.</span><h1><Factory size={26} />배틀팩토리</h1></div>
-      <span className="factory-format"><Swords size={16} />3 vs 3 · Lv.50</span>
+      <nav className="factory-header-actions" aria-label="팩토리 메뉴">
+        <span className="factory-format"><Swords size={16} />3 vs 3 · Lv.50</span>
+        {onOpenRankings && <button type="button" className="factory-ranking-button" onClick={onOpenRankings}><Trophy size={17} /><span>TOP 10 랭킹</span></button>}
+      </nav>
     </header>
     <div className="factory-workspace">
       <FloorRail run={run} />
@@ -144,6 +147,7 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
         </div>
         <footer className="factory-actions">
           {error && <p className="factory-error" role="alert">{error}</p>}
+          {rankingError && <p className="factory-error factory-ranking-error" role="alert">{rankingError}<button type="button" onClick={onRetryRanking}>저장 다시 시도</button></p>}
           <div className="factory-action-row">
             {phase === 'ready' ? <div className={`factory-rules-note factory-lead-note${leadPokemon ? ' is-chosen' : ''}`} aria-live="polite">
               <span><Flag size={14} /><strong>{leadPokemon ? `선봉 · ${nameOf(leadPokemon)}` : '먼저 출전할 선봉을 선택해 주세요.'}</strong></span>

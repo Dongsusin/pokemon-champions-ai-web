@@ -85,7 +85,9 @@
     "validate:ranked": "node scripts/validateRankedRatings.mjs && node scripts/validateRankedBattle.mjs && node scripts/validateRankedPrivacy.mjs && node scripts/validateRankedService.mjs && node scripts/validateRankedUi.mjs && node scripts/validateRankedSavedTeamsUi.mjs",
     "factory:test": "node scripts/startBattleFactoryTest.mjs",
     "validate:battle-factory": "node scripts/validateBattleFactory.mjs",
-    "validate:battle-factory-ui": "node scripts/validateBattleFactoryUi.mjs"
+    "validate:battle-factory-ui": "node scripts/validateBattleFactoryUi.mjs",
+    "validate:battle-factory-ranking": "node scripts/validateBattleFactoryRanking.mjs",
+    "validate:battle-factory-ranking-client": "node scripts/validateBattleFactoryRankingClient.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",

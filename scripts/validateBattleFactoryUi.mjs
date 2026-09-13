@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { normalizePokemon } from '../src/data/trainingData.js'
 import { createSavedTeams } from '../src/data/teamData.js'
+import { getBattleItem } from '../src/data/shopData.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 // Full GameApp integration on an isolated loopback origin. Firebase is offline,
@@ -79,8 +80,11 @@ try {
     const hooks = { app: 0, battle: 0, factory: 0 }
     const deniedApis = []
     await context.addInitScript(storage => {
-      localStorage.clear()
-      for (const [key, value] of Object.entries(storage)) localStorage.setItem(key, value)
+      if (!sessionStorage.getItem('factory-ui-initialized')) {
+        localStorage.clear()
+        for (const [key, value] of Object.entries(storage)) localStorage.setItem(key, value)
+        sessionStorage.setItem('factory-ui-initialized', 'true')
+      }
       window.__factoryFixtureWins = 0
     }, seedStorage)
     await context.route('**/*', async route => {
@@ -280,6 +284,26 @@ window.__fixtureFactoryVictory = () => {
         assert.equal(finished.wins, 0)
         assert.equal(finished.lastResult.forfeited, true)
         assert(await page.locator('.topbar').isVisible())
+        await click(page.getByRole('button', { name: 'TOP 10 랭킹', exact: true }))
+        await page.locator('.factory-ranking-record').waitFor()
+        assert.equal(await page.locator('.factory-ranking-record').count(), 1)
+        assert.match(await page.locator('.factory-ranking-source').innerText(), /이 기기 랭킹/)
+        await click(page.locator('.factory-ranking-row'))
+        const finalCards = page.locator('.factory-ranking-pokemon')
+        assert.equal(await finalCards.count(), 3)
+        for (let index = 0; index < 3; index++) {
+          const pokemon = finished.party[index]
+          assert.equal(await finalCards.nth(index).locator('header strong').innerText(), pokemon.name)
+          assert.equal(await finalCards.nth(index).locator('.factory-ranking-held-item strong').innerText(), getBattleItem(pokemon.heldItemId)?.name ?? '없음')
+          assert.deepEqual(await finalCards.nth(index).locator('.factory-ranking-move-names > span').allTextContents(), pokemon.moves)
+        }
+        await click(finalCards.first().getByRole('button', { name: /능력치와 기술 정보/ }))
+        await page.locator('dialog.factory-details[open]').waitFor()
+        assert.match(await page.locator('.factory-details-meta').innerText(), new RegExp(finished.party[0].ability))
+        await click(page.getByRole('button', { name: '포켓몬 정보 닫기', exact: true }))
+        await page.screenshot({ path: path.join(output, `${device.id}-ranking.png`) })
+        await click(page.locator('.factory-rankings .factory-back'))
+        assert.deepEqual(await readRun(), finished)
         await click(page.getByRole('button', { name: '새 도전 시작', exact: true }))
         await page.locator('.battle-factory.phase-selection').waitFor()
         const restarted = await readRun()
@@ -345,6 +369,21 @@ window.__fixtureFactoryVictory = () => {
         assert.deepEqual(browserErrors.filter(error => error.device === device.id), [])
         assert(hooks.app > 0 && hooks.battle > 0 && hooks.factory > 0)
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
+      })
+
+      await check(`${device.id}: completed local ranking survives reload while an unfinished tower does not replace it`, 'ranking-persistence', async () => {
+        const records = await page.evaluate(() => JSON.parse(localStorage.getItem('champions-factory-local-rankings-v1')))
+        assert.equal(records.length, 1)
+        assert.equal(records[0].floor, 1)
+        assert.equal(records[0].wins, 0)
+        await page.reload()
+        await click(page.getByRole('button', { name: /시작하기/ }))
+        await click(page.locator('.battle-hub-card.factory'))
+        await click(page.getByRole('button', { name: 'TOP 10 랭킹', exact: true }))
+        await page.locator('.factory-ranking-record').waitFor()
+        assert.equal(await page.locator('.factory-ranking-record').count(), 1)
+        assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('champions-factory-local-rankings-v1'))), records)
+        assert.equal((await readRun()).phase, 'selection')
       })
     } catch (error) {
       if (!checks.some(result => !result.passed && result.name.startsWith(`${device.id}:`))) {

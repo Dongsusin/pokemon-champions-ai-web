@@ -1,15 +1,17 @@
 import { createServer } from 'vite'
 import { fileURLToPath } from 'node:url'
+import { startRankedDevServer } from './rankedDevServer.mjs'
 
 if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
   throw new Error('The factory test launcher is available only on a local development server.')
 }
 
-// These flags exist only in this process. The launcher never loads a cloud
-// account and cannot send matchmaking or statistics to the production API.
+// These flags exist only in this process. Factory rankings share a local file
+// store across test users; cloud accounts and production APIs are not used.
 process.env.VITE_RANKED_ENABLED = 'false'
 process.env.VITE_RANKED_LOCAL_TEST = 'false'
-process.env.VITE_RANKED_API_URL = '/api/ranked'
+process.env.VITE_RANKED_API_URL = 'http://127.0.0.1:8790/api/ranked'
+process.env.VITE_FACTORY_LOCAL_TEST = 'true'
 process.env.VITE_POKEMON_USAGE_ENABLED = 'false'
 process.env.VITE_POKEMON_USAGE_DEMO = 'false'
 process.env.VITE_POKEMON_USAGE_SEEDED_TEST = 'false'
@@ -36,16 +38,19 @@ if (localStorage.getItem('champions-factory-local-v1') !== 'ready') {
   }));
   localStorage.setItem('champions-factory-local-v1', 'ready');
 }
+const secondTrainer = new URLSearchParams(location.search).get('trainer') === 'b';
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,
-  React.createElement(GameApp,{user:{uid:'factory-local',displayName:'팩토리 테스트',isLocalGuest:true}})));
+  React.createElement(GameApp,{user:{uid:secondTrainer?'factory-local-b':'factory-local',displayName:secondTrainer?'팩토리 테스트 B':'팩토리 테스트 A',isLocalGuest:true}})));
 `
 
-let server
-async function close() { await server?.close() }
+let server, backend
+async function close() { await server?.close(); await backend?.close() }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
   close().then(() => process.exit(0), () => process.exit(1))
 })
 try {
+  backend = await startRankedDevServer({ port: 8790, testAccounts: true,
+    filename: 'scripts/.cache/battle-factory-local/state.json', usageEnabled: false })
   server = await createServer({ root, mode: 'factory-test', plugins: [{
     name: 'factory-local-preview', enforce: 'pre',
     transformIndexHtml(html) { return html.replace('/src/main.jsx', entryId) },
@@ -68,5 +73,6 @@ try {
   console.log('배틀팩토리 로컬 테스트: http://127.0.0.1:5187')
   console.log('시작하기 → 배틀팩토리 → 렌탈 3마리 선택 → 준비 화면에서 선봉 선택')
   console.log('승리 후 교환 또는 건너뛰기 → 다음 층. 패배·기권 시 도전 종료.')
-  console.log('운영 계정·온라인 API를 사용하지 않습니다. 배포 없음. 종료: Ctrl+C')
+  console.log('다른 테스트 트레이너: http://127.0.0.1:5187/?trainer=b')
+  console.log('랭킹은 이 컴퓨터의 파일에 저장됩니다. 운영 계정·서버 사용 및 배포 없음. 종료: Ctrl+C')
 } catch (error) { await close(); console.error(error.message); process.exitCode = 1 }

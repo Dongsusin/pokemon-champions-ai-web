@@ -1173,7 +1173,7 @@ export function GameApp({
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
           onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards} />
       ) : screen === 'factory' ? (
-        <BattleFactoryScreen run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
+        <BattleFactoryScreen user={user} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
       ) : screen === 'battle-select' ? (
@@ -1456,7 +1456,7 @@ export function RankedTestApp() {
         ? <BattleHub onBack={() => setPage('ai')} onSelectAi={() => setPage('ai')} onSelectRanked={() => setPage('ranked')}
             onSelectFactory={() => setPage('factory')} />
         : page === 'factory'
-          ? <BattleFactoryScreen run={factoryRun} onRunChange={setFactoryRun} onBack={() => setPage('hub')}
+          ? <BattleFactoryScreen user={{uid:'ranked-factory-local',displayName:'팩토리 테스트',isLocalGuest:true}} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setPage('hub')}
               soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
               playerGender="male" gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />
         : <RankedBattleScreen onBack={() => setPage('hub')} onBattleActiveChange={setBattleActive}
