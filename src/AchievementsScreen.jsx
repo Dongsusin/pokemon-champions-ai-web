@@ -136,7 +136,7 @@ export function AchievementCatalog({ progress, onBack, balance = 0, embedded = f
     definition, record: getAchievementProgress(definition, progress),
   })), [progress])
   const completedEntries = entries.filter(({ record }) => record.completed)
-  const earnedVp = completedEntries.reduce((sum, { definition }) => sum + definition.rewardVp, 0)
+  const completedRewardVp = completedEntries.reduce((sum, { definition }) => sum + definition.rewardVp, 0)
   const completionPercent = Math.round(completedEntries.length / Math.max(1, entries.length) * 100)
   const trainerCompleted = completedEntries.filter(({ definition }) => definition.trainerId).length
   const revealedRewards = completedEntries.filter(({ definition }) => definition.rewardId)
@@ -206,7 +206,7 @@ export function AchievementCatalog({ progress, onBack, balance = 0, embedded = f
         </div>
         <div className="achievement-overview-stat"><span><Medal size={15} /> 달성한 업적</span><strong>{completedEntries.length}<small>/ {entries.length}</small></strong></div>
         <div className="achievement-overview-stat"><span><UsersRound size={15} /> 첫 승리를 거둔 AI</span><strong>{trainerCompleted}<small>/ {TRAINERS.length}</small></strong></div>
-        <div className="achievement-overview-stat achievement-earned-stat"><span><Zap size={15} /> 받은 업적 보상</span><strong>{formatNumber(earnedVp)}<small>VP</small></strong></div>
+        <div className="achievement-overview-stat achievement-earned-stat"><span title="달성한 업적의 현재 보상 기준 합계입니다. 과거 지급액이나 현재 보유 VP와는 다를 수 있습니다."><Zap size={15} /> 달성 보상 · 현재 기준</span><strong>{formatNumber(completedRewardVp)}<small>VP</small></strong></div>
       </section>
       </>}
 

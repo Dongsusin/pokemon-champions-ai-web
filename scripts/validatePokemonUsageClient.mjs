@@ -49,6 +49,33 @@ function deferred() {
 const tests = []
 const test = (name, run) => tests.push({ name, run })
 
+test('synthetic labels require a dev loopback fixture flag and cannot activate in production', async () => {
+  const originalWindow = globalThis.window
+  let index = 0
+  const inspect = async (env, hostname = '127.0.0.1', rankedApiUrl = 'http://127.0.0.1:8788/api/ranked', rankedLocalTest = true) => {
+    globalThis.window = { location: { hostname } }
+    const isolated = clientSource
+      .replace(/^import \{ createRankedClient, isRankedLocalTest, rankedApiUrl \} from .+$/m,
+        `const createRankedClient = () => ({}); const isRankedLocalTest = ${JSON.stringify(rankedLocalTest)}; const rankedApiUrl = ${JSON.stringify(rankedApiUrl)};`)
+      .replace('const env = import.meta.env ?? {}', `const env = ${JSON.stringify(env)}`)
+    const value = await import(`data:text/javascript;base64,${Buffer.from(`${isolated}\n// case ${index++}`).toString('base64')}`)
+    return [value.isPokemonUsageDemo, value.isPokemonUsageSeededTest, value.pokemonUsageSource]
+  }
+  try {
+    const localFlags = { DEV: true, VITE_POKEMON_USAGE_DEMO: 'true' }
+    assert.deepEqual(await inspect(localFlags), [true, false, 'local'])
+    const seededFlags = { ...localFlags, VITE_POKEMON_USAGE_SEEDED_TEST: 'true' }
+    assert.deepEqual(await inspect(seededFlags), [true, true, 'demo'])
+    assert.deepEqual(await inspect({ ...seededFlags, DEV: false }), [false, false, 'live'])
+    assert.deepEqual(await inspect(seededFlags, 'pokemon-champions-area-web.co.kr'), [false, false, 'live'])
+    assert.deepEqual(await inspect(seededFlags, '127.0.0.1', 'https://pokemon-champions-area-web.co.kr/api/ranked'), [false, false, 'live'])
+    assert.deepEqual(await inspect(seededFlags, '127.0.0.1', 'http://127.0.0.1:8788/api/ranked', false), [false, false, 'live'])
+  } finally {
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
+  }
+})
+
 test('save before send and isolate the report from later caller mutations', async () => {
   const storage = new MemoryStorage()
   const snapshots = []
@@ -182,7 +209,7 @@ test('a battle queued while a send waits remains in the same flush', async () =>
   outbox.stop()
 })
 
-test('account and demo/live namespaces never send each other\'s reports', async () => {
+test('account and demo/local/live namespaces never send each other\'s reports', async () => {
   const storage = new MemoryStorage()
   const requests = []
   const prefix = 'champions-usage-outbox-v1-live'
@@ -191,16 +218,24 @@ test('account and demo/live namespaces never send each other\'s reports', async 
   const alice = fixture('alice')
   const bob = fixture('bob')
   const demo = fixture('alice', 'champions-usage-outbox-v1-demo')
+  const local = fixture('alice', 'champions-usage-outbox-v1-local')
   alice.enqueue(report('alice-battle'))
   bob.enqueue(report('bob-battle'))
   demo.enqueue(report('demo-battle'))
+  local.enqueue(report('local-battle'))
   await bob.flush()
   assert.deepEqual(requests, [{ uid: 'bob', keyPrefix: prefix, battleId: 'bob-battle' }])
   assert.deepEqual(entries(storage, 'alice', prefix), [report('alice-battle')])
   assert.deepEqual(entries(storage, 'alice', 'champions-usage-outbox-v1-demo'), [report('demo-battle')])
+  assert.deepEqual(entries(storage, 'alice', 'champions-usage-outbox-v1-local'), [report('local-battle')])
+  await local.flush()
+  assert.deepEqual(requests.at(-1), { uid: 'alice', keyPrefix: 'champions-usage-outbox-v1-local', battleId: 'local-battle' })
+  assert.deepEqual(entries(storage, 'alice', 'champions-usage-outbox-v1-demo'), [report('demo-battle')])
+  assert.deepEqual(entries(storage, 'alice', prefix), [report('alice-battle')])
   alice.stop()
   bob.stop()
   demo.stop()
+  local.stop()
 })
 
 test('account switch aborts a pending send and ignores its late success', async () => {

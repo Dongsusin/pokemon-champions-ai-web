@@ -12,7 +12,7 @@ import {
 export const BASE_SHINY_ODDS = 4096
 export const LEGENDARY_DRAW_RATE = 0.01
 export const PICKUP_ROTATION_MS = 60 * 60 * 1000
-export const INITIAL_VP_BALANCE = 30_000
+export const INITIAL_VP_BALANCE = 50_000
 export const DUPLICATE_DRAW_REFUND_VP = 50
 
 export const DRAW_BANNERS = {

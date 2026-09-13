@@ -8,6 +8,7 @@ import { createBattle, getBattleSummary, playBattleTurnWithActions } from '../sr
 import { BATTLE_ITEMS } from '../src/data/shopData.js'
 import { ACHIEVEMENTS, ACHIEVABLE_SPECIES_IDS, applyBattleAchievements, createAchievementState } from '../src/data/achievementData.js'
 import { getRareReward, POKEMON_SKINS } from '../src/data/rareRewards.js'
+import { AI_BATTLE_VP_REWARDS } from '../src/data/aiBattleRewards.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 // An isolated browser account and intercepted test entry exercise the real app.
@@ -19,6 +20,7 @@ const output = path.join(root, 'scripts/.cache/achievement-ui')
 await fs.mkdir(output, { recursive: true })
 const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape']
 const qaEntry = `
+import '/src/mobileViewport.js';
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {GameApp} from '/src/App.jsx';
@@ -67,7 +69,7 @@ await context.route('**/src/App.jsx', async route => {
   }; window.__firstAchievementRender ??= {
     pokemon: boxPokemon.map(({speciesId,skinId,heldItemId,captureId})=>({speciesId,skinId,heldItemId,captureId})),
     inventory: {...itemInventory}, vp
-  }; const trainerInitial =`) + '\nexport { GameApp };\n'
+  }; const trainerInitial =`)
   await route.fulfill({ response, body })
 })
 await context.route('**/src/BattleScreen.jsx', async route => {
@@ -385,7 +387,7 @@ async function verifyToastQueue() {
     await toastPage.waitForFunction(() => window.__achievementQA.achievementToasts.length === 2)
     assert.equal(await toastPage.locator('.achievement-toast').count(), 1)
     assert.equal(await toastPage.evaluate(() => window.__achievementQA.achievementToasts[0].id), first.notification.id)
-    assert.equal(await toastPage.evaluate(() => window.__achievementQA.vp), first.balance + 100 + secondExpected.rewardVp)
+    assert.equal(await toastPage.evaluate(() => window.__achievementQA.vp), first.balance + AI_BATTLE_VP_REWARDS.league + secondExpected.rewardVp)
     await toastPage.getByRole('button', { name: '업적 알림 닫기', exact: true }).click()
     await toastPage.waitForFunction(firstId => window.__achievementQA.achievementToasts.length === 1 && window.__achievementQA.achievementToasts[0].id !== firstId, first.notification.id)
     assert.equal(await toastPage.locator('.achievement-toast').count(), 1)
@@ -463,7 +465,7 @@ try {
   const battle = completedBattle(match.opponent)
   const summary = getBattleSummary(battle)
   const expected = applyBattleAchievements(createAchievementState(), { battleId: match.id, summary, opponent: match.opponent })
-  const paidVp = initialVp + 100 + expected.rewardVp
+  const paidVp = initialVp + AI_BATTLE_VP_REWARDS.league + expected.rewardVp
   await page.evaluate(value => window.__achievementBattleQA.replace(value), battle)
   await page.waitForFunction(value => window.__achievementQA.vp === value, paidVp)
   const notification = await assertNonBlockingToast(page, expected.unlocked.length)
@@ -542,7 +544,7 @@ try {
   await waitScreen('competition')
   assert.equal(await page.evaluate(() => JSON.stringify(window.__achievementQA.battleRewards.nextCompetition)), resolvedBeforeRetry)
   const afterRetry = await page.evaluate(() => window.__achievementQA.vp)
-  assert(afterRetry >= balanceBeforeFailure + 100)
+  assert(afterRetry >= balanceBeforeFailure + AI_BATTLE_VP_REWARDS.league)
   await page.evaluate(value => window.__achievementQA.settle(value), retrySummary)
   assert.equal(await page.evaluate(() => window.__achievementQA.vp), afterRetry)
 

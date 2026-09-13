@@ -6,12 +6,15 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
 import { createRankedTestTeams, startRankedDevServer } from './rankedDevServer.mjs'
-import { canonicalUsageSpeciesId, createDemoUsageSnapshot, getCombinedPokemonItemUsage, getUsageRanking, recordUsageTeams } from '../src/data/pokemonUsage.js'
+import { canonicalUsageSpeciesId, createEmptyUsageSnapshot, getCombinedPokemonItemUsage, getUsageRanking, recordUsageTeams } from '../src/data/pokemonUsage.js'
+import { createDemoUsageSnapshot } from './fixtures/pokemonUsageDemo.mjs'
 import { getBattleItem, getVisibleBattleItems } from '../src/data/shopData.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
-const output = path.join(root, 'scripts/.cache/pokemon-usage-ui')
+const seededTest = !process.argv.includes('--fresh')
+const expectedSource = seededTest ? 'demo' : 'local'
+const output = path.join(root, seededTest ? 'scripts/.cache/pokemon-usage-ui' : 'scripts/.cache/pokemon-usage-fresh-ui')
 await fs.mkdir(output, { recursive: true })
 const require = createRequire(new URL('../promo/package.json', import.meta.url))
 const { chromium } = require('playwright')
@@ -19,11 +22,11 @@ const checks = []
 const pageErrors = []
 const blockedExternal = new Set()
 const aiReports = []
-const envNames = ['VITE_POKEMON_USAGE_ENABLED', 'VITE_POKEMON_USAGE_DEMO', 'VITE_RANKED_ENABLED', 'VITE_RANKED_LOCAL_TEST', 'VITE_RANKED_API_URL']
+const envNames = ['VITE_POKEMON_USAGE_ENABLED', 'VITE_POKEMON_USAGE_DEMO', 'VITE_POKEMON_USAGE_SEEDED_TEST', 'VITE_RANKED_ENABLED', 'VITE_RANKED_LOCAL_TEST', 'VITE_RANKED_API_URL']
 const originalEnv = Object.fromEntries(envNames.map(name => [name, process.env[name]]))
 const store = createMemoryRankedStore()
-const seed = createDemoUsageSnapshot()
-await store.transaction(async tx => {
+const seed = seededTest ? createDemoUsageSnapshot() : createEmptyUsageSnapshot()
+if (seededTest) await store.transaction(async tx => {
   for (const [key, bucket] of Object.entries(seed.buckets)) tx.set('pokemonUsage', key, bucket)
 })
 let backend
@@ -90,7 +93,7 @@ async function verifyRows(page, bucket, label) {
 
 async function openUsage(page) {
   await page.locator('.mode-usage').click()
-  await page.locator('.pokemon-usage-screen[data-usage-source="demo"]').waitFor()
+  await page.locator(`.pokemon-usage-screen[data-usage-source="${expectedSource}"]`).waitFor()
   await page.waitForFunction(() => document.querySelector('.pokemon-usage-panel')?.getAttribute('aria-busy') === 'false')
   assert.equal(await page.locator('.pokemon-usage-error').count(), 0)
 }
@@ -139,6 +142,7 @@ try {
     fixtures: rankedFixtures,
     timeouts: { selection: 180_000, turn: 180_000, playbackGrace: 0 } })
   Object.assign(process.env, { VITE_POKEMON_USAGE_ENABLED: 'true', VITE_POKEMON_USAGE_DEMO: 'true',
+    VITE_POKEMON_USAGE_SEEDED_TEST: seededTest ? 'true' : 'false',
     VITE_RANKED_ENABLED: 'true', VITE_RANKED_LOCAL_TEST: 'true', VITE_RANKED_API_URL: backend.url })
   frontend = await createServer({ root, mode: 'ranked-test', plugins: [{ name: 'usage-ui-offline-auth', enforce: 'pre',
     resolveId(source) { if (/\/auth\/firebaseClient(?:\.js)?$/.test(source)) return '\0usage-ui-auth' },
@@ -196,37 +200,49 @@ try {
     }
   }
   await alice.screenshot({ path: path.join(output, '01-four-filter-ranked-double.png') })
-  log('real lobby menu directly below achievements opens all 400 correctly calculated seed rows', { teamsPerBucket: 298 })
+  if (!seededTest) {
+    const initial = await live()
+    assert(Object.values(initial.buckets).every(bucket => bucket.teamCount === 0 && Object.keys(bucket.itemCounts).length === 0))
+    assert.match(await alice.locator('.pokemon-usage-source').textContent(), /로컬 플레이 집계/)
+    assert.equal(await alice.locator('.pokemon-usage-item-column [data-item-rank]').count(), 0)
+    assert(!await alice.getByText('임의 표본 포함', { exact: false }).count())
+  }
+  log('real lobby menu directly below achievements opens all 400 correctly calculated rows', { teamsPerBucket: seed.buckets['ai-single'].teamCount, source: expectedSource })
 
   step = 'start and play actual AI competition battle'
   await alice.locator('.pokemon-usage-back').click()
   await alice.locator('.mode-collection').click()
   await alice.locator('.pc-party-card').filter({ hasText: '피카츄' }).locator('button').first().click()
   await alice.locator('.pokedex-held-item-button').click()
-  await alice.locator('.item-recommendation-card').first().waitFor()
-  await alice.waitForFunction(() => !document.querySelector('.item-recommendations [role="status"]'))
+  await alice.locator('.item-recommendations').waitFor()
+  await alice.waitForFunction(() => document.querySelector('.item-recommendations')?.getAttribute('aria-busy') === 'false')
   const demoInventory = await alice.evaluate(() => JSON.parse(localStorage.getItem('champions-battle-items-v1')))
   const pikaRecommended = getCombinedPokemonItemUsage(seed, 25, { allowedItemIds: getVisibleBattleItems(demoInventory).map(item => item.id) })
   const recommendationCards = alice.locator('.item-recommendation-card')
   assert.deepEqual(await recommendationCards.evaluateAll(cards => cards.map(card => card.dataset.itemId)), pikaRecommended.items.map(item => item.itemId))
-  assert.deepEqual(await alice.locator('.item-equip-card[data-item-id]').evaluateAll(cards => cards.slice(0, 3).map(card => card.dataset.itemId)), pikaRecommended.items.map(item => item.itemId), 'Recommended owned items stay first in the inventory')
-  const berryCard = alice.locator('.item-recommendation-card[data-item-id="sitrus-berry"]')
-  assert.equal(await berryCard.isDisabled(), true, 'An item used by another Pokémon must not become equippable through recommendations')
+  if (seededTest) {
+    assert.deepEqual(await alice.locator('.item-equip-card[data-item-id]').evaluateAll(cards => cards.slice(0, 3).map(card => card.dataset.itemId)), pikaRecommended.items.map(item => item.itemId), 'Recommended owned items stay first in the inventory')
+    const berryCard = alice.locator('.item-recommendation-card[data-item-id="sitrus-berry"]')
+    assert.equal(await berryCard.isDisabled(), true, 'An item used by another Pokémon must not become equippable through recommendations')
+  } else {
+    assert.equal(pikaRecommended.sampleCount, 0)
+    assert.equal(await recommendationCards.count(), 0, 'Fresh statistics must never invent item recommendations')
+    assert.match(await alice.locator('.item-recommendations').textContent(), /로컬 플레이 집계/)
+  }
   await alice.getByRole('searchbox', { name: '보유 아이템 검색', exact: true }).fill('구애')
-  assert.equal(await recommendationCards.count(), 3, 'Search does not displace the pinned recommendations')
+  assert.equal(await recommendationCards.count(), pikaRecommended.items.length, 'Search does not displace or invent pinned recommendations')
   assert(await alice.locator('.item-equip-card[data-item-id]').count() > 0)
   assert((await alice.locator('.item-equip-card[data-item-id]').allTextContents()).every(text => text.includes('구애')))
   await alice.getByRole('searchbox', { name: '보유 아이템 검색', exact: true }).fill('')
   await alice.screenshot({ path: path.join(output, '00-item-recommendations-before-equip.png') })
-  const equippedRecommendation = pikaRecommended.items.find(item => item.itemId === 'life-orb')
-  assert(equippedRecommendation)
-  await alice.locator('.item-recommendation-card[data-item-id="life-orb"]').click()
+  if (seededTest) assert(pikaRecommended.items.find(item => item.itemId === 'life-orb'))
+  await alice.locator(`${seededTest ? '.item-recommendation-card' : '.item-equip-card'}[data-item-id="life-orb"]`).click()
   await alice.locator('.item-equip-panel').waitFor({ state: 'hidden' })
   assert.match(await alice.locator('.pokedex-held-item-button').textContent(), new RegExp(getBattleItem('life-orb').name))
   assert.equal(await alice.evaluate(() => JSON.parse(localStorage.getItem('champions-dex-v2')).find(member => member.speciesId === 25).heldItemId), 'life-orb')
   await alice.setViewportSize({ width: 844, height: 390 })
   await alice.locator('.pokedex-held-item-button').click()
-  await alice.locator('.item-recommendation-card').first().waitFor()
+  await alice.locator('.item-recommendations').waitFor()
   const equipMobile = await alice.locator('.item-equip-panel').evaluate(panel => {
     const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height } }
     const cards = [...panel.querySelectorAll('.item-recommendation-card')].map(card => {
@@ -248,7 +264,7 @@ try {
   assert.equal(await alice.evaluate(() => JSON.parse(localStorage.getItem('champions-dex-v2')).find(member => member.speciesId === 9).heldItemId || null), null)
   assert.match(await alice.locator('.pokedex-held-item-button').textContent(), /지닌 도구 없음/)
   await alice.locator('.pc-header .screen-back-button').click()
-  log('item recommendations match weighted usage, stay first during search and equip through the real inventory', { speciesId: 25, topItems: pikaRecommended.items, equippedItemId: 'life-orb', equipMobile })
+  log(seededTest ? 'item recommendations match weighted usage, stay first during search and equip through the real inventory' : 'fresh usage has no invented recommendations and an owned item equips through the real inventory', { speciesId: 25, topItems: pikaRecommended.items, equippedItemId: 'life-orb', equipMobile })
   await alice.locator('.mode-start').click()
   await alice.locator('.battle-hub-card.ai').click()
   await alice.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }).click()
@@ -288,7 +304,28 @@ try {
   assert(firstReport, 'The actual GameApp must report its selected AI team')
   assert.deepEqual(firstReport.speciesIds.map(canonicalUsageSpeciesId), selectedIds)
   assert.deepEqual(firstReport.team, aiSelectedTeam)
-  log('actual AI move, forfeit and report produce exactly one selected human team', { bucket: aiKey, before: 298, after: 299, selectedIds })
+  log('actual AI move, forfeit and report produce exactly one selected human team', { bucket: aiKey, before: beforeAi.buckets[aiKey].teamCount, after: afterAi.buckets[aiKey].teamCount, selectedIds })
+
+  if (!seededTest) {
+    assert.equal(afterAi.buckets[aiKey].teamCount, 1)
+    assert.deepEqual(afterAi.buckets[aiKey].itemCounts[25], { 'life-orb': 1 })
+    assert.equal(afterAi.buckets[aiKey].itemSamples[25], 1)
+    assert.equal(afterAi.buckets[aiKey].itemSamples[9], 1)
+    assert.equal(afterAi.buckets[aiKey].itemCounts[9], undefined, 'An unequipped Pokémon must not acquire a fabricated item')
+    await alice.locator('.pokemon-usage-back').click()
+    await alice.locator('.mode-collection').click()
+    await alice.locator('.pc-party-card').filter({ hasText: '피카츄' }).locator('button').first().click()
+    await alice.locator('.pokedex-held-item-button').click()
+    await alice.locator('.item-recommendation-card[data-item-id="life-orb"]').waitFor()
+    assert.equal(await alice.locator('.item-recommendation-card').count(), 1)
+    assert.match(await alice.locator('.item-recommendation-card').textContent(), /100\.0\s*%/)
+    assert.equal(await alice.locator('.item-equip-card[data-item-id]').first().getAttribute('data-item-id'), 'life-orb')
+    await alice.screenshot({ path: path.join(output, '03-first-play-item-recommendation.png') })
+    await alice.getByRole('button', { name: '지닌 도구 선택창 닫기', exact: true }).click()
+    await alice.locator('.pc-header .screen-back-button').click()
+    await openUsage(alice)
+    log('a fresh empty database gains its first real Pokémon/item sample and one 100-percent recommendation after playing', { speciesId: 25, itemId: 'life-orb', beforeTeams: 0, afterTeams: 1, itemSamples: 1 })
+  }
 
   step = 'verify reload and result revisit do not report the same AI battle again'
   const reportsBeforeReload = aiReports.length
@@ -352,7 +389,7 @@ try {
     await chooseUsage(alice, 'ranked', format)
     await verifyRows(alice, afterRanked.buckets[rankedKey], `ranked ${format} actual play`)
     await alice.screenshot({ path: path.join(output, `05-ranked-${format}-usage-after-battle.png`) })
-    log(`real ${format} ranked match, two selections, one turn and result count exactly two teams`, { before: 298, after: 300, selectedTeams: teams })
+    log(`real ${format} ranked match, two selections, one turn and result count exactly two teams`, { before: beforeRanked.buckets[rankedKey].teamCount, after: afterRanked.buckets[rankedKey].teamCount, selectedTeams: teams })
     if (format === 'single') {
       await alice.locator('.pokemon-usage-back').click()
       await alice.locator('.mode-start').click()

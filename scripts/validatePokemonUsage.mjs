@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { NATIONAL_DEX, SPECIES_PROFILES, getSpeciesProfile } from '../src/data/trainingData.js'
+import { createDemoUsageSnapshot } from './fixtures/pokemonUsageDemo.mjs'
 import {
   USAGE_MODES,
   USAGE_FORMATS,
   canonicalUsageSpeciesId,
   canonicalUsageTeamEntry,
-  createDemoUsageSnapshot,
   createEmptyUsageSnapshot,
   createUsageBucket,
   getUsageRanking,

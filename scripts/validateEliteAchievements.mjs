@@ -64,11 +64,11 @@ check('five elite definitions use sealed unique reward identities and the correc
   const secrets = ACHIEVEMENTS.filter((entry) => entry.secretReward)
   assert.equal(secrets.length, 5)
   assert.deepEqual(secrets.map((entry) => [entry.id, entry.rewardId, entry.rewardVp]), [
-    ['flawless-league', 'armored-mewtwo', 50000],
-    ['flawless-tournament', 'shadow-lugia', 50000],
-    ['collection-all', 'crystal-ho-oh', 100000],
-    ['collection-shiny-all', 'astral-rayquaza', 200000],
-    ['achievements-all', 'legend-plate', 300000],
+    ['flawless-league', 'armored-mewtwo', 100000],
+    ['flawless-tournament', 'shadow-lugia', 100000],
+    ['collection-all', 'crystal-ho-oh', 200000],
+    ['collection-shiny-all', 'astral-rayquaza', 400000],
+    ['achievements-all', 'legend-plate', 600000],
   ])
   const meta = ACHIEVEMENTS.find((entry) => entry.id === 'achievements-all')
   assert.equal(meta.target, ACHIEVEMENTS.length - 1)
@@ -86,7 +86,7 @@ check('normal league and hard tournament require all seven verified flawless rou
     assert.equal(played.competition.championId, 'player')
     assert(played.results.slice(0, -1).every(({ result }) => !has(result, id)))
     assert(has(played.last.result, id))
-    assert(played.last.result.rewardVp >= 50000)
+    assert(played.last.result.rewardVp >= 100000)
     assert.equal(played.competition.achievementRun.completedRounds, 7)
     assert.equal(played.competition.achievementRun.wins, 7)
     assert.equal(played.competition.achievementRun.totalPlayerFaints, 0)
@@ -158,7 +158,7 @@ check('obtainable national dex is reachable through actual draw evolution unlock
   const completed = applyCollectionAchievements(input, completeCollection, 3000)
   assert(has(completed, 'collection-all'))
   assert(!has(completed, 'collection-shiny-all'))
-  assert.equal(completed.rewardVp, 100000)
+  assert.equal(completed.rewardVp, 200000)
   assert.equal(completed.state.stats.collectionSpeciesCount, 1025)
   assert.equal(input.stats.collectionSpeciesCount, 0)
   assert.deepEqual(completeCollection, before)
@@ -171,7 +171,7 @@ check('actual final-evolution shiny draws cover reachable baby and branching shi
   const completed = applyCollectionAchievements(createAchievementState(), shinyDrawCollection, 3000)
   assert(has(completed, 'collection-all'))
   assert(has(completed, 'collection-shiny-all'))
-  assert.equal(completed.rewardVp, 300000)
+  assert.equal(completed.rewardVp, 600000)
   assert.equal(completed.state.stats.shinySpeciesCount, 1025)
   const shinyEeveeFamily = applyCollectionAchievements(createAchievementState(), [{ speciesId: 134, shinyObtained: true, isShiny: false }])
   assert.equal(shinyEeveeFamily.state.stats.shinySpeciesCount, getEvolutionSpeciesIds(134).length)
@@ -223,7 +223,7 @@ check('the meta goal excludes itself and unlocks in the same call as the last co
   assert.equal(before.completed, false)
   const result = applyCollectionAchievements(state, shinyDrawCollection, 5000)
   assert.deepEqual(result.unlocked.map((entry) => entry.id), ['collection-shiny-all', 'achievements-all'])
-  assert.equal(result.rewardVp, 500000)
+  assert.equal(result.rewardVp, 1000000)
   assert.equal(getAchievementProgress(meta, result.state).current, 277)
   const replay = applyCollectionAchievements(result.state, shinyDrawCollection)
   assert.equal(replay.rewardVp, 0)
@@ -235,7 +235,7 @@ check('the meta goal also unlocks when the last battle achievement is awarded', 
   state.stats.wins = 99
   const result = applyBattleAchievements(state, { battleId: 'elite-final-battle', summary: summary() }, 6000)
   assert.deepEqual(result.unlocked.map((entry) => entry.id), ['wins-100', 'achievements-all'])
-  assert.equal(result.rewardVp, 301200)
+  assert.equal(result.rewardVp, 602400)
   const restored = normalizeAchievementState(JSON.parse(JSON.stringify(result.state)))
   assert.equal(restored.unlocked['achievements-all'], 6000)
   assert.equal(applyBattleAchievements(restored, { battleId: 'elite-final-battle', summary: summary() }).rewardVp, 0)

@@ -38,8 +38,8 @@ const redrawnNormalColor = mergePokemonDraws([normalColorPreference], [{
   isShiny: false,
 }]).collection.find((pokemon) => pokemon.dexSpeciesId === directlyDrawnPokemon.id)
 
-if (INITIAL_VP_BALANCE !== 30_000) {
-  failures.push(`Initial VP mismatch: ${INITIAL_VP_BALANCE}/30000`)
+if (INITIAL_VP_BALANCE !== 50_000) {
+  failures.push(`Initial VP mismatch: ${INITIAL_VP_BALANCE}/50000`)
 }
 
 if (DUPLICATE_DRAW_REFUND_VP !== 50) {

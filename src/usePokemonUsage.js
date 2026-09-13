@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { firebaseAuth } from './auth/firebaseClient'
 import { createEmptyUsageSnapshot, mergeUsageSnapshots } from './data/pokemonUsage'
-import { createPokemonUsageClient, createUsageOutbox, isPokemonUsageDemo, isPokemonUsageEnabled } from './pokemonUsageClient'
+import { createPokemonUsageClient, createUsageOutbox, isPokemonUsageDemo, isPokemonUsageEnabled, pokemonUsageSource } from './pokemonUsageClient'
+
+const emptySnapshot = () => ({ ...createEmptyUsageSnapshot(), source: pokemonUsageSource })
 
 export default function usePokemonUsage(user) {
-  const [snapshot, setSnapshot] = useState(createEmptyUsageSnapshot)
+  const [snapshot, setSnapshot] = useState(emptySnapshot)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [recordError, setRecordError] = useState('')
@@ -12,7 +14,7 @@ export default function usePokemonUsage(user) {
   const canUse = isPokemonUsageEnabled && (isPokemonUsageDemo || !user?.isLocalGuest)
 
   useEffect(() => {
-    setSnapshot(createEmptyUsageSnapshot())
+    setSnapshot(emptySnapshot())
     setLoading(false)
     setError('')
     setRecordError('')
@@ -20,11 +22,11 @@ export default function usePokemonUsage(user) {
     let storage
     try { storage = window.localStorage }
     catch { setError('브라우저 저장소에 접근할 수 없어 사용률 기록을 준비하지 못했습니다.'); return }
-    const current = { alive: true, controller: new AbortController(), refreshing: null, snapshot: createEmptyUsageSnapshot() }
+    const current = { alive: true, controller: new AbortController(), refreshing: null, snapshot: emptySnapshot() }
     const accept = value => {
       if (!current.alive) return
       try {
-        current.snapshot = { ...mergeUsageSnapshots(current.snapshot, value), source: isPokemonUsageDemo ? 'demo' : 'live' }
+        current.snapshot = { ...mergeUsageSnapshots(current.snapshot, value), source: pokemonUsageSource }
       } catch { throw new Error('사용률 집계 응답을 확인할 수 없습니다. 다시 시도해주세요.') }
       setSnapshot(current.snapshot)
       setError('')
@@ -35,7 +37,7 @@ export default function usePokemonUsage(user) {
       return activeUser.getIdToken()
     })
     const outbox = createUsageOutbox({ uid: user.uid, storage,
-      keyPrefix: `champions-usage-outbox-v1-${isPokemonUsageDemo ? 'demo' : 'live'}`,
+      keyPrefix: `champions-usage-outbox-v1-${pokemonUsageSource}`,
       send: (report, signal) => client.request('reportAiUsage', report, { signal }), onSnapshot: accept })
     current.flush = async () => {
       try { await outbox.flush() }

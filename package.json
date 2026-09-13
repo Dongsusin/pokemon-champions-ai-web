@@ -77,6 +77,7 @@
     "validate:pokemon-usage-ui": "node scripts/validatePokemonUsageUi.mjs",
     "validate:ranked-vp": "node scripts/validateRankedVpWallet.mjs && node scripts/validateAchievementStorage.mjs && node scripts/validateRankedService.mjs",
     "validate:ranked-vp-ui": "node scripts/validateRankedVpUi.mjs",
+    "validate:vp-economy": "node scripts/validateVpEconomy.mjs",
     "validate:ranked-ratings": "node scripts/validateRankedRatings.mjs",
     "validate:ranked-privacy": "node scripts/validateRankedPrivacy.mjs",
     "validate:ranked-saved-teams-ui": "node scripts/validateRankedSavedTeamsUi.mjs",

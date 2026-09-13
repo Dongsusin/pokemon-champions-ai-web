@@ -252,7 +252,7 @@ check('a league champion who loses the last round receives only the title reward
     const result = applyBattleAchievements(start, finalRound, 1234)
     assert(result.processed)
     assert.deepEqual(result.unlocked.map((def) => def.id), ['league-champion'])
-    assert.equal(result.rewardVp, 1000)
+    assert.equal(result.rewardVp, 2000)
     assert.equal(result.state.stats.wins, 6)
     assert.equal(result.state.stats.currentStreak, 0)
     assert.equal(result.state.stats.bestStreak, 6)

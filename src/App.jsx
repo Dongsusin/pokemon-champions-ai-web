@@ -27,6 +27,7 @@ import PokemonUsagePanel from './PokemonUsagePanel'
 import usePokemonUsage from './usePokemonUsage'
 import { creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
+import { getAiBattleVpReward } from './data/aiBattleRewards'
 import { getUnlockedPokemonSkins } from './data/rareRewards'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
@@ -771,7 +772,7 @@ export function GameApp({
         && nextCompetition.standings?.player?.wins === 7 && nextCompetition.standings?.player?.losses === 0,
       forfeited,
     })
-    const baseVp = result.battleProcessed && playerWon && !forfeited ? (competition.mode === 'league' ? 100 : 150) : 0
+    const baseVp = getAiBattleVpReward({ mode: competition.mode, battleProcessed: result.battleProcessed, playerWon, forfeited })
     const rewardVp = result.rewardVp
     const nextVp = vpBalance.current + baseVp + rewardVp
     try {

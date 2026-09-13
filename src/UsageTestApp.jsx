@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GameApp } from './App'
 import { normalizePokemon } from './data/trainingData'
 import { createSavedTeams } from './data/teamData'
+import { INITIAL_VP_BALANCE } from './data/pokemonPool'
 import { isPokemonUsageDemo } from './pokemonUsageClient'
 
 const DEMO_PARTY_ITEMS = ['focus-sash', 'charizardite-x', 'assault-vest', 'black-sludge', 'choice-specs', 'leftovers',
@@ -25,7 +26,7 @@ export default function UsageTestApp() {
     teams[1].pokemonIds = pokemon.slice(6).map(entry => entry.captureId)
     localStorage.setItem('champions-dex-v2', JSON.stringify(pokemon))
     localStorage.setItem('champions-teams-v1', JSON.stringify({ activeTeamId: 'team-1', teams }))
-    localStorage.setItem('champions-vp-v1', '30000')
+    localStorage.setItem('champions-vp-v1', String(INITIAL_VP_BALANCE))
     localStorage.setItem('champions-draw-tutorial-v1', 'complete')
     localStorage.setItem('champions-settings-v1', JSON.stringify({ audio: { enabled: false }, game: { attackAnimation: 'fast', hpBarSpeed: 'fast' } }))
     localStorage.setItem('champions-usage-demo-party-v2', 'ready')

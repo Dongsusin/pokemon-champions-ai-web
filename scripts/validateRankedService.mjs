@@ -78,10 +78,10 @@ const command = (match, action = {}) => ({ matchId: match.id, revision: match.re
 const rejectsCode = async (promise, code) => assert.rejects(promise, error => error.code === code)
 
 test('VP reward policy awards completed battles and protects prebattle or abandoned matches', () => {
-  assert.deepEqual(RANKED_VP_REWARDS, { win: 300, loss: 100, draw: 150 })
+  assert.deepEqual(RANKED_VP_REWARDS, { win: 600, loss: 200, draw: 300 })
   for (const [outcome, amount] of Object.entries(RANKED_VP_REWARDS)) {
     for (const reason of ['battle', 'turn-limit']) assert.equal(getRankedVpReward({ outcome, reason, battleStarted: true }), amount)
-    for (const reason of ['forfeit', 'turn-timeout', 'replacement-timeout']) assert.equal(getRankedVpReward({ outcome, reason, battleStarted: true }), outcome === 'win' ? 300 : 0)
+    for (const reason of ['forfeit', 'turn-timeout', 'replacement-timeout']) assert.equal(getRankedVpReward({ outcome, reason, battleStarted: true }), outcome === 'win' ? 600 : 0)
     for (const reason of ['selection-timeout', 'both-selection-timeout', 'both-timeout', 'unknown']) assert.equal(getRankedVpReward({ outcome, reason, battleStarted: true }), 0)
     for (const reason of ['battle', 'turn-limit', 'forfeit', 'turn-timeout', 'replacement-timeout']) assert.equal(getRankedVpReward({ outcome, reason, battleStarted: false }), 0)
   }
@@ -108,7 +108,7 @@ test('ordinary wins and losses award server-computed VP exactly once under concu
     await Promise.all([env.call('alice', 'submit', first), env.call('bob', 'submit', second)])
     await Promise.all(Array.from({ length: 4 }, () => Promise.all([env.call('alice', 'submit', first), env.call('bob', 'submit', second)])))
     assert.equal(env.engine.calls.turns, 1)
-    for (const [who, amount, outcome] of [['alice', 300, 'win'], ['bob', 100, 'loss']]) {
+    for (const [who, amount, outcome] of [['alice', 600, 'win'], ['bob', 200, 'loss']]) {
       const result = await env.call(who, 'status', { matchId: match.id })
       assert.equal(result.match.result.outcome, outcome)
       assert.equal(result.match.result.rewardVp, amount)
@@ -147,12 +147,12 @@ test('a failed settlement transaction rolls back ratings and VP before a success
   }
   await env.call('bob', 'submit', lastCommand)
   await env.call('bob', 'submit', lastCommand)
-  assert.equal((await env.call('alice', 'status')).vpRewards.total, 300)
-  assert.equal((await env.call('bob', 'status')).vpRewards.total, 100)
+  assert.equal((await env.call('alice', 'status')).vpRewards.total, 600)
+  assert.equal((await env.call('bob', 'status')).vpRewards.total, 200)
   assert.equal((await env.call('alice', 'status')).profile.single.played, 1)
 })
 
-test('normal draws and the turn limit both grant 150 VP to each participant', async () => {
+test('normal draws and the turn limit both grant 300 VP to each participant', async () => {
   for (const [action, reason] of [[{ finish: 'draw' }, 'battle'], [{ turnLimit: true }, 'turn-limit']]) {
     const env = environment()
     const match = await battle(env)
@@ -162,8 +162,8 @@ test('normal draws and the turn limit both grant 150 VP to each participant', as
       const result = await env.call(who, 'status', { matchId: match.id })
       assert.equal(result.match.result.reason, reason)
       assert.equal(result.match.result.outcome, 'draw')
-      assert.equal(result.match.result.rewardVp, 150)
-      assert.equal(result.vpRewards.total, 150)
+      assert.equal(result.match.result.rewardVp, 300)
+      assert.equal(result.vpRewards.total, 300)
       assert.equal(result.profile.single.draws, 1)
     }
   }
@@ -197,13 +197,13 @@ test('VP totals survive more than 20 matches, format changes, and a fresh servic
   for (const who of ['alice', 'bob']) {
     const record = (await env.store.inspect()).collections.players[identities[who].uid]
     assert.equal(record.history.length, 20)
-    assert.equal(record.vpRewardTotal, 4400)
-    assert.equal(record.history.reduce((sum, result) => sum + result.rewardVp, 0), 4000)
+    assert.equal(record.vpRewardTotal, 8800)
+    assert.equal(record.history.reduce((sum, result) => sum + result.rewardVp, 0), 8000)
     const result = await reconnected.execute(identities[who], { action: 'status' })
     assert.equal(result.match, null)
-    assert.deepEqual(result.vpRewards, { uid: identities[who].uid, total: 4400 })
+    assert.deepEqual(result.vpRewards, { uid: identities[who].uid, total: 8800 })
     await env.call(who, 'forfeit', { matchId: oldMatchId })
-    assert.equal((await env.call(who, 'status')).vpRewards.total, 4400, 'An old retry cannot pay again after history eviction')
+    assert.equal((await env.call(who, 'status')).vpRewards.total, 8800, 'An old retry cannot pay again after history eviction')
   }
 })
 
@@ -235,8 +235,43 @@ test('legacy finished matches are never retroactively paid and new battles start
   const next = await battle(env)
   await env.call('alice', 'submit', command(next, { finish: 'opponent' }))
   await env.call('bob', 'submit', command(next))
-  assert.equal((await env.call('alice', 'status')).vpRewards.total, 100)
+  assert.equal((await env.call('alice', 'status')).vpRewards.total, 200)
+  assert.equal((await env.call('bob', 'status')).vpRewards.total, 600)
+})
+
+test('already paid rewards retain their original amounts after the reward increase and only new matches use doubled VP', async () => {
+  const env = environment()
+  const oldMatch = await battle(env)
+  await env.call('alice', 'submit', command(oldMatch, { finish: true }))
+  await env.call('bob', 'submit', command(oldMatch))
+  const oldAmounts = { 'ranked-test-alice': 300, 'ranked-test-bob': 100 }
+  await env.store.transaction(async tx => {
+    const finished = await tx.get('matches', oldMatch.id)
+    finished.result.forEach((result, index) => { result.rewardVp = oldAmounts[finished.players[index].uid] })
+    tx.set('matches', oldMatch.id, finished)
+    for (const who of ['alice', 'bob']) {
+      const player = await tx.get('players', identities[who].uid)
+      player.vpRewardTotal = oldAmounts[player.uid]
+      for (const result of player.history) result.rewardVp = oldAmounts[player.uid]
+      tx.set('players', player.uid, player)
+    }
+  })
+  for (const who of ['alice', 'bob']) {
+    const expected = oldAmounts[identities[who].uid]
+    assert.equal((await env.call(who, 'status')).vpRewards.total, expected)
+    const replay = await env.call(who, 'forfeit', { matchId: oldMatch.id })
+    assert.equal(replay.match.result.rewardVp, expected)
+    assert.equal(replay.vpRewards.total, expected)
+  }
+  const next = await battle(env)
+  await env.call('alice', 'submit', command(next, { finish: true }))
+  await env.call('bob', 'submit', command(next))
+  assert.equal((await env.call('alice', 'status')).vpRewards.total, 900)
   assert.equal((await env.call('bob', 'status')).vpRewards.total, 300)
+  for (const who of ['alice', 'bob']) {
+    const player = (await env.store.inspect()).collections.players[identities[who].uid]
+    assert.equal(player.history.find(result => result.matchId === oldMatch.id).rewardVp, oldAmounts[player.uid])
+  }
 })
 
 test('simultaneous queue joins create one match without self matching', async () => {
@@ -398,8 +433,8 @@ test('forfeit settles both ratings once and detaches both players while current 
   assert.equal((await env.call('bob', 'status', { matchId: match.id })).match.result.ratingDelta, 16)
   assert.equal(responses[0].match.result.ratingDelta, -16)
   assert.equal(bob.profile.double.played, 0)
-  assert.equal(bob.vpRewards.total, 300)
-  assert.equal((await env.call('bob', 'status', { matchId: match.id })).match.result.rewardVp, 300)
+  assert.equal(bob.vpRewards.total, 600)
+  assert.equal((await env.call('bob', 'status', { matchId: match.id })).match.result.rewardVp, 600)
   const records = (await env.store.inspect()).collections.players
   for (const who of ['alice', 'bob']) {
     assert.equal(records[identities[who].uid].activeMatchId, null)
@@ -597,8 +632,8 @@ test('turn timeout gives the waiting player a win, repeated polling settles once
   assert.equal(result.match.result.outcome, 'win')
   assert.equal(result.profile.single.played, 1)
   assert.equal(result.match.result.reason, 'turn-timeout')
-  assert.equal(result.match.result.rewardVp, 300)
-  assert.equal(result.vpRewards.total, 300)
+  assert.equal(result.match.result.rewardVp, 600)
+  assert.equal(result.vpRewards.total, 600)
   assert.equal((await env.call('alice', 'status', { matchId: match.id })).match.result.rewardVp, 0)
   assert.equal((await env.call('alice', 'status')).vpRewards.total, 0)
 })
@@ -632,8 +667,8 @@ test('forced replacement timeout never penalizes the waiting opponent', async ()
   const result = await env.call('bob', 'status', { matchId: match.id })
   assert.equal(result.match.result.outcome, 'win')
   assert.equal(result.match.result.reason, 'replacement-timeout')
-  assert.equal(result.match.result.rewardVp, 300)
-  assert.equal(result.vpRewards.total, 300)
+  assert.equal(result.match.result.rewardVp, 600)
+  assert.equal(result.vpRewards.total, 600)
   assert.equal((await env.call('alice', 'status', { matchId: match.id })).match.result.rewardVp, 0)
   assert.equal((await env.call('alice', 'status')).vpRewards.total, 0)
 })
@@ -759,7 +794,7 @@ test('Firestore transaction adapter supports a full match and settles both profi
   assert.equal(alice.profile.double.wins, 1)
   assert.equal(bob.profile.double.losses, 1)
   assert.equal(alice.profile.single.played, 0)
-  assert.deepEqual(alice.vpRewards, { uid: identities.alice.uid, total: 300 })
+  assert.deepEqual(alice.vpRewards, { uid: identities.alice.uid, total: 600 })
   assert.deepEqual(bob.vpRewards, { uid: identities.bob.uid, total: 0 })
   assert.equal(alice.match, null)
   assert.equal(bob.match, null)

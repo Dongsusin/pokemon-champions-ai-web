@@ -1,6 +1,6 @@
 // VP is awarded only for a server-settled battle. Leaving before battle starts
 // or letting both command timers expire cannot earn participation rewards.
-export const RANKED_VP_REWARDS = Object.freeze({ win: 300, loss: 100, draw: 150 })
+export const RANKED_VP_REWARDS = Object.freeze({ win: 600, loss: 200, draw: 300 })
 
 export function getRankedVpReward({ outcome, reason, battleStarted } = {}) {
   if (!battleStarted) return 0

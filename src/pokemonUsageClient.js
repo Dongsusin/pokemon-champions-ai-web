@@ -5,6 +5,10 @@ const loopback = host => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hos
 export const isPokemonUsageDemo = Boolean(env.DEV && env.VITE_POKEMON_USAGE_DEMO === 'true'
   && isRankedLocalTest && typeof window !== 'undefined' && loopback(window.location.hostname)
   && loopback(new URL(rankedApiUrl).hostname))
+// The existing demo flag gates the offline test app, not synthetic statistics.
+// Only the automated fixture runner opts into seeded data and its demo label.
+export const isPokemonUsageSeededTest = isPokemonUsageDemo && env.VITE_POKEMON_USAGE_SEEDED_TEST === 'true'
+export const pokemonUsageSource = isPokemonUsageSeededTest ? 'demo' : isPokemonUsageDemo ? 'local' : 'live'
 export const isPokemonUsageEnabled = env.VITE_POKEMON_USAGE_ENABLED === 'true'
 
 export function createPokemonUsageClient(getIdToken) {

@@ -847,6 +847,7 @@ function BoxScreen({
                 <strong><Star size={13} /> 인기 도구 TOP 3</strong>
                 <span>AI·레이팅 · 싱글·더블 합산</span>
                 {pokemonUsage.snapshot?.source === 'demo' && <em>임의 표본 포함</em>}
+                {pokemonUsage.snapshot?.source === 'local' && <em>로컬 플레이 집계</em>}
                 <small>{pokemonUsage.loading ? '집계 확인 중' : `도구 기록 ${itemUsage.sampleCount.toLocaleString('ko-KR')}건`}</small>
               </header>
               {recommendedItems.length ? <div className="item-recommendations-grid">{recommendedItems.map((entry) => {
