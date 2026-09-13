@@ -31,4 +31,6 @@
 
 `node scripts/validatePostgresStore.mjs`, `node scripts/validateAccountServer.mjs`, `npm run validate:guest-deletion`, `npm run validate:ranked-polling`로 저장 비교·순서·롤백·게스트 삭제·타인 보호·재시도·폴링 동작을 확인한다. PostgreSQL 실제 연결 검증은 `POSTGRES_STORE_INTEGRATION=true`와 서버 연결 환경을 사용하며 임의 이름의 별도 validation namespace에 만든 테스트 문서만 정리한다.
 
+운영 검증 스크립트는 `scripts/validateLiveGuestDeletion.mjs`이다. `RUN_LIVE_GUEST_DELETION=true`와 명시적인 `TARGET_ORIGIN`이 모두 있을 때만 실행되며, `.env.local`의 공개 Firebase 클라이언트 설정과 `.env.storage.local`의 서버 DB 연결을 사용한다. 새로 생성한 게스트 하나의 저장·삭제·재시도·재생성 차단을 검증한 뒤 해당 Firebase 계정과 정확히 일치하는 임시 DB 기록을 정리한다. 실제 매칭·사용률·랭킹에는 테스트 데이터를 제출하지 않는다. 2026-09-13 운영 배포 `ad914f4`에서 5개 검증 모두 통과했고 임시 계정과 DB 기록도 정리됐다. 실제 PostgreSQL 어댑터 검증은 17개, 게스트 삭제 서비스 검증은 16개를 통과했다.
+
 배포 뒤 Usage 지표는 집계 지연이 있으므로 다음 시간대의 증가량으로 효과를 판단한다. 누적 그래프가 바로 내려가는 것을 성공 조건으로 삼지 않는다.
