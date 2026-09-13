@@ -3,6 +3,7 @@ import {
   canonicalUsageSpeciesId, canonicalUsageTeamEntry, createEmptyUsageSnapshot, createUsageBucket,
   recordUsageTeams, usageBucketKey,
 } from '../src/data/pokemonUsage.js'
+import { getRankedFormat } from '../src/data/rankedRules.js'
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const fail = (code, message, status = 400) => {
@@ -22,6 +23,12 @@ export async function readPokemonUsage(tx) {
 
 export async function recordRankedPokemonUsage(tx, match, selectedTeams, timestamp) {
   if (match.usageRecordedAt != null) return
+  const format = getRankedFormat(match.format)
+  if (!format) fail('INVALID_FORMAT', '싱글 또는 더블 배틀을 선택해주세요.')
+  if (!Array.isArray(selectedTeams) || selectedTeams.length !== 2
+    || selectedTeams.some(team => !Array.isArray(team) || team.length !== format.battleSize)) {
+    fail('INVALID_USAGE_SELECTION_SIZE', `각 트레이너가 출전 선출한 포켓몬 ${format.battleSize}마리만 기록할 수 있습니다.`)
+  }
   const key = usageBucketKey('ranked', match.format)
   const bucket = await tx.get('pokemonUsage', key) ?? createUsageBucket()
   // The trusted battle canonicalizer represents an unequipped slot as ''.
@@ -37,15 +44,16 @@ export async function recordRankedPokemonUsage(tx, match, selectedTeams, timesta
 }
 
 export function validateAiPokemonUsage(payload) {
-  if (!['single', 'double'].includes(payload.format)) fail('INVALID_FORMAT', '싱글 또는 더블 배틀을 선택해주세요.')
+  const format = getRankedFormat(payload.format)
+  if (!format) fail('INVALID_FORMAT', '싱글 또는 더블 배틀을 선택해주세요.')
   if (typeof payload.battleId !== 'string' || !/^[a-zA-Z0-9_:-]{8,128}$/.test(payload.battleId)) {
     fail('INVALID_USAGE_BATTLE', '배틀 사용률 기록 식별자가 올바르지 않습니다.')
   }
-  // AI rules include both pick-three and full-team battles, and can use smaller
-  // owned rosters. Accept the actual selected team, up to the six-slot limit.
+  // Validate species before selection size so malformed payloads retain their
+  // original error. Registered six-Pokémon candidate teams are never samples.
   if (!Array.isArray(payload.speciesIds) || payload.speciesIds.length < 1 || payload.speciesIds.length > 6
     || payload.speciesIds.some(id => !Number.isSafeInteger(id))) {
-    fail('INVALID_USAGE_TEAM', '실제로 출전한 포켓몬 1~6마리의 종 번호가 필요합니다.')
+    fail('INVALID_USAGE_TEAM', '출전 선출한 포켓몬의 종 번호 배열이 필요합니다.')
   }
   let speciesIds
   let selectedSpecies
@@ -54,6 +62,9 @@ export function validateAiPokemonUsage(payload) {
     speciesIds = [...new Set(selectedSpecies)]
   }
   catch { fail('INVALID_USAGE_TEAM', '존재하는 포켓몬 종 번호만 기록할 수 있습니다.') }
+  if (payload.speciesIds.length !== format.battleSize) {
+    fail('INVALID_USAGE_SELECTION_SIZE', `${format.label}에서 출전 선출한 포켓몬 ${format.battleSize}마리만 기록할 수 있습니다.`)
+  }
   let team
   if (Object.hasOwn(payload, 'team')) {
     if (!Array.isArray(payload.team) || payload.team.length !== payload.speciesIds.length

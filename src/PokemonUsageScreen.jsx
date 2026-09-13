@@ -4,6 +4,7 @@ import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
 import { getBattleItem } from './data/shopData.js'
 import { USAGE_FORMATS, USAGE_MODES, createUsageBucket, getUsageRanking, usageBucketKey } from './data/pokemonUsage.js'
+import { getRankedFormat } from './data/rankedRules.js'
 import './pokemonUsage.css'
 
 const PAGE_SIZE = 20
@@ -178,6 +179,6 @@ export default function PokemonUsageScreen({ snapshot, loading = false, error = 
         <footer className="pokemon-usage-pagination"><span aria-live="polite">{search ? <><strong>{filtered.length}</strong>마리 검색됨 <small>· 원래 순위 표시</small></> : <><strong>{visible[0]?.rank ?? 0}–{visible.at(-1)?.rank ?? 0}</strong>위 <small>/ 100위</small></>}</span><nav aria-label="포켓몬 사용률 순위 페이지"><button type="button" className="pokemon-usage-page-arrow" aria-label="이전 사용률 페이지" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}><ChevronLeft size={16} /></button>{Array.from({ length: pageCount }, (_, index) => index + 1).map(value => <button type="button" key={value} aria-label={search ? `검색 결과 ${value}페이지` : `${(value - 1) * PAGE_SIZE + 1}~${Math.min(value * PAGE_SIZE, 100)}위 보기`} aria-current={currentPage === value ? 'page' : undefined} className={currentPage === value ? 'is-selected' : ''} onClick={() => changePage(value)}>{search ? value : `${(value - 1) * PAGE_SIZE + 1}–${Math.min(value * PAGE_SIZE, 100)}`}</button>)}<button type="button" className="pokemon-usage-page-arrow" aria-label="다음 사용률 페이지" disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}><ChevronRight size={16} /></button></nav></footer>
       </div>
     </section>
-    <footer className="pokemon-usage-method"><Info size={13} /><p><span>배틀 시작 시 확정된 출전팀 기준 · 같은 팀의 같은 도감 번호는 1회 · 직전 집계 대비</span><small>사용률 = 해당 포켓몬 출전팀 ÷ 전체 출전팀{mode === 'ai' ? ' · AI 상대팀 제외 · AI 대전은 플레이 기기에서 집계한 기록' : ' · 랭크배틀 양쪽 유저 출전팀 포함'}</small><small>아이템 사용률 = 장착 횟수 ÷ 해당 포켓몬의 아이템 정보가 기록된 출전 횟수 · 무장착 포함</small></p></footer>
+    <footer className="pokemon-usage-method"><Info size={13} /><p><span>6마리 중 선출한 {getRankedFormat(format).battleSize}마리만 집계 · 미선출 포켓몬·아이템 제외 · 같은 팀의 같은 도감 번호는 1회</span><small>사용률 = 해당 포켓몬 출전팀 ÷ 전체 출전팀{mode === 'ai' ? ' · AI 상대팀 제외 · AI 대전은 플레이 기기에서 집계한 기록' : ' · 랭크배틀 양쪽 유저 출전팀 포함'} · 직전 집계 대비</small><small>아이템 사용률 = 장착 횟수 ÷ 해당 포켓몬의 아이템 정보가 기록된 출전 횟수 · 무장착 포함</small></p></footer>
   </Container>
 }

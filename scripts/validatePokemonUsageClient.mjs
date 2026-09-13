@@ -8,7 +8,7 @@ const clientUrl = new URL('../src/pokemonUsageClient.js', import.meta.url)
 const clientSource = (await readFile(clientUrl, 'utf8')).replace(
   "from './rankedClient'",
   `from '${new URL('../src/rankedClient.js', import.meta.url).href}'`,
-)
+).replace("from './data/rankedRules.js'", `from '${new URL('../src/data/rankedRules.js', import.meta.url).href}'`)
 const { createUsageOutbox } = await import(`data:text/javascript;base64,${Buffer.from(clientSource).toString('base64')}`)
 
 // Every send in this suite is an injected fake, including simulated server
@@ -36,7 +36,7 @@ class MemoryStorage {
 
 const key = (uid = 'alice', prefix = 'champions-usage-outbox-v1') => `${prefix}:${uid}`
 const entries = (storage, uid = 'alice', prefix) => JSON.parse(storage.getItem(key(uid, prefix)) ?? '[]')
-const report = (battleId = 'battle-1', format = 'single') => ({ battleId, format, speciesIds: [6, 25, 94] })
+const report = (battleId = 'battle-1', format = 'single') => ({ battleId, format, speciesIds: format === 'double' ? [6, 25, 94, 9] : [6, 25, 94] })
 const usage = teamCount => ({ source: 'live', buckets: { 'ai-single': { teamCount } }, updatedAt: 1000 })
 
 function deferred() {
@@ -139,6 +139,54 @@ test('offline retry survives a fresh outbox instance', async () => {
   assert.deepEqual(retried, [report()])
   assert.deepEqual(entries(storage), [])
   restarted.stop()
+})
+
+test('registration rosters and incomplete selections never enter the usage outbox', async () => {
+  const storage = new MemoryStorage()
+  const outbox = createUsageOutbox({ uid: 'alice', storage, send: async () => assert.fail('Invalid selection must not be sent') })
+  for (const format of ['single', 'double']) {
+    for (const size of [1, 2, 3, 4, 5, 6].filter(size => size !== (format === 'single' ? 3 : 4))) {
+      assert.throws(() => outbox.enqueue({ ...report(`wrong-${format}-${size}`, format), speciesIds: [25, 6, 9, 3, 94, 143].slice(0, size) }), { code: 'INVALID_USAGE_SELECTION_SIZE' })
+    }
+  }
+  assert.equal(storage.writes.length, 0)
+  await outbox.flush()
+  outbox.stop()
+})
+
+test('a rejected legacy six-member report cannot block later selected teams after reload', async () => {
+  const storage = new MemoryStorage()
+  const legacy = { ...report('old-six-member-battle'), speciesIds: [25, 6, 9, 3, 94, 143] }
+  const single = report('new-single-battle')
+  const double = report('new-double-battle', 'double')
+  storage.setItem(key(), JSON.stringify([legacy, single]))
+  const sent = []
+  const snapshots = []
+  const outbox = createUsageOutbox({ uid: 'alice', storage, onSnapshot: value => snapshots.push(value), send: async entry => {
+    sent.push(entry)
+    if (entry.battleId === legacy.battleId) {
+      outbox.enqueue(double)
+      throw Object.assign(new Error('Legacy registration roster is not a selection'), { code: 'INVALID_USAGE_SELECTION_SIZE', status: 400 })
+    }
+    return { usage: usage(sent.length - 1) }
+  } })
+  await outbox.flush()
+  assert.deepEqual(sent, [legacy, single, double])
+  assert.deepEqual(entries(storage), [])
+  assert.deepEqual(snapshots, [usage(1), usage(2)])
+  outbox.stop()
+})
+
+test('other server failures preserve queued reports for retry', async () => {
+  for (const [code, status] of [['UNAUTHENTICATED', 401], ['USAGE_DISABLED', 503], ['INVALID_USAGE_SELECTION_SIZE', 503]]) {
+    const storage = new MemoryStorage()
+    const failure = Object.assign(new Error(code), { code, status })
+    const outbox = createUsageOutbox({ uid: 'alice', storage, send: async () => { throw failure } })
+    outbox.enqueue(report())
+    await assert.rejects(outbox.flush(), { code, status })
+    assert.deepEqual(entries(storage), [report()])
+    outbox.stop()
+  }
 })
 
 test('ambiguous response retry preserves battle identity for server deduplication', async () => {

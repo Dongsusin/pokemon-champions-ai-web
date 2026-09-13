@@ -84,8 +84,9 @@ export default function usePokemonUsage(user) {
       if (!session.current) throw new Error('Usage session unavailable')
       session.current.record(report)
       return true
-    } catch {
-      setRecordError('브라우저 저장 문제로 집계하지 못한 대전이 있습니다. 해당 기록은 새로고침만으로 복구되지 않습니다.')
+    } catch (failure) {
+      setRecordError(failure?.code === 'INVALID_USAGE_SELECTION_SIZE' ? failure.message
+        : '브라우저 저장 문제로 집계하지 못한 대전이 있습니다. 해당 기록은 새로고침만으로 복구되지 않습니다.')
       return false
     }
   }, [canUse])

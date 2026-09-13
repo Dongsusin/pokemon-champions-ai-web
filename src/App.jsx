@@ -756,7 +756,7 @@ export function GameApp({
     if (!pokemonUsage.recordAiBattle({ battleId: usageBattleId, format: rules.format.id,
       speciesIds: playerTeam.map(pokemon => pokemon.speciesId),
       team: playerTeam.map(pokemon => ({ speciesId: pokemon.speciesId, heldItemId: pokemon.heldItemId || null })) })) {
-      showNotice('대전은 시작됐지만 사용률 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인해주세요.')
+      showNotice('대전은 시작됐지만 사용률 기록을 저장하지 못했습니다. 사용률 창의 집계 알림을 확인해주세요.')
     }
   }
 

@@ -1,4 +1,5 @@
 import { createRankedClient, isRankedLocalTest, rankedApiUrl } from './rankedClient'
+import { getRankedFormat } from './data/rankedRules.js'
 
 const env = import.meta.env ?? {}
 const loopback = host => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host)
@@ -33,6 +34,10 @@ export function createUsageOutbox({ uid, storage, send, onSnapshot = () => {}, k
       if (stopped) return false
       const entries = read()
       if (entries.some(entry => entry.battleId === report.battleId)) return true
+      const selectionSize = getRankedFormat(report.format)?.battleSize
+      if (!selectionSize || !Array.isArray(report.speciesIds) || report.speciesIds.length !== selectionSize) {
+        throw Object.assign(new Error('싱글은 선출한 3마리, 더블은 선출한 4마리만 사용률에 기록할 수 있습니다.'), { code: 'INVALID_USAGE_SELECTION_SIZE' })
+      }
       if (entries.length >= 200) throw new Error('사용률 전송 대기 기록이 가득 찼습니다. 연결 후 다시 시도해주세요.')
       const selected = { battleId: report.battleId, format: report.format, speciesIds: [...report.speciesIds] }
       if (report.team !== undefined) selected.team = report.team.map(member => ({ speciesId: member.speciesId, heldItemId: member.heldItemId }))
@@ -46,7 +51,17 @@ export function createUsageOutbox({ uid, storage, send, onSnapshot = () => {}, k
         while (!stopped) {
           const report = read()[0]
           if (!report) return
-          const result = await send(report, controller.signal)
+          let result
+          try { result = await send(report, controller.signal) }
+          catch (failure) {
+            // Old clients could queue all six registered Pokémon. The server
+            // cannot recover their selection, so discard only this explicit
+            // permanent rejection and let later valid battles reach it.
+            if (failure?.code !== 'INVALID_USAGE_SELECTION_SIZE' || failure.status !== 400) throw failure
+            if (stopped) return
+            write(read().filter(entry => entry.battleId !== report.battleId))
+            continue
+          }
           if (stopped) return
           // Re-read so a newly queued battle is not lost while a request waits.
           write(read().filter(entry => entry.battleId !== report.battleId))
