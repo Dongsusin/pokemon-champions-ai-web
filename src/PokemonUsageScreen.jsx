@@ -1,5 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowUp, BarChart3, Bot, ChevronLeft, ChevronRight, Clock3, Database, Info, RefreshCw, Search, Swords, Trophy, UsersRound, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, BarChart3, Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, Database, Info, RefreshCw, Search, Swords, Trophy, UsersRound, X } from 'lucide-react'
 import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
 import { getBattleItem } from './data/shopData.js'
@@ -8,6 +8,14 @@ import './pokemonUsage.css'
 
 const PAGE_SIZE = 20
 const EMPTY_BUCKET = createUsageBucket()
+const LEADERS_COLLAPSED_KEY = 'champions-usage-top-three-collapsed-v1'
+function initialLeadersCollapsed() {
+  try {
+    const saved = localStorage.getItem(LEADERS_COLLAPSED_KEY)
+    if (saved === 'true' || saved === 'false') return saved === 'true'
+  } catch { /* Display preferences remain usable when storage is unavailable. */ }
+  return typeof window !== 'undefined' && window.matchMedia('(max-height: 620px) and (min-width: 650px), (max-height: 510px) and (orientation: landscape)').matches
+}
 const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0
 const countLabel = (value) => number(value).toLocaleString('ko-KR')
 const percentLabel = (value) => number(value).toFixed(1)
@@ -95,6 +103,7 @@ export default function PokemonUsageScreen({ snapshot, loading = false, error = 
   const [format, setFormat] = useState(USAGE_FORMATS[0].id)
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const [leadersCollapsed, setLeadersCollapsed] = useState(initialLeadersCollapsed)
   const listRef = useRef(null)
   const modeRefs = useRef([])
   const id = useId().replace(/:/g, '')
@@ -115,6 +124,11 @@ export default function PokemonUsageScreen({ snapshot, loading = false, error = 
     if (listRef.current) listRef.current.scrollTop = 0
   }
   const changeMode = (next) => { setMode(next); changePage(1) }
+  const toggleLeaders = () => {
+    const next = !leadersCollapsed
+    setLeadersCollapsed(next)
+    try { localStorage.setItem(LEADERS_COLLAPSED_KEY, String(next)) } catch { /* The toggle still works without persistence. */ }
+  }
   const handleModeKeys = (event, index) => {
     let next
     if (event.key === 'ArrowRight') next = (index + 1) % USAGE_MODES.length
@@ -142,11 +156,16 @@ export default function PokemonUsageScreen({ snapshot, loading = false, error = 
       </div>
       <div className="pokemon-usage-formats" role="group" aria-label="배틀 형식">{USAGE_FORMATS.map(entry => <button type="button" key={entry.id} aria-pressed={format === entry.id} className={format === entry.id ? 'is-selected' : ''} onClick={() => { setFormat(entry.id); changePage(1) }}>{entry.label}</button>)}</div>
       <span className="pokemon-usage-sample"><UsersRound size={15} /><span>집계 출전팀</span><strong>{countLabel(teamCount)}</strong><small>팀</small></span>
+      {teamCount > 0 && <button className="pokemon-usage-leaders-toggle" type="button" onClick={toggleLeaders} aria-expanded={!leadersCollapsed} aria-controls={`${id}-leaders`} aria-label={leadersCollapsed ? 'TOP 3 펼치기' : 'TOP 3 접기'}>
+        {leadersCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}<span>TOP 3 {leadersCollapsed ? '펼치기' : '접기'}</span>
+      </button>}
     </div>
 
     <section className="pokemon-usage-panel" role="tabpanel" id={`${id}-ranking-panel`} aria-labelledby={`${id}-mode-${mode}`} aria-busy={loading}>
       {errorMessage && <div className="pokemon-usage-error" role="alert"><Info size={16} /><span><strong>사용률 집계 알림</strong> · {errorMessage}</span>{onRefresh && <button type="button" onClick={onRefresh} disabled={loading}>다시 시도</button>}</div>}
-      {teamCount > 0 && <section className="pokemon-usage-leaders" aria-label={`${modeLabel} ${formatLabel} 사용률 상위 3위`}>{ranking.slice(0, 3).map(entry => <LeaderCard key={entry.speciesId} entry={entry} inventory={inventory} />)}</section>}
+      {teamCount > 0 && <div id={`${id}-leaders`} className={`pokemon-usage-leaders-collapse${leadersCollapsed ? ' is-collapsed' : ''}`} aria-hidden={leadersCollapsed} inert={leadersCollapsed}>
+        <div className="pokemon-usage-leaders-clip"><section className="pokemon-usage-leaders" aria-label={`${modeLabel} ${formatLabel} 사용률 상위 3위`}>{ranking.slice(0, 3).map(entry => <LeaderCard key={entry.speciesId} entry={entry} inventory={inventory} />)}</section></div>
+      </div>}
       <div className="pokemon-usage-catalog">
         <div className="pokemon-usage-toolbar"><div><BarChart3 size={16} /><h3>{modeLabel} <span>· {formatLabel}</span></h3><small>TOP 100</small></div><label className="pokemon-usage-search"><Search size={15} /><input type="search" aria-label="포켓몬 이름 또는 타입 검색" placeholder="포켓몬 이름 또는 타입 검색" value={query} onChange={event => { setQuery(event.target.value); changePage(1) }} />{query && <button type="button" aria-label="사용률 검색어 지우기" onClick={() => { setQuery(''); changePage(1) }}><X size={13} /></button>}</label></div>
         <div className="pokemon-usage-column-head" aria-hidden="true"><span>순위 / 변동</span><span>포켓몬</span><span className="pokemon-usage-items-heading" title="아이템 사용률은 해당 포켓몬의 아이템 정보가 기록된 출전 횟수 기준입니다. 무장착 출전도 포함합니다.">장착 아이템 TOP 3 <Info size={10} /></span><span>사용률</span><span>출전팀</span><span>사용률 변동</span></div>

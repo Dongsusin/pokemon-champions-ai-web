@@ -2,6 +2,8 @@
 
 로비의 **업적 바로 아래 → 포켓몬 사용률**, 또는 **설정 → 사용률**에서 확인한다. AI 대전 / 레이팅 배틀 두 탭과 싱글 / 더블 필터를 제공하며, 각 분류의 1~100위를 20마리씩 표시한다. 이름·타입·도감 번호 검색은 상위 100위 안에서 원래 순위를 유지한다.
 
+필터 오른쪽의 **TOP 3 접기 / 펼치기** 버튼으로 상위 카드를 위아래로 접고 펼친다. 접으면 비워진 높이를 아래 세부 순위 목록이 채우고, 펼치면 그 높이만큼 목록이 줄어든다. 검색·현재 페이지·목록 위치와 대전 분류는 토글로 초기화하지 않는다. 접힘 선택은 기기 로컬 저장소에 유지하며, 저장된 선택이 없으면 낮은 가로 화면에서는 기본으로 접는다. 모바일 가로 화면에서 펼친 TOP 3는 이름·이미지·사용률을 압축 표시하며, 타입과 장착 아이템은 아래 세부 순위에서 확인한다.
+
 ## 집계 기준
 
 - 이 게임에서 **배틀이 시작될 때 확정된 출전팀**을 집계한다. 공식 포켓몬 게임의 외부 통계가 아니다.
@@ -34,6 +36,7 @@ npm run usage:test
 ```powershell
 npm run validate:pokemon-usage
 npm run validate:pokemon-usage-ui
+node scripts/validatePokemonUsageUi.mjs --layout-only
 node scripts/validatePokemonUsageUi.mjs --fresh
 npm run build
 ```

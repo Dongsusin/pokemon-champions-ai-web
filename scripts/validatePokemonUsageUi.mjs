@@ -13,8 +13,9 @@ import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const seededTest = !process.argv.includes('--fresh')
+const layoutOnly = process.argv.includes('--layout-only')
 const expectedSource = seededTest ? 'demo' : 'local'
-const output = path.join(root, seededTest ? 'scripts/.cache/pokemon-usage-ui' : 'scripts/.cache/pokemon-usage-fresh-ui')
+const output = path.join(root, `${seededTest ? 'scripts/.cache/pokemon-usage-ui' : 'scripts/.cache/pokemon-usage-fresh-ui'}${layoutOnly ? '-layout' : ''}`)
 await fs.mkdir(output, { recursive: true })
 const require = createRequire(new URL('../promo/package.json', import.meta.url))
 const { chromium } = require('playwright')
@@ -96,6 +97,76 @@ async function openUsage(page) {
   await page.locator(`.pokemon-usage-screen[data-usage-source="${expectedSource}"]`).waitFor()
   await page.waitForFunction(() => document.querySelector('.pokemon-usage-panel')?.getAttribute('aria-busy') === 'false')
   assert.equal(await page.locator('.pokemon-usage-error').count(), 0)
+}
+
+async function verifyLeaderCollapse(page, screen, label) {
+  const toggle = screen.getByRole('button', { name: /^TOP 3 (접기|펼치기)$/ })
+  await toggle.waitFor()
+  const regionId = await toggle.getAttribute('aria-controls')
+  assert(regionId, `${label}: the TOP 3 toggle identifies its controlled region`)
+  assert.equal(await screen.locator(`[id="${regionId}"]`).count(), 1)
+  const settle = async () => {
+    await screen.evaluate(async element => {
+      await Promise.all(element.getAnimations({ subtree: true })
+        .filter(animation => animation.effect?.getTiming().iterations !== Infinity)
+        .map(animation => animation.finished.catch(() => {})))
+    })
+  }
+  const bounds = () => screen.evaluate(element => {
+    const rect = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height, left: r.left, right: r.right } }
+    const button = element.querySelector('button[aria-expanded][aria-controls]')
+    const b = button.getBoundingClientRect()
+    return { list: rect(element.querySelector('.pokemon-usage-list-scroll')),
+      row: rect(element.querySelector('.pokemon-usage-row')),
+      pagination: rect(element.querySelector('.pokemon-usage-pagination')),
+      region: rect(document.getElementById(button.getAttribute('aria-controls'))),
+      button: rect(button), buttonReceivesPointer: button.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)),
+      viewport: { width: innerWidth, height: innerHeight } }
+  })
+  if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
+  await settle()
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'true')
+  assert.equal(await screen.getByRole('article').count(), 3, `${label}: expanded leaders are available to assistive technology`)
+  const expanded = await bounds()
+  assert(expanded.region.height > 0, `${label}: TOP 3 is visible when expanded`)
+  assert(expanded.list.height >= expanded.row.height - 1, `${label}: expanded TOP 3 must still leave a complete detailed ranking row visible: ${JSON.stringify(expanded)}`)
+  assert(expanded.buttonReceivesPointer, `${label}: expanded toggle is reachable`)
+  await page.screenshot({ path: path.join(output, `${label}-top3-expanded.png`) })
+  await toggle.focus()
+  await toggle.press('Enter')
+  await settle()
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'false')
+  assert.equal(await toggle.getAttribute('aria-label'), 'TOP 3 펼치기')
+  assert.equal(await screen.getByRole('article').count(), 0, `${label}: collapsed leaders are excluded from accessibility navigation`)
+  const collapsed = await bounds()
+  assert(collapsed.list.height > expanded.list.height + 30, `${label}: collapsing TOP 3 must transfer its space to the ranking list: ${JSON.stringify({ expanded, collapsed })}`)
+  assert(collapsed.region.height <= 1, `${label}: hidden TOP 3 leaves no card-sized gap`)
+  assert(collapsed.buttonReceivesPointer, `${label}: collapsed toggle stays reachable`)
+  assert(collapsed.pagination.bottom <= collapsed.viewport.height + 1, `${label}: pagination stays on screen`)
+  await screen.getByRole('button', { name: '81~100위 보기', exact: true }).click()
+  assert.equal(await screen.locator('.pokemon-usage-row').first().getAttribute('data-usage-rank'), '81')
+  await toggle.press('Space')
+  await settle()
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'true')
+  assert.equal(await screen.locator('.pokemon-usage-row').first().getAttribute('data-usage-rank'), '81', `${label}: expanding preserves the selected ranking page`)
+  assert(Math.abs((await bounds()).list.height - expanded.list.height) <= 2, `${label}: expanding restores the ranking height`)
+  await toggle.click()
+  await settle()
+  const search = screen.getByRole('searchbox', { name: '포켓몬 이름 또는 타입 검색', exact: true })
+  await search.fill('피카츄')
+  assert((await screen.locator('.pokemon-usage-pokemon > div > strong').allTextContents()).every(name => name.includes('피카츄')))
+  assert(await screen.locator('.pokemon-usage-row').count() > 0, `${label}: search still returns Pokémon while TOP 3 is hidden`)
+  await screen.getByRole('button', { name: '사용률 검색어 지우기', exact: true }).click()
+  for (const mode of ['AI 대전', '레이팅 배틀']) {
+    await screen.getByRole('tab', { name: mode, exact: true }).click()
+    await screen.locator('.pokemon-usage-formats').getByRole('button', { name: '더블배틀', exact: true }).click()
+    assert.equal(await toggle.getAttribute('aria-expanded'), 'false', `${label}: mode and format changes preserve the user's collapsed view`)
+    assert.equal(await screen.locator('.pokemon-usage-row').first().getAttribute('data-usage-rank'), '1')
+    assert.match(await screen.locator('.pokemon-usage-toolbar h3').textContent(), new RegExp(`${mode}.*더블배틀`))
+  }
+  await screen.locator('.pokemon-usage-formats').getByRole('button', { name: '싱글배틀', exact: true }).click()
+  await page.screenshot({ path: path.join(output, `${label}-top3-collapsed.png`) })
+  log(`${label}: TOP 3 keyboard toggle reallocates space and preserves ranking navigation`, { expanded, collapsed })
 }
 
 async function dismissDialogue(page) {
@@ -206,9 +277,56 @@ try {
     assert.match(await alice.locator('.pokemon-usage-source').textContent(), /로컬 플레이 집계/)
     assert.equal(await alice.locator('.pokemon-usage-item-column [data-item-rank]').count(), 0)
     assert(!await alice.getByText('임의 표본 포함', { exact: false }).count())
+    assert.equal(await alice.getByRole('button', { name: /^TOP 3 (접기|펼치기)$/ }).count(), 0, 'An empty sample does not offer a TOP 3 toggle')
+    assert.equal(await alice.locator('.pokemon-usage-leaders-collapse').count(), 0)
   }
   log('real lobby menu directly below achievements opens all 400 correctly calculated rows', { teamsPerBucket: seed.buckets['ai-single'].teamCount, source: expectedSource })
 
+  if (seededTest) {
+    step = 'desktop TOP 3 collapse and ranking navigation'
+    await verifyLeaderCollapse(alice, alice.locator('.pokemon-usage-screen'), '07-desktop-1440x960')
+    assert.equal(await alice.evaluate(() => localStorage.getItem('champions-usage-top-three-collapsed-v1')), 'true')
+    await alice.reload()
+    await alice.locator('.mode-usage').waitFor()
+    await openUsage(alice)
+    assert.equal(await alice.getByRole('button', { name: 'TOP 3 펼치기', exact: true }).getAttribute('aria-expanded'), 'false')
+    log('the selected TOP 3 collapsed view survives a reload and reopening usage')
+    step = 'landscape TOP 3 collapse and ranking navigation'
+    await alice.setViewportSize({ width: 844, height: 390 })
+    await alice.evaluate(() => localStorage.removeItem('champions-usage-top-three-collapsed-v1'))
+    await alice.locator('.pokemon-usage-back').click()
+    await openUsage(alice)
+    assert.equal(await alice.getByRole('button', { name: 'TOP 3 펼치기', exact: true }).getAttribute('aria-expanded'), 'false', 'Short landscape screens initially prioritize the detailed ranking when no preference is saved')
+    await verifyLeaderCollapse(alice, alice.locator('.pokemon-usage-screen'), '08-landscape-844x390')
+    step = 'narrow landscape TOP 3 controls remain reachable'
+    await alice.setViewportSize({ width: 667, height: 375 })
+    const narrowStates = []
+    for (const expanded of [false, true]) {
+      const toggle = alice.getByRole('button', { name: /^TOP 3 (접기|펼치기)$/ })
+      if (await toggle.getAttribute('aria-expanded') !== String(expanded)) await toggle.click()
+      await alice.locator('.pokemon-usage-screen').evaluate(async element => {
+        await Promise.all(element.getAnimations({ subtree: true }).filter(animation => animation.effect?.getTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})))
+      })
+      const narrow = await alice.locator('.pokemon-usage-screen').evaluate(element => {
+        const button = element.querySelector('.pokemon-usage-leaders-toggle')
+        const rect = button.getBoundingClientRect()
+        return { viewport: { width: innerWidth, height: innerHeight }, expanded: button.getAttribute('aria-expanded'),
+          button: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right },
+          receivesPointer: button.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)),
+          listHeight: element.querySelector('.pokemon-usage-list-scroll').getBoundingClientRect().height,
+          rowHeight: element.querySelector('.pokemon-usage-row').getBoundingClientRect().height }
+      })
+      assert(narrow.button.left >= 0 && narrow.button.right <= 667 && narrow.button.top >= 0 && narrow.button.bottom <= 375 && narrow.receivesPointer, `Narrow TOP 3 toggle must fit and remain clickable: ${JSON.stringify(narrow)}`)
+      assert(narrow.listHeight > 0, 'The expanded narrow screen keeps a scrollable ranking region')
+      narrowStates.push(narrow)
+      await alice.screenshot({ path: path.join(output, `10-narrow-667x375-top3-${expanded ? 'expanded' : 'collapsed'}.png`) })
+    }
+    await alice.getByRole('button', { name: 'TOP 3 접기', exact: true }).click()
+    log('TOP 3 controls remain on screen in both states at 667x375', { states: narrowStates })
+    await alice.setViewportSize({ width: 1440, height: 960 })
+  }
+
+  if (!layoutOnly) {
   step = 'start and play actual AI competition battle'
   await alice.locator('.pokemon-usage-back').click()
   await alice.locator('.mode-collection').click()
@@ -397,6 +515,8 @@ try {
     }
   }
 
+  }
+
   step = 'actual settings usage tab stays usable at 844 by 390'
   await alice.locator('.pokemon-usage-back').click()
   await alice.setViewportSize({ width: 844, height: 390 })
@@ -405,6 +525,7 @@ try {
   const embedded = alice.locator('.settings-usage-open .pokemon-usage-screen')
   await embedded.waitFor()
   await alice.waitForFunction(() => document.querySelector('.settings-usage-open .pokemon-usage-panel')?.getAttribute('aria-busy') === 'false')
+  if (seededTest) await verifyLeaderCollapse(alice, embedded, '09-settings-844x390')
   await embedded.getByRole('button', { name: '81~100위 보기', exact: true }).click()
   assert.equal(await embedded.locator('.pokemon-usage-row').first().getAttribute('data-usage-rank'), '81')
   assert.equal(await embedded.locator('.pokemon-usage-row').last().getAttribute('data-usage-rank'), '100')
@@ -449,11 +570,11 @@ try {
   console.error(`FAIL ${step}: ${error.stack}`)
   process.exitCode = 1
 } finally {
-  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, pageErrors, aiReports, blockedExternalOrigins: [...blockedExternal], finalUsage: backend ? await live().catch(() => null) : null }, null, 2))
+  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ validationScope: layoutOnly ? 'layout-and-navigation' : 'real-play-and-layout', checks, pageErrors, aiReports, blockedExternalOrigins: [...blockedExternal], finalUsage: backend ? await live().catch(() => null) : null }, null, 2))
   await browser?.close()
   await frontend?.close()
   if (backend) await backend.close()
   else await store.close()
   for (const name of envNames) if (originalEnv[name] === undefined) delete process.env[name]; else process.env[name] = originalEnv[name]
 }
-console.log(`Pokémon usage real-play UI: ${checks.filter(check => check.passed).length}/${checks.length} checks passed; artifacts: ${output}`)
+console.log(`Pokémon usage ${layoutOnly ? 'layout' : 'real-play'} UI: ${checks.filter(check => check.passed).length}/${checks.length} checks passed; artifacts: ${output}`)
