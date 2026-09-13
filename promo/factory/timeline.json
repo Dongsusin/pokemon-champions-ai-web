@@ -1,0 +1,102 @@
+[
+  {
+    "id": "intro",
+    "kind": "motion",
+    "scene": "intro",
+    "duration": 5,
+    "title": "POKÉMON CHAMPIONS ARENA",
+    "transition": "fade"
+  },
+  {
+    "id": "factory",
+    "kind": "motion",
+    "scene": "factory",
+    "duration": 6,
+    "title": "배틀팩토리",
+    "description": "선택하고. 바꾸고. 올라가라.",
+    "transition": "smoothup"
+  },
+  {
+    "id": "rentals",
+    "kind": "footage",
+    "duration": 12,
+    "lines": [
+      "무작위 6마리",
+      "당신의 선택은 3마리"
+    ],
+    "title": "무작위 6마리 중 함께할 3마리를 선택하세요.",
+    "accent": "#ffda88",
+    "transition": "fade"
+  },
+  {
+    "id": "lead",
+    "kind": "footage",
+    "duration": 8,
+    "lines": [
+      "첫 수는",
+      "선봉에서 시작된다"
+    ],
+    "title": "상대 팀을 살피고 선봉을 직접 선택하세요.",
+    "accent": "#86edff",
+    "transition": "smoothleft"
+  },
+  {
+    "id": "battle",
+    "kind": "footage",
+    "duration": 14,
+    "lines": [
+      "랜덤 AI 팀과",
+      "3 대 3 승부"
+    ],
+    "title": "무작위 포켓몬으로 구성된 AI 팀과 3 대 3 배틀.",
+    "accent": "#9feced",
+    "transition": "fade"
+  },
+  {
+    "id": "swap",
+    "kind": "footage",
+    "duration": 12,
+    "lines": [
+      "승리하면",
+      "상대 포켓몬과 교환"
+    ],
+    "title": "승리 후 이전 상대 포켓몬 한 마리와 아군 한 마리를 교환할 수 있습니다.",
+    "accent": "#ffda88",
+    "transition": "smoothright"
+  },
+  {
+    "id": "climb",
+    "kind": "footage",
+    "duration": 9,
+    "stablePortrait": { "x": 231, "y": 942, "width": 82, "height": 91, "sourceFrame": 30 },
+    "lines": [
+      "교환은 선택",
+      "도전은 계속"
+    ],
+    "title": "교환하지 않고 계속 도전할 수도 있습니다. 다음 층으로 올라가세요.",
+    "accent": "#a9f3c7",
+    "transition": "fade"
+  },
+  {
+    "id": "rankings",
+    "kind": "footage",
+    "duration": 12,
+    "camera": { "scale": 1.25, "centerY": 0.48 },
+    "lines": [
+      "가장 높이 오른 10명",
+      "그들의 최종 팀까지"
+    ],
+    "title": "TOP 10 랭킹에서 최종 포켓몬·아이템·기술을 확인하세요.",
+    "accent": "#ffda88",
+    "transition": "smoothup"
+  },
+  {
+    "id": "outro",
+    "kind": "motion",
+    "scene": "outro",
+    "duration": 8,
+    "title": "당신은 몇 층까지?",
+    "description": "pokemon-champions-area-web.co.kr",
+    "transition": "fade"
+  }
+]

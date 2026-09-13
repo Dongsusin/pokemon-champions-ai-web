@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-09-13T07:15:43.496Z",
+  "expectedDuration": 86,
+  "metadata": {
+    "duration": 86,
+    "width": 1920,
+    "height": 1080,
+    "chapters": [
+      0,
+      5,
+      11,
+      23,
+      31,
+      45,
+      57,
+      66,
+      78
+    ]
+  },
+  "playback": {
+    "waiting": [
+      0
+    ],
+    "stalls": [],
+    "errors": [],
+    "ended": true,
+    "startedAt": 740.9000000357628,
+    "endedAt": 87463.80000001192,
+    "currentTime": 86,
+    "quality": {
+      "totalVideoFrames": 2580,
+      "droppedVideoFrames": 3,
+      "corruptedVideoFrames": 0
+    }
+  },
+  "chapterChecks": [
+    {
+      "requested": 11,
+      "actual": 11.005274
+    },
+    {
+      "requested": 31,
+      "actual": 31.009396
+    },
+    {
+      "requested": 45,
+      "actual": 45.003034
+    },
+    {
+      "requested": 66,
+      "actual": 66.015498
+    },
+    {
+      "requested": 78,
+      "actual": 78.008441
+    }
+  ],
+  "cancelledMediaRequests": [
+    "http://127.0.0.1:5184/promo/factory/output/champions-arena-battle-factory-update-1080p.mp4: net::ERR_ABORTED"
+  ],
+  "errors": [],
+  "passed": true,
+  "scope": "Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening.",
+  "videoSha256": "a34c2811bd4a8ac9f2afcaf62999e1fc56099f0940e7926d5decbd08525731f0"
+}

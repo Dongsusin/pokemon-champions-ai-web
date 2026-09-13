@@ -1,0 +1,100 @@
+{
+  "generatedAt": "2026-09-13T07:14:14.387Z",
+  "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\output\\champions-arena-battle-factory-update-1080p.mp4",
+  "passed": true,
+  "failures": [],
+  "warnings": [
+    "6 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
+  ],
+  "review": {
+    "required": true,
+    "completed": true,
+    "note": "Direct review of final contact sheet, title/caption samples and repaired floor-transition portrait; all 86 seconds also passed automated Chromium playback. Six detected still intervals are deliberate UI reading/selection holds. No subjective full-video listening is claimed.",
+    "evidence": "visual-review.json",
+    "playbackEvidence": "playback-validation.json"
+  },
+  "embeddedSubtitleTracks": 0,
+  "durationSeconds": 86,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "pixelFormat": "yuv420p",
+    "decodedFrames": 2580,
+    "frameDurationSeconds": 86
+  },
+  "audio": {
+    "codec": "aac",
+    "sampleRate": 48000,
+    "channelLayout": "stereo",
+    "integratedLUFS": -16.07,
+    "truePeakDbTP": -5.08,
+    "loudnessRangeLU": 7
+  },
+  "decode": {
+    "passed": true,
+    "errors": ""
+  },
+  "scan": {
+    "blackSegments": [],
+    "freezeSegments": [
+      {
+        "start": 11.8,
+        "end": 14.4,
+        "duration": 2.5999999999999996
+      },
+      {
+        "start": 16.3333,
+        "end": 18.9333,
+        "duration": 2.599999999999998
+      },
+      {
+        "start": 23.8,
+        "end": 26.4,
+        "duration": 2.599999999999998
+      },
+      {
+        "start": 45.8,
+        "end": 48.4,
+        "duration": 2.6000000000000014
+      },
+      {
+        "start": 57.8,
+        "end": 60.3667,
+        "duration": 2.5667000000000044
+      },
+      {
+        "start": 70.8667,
+        "end": 74.6667,
+        "duration": 3.8000000000000114
+      }
+    ],
+    "silenceSegments": []
+  },
+  "contactSheet": {
+    "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\factory\\output\\contact-sheet.jpg",
+    "rows": 4,
+    "columns": 4,
+    "approximateSampleSeconds": [
+      2.688,
+      8.063,
+      13.438,
+      18.813,
+      24.188,
+      29.563,
+      34.938,
+      40.313,
+      45.688,
+      51.063,
+      56.438,
+      61.813,
+      67.188,
+      72.563,
+      77.938,
+      83.313
+    ]
+  },
+  "bytes": 19922847,
+  "sha256": "a34c2811bd4a8ac9f2afcaf62999e1fc56099f0940e7926d5decbd08525731f0"
+}

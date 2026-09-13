@@ -1,0 +1,143 @@
+{
+  "reviewedAt": "2026-09-13T07:08:00.698Z",
+  "reviewer": "factory_review",
+  "scope": "Independent implementation-facts review and direct visual inspection of the listed still frames with view_image. This does not certify full video playback or audio.",
+  "passedForReviewedScope": true,
+  "fullVideoPlaybackReviewed": false,
+  "audioListened": false,
+  "implementationSources": [
+    "src/data/battleFactory.js",
+    "src/BattleFactoryLobby.jsx",
+    "src/BattleFactoryRankings.jsx"
+  ],
+  "verifiedClaims": [
+    "Random rental offer contains six Pokemon; the player selects three.",
+    "The opponent team is visible before battle; the player selects the lead each floor.",
+    "Factory uses single battles with three Pokemon per side and a random AI team.",
+    "A victory allows one optional exchange with the immediately previous opponent team.",
+    "Skipping the exchange advances the floor while preserving the current party.",
+    "Rankings show up to ten records with final Pokemon, held items and move names.",
+    "Global rankings use one best result per trainer; equal floors sort by earlier record."
+  ],
+  "findings": [
+    {
+      "status": "pass",
+      "detail": "Factory and ending title cards have readable large text and no title or game-address clipping."
+    },
+    {
+      "status": "pass",
+      "detail": "Rental, lead and exchange screenshots contain all six cards or both three-Pokemon groups and their relevant action buttons."
+    },
+    {
+      "status": "pass",
+      "detail": "Climb frames show floor 2 completion followed by floor 3 readiness; the skip-exchange action is visible."
+    },
+    {
+      "status": "pass",
+      "detail": "Expanded ranking source screenshot shows all three final Pokemon, held items and four moves each."
+    },
+    {
+      "status": "improved",
+      "detail": "Ranking footage was changed to a fixed 1.25 scale at centerY 0.48 after a readability recommendation. TOP 10 and the team row remain inside the image. Part of the bottom personal-record footer is cropped; this is outside the featured team-detail content."
+    },
+    {
+      "status": "pass",
+      "detail": "Actual 2-second overlay frames for rentals, rankings and battle have legible two-line headings, sufficient contrast and no heading clipping. Four-second scene samples no longer contain the overlay."
+    },
+    {
+      "status": "pass",
+      "detail": "The README and credits identify the local capture ranking as filming data rather than production rankings or audience metrics."
+    }
+  ],
+  "reviewedImages": [
+    {
+      "file": "promo/factory/generated/review/factory.png",
+      "sha256": "acbce555c38cb8dd8dadd28ed494b6a29e08cfd137f1ba8042cd692b2ebc18eb"
+    },
+    {
+      "file": "promo/factory/generated/review/outro.png",
+      "sha256": "f44b49feafe06a0035db41646cb5bd1feb6517518b694b2ff899eefe2a516219"
+    },
+    {
+      "file": "promo/factory/generated/footage/rentals.png",
+      "sha256": "edeccd67a4558bc33555cfe4efe16403c83d515f06ffdbbab43e5c59bd28ffd7"
+    },
+    {
+      "file": "promo/factory/generated/footage/lead-end.png",
+      "sha256": "3f93e384494abcb0a1342daecaa560d4b81c4ddd4c0abc666ad0caf7c7b34e22"
+    },
+    {
+      "file": "promo/factory/generated/footage/battle-end.png",
+      "sha256": "0819f027d64208d4b5657ef5aafcb039080a1b9ade28a4819f5d4f90a849e0fa"
+    },
+    {
+      "file": "promo/factory/generated/footage/swap.png",
+      "sha256": "71e330def51e7134811dc99e0000bedaf1448bfaecc008dea5dcc9b477cdab93"
+    },
+    {
+      "file": "promo/factory/generated/footage/climb.png",
+      "sha256": "47c8863ab522c72d31e4448465cefcbc183f74283bc2b54f376583cca4d6dbf9"
+    },
+    {
+      "file": "promo/factory/generated/footage/climb-end.png",
+      "sha256": "72f37deaeda56c777aef78ee719dd7f7cea5d2a0183590ffb0629bee27acf5f8"
+    },
+    {
+      "file": "promo/factory/generated/footage/rankings.png",
+      "sha256": "06e1d352513013e8666aa0cf057dbdba4369ee83c54ff7678f2f301d88baf12c"
+    },
+    {
+      "file": "promo/factory/generated/footage/rankings-end.png",
+      "sha256": "bb451fbae1d2bfe7b40aa2f157d6526382e13b352011d47b816efc1d5296e3fd"
+    },
+    {
+      "file": "promo/factory/generated/scenes/rentals-sample.jpg",
+      "sha256": "b50702ef2e027f8969d83b568cbef8ff85899bbc100e191ec83ae3f97185d792"
+    },
+    {
+      "file": "promo/factory/generated/scenes/swap-sample.jpg",
+      "sha256": "738a0b378944b4270a72e65dbddc4852a9e1afdc85453700eb35a7625c06794b"
+    },
+    {
+      "file": "promo/factory/generated/scenes/climb-sample.jpg",
+      "sha256": "051ab3bf73efe5c0abac2abc351d6af848441105b287d3cde821fe3db7f4fb39",
+      "recheckedBy": "root after portrait stabilization"
+    },
+    {
+      "file": "promo/factory/generated/scenes/rankings-sample.jpg",
+      "sha256": "14202c4507b43ff309670052d71bce7b4d572c6d8c0ef47aa948a43def9a9fce"
+    },
+    {
+      "file": "promo/factory/generated/review/rentals-overlay.png",
+      "sha256": "b9a1e68aeb5e9f3bbc234c87a9393f5ace49b6178ca39bb3de7d972aa3731d87"
+    },
+    {
+      "file": "promo/factory/generated/review/rankings-overlay.png",
+      "sha256": "b560aa2af8f83de7ad73bb87342ab625d0a47a89ab93877609890053230141f6"
+    },
+    {
+      "file": "promo/factory/generated/review/battle-overlay.png",
+      "sha256": "773b2d72ab0df75f85ce17e95a8c2909b162c4f722e125c367a8a966476b23a5"
+    }
+  ],
+  "remainingVerification": [
+    "Root reviewer to inspect the completed video contact sheet and transitions.",
+    "Automated final-file decode, timing and audio checks.",
+    "Full-duration browser playback and chapter controls."
+  ],
+  "rootReview": {
+    "reviewedAt": "2026-09-13T07:16:39.146Z",
+    "finalVideoSha256": "a34c2811bd4a8ac9f2afcaf62999e1fc56099f0940e7926d5decbd08525731f0",
+    "scope": "Direct visual review of the final contact sheet, full-frame climb sample and repaired thumbnail at 4.8 seconds; complete muted playback verified separately by Chromium.",
+    "contactSheetSha256": "254a8fecec6257cbb55bbcc8b4aa93993feb48422405e426496ccb2852a1ed5d",
+    "portraitRepair": {
+      "file": "promo/factory/generated/review/climb-portrait-fixed.jpg",
+      "sha256": "cbbafc3ecf691b97476c76adb4d44c8c88bacfddf3f985d54fb5b03ccc2389bf",
+      "method": "Use the same take’s already loaded trainer-image pixels in its fixed region while the real floor and team UI continues."
+    },
+    "captionClipping": false,
+    "interiorBlackSegments": 0,
+    "interiorSilenceSegments": 0,
+    "automatedPlaybackPassed": true
+  }
+}
