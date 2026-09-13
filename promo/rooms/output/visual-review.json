@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-09-13T09:45:09.769647+00:00",
+  "completed": true,
+  "file": "promo/rooms/output/champions-arena-battle-rooms-update-1080p.mp4",
+  "sha256": "fc9ba4a630385379e4bd93736101acbe7f58ab484856253e1a7b5fd735fccd96",
+  "scope": "Direct inspection of contact sheet, all three motion samples, selected full-size game frames, create caption/action frames, and four transition frame sequences. Continuous muted Chromium playback is separately measured; this does not claim subjective listening.",
+  "checked": [
+    "Opening contains only game emblem and title; outro address is fully visible.",
+    "Room capacity states maximum 10 rooms and maximum 4 trainers per room.",
+    "Create shot uses a static 1.45x center crop; modal controls are not clipped and 1.5s text stays left of the modal.",
+    "At 5s into create the large promotional caption has faded and the league format selection is visible.",
+    "Four-member board, ordered Pokemon selection, three-member tournament bye and four-member league standings are visible.",
+    "Fade, smoothleft, smoothright and smoothup transitions have valid outgoing, blended and incoming frames without black gaps.",
+    "No dynamically animated camera zoom, shaking, added production labels, achievement promotion or VP promotion."
+  ],
+  "independentBattleReview": {
+    "reviewer": "capture agent independently inspected final MP4 frames",
+    "single": {
+      "megaEvolutionSeconds": [
+        48,
+        50
+      ],
+      "attackSeconds": 51.5,
+      "hpDecreaseSeconds": 53.6
+    },
+    "double": {
+      "dynamaxSeconds": [
+        62,
+        63
+      ],
+      "attackSeconds": 64.5,
+      "hitAndHpDecreaseSeconds": 65.85
+    },
+    "limit": "The edit shows the first double-battle impact and HP change; the second attack and full KO resolution are outside this 12-second excerpt."
+  },
+  "freezeWarningReview": {
+    "accepted": true,
+    "count": 9,
+    "reason": "These intervals hold the opening/title, completed password form, four-member lobby, tournament/league tables or outro for reading. No freeze warning occurs during the single/double action segments. All 2760 frames decode; full browser playback dropped zero frames."
+  },
+  "playbackPassed": true
+}

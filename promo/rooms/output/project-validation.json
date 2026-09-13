@@ -1,0 +1,255 @@
+{
+  "duration": 92,
+  "scenes": [
+    {
+      "id": "intro",
+      "sceneId": "intro",
+      "duration": 4,
+      "visibleText": [
+        "POKÉMON",
+        "CHAMPIONS ARENA"
+      ],
+      "brokenImages": [],
+      "animations": 0,
+      "bounds": [
+        {
+          "text": "POKÉMONCHAMPIONS ARENA",
+          "left": 65,
+          "top": 560,
+          "right": 1855,
+          "bottom": 787.328125
+        }
+      ]
+    },
+    {
+      "id": "rooms",
+      "sceneId": "rooms",
+      "duration": 6,
+      "visibleText": [
+        "대전방",
+        "친구들과, 우리만의 대회",
+        "최대",
+        "10",
+        "개의 방",
+        "×",
+        "방마다 최대",
+        "4",
+        "명의 트레이너",
+        "토너먼트",
+        "리그전"
+      ],
+      "brokenImages": [],
+      "animations": 0,
+      "bounds": [
+        {
+          "text": "대전방",
+          "left": 106,
+          "top": 240,
+          "right": 1056,
+          "bottom": 463.09375
+        },
+        {
+          "text": "친구들과, 우리만의 대회",
+          "left": 106,
+          "top": 502.09375,
+          "right": 1056,
+          "bottom": 572.09375
+        },
+        {
+          "text": "최대10개의 방",
+          "left": 1203,
+          "top": 256,
+          "right": 1466,
+          "bottom": 565
+        },
+        {
+          "text": "방마다 최대4명의 트레이너",
+          "left": 1552,
+          "top": 256,
+          "right": 1815,
+          "bottom": 565
+        },
+        {
+          "text": "토너먼트리그전",
+          "left": 112,
+          "top": 772,
+          "right": 1807,
+          "bottom": 890
+        }
+      ]
+    },
+    {
+      "id": "outro",
+      "sceneId": "outro",
+      "duration": 8,
+      "visibleText": [
+        "POKÉMON",
+        "CHAMPIONS ARENA",
+        "친구들과, 지금 대전방으로",
+        "pokemon-champions-area-web.co.kr"
+      ],
+      "brokenImages": [],
+      "animations": 0,
+      "bounds": [
+        {
+          "text": "POKÉMONCHAMPIONS ARENA",
+          "left": 65,
+          "top": 351,
+          "right": 1855,
+          "bottom": 519.78125
+        },
+        {
+          "text": "친구들과, 지금 대전방으로",
+          "left": 60,
+          "top": 585,
+          "right": 1860,
+          "bottom": 681
+        },
+        {
+          "text": "pokemon-champions-area-web.co.kr",
+          "left": 430.5,
+          "top": 775,
+          "right": 1489.5,
+          "bottom": 893.390625
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "id": "create",
+      "lines": [
+        {
+          "text": "나만의 방에서",
+          "left": 78,
+          "top": 59,
+          "right": 542.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "우리만의 대회",
+          "left": 78,
+          "top": 153,
+          "right": 542.5,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "friends",
+      "lines": [
+        {
+          "text": "최대 4명의 트레이너",
+          "left": 78,
+          "top": 59,
+          "right": 754.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "한자리에 모이다",
+          "left": 78,
+          "top": 153,
+          "right": 616,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "selection",
+      "lines": [
+        {
+          "text": "나의 팀, 나의 선봉",
+          "left": 78,
+          "top": 59,
+          "right": 679.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "첫 선택부터 전략이다",
+          "left": 78,
+          "top": 153,
+          "right": 786.5,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "single",
+      "lines": [
+        {
+          "text": "한 수 앞을 읽는",
+          "left": 78,
+          "top": 59,
+          "right": 589.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "싱글배틀",
+          "left": 78,
+          "top": 153,
+          "right": 372,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "double",
+      "lines": [
+        {
+          "text": "두 포켓몬, 하나의 전략",
+          "left": 78,
+          "top": 59,
+          "right": 826.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "더블배틀",
+          "left": 78,
+          "top": 153,
+          "right": 372,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "tournament",
+      "lines": [
+        {
+          "text": "승리하면 다음 라운드",
+          "left": 78,
+          "top": 59,
+          "right": 786.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "토너먼트",
+          "left": 78,
+          "top": 153,
+          "right": 372,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "league",
+      "lines": [
+        {
+          "text": "모두와 맞붙어라",
+          "left": 78,
+          "top": 59,
+          "right": 616,
+          "bottom": 149.859375
+        },
+        {
+          "text": "리그전",
+          "left": 78,
+          "top": 153,
+          "right": 298.5,
+          "bottom": 243.859375
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

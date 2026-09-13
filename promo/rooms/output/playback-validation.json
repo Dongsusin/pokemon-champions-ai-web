@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-09-13T09:43:24.689Z",
+  "expectedDuration": 92,
+  "metadata": {
+    "duration": 92,
+    "width": 1920,
+    "height": 1080,
+    "chapters": [
+      0,
+      4,
+      10,
+      22,
+      32,
+      42,
+      54,
+      66,
+      75,
+      84
+    ]
+  },
+  "playback": {
+    "waiting": [
+      0
+    ],
+    "stalls": [],
+    "errors": [],
+    "ended": true,
+    "startedAt": 822.6999999880791,
+    "endedAt": 93069.80000001192,
+    "currentTime": 92,
+    "quality": {
+      "totalVideoFrames": 2760,
+      "droppedVideoFrames": 0,
+      "corruptedVideoFrames": 0
+    }
+  },
+  "chapterChecks": [
+    {
+      "requested": 10,
+      "actual": 10.009789
+    },
+    {
+      "requested": 32,
+      "actual": 32.009596
+    },
+    {
+      "requested": 42,
+      "actual": 42.017603
+    },
+    {
+      "requested": 66,
+      "actual": 66.007648
+    },
+    {
+      "requested": 84,
+      "actual": 84.011536
+    }
+  ],
+  "cancelledMediaRequests": [
+    "http://127.0.0.1:5288/promo/rooms/output/champions-arena-battle-rooms-update-1080p.mp4: net::ERR_ABORTED"
+  ],
+  "errors": [],
+  "passed": true,
+  "scope": "Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening."
+}

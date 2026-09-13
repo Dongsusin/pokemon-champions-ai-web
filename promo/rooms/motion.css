@@ -1,0 +1,48 @@
+:root{font-family:'Malgun Gothic','Noto Sans KR',sans-serif;color:#f7fbff;background:#050b18;font-synthesis:none}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden;isolation:isolate;background:#061220;--cyan:#94f5ff;--gold:#ffdb7c}
+.backdrop{position:absolute;inset:-65px;background:linear-gradient(100deg,#040d1adf,#051826a9 55%,#09121bcc),linear-gradient(0deg,#030a16dc,transparent 80%),url('/assets/champions-lobby-bg.jpg') center/cover;transform-origin:50% 48%}
+.wash{position:absolute;inset:0;background:radial-gradient(ellipse at 29% 48%,#41d6f328,transparent 60%),radial-gradient(ellipse at 88% 31%,#f4b94416,transparent 43%);pointer-events:none}
+.arena-light{position:absolute;left:1450px;top:-180px;width:390px;height:1530px;background:linear-gradient(90deg,transparent,#8cebff0c,transparent);transform:rotate(20deg);pointer-events:none}
+.arena-structure{position:absolute;right:-120px;top:-145px;width:800px;height:1490px;transform:skewY(-13deg);opacity:.42;pointer-events:none;border-left:1px solid #91edff2b;border-right:1px solid #ffda7828}
+.arena-structure i{display:block;position:absolute;left:0;right:0;height:100px;border:1px solid #a4eaff28;border-left:0;border-right:0;background:linear-gradient(90deg,#70cfff03,#70cfff08,transparent)}
+.floor-line{position:absolute;left:-200px;right:-200px;top:905px;height:2px;background:linear-gradient(90deg,transparent,#9ef1ff58 45%,#ffe0974c 75%,transparent);transform:rotate(-10deg);pointer-events:none}
+.floor-line-two{top:170px;opacity:.35;transform:rotate(-10deg)}
+.atmosphere{position:absolute;inset:0;pointer-events:none;opacity:.85}
+.scene-content{position:absolute;inset:0;z-index:2}
+.vignette{position:absolute;inset:0;z-index:4;box-shadow:inset 0 0 140px #02071380;pointer-events:none}
+.brand{position:absolute;left:65px;right:65px;top:160px;text-align:center}
+.brand-logo{display:block;object-fit:contain;width:354px;height:354px;margin:0 auto;filter:drop-shadow(0 18px 30px #0008) drop-shadow(0 0 42px #47bfff32)}
+.brand-name{font-family:Arial,sans-serif;font-weight:950;line-height:1.05;letter-spacing:-3px;margin:46px 0 0;text-shadow:0 8px 36px #000b}
+.brand-name span{display:block}
+.brand-pokemon{font-size:88px}
+.brand-arena{font-size:119px;letter-spacing:-5px;margin-top:10px}
+.word{display:inline-block;will-change:transform,opacity;white-space:pre}
+.rooms .backdrop{opacity:.78;filter:blur(1px)}
+.rooms .arena-structure{opacity:.34;right:-350px}
+.rooms-copy{position:absolute;left:106px;top:240px;width:950px;z-index:3}
+.rooms-title{font-size:194px;font-weight:950;line-height:1.15;letter-spacing:-10px;margin:0;white-space:nowrap;text-shadow:0 8px 35px #000b;color:#fff}
+.rooms-title .highlight{color:var(--cyan)}
+.rooms-tagline{font-size:56px;line-height:1.25;letter-spacing:-2px;font-weight:850;margin:39px 0 0;white-space:nowrap;color:#c4f8ef;text-shadow:0 5px 22px #0009}
+.rooms-rule{height:5px;width:210px;background:linear-gradient(90deg,var(--cyan),var(--gold));margin-top:43px;box-shadow:0 0 25px #abedff35;transform-origin:left}
+.room-capacity{position:absolute;right:105px;top:256px;display:flex;gap:25px;align-items:center}
+.capacity-card{display:flex;flex-direction:column;align-items:center;justify-content:center;width:263px;height:309px;border:1px solid #a3eced70;border-radius:27px;background:linear-gradient(145deg,#22606a96,#101d3599);box-shadow:0 24px 45px #0005,inset 0 1px #dcffff30}
+.capacity-card:last-child{border-color:#efd89975;background:linear-gradient(145deg,#66552b80,#1a24389c)}
+.capacity-card b{font-size:25px;color:#bbd9e4;letter-spacing:-1px;margin-bottom:6px}
+.capacity-card strong{font:900 147px/.95 Arial,sans-serif;letter-spacing:-9px;color:#baf6f9;text-shadow:0 10px 25px #0006}
+.capacity-card:last-child strong{color:var(--gold)}
+.capacity-card span{font-size:29px;letter-spacing:-1px;font-weight:800;margin-top:14px;color:#daedf5}
+.room-capacity>i{font:400 62px Arial,sans-serif;color:#8ddfdf;opacity:.7}
+.competition-path{position:absolute;left:112px;right:113px;bottom:190px;display:flex;align-items:center;gap:35px;color:#e9f7ff}
+.competition-path span{font-size:51px;letter-spacing:-2px;font-weight:850;border:1px solid #82d8e254;background:#1c3e5470;border-radius:15px;padding:24px 45px}
+.competition-path i{height:2px;flex:1;background:linear-gradient(90deg,#9deff775,#ffdc9075);position:relative}
+.competition-path i::after{content:'';position:absolute;left:50%;top:50%;width:11px;height:11px;background:#aeebef;transform:translate(-50%,-50%) rotate(45deg)}
+.outro .brand{top:81px}
+.outro .brand-logo{width:239px;height:239px}
+.outro .brand-name{margin-top:31px}
+.outro .brand-pokemon{font-size:64px}
+.outro .brand-arena{font-size:92px;letter-spacing:-3px;margin-top:5px}
+.outro-tagline{position:absolute;left:60px;right:60px;top:585px;text-align:center;font-size:80px;line-height:1.2;font-weight:950;letter-spacing:-5px;margin:0;text-shadow:0 8px 40px #0009;color:var(--gold)}
+.outro-url{position:absolute;left:50%;top:775px;display:flex;align-items:center;justify-content:center;gap:27px;width:max-content;padding:29px 47px 31px;max-width:1700px;border:1px solid #cefbff9c;border-radius:17px;background:linear-gradient(115deg,#c9fbff,#81e7f7);box-shadow:0 20px 45px #0006,0 0 55px #52dcf71a;color:#082334;font:850 47px/1.2 Arial,sans-serif;letter-spacing:-1px;text-decoration:none;transform:translateX(-50%)}
+.outro-url svg{width:47px;height:47px;flex:none}

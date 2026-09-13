@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-09-13T09:41:49.546Z",
+  "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\rooms\\output\\champions-arena-battle-rooms-update-1080p.mp4",
+  "passed": true,
+  "failures": [],
+  "warnings": [
+    "9 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
+  ],
+  "review": {
+    "required": true,
+    "completed": true,
+    "report": "promo/rooms/output/visual-review.json",
+    "note": "Direct inspection of contact sheet, all three motion samples, selected full-size game frames, create caption/action frames, and four transition frame sequences. Continuous muted Chromium playback is separately measured; this does not claim subjective listening."
+  },
+  "embeddedSubtitleTracks": 0,
+  "durationSeconds": 92,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "pixelFormat": "yuv420p",
+    "decodedFrames": 2760,
+    "frameDurationSeconds": 92
+  },
+  "audio": {
+    "codec": "aac",
+    "sampleRate": 48000,
+    "channelLayout": "stereo",
+    "integratedLUFS": -16.07,
+    "truePeakDbTP": -5.08,
+    "loudnessRangeLU": 7
+  },
+  "decode": {
+    "passed": true,
+    "errors": ""
+  },
+  "scan": {
+    "blackSegments": [],
+    "freezeSegments": [
+      {
+        "start": 1.43333,
+        "end": 4.03333,
+        "duration": 2.6000000000000005
+      },
+      {
+        "start": 6.06667,
+        "end": 8.63333,
+        "duration": 2.5666600000000006
+      },
+      {
+        "start": 17.4667,
+        "end": 22.1333,
+        "duration": 4.666599999999999
+      },
+      {
+        "start": 28.3667,
+        "end": 32.0333,
+        "duration": 3.6665999999999954
+      },
+      {
+        "start": 66.7667,
+        "end": 69.4,
+        "duration": 2.6333000000000055
+      },
+      {
+        "start": 71.3333,
+        "end": 75.0333,
+        "duration": 3.700000000000003
+      },
+      {
+        "start": 75.6333,
+        "end": 78.1333,
+        "duration": 2.5
+      },
+      {
+        "start": 78.8,
+        "end": 81.4333,
+        "duration": 2.6333000000000055
+      },
+      {
+        "start": 87.0333,
+        "end": 90.6333,
+        "duration": 3.6000000000000085
+      }
+    ],
+    "silenceSegments": []
+  },
+  "contactSheet": {
+    "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\rooms\\output\\contact-sheet.jpg",
+    "rows": 4,
+    "columns": 4,
+    "approximateSampleSeconds": [
+      2.875,
+      8.625,
+      14.375,
+      20.125,
+      25.875,
+      31.625,
+      37.375,
+      43.125,
+      48.875,
+      54.625,
+      60.375,
+      66.125,
+      71.875,
+      77.625,
+      83.375,
+      89.125
+    ]
+  },
+  "bytes": 20196011,
+  "sha256": "fc9ba4a630385379e4bd93736101acbe7f58ab484856253e1a7b5fd735fccd96"
+}

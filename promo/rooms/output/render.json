@@ -1,0 +1,121 @@
+{
+  "output": "promo/rooms/output/champions-arena-battle-rooms-update-1080p.mp4",
+  "duration": 92,
+  "fps": 30,
+  "sourceHashes": {
+    "intro": "53defcaa4332ce6a5cc7fff2bb156685a49b2f7444d3b69d97d96882d023e711",
+    "rooms": "7913d085f3ee3f3e3aecb300952ac0084a4f8e80681337ead7bc50f7e2b26453",
+    "create": "f12d569ad22423b4d708fa1e2cfb773986ee8dc18fb3078955e14eb57f71dc20",
+    "friends": "8daa5477b8bdc5dce9099a86a70e12c48982771b5a45ac22a37d97836c5b5475",
+    "selection": "e7650711a476b3d8da63da01a121f0de65737579f2ef53212210aafa3c7d4694",
+    "single": "d85f383be6e20ea1c181d8a8bf76b4f01fdea4f41329266682dab0554cbae625",
+    "double": "7832866664ccff53487a227a27d3e080df929d48da2edb903630e941c6b6d95c",
+    "tournament": "b5d1ea6d60295af534cf19fe9df0465dcfb1b2284dccf8d84e6b3fc9e31bcb6c",
+    "league": "ea838f40dbd8079385bd1371275cf9de546ac6b4b09527a8900b50bf9e1546ab",
+    "outro": "327a0a67a1dd6d183afe2c1cd49803fea7a5cf573888bbc455aff12ca9b4ff34"
+  },
+  "cues": [
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 3.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/impact.wav",
+      "at": 4.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 9.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 21.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 31.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 41.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/impact.wav",
+      "at": 42.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 53.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/impact.wav",
+      "at": 54.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 65.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/chime.wav",
+      "at": 67.1,
+      "volume": 0.5
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 74.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/chime.wav",
+      "at": 76.1,
+      "volume": 0.5
+    },
+    {
+      "file": "promo/rooms/generated/whoosh.wav",
+      "at": 83.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/rooms/generated/chime.wav",
+      "at": 85.1,
+      "volume": 0.5
+    }
+  ],
+  "audioMeasuredBeforeMastering": {
+    "input_i": "-17.07",
+    "input_tp": "-6.12",
+    "input_lra": "7.00",
+    "input_thresh": "-27.18",
+    "output_i": "-13.99",
+    "output_tp": "-2.50",
+    "output_lra": "2.80",
+    "output_thresh": "-24.01",
+    "normalization_type": "dynamic",
+    "target_offset": "-2.01"
+  },
+  "audioMeasuredAfterEncoding": {
+    "input_i": "-16.07",
+    "input_tp": "-5.08",
+    "input_lra": "7.00",
+    "input_thresh": "-26.17",
+    "output_i": "-13.98",
+    "output_tp": "-2.50",
+    "output_lra": "2.80",
+    "output_thresh": "-24.00",
+    "normalization_type": "dynamic",
+    "target_offset": "-2.02"
+  },
+  "audioEncoder": "aac-fast-256k",
+  "sha256": "fc9ba4a630385379e4bd93736101acbe7f58ab484856253e1a7b5fd735fccd96",
+  "bytes": 20196011
+}

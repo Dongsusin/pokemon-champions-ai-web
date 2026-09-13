@@ -42,4 +42,10 @@ npm run build
 
 브라우저 검증은 PC 3인 싱글 토너먼트와 모바일 가로 화면 4인 더블 리그를 사용합니다. 두 형식에서 실제 HTTP와 배틀 엔진으로 양쪽의 기술 사용 및 PP 감소를 확인하고, 나머지 대진은 실제 기권 명령으로 종료하여 대회 진행·결과·삭제를 검사합니다. 테스트용 결과 응답으로 경기 상태를 대체하지 않습니다.
 
-이 변경은 구현 및 로컬 검증 범위입니다. `codex/battle-factory` 브랜치는 `vercel.json`에서 자동 배포가 꺼져 있습니다. 이번 작업에서는 main 푸시, 운영 배포, 운영 DB 변경을 실행하지 않습니다.
+`codex/battle-factory` 브랜치는 `vercel.json`에서 자동 배포가 꺼져 있으며 운영 배포는 `main`으로 진행합니다. 최초 구현은 로컬 검증까지 완료한 뒤, 사용자의 배포 요청에 따라 2026-09-13 커밋 `ffa69dd`를 운영에 반영했습니다. Vercel 배포 `dpl_7Y5LNvZggLCruDd52FtUpXRFB1yc`의 Production Ready 상태와 대표 도메인 연결을 확인했습니다. 대전방 데이터는 기존 서버 전용 문서 저장소를 사용하므로 별도 DB 마이그레이션은 없습니다.
+
+운영 검증은 `scripts/validateDeployedBattleRooms.mjs`로 새 익명 계정 두 개만 생성하여 실행했습니다. 싱글 토너먼트·더블 리그전에서 비밀번호와 방장 권한 검사, 출전 선택, 서버의 실제 턴 처리, 기권, 최종 순위와 방 삭제를 통과했습니다. 레이팅 경기 수·추가 VP·사용률 기록이 증가하지 않았으며 테스트용 SQL 행 17개와 익명 계정 2개를 모두 정리했습니다. 상세 실행 기록은 Git에서 제외된 `scripts/.cache/room-live-validation/`에 있습니다.
+
+검증 스크립트는 운영에 테스트 데이터를 만드는 명시적인 실행 도구입니다. Vercel Production의 커밋과 Ready 상태를 먼저 확인하고 `--confirm-production`, `--url`, `--expected-commit`, `--expected-css`를 지정해야 합니다. 확인된 신규 계정과 이 계정들이 만든 비밀번호 방만 사용하고 정리합니다. 필요한 서버 연결 정보는 Git에서 제외된 `.env.storage.local`에서 읽습니다.
+
+대전방 홍보 영상과 재생성 절차는 [`promo/rooms/README.md`](../promo/rooms/README.md)에 정리했습니다.
