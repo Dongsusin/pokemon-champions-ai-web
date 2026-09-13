@@ -87,6 +87,10 @@
 .factory-rules-note > span { display: flex; align-items: center; gap: 6px; }
 .factory-rules-note svg { color: #95ded1; }
 .factory-rules-note > small { font-size: 10px; color: #8da6bb; }
+.factory-lead-note { min-width: 0; }
+.factory-lead-note > span { color: #c6d3df; }
+.factory-lead-note strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.factory-lead-note.is-chosen > span, .factory-lead-note.is-chosen svg { color: var(--factory-gold); }
 .factory-action-buttons { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 9px; }
 .factory-primary, .factory-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border-radius: 10px; padding: 11px 20px; font-size: 13px; font-weight: 850; white-space: nowrap; }
 .factory-primary { border: 1px solid #ffe2a2; background: linear-gradient(120deg, #f4cf78, #fff0b4); box-shadow: 0 5px 20px #efc46c1f; color: #253044; }

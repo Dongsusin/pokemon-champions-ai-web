@@ -47,18 +47,18 @@ function RentalDetails({ pokemon, onClose }) {
   </dialog>, document.body)
 }
 
-function RentalCard({ pokemon, order, selected = false, disabled = false, onSelect, onDetails, label, compact = false }) {
+function RentalCard({ pokemon, order, selected = false, disabled = false, onSelect, onDetails, label, compact = false, selectAriaLabel, selectedLabel = '선택' }) {
   const profile = getSpeciesProfile(pokemon.speciesId)
   const item = getBattleItem(pokemon.heldItemId)
   const name = nameOf(pokemon)
   const content = <>
-    <span className="factory-card-number">{selected ? <><Check size={13} />{order ? `${order}번` : '선택'}</> : label}</span>
+    <span className="factory-card-number">{selected ? <><Check size={13} />{order ? `${order}번` : selectedLabel}</> : label}</span>
     <SpriteImage src={pokemon.icon ?? profile?.icon} fallbackSrc={pokemon.iconFallback ?? profile?.iconFallback} alt="" draggable="false" />
     <strong>{name}</strong><span className="factory-card-types">{(pokemon.types ?? profile?.types ?? []).join(' · ')}</span>
     <span className="factory-card-item">{item && <BattleItemSprite item={item} size={18} />}{item?.name ?? '지닌 도구 없음'}</span>
   </>
   return <article className={`factory-rental-card${selected ? ' selected' : ''}${disabled ? ' unavailable' : ''}${compact ? ' compact' : ''}`}>
-    {onSelect ? <button type="button" className="factory-rental-select" aria-label={`${name} ${selected ? '선택 해제' : '선택'}${disabled ? ' 불가' : ''}`}
+    {onSelect ? <button type="button" className="factory-rental-select" aria-label={selectAriaLabel ?? `${name} ${selected ? '선택 해제' : '선택'}${disabled ? ' 불가' : ''}`}
       aria-pressed={selected} disabled={disabled} onClick={onSelect}>{content}</button>
       : <div className="factory-rental-select">{content}</div>}
     <button type="button" className="factory-rental-info" aria-label={`${name} 능력치와 기술 정보`} onClick={() => onDetails(pokemon)}><Info size={17} /></button>
@@ -79,7 +79,7 @@ function FloorRail({ run }) {
   </aside>
 }
 
-function FactoryRunLobby({ run, onChooseRentals, onStartBattle, onAdvanceFloor, onRestart, onBack, error }) {
+function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, onAdvanceFloor, onRestart, onBack, error }) {
   const [chosenIds, setChosenIds] = useState([])
   const [giveId, setGiveId] = useState(null)
   const [takeId, setTakeId] = useState(null)
@@ -88,14 +88,15 @@ function FactoryRunLobby({ run, onChooseRentals, onStartBattle, onAdvanceFloor, 
   const party = run.party ?? []
   const previousOpponent = run.previousOpponent ?? []
   const opponent = run.opponentTeam?.pokemon ?? []
+  const leadPokemon = party.find(pokemon => pokemon.captureId === run.leadCaptureId)
   const selectedOffers = chosenIds.map(id => offers.find(pokemon => pokemon.captureId === id)).filter(Boolean)
   const exchangeTarget = previousOpponent.find(pokemon => pokemon.captureId === takeId)
   const exchangeSource = party.find(pokemon => pokemon.captureId === giveId)
   const canExchange = Boolean(exchangeSource && exchangeTarget && !party.some(pokemon => pokemon.captureId !== giveId && speciesKey(pokemon) === speciesKey(exchangeTarget)))
   const phase = run.phase
   const titles = {
-    selection: ['RENTAL SELECTION', '랜덤 6마리. 당신의 선택은 3마리.', '선택한 순서대로 출전합니다. 첫 번째 포켓몬이 선봉입니다.'],
-    ready: ['READY TO BATTLE', `${run.floor}층, 도전을 시작합니다.`, '렌탈 팀과 함께 상대의 랜덤 3마리를 이겨 보세요.'],
+    selection: ['RENTAL SELECTION', '랜덤 6마리. 당신의 선택은 3마리.', '함께할 3마리를 고른 뒤, 준비 화면에서 선봉을 선택합니다.'],
+    ready: ['READY TO BATTLE', `${run.floor}층, 선봉을 선택하세요.`, '내 렌탈 포켓몬 중 먼저 출전할 선봉 1마리를 선택해 주세요.'],
     exchange: ['FLOOR CLEAR', `${run.floor}층 클리어! 팀을 바꿔 볼까요?`, '내 팀 1마리와 방금 상대했던 포켓몬 1마리를 교환할 수 있습니다.'],
     finished: ['CHALLENGE COMPLETE', '이번 도전은 여기까지.', '새로운 렌탈 팀으로 더 높은 층에 도전해 보세요.'],
   }
@@ -116,13 +117,15 @@ function FactoryRunLobby({ run, onChooseRentals, onStartBattle, onAdvanceFloor, 
         <header className="factory-panel-heading"><span>{eyebrow}</span><h2 id="factory-phase-title">{title}</h2><p>{description}</p></header>
         <div className="factory-panel-scroll">
           {phase === 'selection' && <>
-            <div className="factory-selection-progress"><span><strong>{chosenIds.length}</strong> / 3 선택</span><div>{selectedOffers.length ? selectedOffers.map((pokemon, index) => <span key={pokemon.captureId}><b>{index === 0 ? '선봉' : index + 1}</b>{nameOf(pokemon)}</span>) : <small>함께 올라갈 포켓몬을 선택해 주세요.</small>}</div></div>
+            <div className="factory-selection-progress"><span><strong>{chosenIds.length}</strong> / 3 선택</span><div>{selectedOffers.length ? selectedOffers.map((pokemon, index) => <span key={pokemon.captureId}><b>{index + 1}번</b>{nameOf(pokemon)}</span>) : <small>함께 올라갈 포켓몬을 선택해 주세요.</small>}</div></div>
             <div className="factory-rental-grid" aria-label="렌탈 후보 6마리">{offers.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={String(index + 1).padStart(2, '0')}
               selected={chosenIds.includes(pokemon.captureId)} order={chosenIds.indexOf(pokemon.captureId) + 1} disabled={!chosenIds.includes(pokemon.captureId) && chosenIds.length === 3}
               onSelect={() => selectOffer(pokemon)} onDetails={setDetails} />)}</div>
           </>}
           {phase === 'ready' && <div className="factory-team-groups">
-            <section><h3><Flag size={16} />나의 렌탈 팀 <span>첫 번째 포켓몬이 선봉</span></h3><div className="factory-team-grid">{party.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={index === 0 ? '선봉' : `${index + 1}번`} onDetails={setDetails} />)}</div></section>
+            <section><h3><Flag size={16} />나의 렌탈 팀 <span>카드를 눌러 선봉 선택</span></h3><div className="factory-team-grid" aria-label="출전 선봉 선택">{party.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={`${index + 1}번`}
+              selected={pokemon.captureId === run.leadCaptureId} selectedLabel="선봉" selectAriaLabel={`${nameOf(pokemon)} 선봉 선택`}
+              onSelect={() => onChooseLead(pokemon.captureId)} onDetails={setDetails} />)}</div></section>
             <section className="factory-enemy-group"><h3><Swords size={16} />{run.floor}층 상대 팀 <span>팩토리 AI 트레이너</span></h3><div className="factory-team-grid">{opponent.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={`상대 ${index + 1}`} onDetails={setDetails} compact />)}</div></section>
           </div>}
           {phase === 'exchange' && <div className="factory-team-groups factory-exchange-groups">
@@ -142,10 +145,13 @@ function FactoryRunLobby({ run, onChooseRentals, onStartBattle, onAdvanceFloor, 
         <footer className="factory-actions">
           {error && <p className="factory-error" role="alert">{error}</p>}
           <div className="factory-action-row">
-            <div className="factory-rules-note"><span><Heart size={14} />매 층 시작 시 HP·PP·상태 회복</span><small>렌탈 포켓몬은 도전 중에만 함께합니다.</small></div>
+            {phase === 'ready' ? <div className={`factory-rules-note factory-lead-note${leadPokemon ? ' is-chosen' : ''}`} aria-live="polite">
+              <span><Flag size={14} /><strong>{leadPokemon ? `선봉 · ${nameOf(leadPokemon)}` : '먼저 출전할 선봉을 선택해 주세요.'}</strong></span>
+              <small>매 층 시작 시 HP·PP·상태 회복</small>
+            </div> : <div className="factory-rules-note"><span><Heart size={14} />매 층 시작 시 HP·PP·상태 회복</span><small>렌탈 포켓몬은 도전 중에만 함께합니다.</small></div>}
             <div className="factory-action-buttons">
               {phase === 'selection' && <button type="button" className="factory-primary" disabled={chosenIds.length !== 3} onClick={() => onChooseRentals(chosenIds)}>렌탈 팀 확정 <span>{chosenIds.length}/3</span><ArrowRight size={18} /></button>}
-              {phase === 'ready' && <button type="button" className="factory-primary" onClick={onStartBattle}><Swords size={18} />{run.floor}층 배틀 시작</button>}
+              {phase === 'ready' && <button type="button" className="factory-primary" disabled={!leadPokemon} onClick={onStartBattle}><Swords size={18} />{run.floor}층 배틀 시작</button>}
               {phase === 'exchange' && <><button type="button" className="factory-secondary" onClick={() => onAdvanceFloor(null)}>교환 없이 다음 층</button><button type="button" className="factory-primary" disabled={!canExchange} onClick={() => onAdvanceFloor({ giveCaptureId: giveId, takeCaptureId: takeId })}><RefreshCw size={17} />교환하고 다음 층</button></>}
               {phase === 'finished' && <><button type="button" className="factory-secondary" onClick={onBack}>배틀 선택</button><button type="button" className="factory-primary" onClick={onRestart}><RefreshCw size={18} />새 도전 시작</button></>}
             </div>

@@ -5,6 +5,7 @@ import {
   createFactoryRun,
   FACTORY_TRAINER,
   resolveFactoryBattle,
+  selectFactoryLead,
   selectFactoryRentals,
 } from '../src/data/battleFactory.js'
 import {
@@ -30,13 +31,21 @@ function check(name, fn) {
 const rejected = (fn, code) => assert.throws(fn, (error) => error.code === code)
 function readyRun(seed = 42) {
   const run = createFactoryRun({ seed, id: `factory-test-${seed}` })
-  return selectFactoryRentals(run, run.offers.slice(0, 3).map((entry) => entry.captureId))
+  const selected = selectFactoryRentals(run, run.offers.slice(0, 3).map((entry) => entry.captureId))
+  return selectFactoryLead(selected, selected.party[0].captureId)
+}
+// Existing engine smoke cases choose the first rental explicitly. Individual
+// lead-selection tests below exercise the unselected and reordered states.
+function startRun(run) {
+  if (run.phase === 'battle') return run
+  return beginFactoryBattle(run.leadCaptureId ? run : selectFactoryLead(run, run.party[0].captureId))
 }
 function victory(run) {
-  const battleRun = beginFactoryBattle(run)
+  const battleRun = startRun(run)
   return resolveFactoryBattle(battleRun, { battleId: battleRun.battleId, winner: 'player' })
 }
 function engineBattle(run) {
+  run = startRun(run)
   return createBattle({
     playerPokemon: run.party,
     opponent: FACTORY_TRAINER,
@@ -86,7 +95,7 @@ check('seeded six rentals are reproducible, diverse and legal level-50 loadouts'
   console.log(`  ${species.size} species / ${items.size} items sampled across 100 runs`)
 })
 
-check('selection requires exactly three offered unique Pokemon and preserves chosen lead order', () => {
+check('selection requires exactly three offered unique Pokemon, preserves roster order and waits for a separate lead choice', () => {
   const run = deepFreeze(createFactoryRun({ seed: 3, id: 'selection' }))
   const ids = run.offers.map((entry) => entry.captureId)
   for (const selection of [[], ids.slice(0, 2), ids.slice(0, 4), [ids[0], ids[0], ids[1]], [ids[0], ids[1], 'box-pokemon']]) {
@@ -95,10 +104,38 @@ check('selection requires exactly three offered unique Pokemon and preserves cho
   const chosenIds = [ids[5], ids[3], ids[1]]
   const ready = selectFactoryRentals(run, chosenIds)
   assert.deepEqual(ready.party.map((entry) => entry.captureId), chosenIds)
-  assert.equal(engineBattle(ready).player.team[0].captureId, ids[5])
+  assert.equal(ready.leadCaptureId, null)
+  rejected(() => beginFactoryBattle(ready), 'FACTORY_LEAD')
   assert.equal(run.phase, 'selection')
   assert.equal(run.party.length, 0)
   rejected(() => selectFactoryRentals(ready, chosenIds), 'FACTORY_PHASE')
+})
+
+check('lead selection rejects missing and foreign rentals, allows immutable changes, and starts the exact chosen Pokemon', () => {
+  const selection = createFactoryRun({ seed: 37, id: 'lead-selection' })
+  const ready = deepFreeze(selectFactoryRentals(selection, selection.offers.slice(0, 3).map(entry => entry.captureId)))
+  const before = JSON.stringify(ready)
+  for (const captureId of [null, undefined, '', 'box-pokemon', selection.offers[5].captureId, ready.opponentTeam.pokemon[0].captureId]) {
+    rejected(() => selectFactoryLead(ready, captureId), 'FACTORY_LEAD')
+    rejected(() => beginFactoryBattle({ ...ready, leadCaptureId: captureId }), 'FACTORY_LEAD')
+  }
+  rejected(() => selectFactoryLead(selection, ready.party[0].captureId), 'FACTORY_PHASE')
+  const third = deepFreeze(selectFactoryLead(ready, ready.party[2].captureId))
+  assert.equal(third.leadCaptureId, ready.party[2].captureId)
+  assert.deepEqual(third.party, ready.party, 'Choosing a lead must not silently reorder the ready roster')
+  const changed = selectFactoryLead(third, ready.party[1].captureId)
+  assert.equal(changed.leadCaptureId, ready.party[1].captureId)
+  assert.equal(third.leadCaptureId, ready.party[2].captureId)
+  assert.equal(JSON.stringify(ready), before)
+  for (const selected of [third, changed]) {
+    const started = beginFactoryBattle(selected)
+    const expectedIds = [selected.leadCaptureId, ...ready.party.filter(entry => entry.captureId !== selected.leadCaptureId).map(entry => entry.captureId)]
+    assert.deepEqual(started.party.map(entry => entry.captureId), expectedIds)
+    const battle = engineBattle(started)
+    assert.equal(getActivePokemonList(battle, 'player')[0].captureId, selected.leadCaptureId)
+    assert.deepEqual(battle.player.team.map(entry => entry.captureId), expectedIds)
+    rejected(() => selectFactoryLead(started, started.party[0].captureId), 'FACTORY_PHASE')
+  }
 })
 
 check('one battle per floor, only completed matching results, and no duplicate/stale settlement', () => {
@@ -114,7 +151,7 @@ check('one battle per floor, only completed matching results, and no duplicate/s
   assert.equal(won.phase, 'exchange')
   assert.deepEqual(won.previousOpponent, ready.opponentTeam.pokemon)
   assert.equal(resolveFactoryBattle(won, { battleId: battle.battleId, winner: 'player' }), won)
-  const next = beginFactoryBattle(advanceFactoryFloor(won))
+  const next = startRun(advanceFactoryFloor(won))
   assert.equal(resolveFactoryBattle(next, { battleId: battle.battleId, winner: 'opponent' }), next)
   assert.notEqual(next.battleId, battle.battleId)
   assert.equal(next.phase, 'battle')
@@ -127,6 +164,8 @@ check('skipping keeps all three rentals; exchanging replaces exactly one slot fr
   assert.equal(skipped.wins, 1)
   assert.deepEqual(skipped.party, won.party)
   assert.equal(skipped.previousOpponent.length, 0)
+  assert.equal(skipped.leadCaptureId, null)
+  rejected(() => beginFactoryBattle(skipped), 'FACTORY_LEAD')
   assert.notDeepEqual(skipped.opponentTeam, won.opponentTeam)
   const incoming = won.previousOpponent.find((entry) => !won.party.some((ally) => ally.dexSpeciesId === entry.dexSpeciesId))
   assert(incoming)
@@ -137,6 +176,9 @@ check('skipping keeps all three rentals; exchanging replaces exactly one slot fr
   assert.deepEqual(swapped.party[1], incoming)
   assert.deepEqual(swapped.party[2], won.party[2])
   assert.deepEqual(swapped.lastExchange, exchange)
+  assert.equal(swapped.leadCaptureId, null)
+  rejected(() => beginFactoryBattle(swapped), 'FACTORY_LEAD')
+  assert.equal(startRun(selectFactoryLead(swapped, swapped.party[1].captureId)).party[0].captureId, incoming.captureId)
   rejected(() => advanceFactoryFloor(swapped, exchange), 'FACTORY_PHASE')
   rejected(() => advanceFactoryFloor(won, { ...exchange, giveCaptureId: 'box-pokemon' }), 'FACTORY_EXCHANGE')
   rejected(() => advanceFactoryFloor(won, { ...exchange, takeCaptureId: won.offers[4].captureId }), 'FACTORY_EXCHANGE')
@@ -162,7 +204,7 @@ check('defeat, draw, and forfeits end the run without a free floor or rental exc
     { winner: 'opponent' }, { winner: 'draw' },
     { winner: 'opponent', forfeited: true }, { winner: 'player', forfeited: true },
   ]) {
-    const battle = beginFactoryBattle(advanceFactoryFloor(victory(readyRun(21))))
+    const battle = startRun(advanceFactoryFloor(victory(readyRun(21))))
     const ended = resolveFactoryBattle(battle, { ...result, battleId: battle.battleId })
     assert.equal(ended.phase, 'finished')
     assert.equal(ended.floor, 2)

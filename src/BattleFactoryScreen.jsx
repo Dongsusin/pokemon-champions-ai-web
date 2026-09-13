@@ -5,6 +5,7 @@ import {
   FACTORY_TRAINER,
   createFactoryRun,
   selectFactoryRentals,
+  selectFactoryLead,
   beginFactoryBattle,
   resolveFactoryBattle,
   advanceFactoryFloor,
@@ -71,6 +72,7 @@ export default function BattleFactoryScreen({
     run={run}
     error={error}
     onChooseRentals={ids => transition(current => selectFactoryRentals(current, ids))}
+    onChooseLead={id => transition(current => selectFactoryLead(current, id))}
     onStartBattle={() => transition(beginFactoryBattle)}
     onAdvanceFloor={exchange => transition(current => advanceFactoryFloor(current, exchange))}
     onRestart={() => transition(() => createFactoryRun())}

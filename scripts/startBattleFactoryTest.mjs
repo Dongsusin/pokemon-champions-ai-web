@@ -66,7 +66,7 @@ try {
   }], server: { host: '127.0.0.1', port: 5187, strictPort: true } })
   await server.listen()
   console.log('배틀팩토리 로컬 테스트: http://127.0.0.1:5187')
-  console.log('시작하기 → 배틀팩토리 → 랜덤 6마리 중 3마리 선택')
+  console.log('시작하기 → 배틀팩토리 → 렌탈 3마리 선택 → 준비 화면에서 선봉 선택')
   console.log('승리 후 교환 또는 건너뛰기 → 다음 층. 패배·기권 시 도전 종료.')
   console.log('운영 계정·온라인 API를 사용하지 않습니다. 배포 없음. 종료: Ctrl+C')
 } catch (error) { await close(); console.error(error.message); process.exitCode = 1 }

@@ -175,6 +175,7 @@ export function createFactoryRun({ seed = randomSeed(), id } = {}) {
     wins: 0,
     offers: sampleRentals(normalizedSeed, FACTORY_RENTAL_COUNT, `${runId}:rental`),
     party: [],
+    leadCaptureId: null,
     opponentTeam: null,
     previousOpponent: [],
     rules: createRules(`${runId}:rules`),
@@ -194,17 +195,32 @@ export function selectFactoryRentals(run, captureIds) {
   const party = captureIds.map((captureId) => run.offers.find((entry) => entry.captureId === captureId))
   if (party.some((entry) => !entry)) fail('FACTORY_SELECTION', '이번 도전에서 제시된 포켓몬만 선택할 수 있습니다.')
   assertDistinctParty(party)
-  return { ...run, phase: 'ready', party: clone(party), opponentTeam: createOpponentTeam(run, run.floor) }
+  return { ...run, phase: 'ready', party: clone(party), leadCaptureId: null, opponentTeam: createOpponentTeam(run, run.floor) }
+}
+
+export function selectFactoryLead(run, captureId) {
+  assertPhase(run, 'ready')
+  if (!run.party.some((pokemon) => pokemon.captureId === captureId)) {
+    fail('FACTORY_LEAD', '현재 렌탈 팀에서 선봉 포켓몬 1마리를 선택해 주세요.')
+  }
+  return run.leadCaptureId === captureId ? run : { ...run, leadCaptureId: captureId }
 }
 
 export function beginFactoryBattle(run) {
   if (run?.phase === 'battle') return run
   assertPhase(run, 'ready')
   assertDistinctParty(run.party)
+  const lead = run.party.find((pokemon) => pokemon.captureId === run.leadCaptureId)
+  if (!lead) fail('FACTORY_LEAD', '배틀을 시작하기 전에 선봉 포켓몬을 선택해 주세요.')
   if (run.opponentTeam?.pokemon?.length !== FACTORY_PARTY_SIZE) {
     fail('FACTORY_OPPONENT', '상대 포켓몬 3마리를 준비하지 못했습니다.')
   }
-  return { ...run, phase: 'battle', battleId: `${run.id}:floor:${run.floor}` }
+  return {
+    ...run,
+    phase: 'battle',
+    party: clone([lead, ...run.party.filter((pokemon) => pokemon.captureId !== lead.captureId)]),
+    battleId: `${run.id}:floor:${run.floor}`,
+  }
 }
 
 export function resolveFactoryBattle(run, { battleId, winner, forfeited = false } = {}) {
@@ -245,6 +261,7 @@ export function advanceFactoryFloor(run, exchange = null) {
     // These are original rental loadouts, never the mutable battle snapshots.
     // createBattle restores HP, PP, status, items and gimmicks for the new floor.
     party: clone(party),
+    leadCaptureId: null,
     opponentTeam: createOpponentTeam(run, floor),
     previousOpponent: [],
     battleId: null,

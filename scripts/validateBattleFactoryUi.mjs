@@ -146,7 +146,13 @@ window.__fixtureFactoryVictory = () => {
       }, undefined, { timeout: 15_000 })
     }
     const begin = async () => {
-      const run = await readRun()
+      let run = await readRun()
+      if (!run.leadCaptureId) {
+        assert(await page.getByRole('button', { name: `${run.floor}층 배틀 시작`, exact: true }).isDisabled())
+        await click(page.getByRole('button', { name: `${run.party[0].name} 선봉 선택`, exact: true }))
+        run = await readRun()
+        assert.equal(run.leadCaptureId, run.party[0].captureId)
+      }
       await click(page.getByRole('button', { name: `${run.floor}층 배틀 시작`, exact: true }))
       await page.locator('.battle-intro-overlay.is-ready').waitFor({ timeout: 30_000 })
       await click(page.getByRole('button', { name: '배틀 개시', exact: true }))
@@ -160,6 +166,7 @@ window.__fixtureFactoryVictory = () => {
       await page.locator('.battle-factory.phase-exchange').waitFor()
     }
     let protectedBefore
+    let expectedBattleLead
     try {
       await page.goto(`${origin}/factory-ui.html`)
       await page.getByRole('button', { name: /시작하기/ }).waitFor()
@@ -180,8 +187,8 @@ window.__fixtureFactoryVictory = () => {
         await page.screenshot({ path: path.join(output, `${device.id}-selection.png`) })
       })
 
-      await check(`${device.id}: three rentals lock selection and remain unchanged after hub re-entry`, 'real-ui', async () => {
-        const choices = [1, 0, 2]
+      await check(`${device.id}: ready requires an explicit lead, preserves a third-Pokemon choice across hub re-entry and permits changing it`, 'real-ui', async () => {
+        const choices = [2, 1, 0]
         const original = await readRun()
         for (const index of choices) await click(page.locator('.factory-rental-select').nth(index))
         assert.equal(await page.locator('.factory-rental-select:disabled').count(), 3)
@@ -190,10 +197,23 @@ window.__fixtureFactoryVictory = () => {
         const ready = await readRun()
         assert.deepEqual(ready.party.map(pokemon => pokemon.captureId), choices.map(index => original.offers[index].captureId))
         assert.equal(ready.opponentTeam.pokemon.length, 3)
+        assert.equal(ready.leadCaptureId, null)
+        assert(await page.getByRole('button', { name: '1층 배틀 시작', exact: true }).isDisabled())
+        await click(page.getByRole('button', { name: `${ready.party[2].name} 선봉 선택`, exact: true }))
+        const selectedThird = await readRun()
+        assert.equal(selectedThird.leadCaptureId, ready.party[2].captureId)
+        assert.deepEqual(selectedThird.party, ready.party)
+        assert.equal(await page.getByRole('button', { name: `${ready.party[2].name} 선봉 선택`, exact: true }).getAttribute('aria-pressed'), 'true')
+        assert(!(await page.getByRole('button', { name: '1층 배틀 시작', exact: true }).isDisabled()))
         await click(page.locator('.factory-back'))
         await click(page.locator('.battle-hub-card.factory'))
         await page.locator('.battle-factory.phase-ready').waitFor()
-        assert.deepEqual(await readRun(), ready)
+        assert.deepEqual(await readRun(), selectedThird)
+        await click(page.getByRole('button', { name: `${ready.party[1].name} 선봉 선택`, exact: true }))
+        expectedBattleLead = ready.party[1].captureId
+        assert.equal((await readRun()).leadCaptureId, expectedBattleLead)
+        assert.deepEqual((await readRun()).party, ready.party)
+        assert.equal(await page.getByRole('button', { name: `${ready.party[2].name} 선봉 선택`, exact: true }).getAttribute('aria-pressed'), 'false')
         await page.screenshot({ path: path.join(output, `${device.id}-ready.png`) })
       })
 
@@ -206,6 +226,9 @@ window.__fixtureFactoryVictory = () => {
         assert(await page.locator('.topbar').isHidden())
         assert.equal((await readBattle()).player.team.length, 3)
         assert.equal((await readBattle()).opponent.team.length, 3)
+        const actualBattle = await readBattle()
+        assert.equal(actualBattle.player.team[actualBattle.player.activeIndexes[0]].captureId, expectedBattleLead)
+        assert.equal((await readRun()).party[0].captureId, expectedBattleLead)
         await click(page.getByRole('button', { name: '배틀 개시', exact: true }))
         await waitCommands()
         const bounds = await page.locator('.battle-game-screen').boundingBox()
@@ -288,6 +311,8 @@ window.__fixtureFactoryVictory = () => {
         const next = await readRun()
         assert.equal(next.floor, 2)
         assert.deepEqual(next.party, [won.previousOpponent[takeIndex], ...won.party.slice(1)])
+        assert.equal(next.leadCaptureId, null)
+        assert(await page.getByRole('button', { name: '2층 배틀 시작', exact: true }).isDisabled())
         assert.equal(next.previousOpponent.length, 0)
         assert.notDeepEqual(next.opponentTeam.pokemon.map(pokemon => pokemon.captureId), won.previousOpponent.map(pokemon => pokemon.captureId))
         await page.screenshot({ path: path.join(output, `${device.id}-floor-2.png`) })
@@ -306,6 +331,11 @@ window.__fixtureFactoryVictory = () => {
         assert.equal(next.wins, 2)
         assert.deepEqual(next.party, partyBefore)
         assert.equal(next.lastExchange, null)
+        assert.equal(next.leadCaptureId, null)
+        assert(await page.getByRole('button', { name: '3층 배틀 시작', exact: true }).isDisabled())
+        await click(page.getByRole('button', { name: `${next.party[2].name} 선봉 선택`, exact: true }))
+        assert.equal((await readRun()).leadCaptureId, next.party[2].captureId)
+        assert(!(await page.getByRole('button', { name: '3층 배틀 시작', exact: true }).isDisabled()))
         assert.equal(await page.evaluate(() => window.__factoryFixtureWins), 2)
       })
 
