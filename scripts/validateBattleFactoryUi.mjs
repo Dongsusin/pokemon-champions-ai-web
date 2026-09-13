@@ -22,7 +22,7 @@ const port = Number(process.env.FACTORY_UI_PORT ?? 5283)
 const origin = `http://127.0.0.1:${port}`
 const owned = [normalizePokemon({ speciesId: 131, captureId: 'factory-ui-owned-lapras', directDrawCount: 1 })]
 const teams = createSavedTeams(owned.map(pokemon => pokemon.captureId), owned.map(pokemon => pokemon.captureId))
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
 const entry = `import React,{StrictMode} from 'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';import '/src/mobileViewport.js';
 ${styles.map(name => `import '/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{
@@ -333,6 +333,9 @@ window.__fixtureFactoryVictory = () => {
         await click(finalCards.first().getByRole('button', { name: /능력치와 기술 정보/ }))
         await page.locator('dialog.factory-details[open]').waitFor()
         assert.match(await page.locator('.factory-details-meta').innerText(), new RegExp(finished.party[0].ability))
+        const dynamaxRow = page.locator('.factory-details-meta > div').filter({ has: page.locator('dt').filter({ hasText: /^다이맥스$/ }) })
+        assert.equal(await dynamaxRow.locator('dd').innerText(), finished.party[0].dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스')
+        assert(await dynamaxRow.isVisible())
         await click(page.getByRole('button', { name: '포켓몬 정보 닫기', exact: true }))
         await page.screenshot({ path: path.join(output, `${device.id}-ranking.png`) })
         await click(page.locator('.factory-rankings .factory-back'))

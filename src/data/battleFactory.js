@@ -1,10 +1,13 @@
 import { TRAINERS } from './trainerTeams.js'
 import {
+  getGigantamaxProfile,
   getMove,
   getSpeciesProfile,
   isSavablePokemonForm,
   normalizePokemon,
+  resolveMoveForPokemon,
 } from './trainingData.js'
+import { getBattleTeraType } from './battleEngine.js'
 import { getBattleItem } from './shopData.js'
 import {
   BATTLE_FORMATS,
@@ -95,6 +98,8 @@ function getRentalPool() {
 
 function sampleRentals(seed, count, capturePrefix) {
   const random = randomStream(seed)
+  // Keep type rolls independent of species/set rolls and stable for this rental.
+  const teraRandom = randomStream(seedValue(`${seed}:tera`))
   const pool = [...getRentalPool()]
   if (pool.length < count) fail('FACTORY_POOL', '렌탈 포켓몬을 준비하지 못했습니다.')
   const selected = []
@@ -110,6 +115,8 @@ function sampleRentals(seed, count, capturePrefix) {
       ability: pokemon.ability,
       nature: pokemon.nature,
       moves: [...pokemon.moves],
+      hiddenPowerType: pokemon.hiddenPowerType,
+      hiddenPowerTypeConfigured: pokemon.hiddenPowerTypeConfigured,
       trainingPoints: { ...pokemon.trainingPoints },
       heldItemId: item?.id ?? '',
       heldItemName: item?.name ?? '',
@@ -118,12 +125,39 @@ function sampleRentals(seed, count, capturePrefix) {
       battleMechanics: [...(pokemon.battleMechanics ?? [])],
       role: pokemon.role ?? '',
     })
+    const moveTypes = [...new Set(entry.moves.map((name) => resolveMoveForPokemon(getMove(name), entry).type))]
+    const teraType = getBattleTeraType({
+      ...entry,
+      teraType: moveTypes[Math.floor(teraRandom() * moveTypes.length)],
+      // Dedicated species keep the same fixed Tera type as the battle engine.
+      battleBaseSpeciesId: entry.dexSpeciesId,
+    })
+    const gigantamaxForm = getGigantamaxProfile(entry.speciesId)
+    const dynamaxMode = gigantamaxForm ? 'gigantamax' : 'dynamax'
     selected.push({
       ...entry,
+      teraType,
+      dynamaxMode,
+      battleMechanics: entry.battleMechanics.map((mechanic) => (
+        mechanic === 'gigantamax' || mechanic === 'dynamax' ? dynamaxMode : mechanic
+      )),
       // Rebuild IDs after normalization so an illegal source slot cannot take
       // precedence over the corrected move names inside the battle engine.
       moveIds: entry.moves.map((name) => getMove(name).id),
-      factoryGimmicks: clone(gimmicks),
+      factoryGimmicks: clone(gimmicks).map((gimmick) => {
+        if (gimmick.type === 'terastallization') return { ...gimmick, teraType }
+        if (gigantamaxForm && (gimmick.type === 'dynamax' || gimmick.type === 'gigantamax')) {
+          return {
+            ...gimmick,
+            type: 'gigantamax',
+            label: '거다이맥스',
+            targetFormId: gigantamaxForm.id,
+            targetFormSlug: gigantamaxForm.slug,
+            targetFormName: gigantamaxForm.formName ?? gigantamaxForm.name,
+          }
+        }
+        return gimmick
+      }),
       rental: true,
     })
   }

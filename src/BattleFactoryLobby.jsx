@@ -45,6 +45,7 @@ export function RentalDetails({ pokemon, onClose }) {
         <div><dt>성격</dt><dd><FactoryInfoTooltip title={`${preview.nature} 성격`} description={natureDescription}><span>{preview.nature}</span></FactoryInfoTooltip></dd></div>
         <div><dt>지닌 도구</dt><FactoryInfoTooltip title={item?.name} description={item?.description ?? item?.effect}><dd>{item && <BattleItemSprite item={item} size={22} />}{item?.name ?? '없음'}</dd></FactoryInfoTooltip></div>
         <div><dt>테라타입</dt><dd>{preview.teraType ?? '—'}</dd></div>
+        <div><dt>다이맥스</dt><dd>{preview.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}</dd></div>
       </dl>
       <div className="factory-stat-grid" aria-label="능력치">{STAT_META.map(stat => <div key={stat.key}><small>{stat.shortLabel}</small><strong>{preview.stats?.[stat.key] ?? '—'}</strong></div>)}</div>
       <h3 className="factory-moves-title">배틀 기술</h3>

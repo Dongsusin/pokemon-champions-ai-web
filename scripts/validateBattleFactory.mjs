@@ -10,17 +10,23 @@ import {
 } from '../src/data/battleFactory.js'
 import {
   createBattle,
+  createBattlePreviewPokemon,
   createBattleTurnTimeline,
   forcePlayerSwitch,
   getActivePokemonList,
   getAvailableBattleMechanics,
   getBattleMovePreview,
   getBattleMoveTargets,
+  getBattleTeraType,
   playBattleTurn,
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
-import { getLearnableMoves, getSpeciesProfile } from '../src/data/trainingData.js'
+import {
+  canGigantamax, getGigantamaxProfile, getLearnableMoves, getMove,
+  getSpeciesProfile, isSavablePokemonForm, resolveMoveForPokemon, SPECIES_PROFILES,
+} from '../src/data/trainingData.js'
 import { getBattleItem } from '../src/data/shopData.js'
+import { TRAINERS } from '../src/data/trainerTeams.js'
 
 let checks = 0
 function check(name, fn) {
@@ -63,6 +69,31 @@ function deepFreeze(value) {
   return value
 }
 
+const rentalMoveTypes = (entry) => [...new Set(entry.moves.map((name) => resolveMoveForPokemon(getMove(name), entry).type))]
+function intrinsicTeraType(entry) {
+  if (entry.dexSpeciesId === 1024) return '스텔라'
+  if (entry.dexSpeciesId !== 1017) return null
+  return { 'ogerpon-wellspring-mask': '물', 'ogerpon-hearthflame-mask': '불꽃', 'ogerpon-cornerstone-mask': '바위' }[entry.slug] ?? '풀'
+}
+function assertRentalPreset(entry) {
+  assert.equal(entry.dynamaxMode, canGigantamax(entry.speciesId) ? 'gigantamax' : 'dynamax', `${entry.slug}: incorrect default Dynamax mode`)
+  const fixedType = intrinsicTeraType(entry)
+  if (fixedType) assert.equal(entry.teraType, fixedType, `${entry.slug}: stored Tera type must match its intrinsic battle form rule`)
+  else assert(rentalMoveTypes(entry).includes(entry.teraType), `${entry.slug}: Tera ${entry.teraType} is not one of its configured move types`)
+  assert.deepEqual(entry.moveIds, entry.moves.map((name) => getMove(name).id))
+  for (const mechanic of entry.battleMechanics.filter((mechanic) => ['dynamax', 'gigantamax'].includes(mechanic))) {
+    assert.equal(mechanic, entry.dynamaxMode, 'AI mechanic tags must match the actual rental mode')
+  }
+  for (const gimmick of entry.factoryGimmicks) {
+    if (gimmick.type === 'terastallization') assert.equal(gimmick.teraType, entry.teraType)
+    if (['dynamax', 'gigantamax'].includes(gimmick.type)) assert.equal(gimmick.type, entry.dynamaxMode)
+    if (gimmick.type === 'gigantamax') assert.equal(gimmick.targetFormId, getGigantamaxProfile(entry.speciesId).id)
+  }
+}
+
+const gigantamaxRentals = new Map()
+const intrinsicTeraRentals = new Map()
+
 check('seeded six rentals are reproducible, diverse and legal level-50 loadouts', () => {
   const first = createFactoryRun({ seed: 123, id: 'same-run' })
   assert.deepEqual(first, createFactoryRun({ seed: 123, id: 'same-run' }))
@@ -95,6 +126,78 @@ check('seeded six rentals are reproducible, diverse and legal level-50 loadouts'
   console.log(`  ${species.size} species / ${items.size} items sampled across 100 runs`)
 })
 
+check('all eligible rental species default to Gigantamax and both six offers and three opponents draw Tera types from their moves', () => {
+  const sourceBefore = JSON.stringify(TRAINERS)
+  const expectedGigantamax = new Set(TRAINERS.flatMap((trainer) => trainer.teams.flatMap((team) => team.pokemon))
+    .filter((entry) => isSavablePokemonForm(entry.speciesId) && canGigantamax(entry.speciesId))
+    .map((entry) => entry.speciesId))
+  const selectedTypes = new Map()
+  let nonGigantamax = 0
+  let statusOnlyTeraExamples = 0
+  for (let seed = 0; seed < 512; seed += 1) {
+    const run = readyRun(seed)
+    for (const entry of [...run.offers, ...run.opponentTeam.pokemon]) {
+      assertRentalPreset(entry)
+      if (intrinsicTeraType(entry)) intrinsicTeraRentals.set(entry.dexSpeciesId, entry)
+      if (canGigantamax(entry.speciesId)) gigantamaxRentals.set(entry.speciesId, entry)
+      else nonGigantamax += 1
+      const signature = JSON.stringify([entry.speciesId, entry.moves, entry.heldItemId, entry.hiddenPowerType])
+      if (!selectedTypes.has(signature)) selectedTypes.set(signature, new Set())
+      selectedTypes.get(signature).add(entry.teraType)
+      const moves = entry.moves.map((name) => resolveMoveForPokemon(getMove(name), entry))
+      if (moves.some((move) => move.category === '변화' && move.type === entry.teraType)
+        && !moves.some((move) => move.category !== '변화' && move.type === entry.teraType)) statusOnlyTeraExamples += 1
+    }
+  }
+  assert.deepEqual([...gigantamaxRentals.keys()].sort((a, b) => a - b), [...expectedGigantamax].sort((a, b) => a - b), 'Seed coverage must include every Gigantamax-compatible species in the actual rental pool')
+  assert(nonGigantamax > 100)
+  assert(statusOnlyTeraExamples > 0, 'Status move types are owned move types too')
+  const variedLoadouts = [...selectedTypes.values()].filter((types) => types.size > 1).length
+  assert(variedLoadouts > 30, `Only ${variedLoadouts} identical loadouts received alternative random Tera types`)
+  assert.equal(JSON.stringify(TRAINERS), sourceBefore, 'Factory-specific defaults must never mutate the ordinary AI trainer source')
+  console.log(`  ${gigantamaxRentals.size} eligible species / ${variedLoadouts} loadouts with alternative Tera types / 4,608 generated rentals`)
+})
+
+check('Gigantamax compatibility distinguishes regional and special forms instead of matching only base species', () => {
+  const profile = (slug) => {
+    const entry = Object.values(SPECIES_PROFILES).find((entry) => entry.slug === slug)
+    assert(entry, `${slug} is missing from species data`)
+    return entry
+  }
+  for (const [slug, target] of [
+    ['meowth', 'meowth-gmax'], ['pikachu', 'pikachu-gmax'],
+    ['toxtricity', 'toxtricity-amped-gmax'], ['toxtricity-low-key', 'toxtricity-low-key-gmax'],
+    ['urshifu', 'urshifu-single-strike-gmax'], ['urshifu-rapid-strike', 'urshifu-rapid-strike-gmax'],
+  ]) assert.equal(getGigantamaxProfile(profile(slug).id)?.slug, target)
+  for (const slug of ['meowth-alola', 'meowth-galar', 'pikachu-original-cap', 'pikachu-rock-star']) {
+    assert.equal(canGigantamax(profile(slug).id), false, `${slug} cannot inherit the base species' Gigantamax form`)
+  }
+})
+
+check('every eligible generated rental keeps its moves, held item and Gigantamax configuration in the real battle preview', () => {
+  assert(gigantamaxRentals.size > 0)
+  for (const entry of gigantamaxRentals.values()) {
+    const before = JSON.stringify(entry)
+    const preview = createBattlePreviewPokemon(entry)
+    assert.equal(preview.dynamaxMode, 'gigantamax')
+    assert.equal(preview.teraType, entry.teraType)
+    assert.equal(preview.heldItemId, entry.heldItemId)
+    assert.deepEqual(preview.moves.map((move) => move.id), entry.moveIds)
+    assert(preview.moves.every((move) => move.currentPp === move.maxPp && move.currentPp > 0))
+    assert.equal(getGigantamaxProfile(preview.originalSpeciesId).id, getGigantamaxProfile(entry.speciesId).id)
+    assert.equal(JSON.stringify(entry), before)
+  }
+})
+
+check('Ogerpon and Terapagos rentals show the same intrinsic Tera type that the battle will activate', () => {
+  assert.deepEqual([...intrinsicTeraRentals.keys()].sort((a, b) => a - b), [1017, 1024])
+  for (const entry of intrinsicTeraRentals.values()) {
+    const preview = createBattlePreviewPokemon(entry)
+    assert.equal(entry.teraType, intrinsicTeraType(entry))
+    assert.equal(getBattleTeraType(preview), entry.teraType)
+  }
+})
+
 check('selection requires exactly three offered unique Pokemon, preserves roster order and waits for a separate lead choice', () => {
   const run = deepFreeze(createFactoryRun({ seed: 3, id: 'selection' }))
   const ids = run.offers.map((entry) => entry.captureId)
@@ -103,6 +206,7 @@ check('selection requires exactly three offered unique Pokemon, preserves roster
   }
   const chosenIds = [ids[5], ids[3], ids[1]]
   const ready = selectFactoryRentals(run, chosenIds)
+  ready.party.forEach(assertRentalPreset)
   assert.deepEqual(ready.party.map((entry) => entry.captureId), chosenIds)
   assert.equal(ready.leadCaptureId, null)
   rejected(() => beginFactoryBattle(ready), 'FACTORY_LEAD')
@@ -134,6 +238,12 @@ check('lead selection rejects missing and foreign rentals, allows immutable chan
     const battle = engineBattle(started)
     assert.equal(getActivePokemonList(battle, 'player')[0].captureId, selected.leadCaptureId)
     assert.deepEqual(battle.player.team.map(entry => entry.captureId), expectedIds)
+    for (const entry of battle.player.team) {
+      const rental = ready.party.find((rental) => rental.captureId === entry.captureId)
+      assert.equal(entry.dynamaxMode, rental.dynamaxMode)
+      assert.equal(getBattleTeraType(entry), rental.teraType)
+      assert.equal(entry.heldItemId, rental.heldItemId)
+    }
     rejected(() => selectFactoryLead(started, started.party[0].captureId), 'FACTORY_PHASE')
   }
 })
@@ -175,6 +285,7 @@ check('skipping keeps all three rentals; exchanging replaces exactly one slot fr
   assert.deepEqual(swapped.party[0], won.party[0])
   assert.deepEqual(swapped.party[1], incoming)
   assert.deepEqual(swapped.party[2], won.party[2])
+  for (const entry of [...skipped.party, ...swapped.party, ...swapped.opponentTeam.pokemon]) assertRentalPreset(entry)
   assert.deepEqual(swapped.lastExchange, exchange)
   assert.equal(swapped.leadCaptureId, null)
   rejected(() => beginFactoryBattle(swapped), 'FACTORY_LEAD')
