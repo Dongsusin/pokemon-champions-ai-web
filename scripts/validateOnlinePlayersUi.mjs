@@ -5,6 +5,9 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import { createDefaultGameSettings, SETTINGS_STORAGE_KEY } from '../src/gameSettings.js'
+import { normalizePokemon } from '../src/data/trainingData.js'
+import { migratePokemonCollection } from '../src/data/pokemonPool.js'
+import { createSavedTeams } from '../src/data/teamData.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 // Actual GameApp header and navigation, actual online-count external store.
@@ -12,7 +15,10 @@ import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'scripts/.cache/online-players-ui')
 await fs.mkdir(output, { recursive: true })
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
+const owned = migratePokemonCollection([6, 9, 3, 25, 94, 149].map(speciesId => normalizePokemon({ speciesId, captureId: `online-header-${speciesId}`, directDrawCount: 1 })))
+const ownedIds = [6, 9, 3, 25, 94, 149].map(speciesId => owned.find(pokemon => pokemon.speciesId === speciesId).captureId)
+const teams = createSavedTeams(ownedIds, owned.map(pokemon => pokemon.captureId))
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode,useState}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
 import{updateOnlinePlayers,clearOnlinePlayers}from'/src/auth/onlinePlayers.js';
 ${styles.map(name => `import'/src/${name}.css';`).join('\n')}
@@ -34,11 +40,19 @@ const server = await createServer({ root, mode: 'online-count-validation', logLe
       if (id === '/online-players-entry.js') return entry
       if (id === '\0online-count-ui-auth') return `export const firebaseAuth=null;export const firebaseDb=null;export const isFirebaseConfigured=false;export const missingFirebaseEnvironmentVariables=[];`
     },
+    transform(source, id) {
+      if (!/\/(RankedBattleScreen|BattleRoomsScreen)\.jsx$/.test(id.replaceAll('\\', '/'))) return
+      // Expose the existing parent notification only in this isolated fixture.
+      // The assertions cover header callback wiring, not a server battle result.
+      assert(source.includes('const battleVisible ='))
+      return source.replace('const battleVisible =', 'window.__onlineBattleCallback = onBattleActiveChange;\n  const battleVisible =')
+    },
   }], server: { host: '127.0.0.1', port, strictPort: true, hmr: false } })
 await server.listen()
 const require = createRequire(new URL('../promo/package.json', import.meta.url))
 const { chromium } = require('playwright')
-const checks = [], errors = [], requests = [], metrics = []
+const localSprite = await fs.readFile(path.join(root, 'public/assets/pokemon/skins/armored-mewtwo-front.gif'))
+const checks = [], errors = [], requests = [], blockedMedia = [], metrics = []
 async function test(name, run) {
   try { await run(); checks.push({ name, passed: true }); console.log(`PASS ${name}`) }
   catch (error) { checks.push({ name, passed: false, error: error.message }); console.error(`FAIL ${name}: ${error.message}`) }
@@ -52,7 +66,7 @@ async function headerGeometry(page) {
       return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }
     }
     return { width: innerWidth, height: innerHeight, documentWidth: document.documentElement.scrollWidth, viewportScale: visualViewport?.scale ?? 1,
-      brand: box('.brand'), badge: box('.online-players-badge'), status: box('.top-status'),
+      header: box('.topbar'), main: box('.app-shell > main'), fixedMain: Boolean(document.querySelector('.app-shell > main:is(.draw-screen, .pc-screen, .training-screen, .shop-screen, .achievement-screen, .pokemon-usage-screen, .battle-select-screen, .competition-screen, .ranked-screen, .rooms-screen, .battle-factory)')), brand: box('.brand'), badge: box('.online-players-badge'), status: box('.top-status'),
       controls: [...document.querySelectorAll('.top-status > *')].map(element => {
         const r = element.getBoundingClientRect(); return { label: element.getAttribute('aria-label') || element.textContent, left: r.left, right: r.right, top: r.top, bottom: r.bottom }
       }) }
@@ -69,6 +83,9 @@ function assertHeaderFits(geometry) {
   assert(geometry.badge.left >= geometry.brand.right - 1, `Badge must sit to the logo's right: ${JSON.stringify(geometry)}`)
   assert(!overlaps(geometry.badge, geometry.status), `Badge/status overlap: ${JSON.stringify(geometry)}`)
   assert(!overlaps(geometry.brand, geometry.status), `Logo/status overlap: ${JSON.stringify(geometry)}`)
+  for (const rect of [geometry.brand, geometry.badge, geometry.status]) assert(rect.top >= geometry.header.top - 1 && rect.bottom <= geometry.header.bottom + 1, `Header child extends outside its header: ${JSON.stringify(geometry)}`)
+  assert(geometry.main.top >= geometry.header.bottom - 1, `Page content overlaps header: ${JSON.stringify(geometry)}`)
+  if (geometry.fixedMain) assert(geometry.main.bottom <= geometry.height + 1, `Fixed viewport page extends beyond available height: ${JSON.stringify(geometry)}`)
   geometry.controls.forEach((first, index) => geometry.controls.slice(index + 1).forEach(second => assert(!overlaps(first, second), `Controls overlap: ${first.label} / ${second.label}`)))
 }
 let browser
@@ -79,11 +96,19 @@ try {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     const settings = createDefaultGameSettings()
     settings.audio.enabled = false
-    await context.addInitScript(({ key, settings }) => {
+    await context.addInitScript(({ key, settings, owned, teams }) => {
       if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(settings))
       localStorage.setItem('champions-draw-tutorial-v1', 'complete')
-    }, { key: SETTINGS_STORAGE_KEY, settings })
-    await context.route(/^https:\/\//, route => { requests.push(route.request().url()); return route.abort() })
+      localStorage.setItem('champions-dex-v2', JSON.stringify(owned))
+      localStorage.setItem('champions-teams-v1', JSON.stringify({ teams, activeTeamId: 'team-1' }))
+    }, { key: SETTINGS_STORAGE_KEY, settings, owned, teams })
+    await context.route(/^https:\/\//, route => {
+      if (route.request().resourceType() === 'image') return route.fulfill({ contentType: 'image/gif', body: localSprite })
+      if (/^https:\/\/raw\.githubusercontent\.com\/PokeAPI\/cries\/main\/cries\/pokemon\/(latest|legacy)\/\d+\.ogg$/.test(route.request().url())) {
+        blockedMedia.push(route.request().url()); return route.abort()
+      }
+      requests.push(route.request().url()); return route.abort()
+    })
     await context.route('**/api/**', route => { requests.push(route.request().url()); return route.abort() })
     await context.route('**/online-players.html', route => route.fulfill({ contentType: 'text/html', body: html }))
     const page = await context.newPage()
@@ -93,6 +118,17 @@ try {
     await page.goto(`http://127.0.0.1:${port}/online-players.html`)
     await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
     const badge = page.locator('.online-players-badge')
+    const chooseScale = async scale => {
+      await click(page.getByRole('button', { name: '설정', exact: true }))
+      await click(page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: `${scale}배`, exact: true }))
+      await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
+    }
+    const assertPageHeader = async (screen, scale) => {
+      await badge.getByText(/^1,234명$/).waitFor()
+      const geometry = await headerGeometry(page)
+      metrics.push({ device: device.id, screen, scale, ...geometry })
+      assertHeaderFits(geometry)
+    }
     await test(`${device.id}: lobby shows an unknown count until a verified sample arrives`, async () => {
       await badge.waitFor()
       assert.match(await badge.innerText(), /확인 중|--|—/)
@@ -119,14 +155,88 @@ try {
       await click(page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: '1배', exact: true }))
       await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
     })
-    await test(`${device.id}: leaving the main lobby hides the count and returning restores it`, async () => {
+    await test(`${device.id}: battle selection retains the same count outside the main lobby`, async () => {
       await click(page.locator('.mode-card.mode-start'))
       await page.getByRole('heading', { name: '어떤 배틀에 도전할까요?', exact: true }).waitFor()
-      assert.equal(await badge.count(), 0)
+      await assertPageHeader('battle-hub', 1)
       await click(page.getByRole('button', { name: '로비', exact: true }))
       await badge.getByText(/1,234/).waitFor()
     })
+    await test(`${device.id}: main pages retain the shared count and fit the expanded header at 2x`, async () => {
+      await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+      for (const [mode, ready, back] of [
+        ['training', '.training-roster-panel', '로비로 돌아가기'],
+        ['collection', '.team-box-screen', '로비 화면으로 돌아가기'],
+        ['shop', '.shop-screen', '로비로 돌아가기'],
+        ['hatch', '.app-shell.draw-view', '로비로 돌아가기'],
+        ['achievements', '.achievement-screen', '돌아가기'],
+        ['usage', '.pokemon-usage-screen', '돌아가기'],
+      ]) {
+        await click(page.locator(`.mode-card.mode-${mode}`))
+        await page.locator(ready).waitFor()
+        await chooseScale(2)
+        await assertPageHeader(mode, 2)
+        await chooseScale(1)
+        await click(page.getByRole('button', { name: back, exact: true }))
+      }
+    })
+    await test(`${device.id}: online and factory lobbies retain count at 1x and 2x; battle callbacks exclude it`, async () => {
+      await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+      await click(page.locator('.mode-card.mode-start'))
+      for (const mode of ['ranked', 'rooms', 'factory', 'ai']) {
+        await click(page.locator(`.battle-hub-card.${mode}`))
+        const back = mode === 'ai' ? page.getByRole('button', { name: '배틀 종류 선택으로 돌아가기', exact: true }) : page.getByRole('button', { name: '배틀 선택', exact: true })
+        await back.waitFor()
+        await assertPageHeader(mode, 1)
+        await chooseScale(2)
+        await assertPageHeader(mode, 2)
+        if (['ranked', 'rooms'].includes(mode)) {
+          await page.evaluate(() => window.__onlineBattleCallback(true))
+          await page.locator('.app-shell.battle-view').waitFor()
+          assert.equal(await badge.count(), 0)
+          assert.equal(await page.locator('.topbar.has-online-players').count(), 0)
+          await page.evaluate(() => window.__onlineBattleCallback(false))
+          await assertPageHeader(`${mode}-after-battle-callback`, 2)
+        }
+        await page.screenshot({ path: path.join(output, `${device.id}-${mode}-2x.png`) })
+        await chooseScale(1)
+        await click(back)
+      }
+      await click(page.getByRole('button', { name: '로비', exact: true }))
+    })
     if (device.id === 'desktop') {
+      await test('AI and factory actual battle entry remove the badge and returning to lobby restores it', async () => {
+        for (const mode of ['ai', 'factory']) {
+          await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+          await click(page.locator('.mode-card.mode-start'))
+          await click(page.locator(`.battle-hub-card.${mode}`))
+          if (mode === 'ai') {
+            await click(page.locator('.ai-battle-format-options button').filter({ hasText: '싱글배틀' }))
+            await click(page.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }))
+            await click(page.getByRole('button', { name: '이 모드로 시작', exact: true }))
+            await page.locator('.competition-team-selection').waitFor()
+            await assertPageHeader('ai-competition-preparation', 1)
+            for (const index of [0, 1, 2]) await click(page.locator('.competition-team-selection > div > button').nth(index))
+            await click(page.locator('.competition-current-match-panel > footer > button'))
+          } else {
+            await page.getByLabel('렌탈 후보 6마리').waitFor()
+            for (const index of [0, 1, 2]) await click(page.locator('.factory-rental-select').nth(index))
+            await click(page.getByRole('button', { name: /렌탈 팀 확정/ }))
+            await page.locator('.battle-factory.phase-ready').waitFor()
+            await assertPageHeader('factory-preparation', 1)
+            await click(page.getByRole('button', { name: /선봉 선택$/ }).first())
+            await click(page.getByRole('button', { name: '1층 배틀 시작', exact: true }))
+          }
+          await page.locator('.app-shell.battle-view').waitFor()
+          assert.equal(await badge.count(), 0)
+          assert.equal(await page.locator('.topbar.has-online-players').count(), 0)
+          await page.screenshot({ path: path.join(output, `${device.id}-${mode}-battle.png`) })
+          await page.reload()
+          await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
+          await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+          await assertPageHeader(`${mode}-reload-lobby`, 1)
+        }
+      })
       await test('cleared or unavailable samples never masquerade as zero connected players', async () => {
         await page.evaluate(() => window.__onlinePlayersUi.clear())
         await page.waitForFunction(() => !document.querySelector('.online-players-badge').textContent.includes('1,234'))
@@ -150,7 +260,7 @@ try {
 } finally {
   await browser?.close()
   await server.close()
-  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, errors, requests, metrics }, null, 2))
+  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, errors, requests, blockedMedia, metrics }, null, 2))
 }
 assert.equal(errors.length, 0, JSON.stringify(errors))
 assert.equal(requests.length, 0, `The isolated header must not fetch presence or production data: ${JSON.stringify(requests)}`)

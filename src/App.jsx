@@ -1059,7 +1059,7 @@ export function GameApp({
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
-      <header className={`topbar${screen === 'lobby' ? ' has-online-players' : ''}`}>
+      <header className={`topbar${!battleMusicActive ? ' has-online-players' : ''}`}>
         <div className="topbar-brand-group">
           <div className="brand" aria-label="Pokémon Champions Arena">
             <span className="brand-mark">
@@ -1076,7 +1076,7 @@ export function GameApp({
             </span>
           </div>
 
-          {screen === 'lobby' && <OnlinePlayersBadge userId={user.uid} />}
+          {!battleMusicActive && <OnlinePlayersBadge userId={user.uid} />}
         </div>
 
         <div className="top-status">

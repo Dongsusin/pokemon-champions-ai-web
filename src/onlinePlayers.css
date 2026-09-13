@@ -1,4 +1,24 @@
 .topbar.has-online-players { gap: 20px; }
+/* Compact pages previously fixed this header at 44px. Allow the shared
+   player count and wrapped controls to determine its height on every page. */
+.app-shell:not(.battle-view) > header.topbar.has-online-players {
+  height: auto;
+  flex-shrink: 0;
+}
+/* These pages used a fixed header-height subtraction. A wrapped header must
+   leave its actual remaining space for the content and its existing lists. */
+.app-shell:has(> .topbar.has-online-players):has(> :is(.draw-screen, .pc-screen, .training-screen, .shop-screen, .achievement-screen, .pokemon-usage-screen, .battle-select-screen, .competition-screen)) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+}
+.app-shell:has(> .topbar.has-online-players) > :is(.draw-screen, .pc-screen, .training-screen, .shop-screen, .achievement-screen, .pokemon-usage-screen, .battle-select-screen, .competition-screen) {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  overflow-y: auto;
+}
 .topbar-brand-group {
   display: flex;
   align-items: center;
