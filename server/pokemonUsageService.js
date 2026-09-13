@@ -101,6 +101,8 @@ export async function reportAiPokemonUsage(tx, uid, report, timestamp) {
   const key = usageBucketKey('ai', report.format)
   const bucket = await tx.get('pokemonUsage', key) ?? createUsageBucket()
   tx.set('pokemonUsage', key, recordUsageTeams(bucket, [report.team ?? report.speciesIds], Math.max(timestamp, bucket.updatedAt)))
-  tx.set('pokemonUsageEvents', receiptId, { hash: reportHash, recordedAt: timestamp, ...(report.team ? { version: 2, legacyHash } : {}) })
+  tx.set('pokemonUsageEvents', receiptId, { hash: reportHash, recordedAt: timestamp,
+    owner: createHash('sha256').update(`usage-owner:${uid}`).digest('hex'),
+    ...(report.team ? { version: 2, legacyHash } : {}) })
   return { accepted: true, usage: await readPokemonUsage(tx) }
 }

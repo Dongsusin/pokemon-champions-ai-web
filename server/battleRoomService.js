@@ -284,5 +284,46 @@ export function createBattleRoomService({ fail, loadPlayer, expireMatch, settleM
     }
   }
 
-  return { cleanup, context, operate }
+  async function eraseGuest(tx, uid, surrogate, timestamp) {
+    await lock(tx)
+    for (const room of await tx.list('battleRooms')) {
+      const attempts = await tx.get('roomPasswordAttempts', room.id)
+      if (attempts?.users && Object.hasOwn(attempts.users, hashId(uid))) {
+        delete attempts.users[hashId(uid)]
+        tx.set('roomPasswordAttempts', room.id, attempts)
+      }
+      const member = room.members.find(entry => entry.uid === uid)
+      if (!member) continue
+      if (room.phase === 'waiting') {
+        room.members = room.members.filter(entry => entry.uid !== uid)
+        if (!room.members.length) { await removeRoom(tx, room, 'empty', timestamp); continue }
+        if (room.hostUid === uid) room.hostUid = room.members[0].uid
+        tx.set('battleRooms', room.id, room)
+        continue
+      }
+      // Withdraw using the existing schedule rules before removing the identity.
+      // Other participants keep their current match, points and later rounds.
+      member.withdrawn = true
+      for (const fixture of room.fixtures.filter(entry => entry.uids.includes(uid))) {
+        const match = await tx.get('matches', fixture.id)
+        if (match && match.phase !== 'finished') {
+          await settleMatch(tx, match, match.players[0].uid === uid ? 'opponent' : 'player', 'room-withdrawal', timestamp)
+        }
+      }
+      await advance(tx, room, timestamp)
+      const remaining = await tx.get('battleRooms', room.id)
+      if (!remaining) continue
+      remaining.members = remaining.members.map(entry => entry.uid === uid
+        ? { uid: surrogate, name: '탈퇴한 게스트', isGuest: false, team: [], joinedAt: entry.joinedAt, withdrawn: true } : entry)
+      if (remaining.hostUid === uid) remaining.hostUid = remaining.members.find(entry => !entry.withdrawn)?.uid ?? surrogate
+      if (remaining.championUid === uid) remaining.championUid = surrogate
+      remaining.fixtures = remaining.fixtures.map(fixture => ({ ...fixture,
+        uids: fixture.uids.map(entrant => entrant === uid ? surrogate : entrant),
+        winnerUid: fixture.winnerUid === uid ? surrogate : fixture.winnerUid,
+      }))
+      tx.set('battleRooms', remaining.id, remaining)
+    }
+  }
+
+  return { cleanup, context, operate, eraseGuest }
 }

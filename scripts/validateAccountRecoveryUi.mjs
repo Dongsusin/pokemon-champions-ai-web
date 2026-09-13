@@ -13,15 +13,19 @@ const { chromium } = require(process.env.ACHIEVEMENT_PLAYWRIGHT_MODULE || 'playw
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'scripts/.cache/account-recovery-ui')
 await fs.mkdir(output, { recursive: true })
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
 const entry = `import '/src/mobileViewport.js';
 import React from 'react';import {createRoot} from 'react-dom/client';
 import {AccountGameApp} from '/src/App.jsx';
 ${styles.map(name => `import '/src/${name}.css';`).join('\n')}
 function Harness(){
  const [accountError,setAccountError]=React.useState('');
- return React.createElement(AccountGameApp,{user:{uid:'recovery-ui',displayName:'복구 검증'},accountError,
+ const [signedOut,setSignedOut]=React.useState(false);
+ const guest=new URLSearchParams(location.search).has('guest');
+ if(signedOut)return React.createElement('h1',null,'검증 로그인 화면');
+ return React.createElement(AccountGameApp,{user:{uid:'recovery-ui',displayName:'복구 검증',isAnonymous:guest},accountError,
  onSignOut:async()=>{window.__signOutCalls=(window.__signOutCalls||0)+1;
+ if(guest){const success=await new Promise(resolve=>{window.__finishGuestDelete=resolve});if(success)setSignedOut(true);return success;}
  if(window.__failSignOut)setAccountError('로그아웃 요청이 실패했습니다. 다시 시도해 주세요.');
  }});
 }
@@ -31,6 +35,7 @@ const mockHook = `import {useState} from 'react';
 export function useAccountGameData(){
  const [state,setState]=useState({ready:false,syncError:'계정 데이터를 불러오지 못했습니다. 저장 기록을 보호하기 위해 게임을 잠시 중단했습니다. 연결을 확인한 뒤 다시 시도해주세요.'});
  return {...state,scheduleSave(){},retry(){window.__retryCalls=(window.__retryCalls||0)+1;setState({ready:true,syncError:''})},
+ async pauseForGuestDeletion(){window.__pauseCalls=(window.__pauseCalls||0)+1;await new Promise(resolve=>{window.__finishPause=resolve});},
  async flush(){window.__flushCalls=(window.__flushCalls||0)+1;return new Promise(resolve=>{
   window.__resolveSave=success=>{setState({ready:true,syncError:success?'':'게임 데이터를 저장하지 못했습니다.'});resolve(success)}
  })}};
@@ -47,7 +52,8 @@ try {
   const html = await server.transformIndexHtml('/account-recovery.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/account-recovery-entry.js"></script></body></html>')
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
-  await context.route('**/account-recovery.html', route => route.fulfill({ contentType: 'text/html', body: html }))
+  await context.route('**/api/**', route => route.fulfill({status:503,contentType:'application/json',body:'{"error":{"code":"TEST_OFFLINE","message":"isolated validation"}}'}))
+  await context.route('**/account-recovery.html*', route => route.fulfill({ contentType: 'text/html', body: html }))
   await context.route('**/src/App.jsx', async route => {
     const response = await route.fetch()
     await route.fulfill({ response, body: await response.text() + '\nexport {AccountGameApp};\n' })
@@ -111,8 +117,37 @@ try {
   const exitBounds = await exit.boundingBox()
   assert(exitBounds && exitBounds.y>=0 && exitBounds.y+exitBounds.height<=241,'Recovery exit must remain reachable in short viewports')
   await page.screenshot({path:path.join(output,'provider-error-short-viewport.png')})
+  await page.setViewportSize({width:1440,height:900})
+  await page.goto(`${origin}/account-recovery.html?guest=1`, {waitUntil:'domcontentloaded'})
+  await retry.click()
+  await page.locator('.app-shell').waitFor()
+  await page.getByRole('button',{name:'설정',exact:true}).click()
+  await page.getByRole('tab',{name:'계정',exact:true}).click()
+  await page.getByText('로그아웃하면 게스트 계정과 진행 기록, 대전 기록이 삭제됩니다.',{exact:false}).waitFor()
+  await page.locator('.settings-sign-out-button').click()
+  await page.locator('.auth-loading-screen').waitFor()
+  assert.equal(await page.locator('.app-shell').count(),0,'Guest logout unmounts game and its pending report/room hooks before deletion')
+  assert.equal(await page.evaluate(()=>window.__pauseCalls),1)
+  assert.equal(await page.evaluate(()=>window.__signOutCalls||0),0,'Wait for in-flight saves before dispatching guest deletion')
+  assert.equal(await page.evaluate(()=>window.__flushCalls||0),0,'Guest logout must not upload unsent progress being deleted')
+  await page.evaluate(()=>window.__finishPause())
+  await page.waitForFunction(()=>window.__signOutCalls===1)
+  await page.evaluate(()=>window.__finishGuestDelete(false))
+  const deleteRetry=page.getByRole('button',{name:'게스트 삭제 다시 시도',exact:true})
+  await deleteRetry.waitFor()
+  assert.equal(await page.locator('.app-shell').count(),0,'Failed deletion must never resume a tombstoned guest game')
+  await page.screenshot({path:path.join(output,'guest-delete-failure-desktop.png')})
+  await page.setViewportSize({width:844,height:390})
+  await deleteRetry.scrollIntoViewIfNeeded()
+  await deleteRetry.click()
+  await page.waitForFunction(()=>window.__pauseCalls===2)
+  await page.evaluate(()=>window.__finishPause())
+  await page.waitForFunction(()=>window.__signOutCalls===2)
+  await page.evaluate(()=>window.__finishGuestDelete(true))
+  await page.getByRole('heading',{name:'검증 로그인 화면',exact:true}).waitFor()
+  assert.equal(await page.locator('.app-shell').count(),0)
   assert.deepEqual(errors,[])
-  console.log('Account recovery UI passed: failed bootstrap blocks game mount, retry, retained local collection, pending-save logout guard, failed-save retry, successful logout, landscape recovery, exit without upload, provider logout failure and short-viewport scrolling.')
+  console.log('Account recovery UI passed: cloud recovery, Google save-before-logout unchanged, guest deletion quiesces and unmounts game, never uploads unsent progress, failed deletion remains blocked, desktop failure and landscape retry complete into login screen.')
 } catch(error) {
   await page?.screenshot({path:path.join(output,'failure.png')}).catch(()=>{})
   console.error('Browser errors:',errors)

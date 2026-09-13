@@ -42,11 +42,14 @@ export function useAccountGameData(user) {
   const [retryVersion, setRetryVersion] = useState(0)
   const timerRef = useRef(null)
   const savingRef = useRef(null)
+  const bootstrapRef = useRef(null)
+  const pausedRef = useRef(false)
   const bootstrapReadyRef = useRef(false)
   const pendingRef = useRef(false)
   const generationRef = useRef(0)
 
   const flush = useCallback(async () => {
+    if (pausedRef.current) return false
     if (!cloudEnabled) return true
     if (!userId || !bootstrapReadyRef.current || !hasActiveAccountSession(userId)) return false
     window.clearTimeout(timerRef.current)
@@ -57,7 +60,7 @@ export function useAccountGameData(user) {
 
     const generation = generationRef.current
     const ownerId = getActiveAccountSessionOwnerId(userId)
-    const isCurrent = () => generationRef.current === generation
+    const isCurrent = () => !pausedRef.current && generationRef.current === generation
       && getActiveAccountSessionOwnerId(userId) === ownerId
     const saving = (async () => {
       let latestRevision = ''
@@ -87,7 +90,7 @@ export function useAccountGameData(user) {
   }, [cloudEnabled, userId])
 
   const scheduleSave = useCallback(() => {
-    if (!cloudEnabled || !userId || !bootstrapReadyRef.current || !hasActiveAccountSession(userId)) return
+    if (pausedRef.current || !cloudEnabled || !userId || !bootstrapReadyRef.current || !hasActiveAccountSession(userId)) return
     try {
       markLocalPlayerDataDirty(userId)
     } catch {
@@ -101,6 +104,7 @@ export function useAccountGameData(user) {
   }, [cloudEnabled, flush, userId])
 
   useEffect(() => {
+    if (pausedRef.current) return undefined
     generationRef.current += 1
     window.clearTimeout(timerRef.current)
     pendingRef.current = false
@@ -135,7 +139,7 @@ export function useAccountGameData(user) {
 
     let active = true
     const ownerId = getActiveAccountSessionOwnerId(userId)
-    const isCurrent = () => active && ownerId && getActiveAccountSessionOwnerId(userId) === ownerId
+    const isCurrent = () => !pausedRef.current && active && ownerId && getActiveAccountSessionOwnerId(userId) === ownerId
     setReady(false)
 
     const bootstrap = async () => {
@@ -186,7 +190,11 @@ export function useAccountGameData(user) {
       }
     }
 
-    void bootstrap()
+    const bootstrapWork = bootstrap()
+    bootstrapRef.current = bootstrapWork
+    void bootstrapWork.finally(() => {
+      if (bootstrapRef.current === bootstrapWork) bootstrapRef.current = null
+    })
 
     return () => {
       active = false
@@ -197,7 +205,19 @@ export function useAccountGameData(user) {
     }
   }, [cloudEnabled, userId, retryVersion])
 
-  const retry = useCallback(() => setRetryVersion(value => value + 1), [])
+  const retry = useCallback(() => {
+    if (!pausedRef.current) setRetryVersion(value => value + 1)
+  }, [])
+
+  const pauseForGuestDeletion = useCallback(async () => {
+    // Discard unsent changes, wait for requests already dispatched, and prevent
+    // their responses from restoring local data while deletion is in progress.
+    pausedRef.current = true
+    generationRef.current += 1
+    pendingRef.current = false
+    window.clearTimeout(timerRef.current)
+    await Promise.allSettled([savingRef.current, bootstrapRef.current])
+  }, [])
 
   useEffect(() => {
     if (!cloudEnabled || ready || !syncError) return undefined
@@ -237,5 +257,6 @@ export function useAccountGameData(user) {
     retry,
     flush,
     scheduleSave,
+    pauseForGuestDeletion,
   }
 }

@@ -109,9 +109,20 @@ export async function acquireAccountSession(user, options = {}) {
   let heartbeatPromise = null
   let releasePromise = null
   let onlineSample = null
+  let deletingGuest = false
 
   const isActive = () => !ended && admitted && (user.isLocalGuest || now() < deadline)
-  const handle = { ownerId, isActive, release }
+  const handle = { ownerId, isActive, release, pauseForGuestDeletion }
+
+  async function pauseForGuestDeletion() {
+    if (user.isAnonymous !== true || !isActive()) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
+    deletingGuest = true
+    clearTimeoutImpl(heartbeatTimer)
+    await heartbeatPromise
+    clearTimeoutImpl(heartbeatTimer)
+    if (!isActive() || !version) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
+    return { ownerId, version }
+  }
 
   async function request(url, init, { keepalive = false } = {}) {
     const abortController = new AbortController()
@@ -199,7 +210,7 @@ export async function acquireAccountSession(user, options = {}) {
     clearTimeoutImpl(heartbeatTimer)
     clearTimeoutImpl(expiryTimer)
     expiryTimer = setTimeoutImpl(() => lose(ACCOUNT_SESSION_ERROR_CODES.lost), Math.max(0, deadline - now()))
-    heartbeatTimer = setTimeoutImpl(() => void heartbeat(), ACCOUNT_SESSION_HEARTBEAT_MS)
+    if (!deletingGuest) heartbeatTimer = setTimeoutImpl(() => void heartbeat(), ACCOUNT_SESSION_HEARTBEAT_MS)
   }
 
   async function writeLease(expectedVersion) {
@@ -243,7 +254,7 @@ export async function acquireAccountSession(user, options = {}) {
   }
 
   function heartbeat() {
-    if (ended || user.isLocalGuest) return Promise.resolve()
+    if (ended || deletingGuest || user.isLocalGuest) return Promise.resolve()
     if (heartbeatPromise) return heartbeatPromise
     if (now() >= deadline) {
       lose(ACCOUNT_SESSION_ERROR_CODES.lost)

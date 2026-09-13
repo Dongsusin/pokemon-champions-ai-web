@@ -1,5 +1,6 @@
 import { AccountError, ACCOUNT_PAYLOAD_MAX_BYTES, createAccountService } from './accountService.js'
 import { getProductionServices } from './productionServices.js'
+import { createRankedService } from './rankedService.js'
 
 export const ACCOUNT_HTTP_MAX_BYTES = ACCOUNT_PAYLOAD_MAX_BYTES + 8192
 const localHost = hostname => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)
@@ -80,9 +81,10 @@ export function createAccountHttpHandler({ service, authenticate, allowLocalOrig
 let productionHandler
 export async function handleProductionAccountRequest(request) {
   if (process.env.GAME_STORAGE_PROVIDER !== 'supabase') return unavailable()
-  if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, guestRegistry, authenticate }) => {
+  if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, rankedStore, guestRegistry, authenticate }) => {
     if (!accountStore) throw new Error('Account storage is unavailable')
-    return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry }), authenticate })
+    const ranked = createRankedService({ store: rankedStore, guestRegistry })
+    return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry, deleteGuestData: ranked.deleteGuestAccount }), authenticate })
   }).catch(error => {
     // Restrict diagnostics to known labels; never log SDK messages or secrets.
     console.error('Account server initialization failed', {

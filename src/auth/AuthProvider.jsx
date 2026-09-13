@@ -32,8 +32,13 @@ import {
   clearPendingGoogleMigration,
   markPendingGoogleMigration,
   readPlayerSyncState,
+  clearGuestPlayerData,
+  readGuestDeletion,
+  writeGuestDeletion,
+  clearGuestDeletion,
+  clearCompletedGuestDeletions,
 } from './accountStorage'
-import { resolveGuestIdentity } from './guestIdentityClient'
+import { resolveGuestIdentity, deleteGuestAccount } from './guestIdentityClient'
 import { deletePlayerProfile, ensurePlayerProfile } from './playerProfile'
 import { acquireAccountSession, ACCOUNT_SESSION_ERROR_CODES } from './accountSession'
 
@@ -172,6 +177,8 @@ export function AuthProvider({ children }) {
   const cleanupRef = useRef(Promise.resolve())
   const mountedRef = useRef(false)
   const manualAuthRef = useRef(false)
+  const logoutPendingRef = useRef(false)
+  const deletedGuestAuthRef = useRef(null)
 
   const setCurrentUser = useCallback((nextUser) => {
     userRef.current = nextUser
@@ -189,6 +196,44 @@ export function AuthProvider({ children }) {
     cleanupRef.current = Promise.all([cleanupRef.current, session?.handle.release(), pending])
     await cleanupRef.current
   }, [setCurrentUser])
+
+  const finishGuestDeletion = useCallback(async (firebaseUser, { release = true, uid = firebaseUser?.uid } = {}) => {
+    const pendingRecord = uid ? readGuestDeletion(uid) : null
+    const authDeleted = !firebaseAuth?.currentUser && (deletedGuestAuthRef.current === uid || pendingRecord?.authDeleted === true)
+    if (!uid || (!authDeleted && (!firebaseUser?.isAnonymous || firebaseAuth?.currentUser?.uid !== uid || !firebaseAuth.currentUser.isAnonymous))) {
+      throw new Error('삭제할 게스트 인증이 변경되었습니다.')
+    }
+    let pending = pendingRecord
+    if (!pending) {
+      const lease = await sessionRef.current?.handle.pauseForGuestDeletion()
+      if (!lease) throw new Error('게스트 삭제에 필요한 접속 상태가 없습니다.')
+      pending = { lease, serverDeleted: false }
+      // Persist before dispatch: a lost response must retry deletion, never
+      // acquire a new guest profile or upload its former save on next startup.
+      writeGuestDeletion(uid, pending)
+    }
+    if (!pending.serverDeleted) {
+      await deleteGuestAccount(firebaseUser, pending.lease, {
+        isCurrent: () => firebaseAuth?.currentUser?.uid === firebaseUser.uid && firebaseAuth.currentUser.isAnonymous,
+      })
+      pending = { ...pending, serverDeleted: true }
+      writeGuestDeletion(uid, pending)
+    }
+    // Keep Firebase credentials until server deletion and local cleanup are
+    // confirmed. Failed identity deletion can then retry without losing access.
+    clearGuestPlayerData(uid)
+    if (!authDeleted) {
+      await deleteUser(firebaseUser)
+      deletedGuestAuthRef.current = uid
+      writeGuestDeletion(uid, { ...pending, authDeleted: true })
+    }
+    clearGuestDeletion(uid)
+    deletedGuestAuthRef.current = null
+    candidateRef.current = null
+    // Startup recovery runs inside admission itself and has no active handle;
+    // waiting for releaseSession there would await this same admission promise.
+    if (release) await releaseSession()
+  }, [releaseSession])
 
   const activateUser = useCallback((nextUser) => {
     if (!nextUser) return Promise.resolve(false)
@@ -220,6 +265,13 @@ export function AuthProvider({ children }) {
       try {
         await Promise.all([cleanupRef.current, previousSession?.handle.release(), previousAdmission])
         if (!isCurrent()) return false
+        if (nextUser.isAnonymous && readGuestDeletion(nextUser.uid)) {
+          manualAuthRef.current = true
+          try { await finishGuestDeletion(nextUser, { release: false }) }
+          finally { manualAuthRef.current = false }
+          if (mountedRef.current) { setBusy(false); setReady(true) }
+          return false
+        }
         handle = await acquireAccountSession(nextUser, {
           projectId: firebaseAuth?.app?.options.projectId,
           onLost: (sessionError) => {
@@ -282,7 +334,9 @@ export function AuthProvider({ children }) {
         await handle?.release()
         if (isCurrent()) {
           sessionRef.current = null
-          setError(authErrorMessage(sessionError))
+          setError(nextUser.isAnonymous && readGuestDeletion(nextUser.uid)
+            ? '게스트 정보 삭제를 완료하지 못했습니다. 연결을 확인한 뒤 게스트로 시작을 눌러 삭제를 다시 시도해주세요.'
+            : authErrorMessage(sessionError))
         }
         return false
       } finally {
@@ -295,12 +349,19 @@ export function AuthProvider({ children }) {
     })()
     admissionRef.current = { uid: nextUser.uid, promise }
     return promise
-  }, [setCurrentUser])
+  }, [setCurrentUser, finishGuestDeletion])
 
   useEffect(() => {
     mountedRef.current = true
     const restore = async (firebaseUser) => {
       if (!mountedRef.current || manualAuthRef.current) return
+      try { clearCompletedGuestDeletions() }
+      catch {
+        setError('게스트 정보 삭제의 마지막 정리를 완료하지 못했습니다. 브라우저 저장 공간을 확인한 뒤 다시 시도해주세요.')
+        setBusy(false)
+        setReady(true)
+        return
+      }
       let nextUser = firebaseUser ?? (candidateRef.current?.isLocalGuest ? candidateRef.current : null)
       if (nextUser?.isLocalGuest && firebaseAuth) {
         // Upgrade legacy guest saves once, using persisted Firebase credentials
@@ -386,7 +447,12 @@ export function AuthProvider({ children }) {
     setError('')
     manualAuthRef.current = true
     try {
+      clearCompletedGuestDeletions()
       let firebaseUser = firebaseAuth.currentUser
+      if (firebaseUser?.isAnonymous && readGuestDeletion(firebaseUser.uid)) {
+        await finishGuestDeletion(firebaseUser)
+        firebaseUser = null
+      }
       if (!firebaseUser || firebaseUser.isAnonymous || userRef.current?.isLocalGuest) {
         const provider = new GoogleAuthProvider()
         provider.setCustomParameters({ prompt: 'select_account' })
@@ -400,7 +466,7 @@ export function AuthProvider({ children }) {
       manualAuthRef.current = false
       setBusy(false)
     }
-  }, [activateUser])
+  }, [activateUser, finishGuestDeletion])
 
   const connectGuestToGoogle = useCallback(async () => {
     const currentGuest = userRef.current
@@ -468,6 +534,7 @@ export function AuthProvider({ children }) {
     setError('')
     manualAuthRef.current = true
     try {
+      clearCompletedGuestDeletions()
       if (firebaseAuth) {
         // Reuse persisted anonymous credentials; a fresh UID must never bypass
         // the current guest's single-window session lock.
@@ -491,33 +558,45 @@ export function AuthProvider({ children }) {
   }, [activateUser])
 
   const signOut = useCallback(async () => {
+    if (logoutPendingRef.current) return false
+    logoutPendingRef.current = true
+    const currentUser = userRef.current
     setBusy(true)
     setError('')
     manualAuthRef.current = true
     try {
-      const currentUser = userRef.current
-      candidateRef.current = null
       if (currentUser?.isLocalGuest) {
-        clearLocalGuest()
+        clearGuestPlayerData(currentUser.uid)
+      } else if (currentUser?.isAnonymous) {
+        await finishGuestDeletion(firebaseAuth?.currentUser, { uid: currentUser.uid })
+        setProfileSyncError('')
+        return true
       } else if (firebaseAuth && currentUser) {
         await firebaseSignOut(firebaseAuth)
       }
       // Clear shared credentials before freeing the lock, so a newly admitted tab
       // cannot be signed out by this window's delayed signOut operation.
+      candidateRef.current = null
       await releaseSession()
       setProfileSyncError('')
+      return true
     } catch (authError) {
-      setError(authErrorMessage(authError))
+      setError(currentUser?.isAnonymous || currentUser?.isLocalGuest
+        ? '게스트 로그아웃과 정보 삭제를 완료하지 못했습니다. 연결을 확인한 뒤 다시 시도해주세요. 삭제가 완료될 때까지 게임은 중단됩니다.'
+        : authErrorMessage(authError))
+      return false
     } finally {
+      logoutPendingRef.current = false
       manualAuthRef.current = false
       setBusy(false)
       setReady(true)
     }
-  }, [releaseSession])
+  }, [releaseSession, finishGuestDeletion])
 
   const deleteAccount = useCallback(async () => {
     const currentUser = userRef.current
     if (!currentUser) return false
+    if (currentUser.isAnonymous || currentUser.isLocalGuest) return signOut()
 
     setBusy(true)
     setError('')
@@ -562,7 +641,7 @@ export function AuthProvider({ children }) {
       setBusy(false)
       setReady(true)
     }
-  }, [releaseSession, setCurrentUser])
+  }, [releaseSession, setCurrentUser, signOut])
 
   const value = useMemo(() => ({
     user,

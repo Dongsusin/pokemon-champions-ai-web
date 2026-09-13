@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
 
@@ -12,6 +12,7 @@ const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.t
 const validOwner = value => validId(value) && value.length >= 16
 const validVersion = value => typeof value === 'string' && /^[a-zA-Z0-9_:-]{8,128}$/.test(value)
 const plain = value => value && typeof value === 'object' && !Array.isArray(value)
+const guestDeletionKey = uid => createHash('sha256').update(`guest-delete:${uid}`).digest('hex')
 export class AccountError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status }
 }
@@ -29,7 +30,7 @@ export function validateAccountPayload(payload) {
   return clone(payload)
 }
 
-export function createAccountService({ store, guestRegistry, now = Date.now, newVersion = randomUUID }) {
+export function createAccountService({ store, guestRegistry, deleteGuestData, now = Date.now, newVersion = randomUUID }) {
   let onlineSample = null, pendingCount = null, lastCountAttemptAt = null
   const usableSample = timestamp => Number.isSafeInteger(timestamp) && onlineSample && timestamp >= onlineSample.sampledAt
     && timestamp - onlineSample.sampledAt < ONLINE_PLAYERS_STALE_MS
@@ -68,7 +69,7 @@ export function createAccountService({ store, guestRegistry, now = Date.now, new
       if (!identity || !validId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
       if (!plain(command) || !validOwner(command.ownerId)) fail('INVALID_SESSION_OWNER', '이 창의 세션 식별자가 올바르지 않습니다.')
       const { action, ownerId } = command
-      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'deleteGameData', 'deleteProfile'].includes(action)) {
+      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
         fail('UNKNOWN_ACTION', '지원하지 않는 계정 요청입니다.')
       }
       if (action === 'sessionHeartbeat' || action === 'sessionRelease') {
@@ -76,6 +77,32 @@ export function createAccountService({ store, guestRegistry, now = Date.now, new
       }
       if (action === 'save' && !validVersion(command.revision)) fail('INVALID_SAVE_REVISION', '저장 버전이 올바르지 않습니다.')
       if (action === 'save' && (!Number.isSafeInteger(command.saveSequence) || command.saveSequence < 1)) fail('INVALID_SAVE_SEQUENCE', '저장 순서가 올바르지 않습니다.')
+      if (action === 'deleteGuestAccount') {
+        if (identity.isGuest !== true) fail('GUEST_ONLY', '게스트 계정만 이 방식으로 삭제할 수 있습니다.', 403)
+        if (typeof deleteGuestData !== 'function') fail('GUEST_DELETE_UNAVAILABLE', '게스트 삭제 서버를 준비하지 못했습니다. 다시 시도해주세요.', 503)
+        const key = guestDeletionKey(identity.uid)
+        const alreadyDeleted = await store.transaction(async tx => {
+          const marker = await tx.get('guestDeletions', key)
+          if (marker) return marker.status === 'deleted'
+          const session = await requireActive(tx, identity.uid, ownerId)
+          if (!validVersion(command.version) || session.version !== command.version) {
+            fail('account-session/lost', '로그인 세션 상태가 바뀌었습니다. 최신 세션에서 다시 시도해주세요.', 409)
+          }
+          tx.set('guestDeletions', key, { status: 'deleting', deletedAt: now() })
+          return false
+        })
+        if (!alreadyDeleted) {
+          // The fence survives a failure between the two storage namespaces.
+          // Retrying the same authenticated UID resumes cleanup without a lease.
+          await deleteGuestData(identity)
+          await store.transaction(async tx => {
+            await tx.get('guestDeletions', key)
+            for (const collection of ['gameData', 'profiles', 'sessions']) tx.delete(collection, identity.uid)
+            tx.set('guestDeletions', key, { status: 'deleted', deletedAt: now() })
+          })
+        }
+        return { deleted: true, uid: identity.uid }
+      }
       const payload = action === 'save' ? validateAccountPayload(command.payload) : null
       let metadata
       if (action === 'ensureProfile') {
@@ -97,6 +124,9 @@ export function createAccountService({ store, guestRegistry, now = Date.now, new
       const result = await store.transaction(async tx => {
         const uid = identity.uid
         const timestamp = now()
+        if (identity.isGuest === true && await tx.get('guestDeletions', guestDeletionKey(uid))) {
+          fail('GUEST_ACCOUNT_DELETED', '삭제가 진행된 게스트입니다. 로그아웃을 다시 시도해주세요.', 410)
+        }
         if (action === 'sessionAcquire') {
           const previous = await tx.get('sessions', uid)
           if (previous && previous.expiresAt > timestamp) {
@@ -125,14 +155,16 @@ export function createAccountService({ store, guestRegistry, now = Date.now, new
           return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null }
         }
         if (action === 'save') {
-          const previous = await tx.get('gameData', uid)
+          const previous = typeof tx.compareGameData === 'function'
+            ? await tx.compareGameData(uid, payload)
+            : await tx.get('gameData', uid).then(saved => saved ? { revision: saved.revision, payloadMatches: isDeepStrictEqual(saved.payload, payload) } : null)
           const lastSequence = Number.isSafeInteger(session.lastSaveSequence) ? session.lastSaveSequence : 0
-          const sameSave = previous?.revision === command.revision && isDeepStrictEqual(previous.payload, payload)
+          const sameSave = previous?.revision === command.revision && previous.payloadMatches
           if (command.saveSequence < lastSequence || (command.saveSequence === lastSequence && !sameSave)) {
             fail('STALE_SAVE', '더 최신 게임 데이터가 이미 저장됐습니다.', 409)
           }
           if (previous?.revision === command.revision) {
-            if (!isDeepStrictEqual(previous.payload, payload)) fail('SAVE_REVISION_REUSED', '이미 사용된 저장 버전입니다.', 409)
+            if (!previous.payloadMatches) fail('SAVE_REVISION_REUSED', '이미 사용된 저장 버전입니다.', 409)
             if (command.saveSequence > lastSequence) tx.set('sessions', uid, { ...session, lastSaveSequence: command.saveSequence })
             return { revision: command.revision }
           }

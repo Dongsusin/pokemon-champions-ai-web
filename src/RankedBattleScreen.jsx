@@ -11,6 +11,7 @@ import { maskRankedMatch } from './data/rankedPrivacy'
 import { getSpeciesProfile } from './data/trainingData'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
+import { startRankedPolling } from './rankedPolling'
 import './ranked.css'
 
 const EMPTY = { profile: null, queue: null, match: null }
@@ -176,7 +177,7 @@ export default function RankedBattleScreen({
     setVpSync({ uid: null, appliedTotal: -1, pending: false, error: '' })
     if (!isRankedEnabled || !canAuthenticate) return
     const controller = new AbortController()
-    let timer, running = false, active = true
+    let active = true
     snapshotRef.current = EMPTY
     setSnapshot(EMPTY)
     setConnected(false)
@@ -184,26 +185,21 @@ export default function RankedBattleScreen({
     setRefreshError('')
     setFixtures([])
     const refresh = async () => {
-      if (running || !active) return
-      running = true
+      if (!active) return false
       const generation = generationRef.current
       try {
         const known = snapshotRef.current.match
         const value = await client.status(known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}, { signal: controller.signal })
         if (active) receiveVpRewards(value.vpRewards)
         if (active && generation === generationRef.current) accept(value)
+        return active && generation === generationRef.current
       } catch (failure) {
         if (active && failure.name !== 'AbortError' && generation === generationRef.current) { setConnected(false); setRefreshError(failure.message) }
-      } finally {
-        running = false
-        if (active) timer = setTimeout(refresh, 1500)
+        return false
       }
     }
-    refreshRef.current = () => { clearTimeout(timer); void refresh() }
-    const reconnect = () => { if (!document.hidden) refreshRef.current?.() }
-    window.addEventListener('online', reconnect)
-    document.addEventListener('visibilitychange', reconnect)
-    void refresh()
+    const polling = startRankedPolling({ refresh, getSnapshot: () => snapshotRef.current, visibleInterval: () => 1500 })
+    refreshRef.current = polling.refresh
     if (isRankedLocalTest) client.request('fixtures', {}, { signal: controller.signal }).then(value => {
       if (active) { setFixtures(value.teams ?? []); setFixtureTeamId(value.teams?.[0]?.id ?? null) }
     }).catch(failure => { if (active && failure.name !== 'AbortError') setError(failure.message) })
@@ -211,10 +207,8 @@ export default function RankedBattleScreen({
       active = false
       generationRef.current += 1
       controller.abort()
-      clearTimeout(timer)
+      polling.stop()
       refreshRef.current = null
-      window.removeEventListener('online', reconnect)
-      document.removeEventListener('visibilitychange', reconnect)
     }
   }, [client, canAuthenticate, accept, receiveVpRewards])
 
@@ -247,7 +241,15 @@ export default function RankedBattleScreen({
         refreshRef.current?.()
       }
       throw failure
-    } finally { operationRef.current = false; if (mountedRef.current) setBusy(false) }
+    } finally {
+      operationRef.current = false
+      if (mountedRef.current) {
+        setBusy(false)
+        // A join can complete after the user hides the idle lobby. Wake its
+        // queue heartbeat even though the idle polling timer was paused.
+        if (document.hidden) refreshRef.current?.()
+      }
+    }
   }
   const fire = async (action, payload) => { try { await mutate(action, payload) } catch { /* Visible error belongs to the request panel. */ } }
   const savedTeamOptions = useMemo(() => normalizeSavedTeamState({ teams, activeTeamId }, boxPokemon.map(pokemon => pokemon.captureId)).teams,

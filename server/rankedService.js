@@ -7,6 +7,7 @@ import { readFactoryLeaderboard, reportFactoryRun, validateFactoryRankingReport 
 import { readRankedLeaderboard } from './rankedLeaderboardService.js'
 import { createGuestIdentityRegistry } from './guestIdentity.js'
 import { createBattleRoomService, validateRoomPassword } from './battleRoomService.js'
+import { eraseGuestRankedData } from './guestAccountCleanup.js'
 
 const QUEUE_LEASE = 30_000
 const QUEUE_HEARTBEAT = 10_000
@@ -380,13 +381,19 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       const profile = await guestIdentities.read(identity)
       identity.name = profile.displayName
     }
-    if (action === 'factoryLeaderboard') return store.transaction(tx => readFactoryLeaderboard(tx, identity.uid))
-    if (action === 'rankedLeaderboard') return store.transaction(tx => readRankedLeaderboard(tx, identity.uid, now()))
+    const transaction = work => store.transaction(async tx => {
+      // Recheck within the write transaction. A request already in flight when
+      // logout starts must not recreate data after the deletion transaction.
+      if (identity.isGuest) await guestIdentities.read(identity, tx)
+      return work(tx)
+    })
+    if (action === 'factoryLeaderboard') return transaction(tx => readFactoryLeaderboard(tx, identity.uid))
+    if (action === 'rankedLeaderboard') return transaction(tx => readRankedLeaderboard(tx, identity.uid, now()))
     if (action === 'reportFactoryRun') {
       const report = validateFactoryRankingReport(payload.report)
       const recordedAt = now()
       const entryId = newId()
-      return store.transaction(tx => reportFactoryRun(tx, identity, report, recordedAt, entryId))
+      return transaction(tx => reportFactoryRun(tx, identity, report, recordedAt, entryId))
     }
     if (action === 'fixtures') {
       if (!fixtures) fail('NOT_FOUND', '테스트 팀은 로컬 테스트에서만 제공됩니다.', 404)
@@ -394,11 +401,11 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     }
     if (action === 'usage' || action === 'reportAiUsage') {
       if (usageEnabled !== true) fail('USAGE_DISABLED', '포켓몬 사용률 집계는 아직 운영 서버에서 활성화되지 않았습니다.', 503)
-      if (action === 'usage') return store.transaction(readPokemonUsage)
+      if (action === 'usage') return transaction(readPokemonUsage)
       assertRequest(payload)
       const report = validateAiPokemonUsage(payload)
       const reportedAt = now()
-      return store.transaction(tx => reportAiPokemonUsage(tx, identity.uid, report, reportedAt))
+      return transaction(tx => reportAiPokemonUsage(tx, identity.uid, report, reportedAt))
     }
     const timestamp = now()
     const id = newId()
@@ -418,7 +425,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (['roomJoin', 'roomStart', 'roomLeave'].includes(action) && !isId(payload.roomId)) fail('INVALID_ROOM', '방 식별자가 올바르지 않습니다.')
     if (action === 'roomJoin') {
       validateRoomPassword(payload.password, fail)
-      const targetRoom = await store.transaction(tx => tx.get('battleRooms', payload.roomId))
+      const targetRoom = await transaction(tx => tx.get('battleRooms', payload.roomId))
       if (!targetRoom) fail('ROOM_NOT_FOUND', '방이 종료되었거나 삭제되었습니다.', 404)
       team = engine.canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: targetRoom.format, requireRegisteredTeam: true })
     }
@@ -427,7 +434,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       team = engine.canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: payload.format, requireRegisteredTeam: true })
     }
     const requestHash = digest(payload)
-    const response = await store.transaction(async tx => {
+    const response = await transaction(async tx => {
       const existingPlayer = await tx.get('players', identity.uid)
       if (!['status', 'rooms'].includes(action) && (action.startsWith('room') || existingPlayer?.activeRoomId)) await rooms.cleanup(tx, timestamp, existingPlayer?.activeRoomId)
       if (action === 'status' || action === 'rooms') {
@@ -547,5 +554,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (response?.roomError) fail(response.roomError.code, response.roomError.message, response.roomError.status)
     return response
   }
-  return { execute }
+  return { execute, deleteGuestAccount: identity => eraseGuestRankedData({
+    store, guestRegistry: guestIdentities, rooms, settlement, lobbyLock, now,
+  }, identity) }
 }

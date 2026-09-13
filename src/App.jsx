@@ -1426,6 +1426,8 @@ function App() {
 function AccountGameApp({ user, accountError, ...props }) {
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState('')
+  const [guestDeletionStarted, setGuestDeletionStarted] = useState(false)
+  const isGuest = Boolean(user.isAnonymous || user.isLocalGuest)
   const signOutPending = useRef(false)
   const {
     ready: gameDataReady,
@@ -1433,6 +1435,7 @@ function AccountGameApp({ user, accountError, ...props }) {
     flush,
     scheduleSave,
     retry,
+    pauseForGuestDeletion,
   } = useAccountGameData(user)
 
   const leaveAccount = async (saveFirst) => {
@@ -1441,13 +1444,25 @@ function AccountGameApp({ user, accountError, ...props }) {
     setSigningOut(true)
     setSignOutError('')
     try {
-      if (!saveFirst || await flush()) await props.onSignOut?.()
+      if (isGuest) {
+        setGuestDeletionStarted(true)
+        await pauseForGuestDeletion()
+        if (await props.onSignOut?.() === false) {
+          setSignOutError('게스트 정보 삭제를 완료하지 못했습니다. 연결을 확인한 뒤 다시 시도해주세요.')
+        }
+      } else if (!saveFirst || await flush()) await props.onSignOut?.()
     } catch {
       setSignOutError('로그아웃하지 못했습니다. 다시 시도해 주세요.')
     } finally {
       signOutPending.current = false
       setSigningOut(false)
     }
+  }
+
+  if (guestDeletionStarted) {
+    if (signingOut || props.authBusy) return <AuthLoadingScreen />
+    return <AccountDataErrorScreen message={signOutError || accountError || '게스트 정보 삭제를 다시 시도해주세요.'}
+      deletingGuest busy={false} onRetry={() => leaveAccount(false)} onSignOut={() => leaveAccount(false)} />
   }
 
   if (!gameDataReady && syncError) {
@@ -1466,6 +1481,7 @@ function AccountGameApp({ user, accountError, ...props }) {
       onPlayerDataChanged={scheduleSave}
       onSyncBeforeRanked={flush}
       onSignOut={() => leaveAccount(true)}
+      onDeleteAccount={isGuest ? () => leaveAccount(false) : props.onDeleteAccount}
     />
   )
 }

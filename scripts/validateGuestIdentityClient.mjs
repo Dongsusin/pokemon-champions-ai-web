@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { resolveGuestIdentity } from '../src/auth/guestIdentityClient.js'
+import { resolveGuestIdentity, deleteGuestAccount } from '../src/auth/guestIdentityClient.js'
 
 const requests = []
 let tokenVersion = 0
@@ -44,3 +44,19 @@ await assert.rejects(resolveGuestIdentity(firebaseUser, { ...options, fetchImpl:
   ok: false, status: 503, json: async () => ({ error: { code: 'SERVICE_UNAVAILABLE', message: 'retry later' } }),
 }) }), error => error.code === 'SERVICE_UNAVAILABLE')
 console.log('PASS failed guest registration stays failed without local random nickname fallback')
+
+const lease = { ownerId: 'current-owner', version: 'latest-version' }
+response = { deleted: true, uid: firebaseUser.uid }
+await deleteGuestAccount(firebaseUser, lease, { ...options, apiUrl: 'http://127.0.0.1:9876/api/account' })
+assert.deepEqual(JSON.parse(requests.at(-1).body), { action: 'deleteGuestAccount', ...lease })
+assert.equal(requests.at(-1).headers.Authorization, `Bearer fresh-token-${tokenVersion}`)
+assert.equal(requests.at(-1).credentials, 'omit')
+assert.equal(requests.at(-1).cache, 'no-store')
+const before = requests.length
+await assert.rejects(deleteGuestAccount({ ...firebaseUser, isAnonymous: false }, lease, options), { code: 'guest/invalid-user' })
+await assert.rejects(deleteGuestAccount(firebaseUser, {}, options), { code: 'guest/invalid-user' })
+await assert.rejects(deleteGuestAccount(firebaseUser, lease, { ...options, isCurrent: () => false }), { code: 'account/identity-changed' })
+assert.equal(requests.length, before)
+response = { deleted: true, uid: 'other-account' }
+await assert.rejects(deleteGuestAccount(firebaseUser, lease, options), { code: 'guest/invalid-deletion' })
+console.log('PASS guest deletion binds fresh token, current lease and confirmed UID; Google/stale/invalid replies cannot delete identity')

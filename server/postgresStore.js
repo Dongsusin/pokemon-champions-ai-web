@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { attachDatabasePool } from '@vercel/functions'
+import { isDeepStrictEqual } from 'node:util'
 
 const TABLE = 'champions.documents'
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
@@ -92,7 +93,7 @@ export function createPostgresStore({
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const client = await pool.connect()
       let began = false, discard = false, retry = false, available = true
-      const reads = new Map(), writes = new Map()
+      const reads = new Map(), writes = new Map(), lists = new Map()
       const assertActive = () => { if (!available) throw new Error('Document transaction has ended') }
       const view = {
         async get(collection, key) {
@@ -107,14 +108,101 @@ export function createPostgresStore({
         },
         async list(collection) {
           assertActive(); checkAddress(collection, 'list')
-          const result = await client.query(`SELECT key, payload FROM ${TABLE} WHERE namespace = $1 AND collection = $2 ORDER BY key`, [namespace, collection])
-          const rows = new Map(result.rows.map(row => [row.key, row.payload]))
+          // SERIALIZABLE reads share a snapshot. Reuse it within this callback,
+          // then overlay buffered changes so room cleanup/context see each other.
+          if (!lists.has(collection)) lists.set(collection, client.query(
+            `SELECT key, payload FROM ${TABLE} WHERE namespace = $1 AND collection = $2 ORDER BY key`, [namespace, collection],
+          ).then(result => result.rows))
+          const rows = new Map((await lists.get(collection)).map(row => [row.key, row.payload]))
           for (const change of writes.values()) {
             if (change.collection !== collection) continue
             if (change.deleted) rows.delete(change.key)
             else rows.set(change.key, change.value)
           }
           return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
+        },
+        async compareGameData(key, expectedPayload) {
+          assertActive(); checkAddress('gameData', key)
+          const pending = writes.get(`gameData/${key}`)
+          if (pending) return pending.deleted ? null : {
+            revision: pending.value.revision,
+            payloadMatches: isDeepStrictEqual(pending.value.payload, expectedPayload),
+          }
+          // Saving needs revision/idempotency checks, not another download of
+          // the entire box. Equality stays in PostgreSQL; only two fields leave.
+          const result = await client.query(`SELECT payload->>'revision' AS revision,
+            payload->'payload' = $4::jsonb AS payload_matches
+            FROM ${TABLE} WHERE namespace = $1 AND collection = $2 AND key = $3`,
+          [namespace, 'gameData', key, jsonDocument(expectedPayload, maxDocumentBytes).encoded])
+          const row = result.rows[0]
+          return row ? { revision: row.revision, payloadMatches: row.payload_matches === true } : null
+        },
+        async listGuestMatches(uid) {
+          assertActive(); checkAddress('matches', uid)
+          const result = await client.query(`SELECT key,
+            (payload - 'state' - 'selections' - 'pendingActions' - 'requests' - 'players')
+            || jsonb_build_object('players', COALESCE((
+              SELECT jsonb_agg(p.value - 'team' || jsonb_build_object('team', '[]'::jsonb) ORDER BY p.ordinality)
+              FROM jsonb_array_elements(payload->'players') WITH ORDINALITY p(value, ordinality)
+            ), '[]'::jsonb), 'hadBattleState', payload->'state' IS NOT NULL AND payload->'state' <> 'null'::jsonb) AS match
+            FROM ${TABLE} WHERE namespace = $1 AND collection = $2
+              AND payload->'players' @> jsonb_build_array(jsonb_build_object('uid', $3::text))
+            ORDER BY key`, [namespace, 'matches', uid])
+          const rows = new Map(result.rows.map(row => [row.key, row.match]))
+          for (const change of writes.values()) {
+            if (change.collection !== 'matches') continue
+            if (change.deleted || !change.value.players?.some(player => player.uid === uid)) rows.delete(change.key)
+            else {
+              const { state, selections, pendingActions, requests, players, ...metadata } = change.value
+              rows.set(change.key, { ...metadata, players: players.map(({ team, ...player }) => ({ ...player, team: [] })), hadBattleState: Boolean(state) })
+            }
+          }
+          return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
+        },
+        async listGuestRelatedPlayers(uid) {
+          assertActive(); checkAddress('players', uid)
+          const result = await client.query(`SELECT key, payload FROM ${TABLE}
+            WHERE namespace = $1 AND collection = $2
+              AND payload->'roomResult'->'standings' @> jsonb_build_array(jsonb_build_object('uid', $3::text))
+            ORDER BY key`, [namespace, 'players', uid])
+          const rows = new Map(result.rows.map(row => [row.key, row.payload]))
+          for (const change of writes.values()) {
+            if (change.collection !== 'players') continue
+            if (change.deleted || !change.value.roomResult?.standings?.some(player => player.uid === uid)) rows.delete(change.key)
+            else rows.set(change.key, change.value)
+          }
+          return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
+        },
+        async deleteGuestUsageEvents(owner) {
+          assertActive(); checkAddress('pokemonUsageEvents', owner)
+          const result = await client.query(`SELECT key FROM ${TABLE}
+            WHERE namespace = $1 AND collection = $2 AND payload->>'owner' = $3`, [namespace, 'pokemonUsageEvents', owner])
+          const keys = new Set(result.rows.map(row => row.key))
+          for (const change of writes.values()) {
+            if (change.collection !== 'pokemonUsageEvents') continue
+            if (change.deleted || change.value.owner !== owner) keys.delete(change.key)
+            else keys.add(change.key)
+          }
+          for (const key of keys) view.delete('pokemonUsageEvents', key)
+          return keys.size
+        },
+        async listFactoryBestCandidates(excludeOwner) {
+          assertActive(); checkAddress('factoryPersonalBest', excludeOwner)
+          const changes = [...writes.values()].filter(change => change.collection === 'factoryPersonalBest')
+          // Refill a deleted ranking entry without downloading every player's
+          // rental party. Exclude pending rows before LIMIT, then merge writes.
+          const result = await client.query(`SELECT key, payload FROM ${TABLE}
+            WHERE namespace = $1 AND collection = $2 AND key <> $3
+              AND payload->>'owner' IS DISTINCT FROM $3 AND NOT (key = ANY($4::text[]))
+            ORDER BY (payload->>'floor')::integer DESC, (payload->>'recordedAt')::bigint ASC, key ASC LIMIT 10`,
+          [namespace, 'factoryPersonalBest', excludeOwner, changes.map(change => change.key)])
+          const rows = new Map(result.rows.map(row => [row.key, row.payload]))
+          for (const change of changes) {
+            if (!change.deleted && change.key !== excludeOwner && change.value.owner !== excludeOwner) rows.set(change.key, change.value)
+          }
+          return [...rows].sort(([a, first], [b, second]) => second.floor - first.floor
+            || first.recordedAt - second.recordedAt || a.localeCompare(b)).slice(0, 10)
+            .map(([id, value]) => ({ id, ...clone(value) }))
         },
         async listRankedProfiles() {
           assertActive()

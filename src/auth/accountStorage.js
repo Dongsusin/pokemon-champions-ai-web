@@ -16,6 +16,7 @@ export const PLAYER_STORAGE_KEYS = [
 export const PLAYER_SYNC_STORAGE_KEY = 'champions-cloud-sync-v1'
 export const PENDING_GOOGLE_MIGRATION_STORAGE_KEY = 'champions-google-migration-v1'
 export const GUEST_MIGRATION_BACKUP_PREFIX = 'champions-guest-migration-backup-v1-'
+export const GUEST_DELETION_PREFIX = 'champions-guest-deletion-v1-'
 
 function readJsonStorage(key) {
   if (typeof window === 'undefined') return null
@@ -200,5 +201,75 @@ export function clearLocalPlayerData() {
         storage.removeItem(key)
       } catch {}
     }
+  }
+}
+
+// A failed deletion must resume the same operation after a reload, instead of
+// admitting the retired guest again. This contains no authentication token.
+export function readGuestDeletion(uid) {
+  const value = readJsonStorage(`${GUEST_DELETION_PREFIX}${encodeURIComponent(uid)}`)
+  return value?.version === 1 && value.uid === uid && value.lease
+    && typeof value.lease.ownerId === 'string' && typeof value.lease.version === 'string'
+    ? value : null
+}
+
+export function writeGuestDeletion(uid, record) {
+  writeJsonStorage(`${GUEST_DELETION_PREFIX}${encodeURIComponent(uid)}`, { ...record, version: 1, uid })
+}
+
+export function clearGuestDeletion(uid) {
+  window.localStorage.removeItem(`${GUEST_DELETION_PREFIX}${encodeURIComponent(uid)}`)
+}
+
+export function clearCompletedGuestDeletions() {
+  if (typeof window === 'undefined') return
+  const storage = window.localStorage
+  const completed = []
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index)
+    if (!key?.startsWith(GUEST_DELETION_PREFIX)) continue
+    let record
+    const raw = storage.getItem(key)
+    try { record = JSON.parse(raw) } catch { continue }
+    if (record?.version === 1 && record.serverDeleted === true && record.authDeleted === true
+      && key === `${GUEST_DELETION_PREFIX}${encodeURIComponent(record.uid)}`) completed.push(record.uid)
+  }
+  for (const uid of completed) {
+    clearGuestPlayerData(uid)
+    clearGuestDeletion(uid)
+  }
+}
+
+export function clearGuestPlayerData(uid) {
+  if (!uid || typeof window === 'undefined') return
+  const encoded = encodeURIComponent(uid)
+  const json = (storage, key) => {
+    const raw = storage.getItem(key) // Storage access failures must block completion.
+    try { return JSON.parse(raw) } catch { return null }
+  }
+  const owner = json(window.localStorage, PLAYER_SYNC_STORAGE_KEY)?.ownerUid
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    // Shared save keys belong to the admitted owner, never every account that
+    // previously used this browser. Delete the ownership marker last for retry.
+    if (owner === uid) for (const key of PLAYER_STORAGE_KEYS) storage.removeItem(key)
+    storage.removeItem(`${GUEST_MIGRATION_BACKUP_PREFIX}${encoded}`)
+    for (const scope of ['global', 'guest', 'test']) storage.removeItem(`champions-factory-outbox-v1-${scope}:${encoded}`)
+    for (const suffix of ['', '-live', '-local', '-demo']) storage.removeItem(`champions-usage-outbox-v1${suffix}:${uid}`)
+    const migration = json(storage, PENDING_GOOGLE_MIGRATION_STORAGE_KEY)
+    if (migration?.sourceUid === uid || migration?.targetUid === uid) storage.removeItem(PENDING_GOOGLE_MIGRATION_STORAGE_KEY)
+    if (json(storage, 'champions-local-guest-v1')?.uid === uid) storage.removeItem('champions-local-guest-v1')
+    const rankingsKey = 'champions-factory-local-rankings-v1'
+    const rankings = json(storage, rankingsKey)
+    if (Array.isArray(rankings)) {
+      const remaining = rankings.filter(entry => entry?.id !== `local:${encoded}` && entry?.uid !== uid)
+      if (remaining.length !== rankings.length) {
+        if (remaining.length) storage.setItem(rankingsKey, JSON.stringify(remaining))
+        else storage.removeItem(rankingsKey)
+      }
+    }
+  }
+  if (owner === uid) {
+    window.sessionStorage.removeItem(PLAYER_SYNC_STORAGE_KEY)
+    window.localStorage.removeItem(PLAYER_SYNC_STORAGE_KEY)
   }
 }

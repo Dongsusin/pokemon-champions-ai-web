@@ -9,7 +9,7 @@ Firestore의 일일 쓰기 한도로 로그인 세션 저장이 HTTP 429로 실�
 - 브라우저는 Firebase ID 토큰을 `/api/account`, `/api/ranked`로 전달한다. 서버가 토큰과 계정 소유권을 검증한다. Supabase DB 접속 키는 브라우저에 전달하지 않는다.
 - DB 전용 `champions_server` 역할만 게임 테이블 CRUD를 허용한다. 일반 `anon`, `authenticated`, PUBLIC에는 접근 권한이 없고 RLS도 강제한다.
 - `SERIALIZABLE` 트랜잭션과 제한된 충돌 재시도로 세션·매칭·점수·게스트 번호 예약을 원자적으로 처리한다. 연결 풀 최대 3개, Vercel의 풀 수명 관리, 엄격한 인증서·호스트명 검증을 사용한다.
-- 게스트 이름은 검증된 익명 UID에 `guest-000000` 형식으로 배정한다. 숫자 6자리를 트랜잭션으로 예약하며 기존 번호는 재사용하지 않는다. Google 사용자의 이름은 첫 글자 뒤를 가린다.
+- 게스트 이름은 검증된 익명 UID에 `guest-000000` 형식으로 배정한다. 숫자 6자리를 트랜잭션으로 예약하며 사용 중인 번호는 중복 배정하지 않는다. 게스트가 명시적으로 로그아웃하면 계정 정보를 삭제하고 번호 예약을 해제한다. Google 사용자의 이름은 첫 글자 뒤를 가린다.
 - 로그인 창은 90초 서버 세션과 20초 갱신으로 보호한다. 정상 종료에서는 해당 소유자와 버전의 세션만 해제하며, 비정상 종료는 임대 만료 후 복구된다.
 - 완료된 배틀의 큰 연출 데이터는 24시간 후 매시간 정리한다. 점수·VP·사용률·팩토리 기록과 작은 승패 결과는 보존한다. [보관 정책](BATTLE_RETENTION.md)
 
@@ -18,6 +18,8 @@ Firestore의 일일 쓰기 한도로 로그인 세션 저장이 HTTP 429로 실�
 2026-09-13 공식 가격표: 월 $0, API 요청 횟수 무제한, DB 500MB, 월 외부 전송량 5GB. 무료 DB 용량은 Firestore의 1GB보다 작지만 일일 쓰기 횟수 한도가 없다. CPU·연결 수·전송량은 여전히 제한되며 무한 용량을 의미하지 않는다. 무료 프로젝트는 일주일 비활성 시 일시 정지될 수 있고 자동 백업은 포함되지 않는다. 유료 요금제나 추가 기능은 설정하지 않는다.
 
 근거: [Supabase 가격](https://supabase.com/pricing), [연결 풀](https://supabase.com/docs/guides/database/connecting-to-postgres), [SSL 검증](https://supabase.com/docs/guides/platform/ssl-enforcement).
+
+전송량 절감과 게스트 로그아웃 삭제 정책은 [Egress 및 게스트 데이터 관리](EGRESS_AND_GUEST_DATA.md)를 참고한다.
 
 ## 환경변수
 

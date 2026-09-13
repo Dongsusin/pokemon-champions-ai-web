@@ -33,17 +33,17 @@ export function AuthLoadingScreen() {
   )
 }
 
-export function AccountDataErrorScreen({ message, busy, onRetry, onSignOut }) {
+export function AccountDataErrorScreen({ message, busy, onRetry, onSignOut, deletingGuest = false }) {
   return (
     <main className="auth-shell">
       <section className="auth-login-card auth-data-error-card" aria-labelledby="account-data-error-title">
         <img className="auth-data-error-emblem" src="/assets/brand/champions-arena-emblem.png" alt="" />
-        <h1 id="account-data-error-title">저장 데이터를 불러오지 못했습니다</h1>
+        <h1 id="account-data-error-title">{deletingGuest ? '게스트 정보 삭제가 아직 완료되지 않았습니다' : '저장 데이터를 불러오지 못했습니다'}</h1>
         <p className="auth-error-message" role="alert">{message}</p>
-        <p>연결 상태를 확인한 뒤 다시 불러와 주세요.</p>
+        <p>{deletingGuest ? '삭제가 완료될 때까지 게임을 중단합니다. 연결 상태를 확인한 뒤 다시 시도해주세요.' : '연결 상태를 확인한 뒤 다시 불러와 주세요.'}</p>
         <div className="auth-login-actions">
           <button className="google-login-button" type="button" disabled={busy} onClick={onRetry}>
-            <RotateCw size={20} aria-hidden="true" /><strong>다시 불러오기</strong>
+            <RotateCw size={20} aria-hidden="true" /><strong>{deletingGuest ? '게스트 삭제 다시 시도' : '다시 불러오기'}</strong>
           </button>
           <button className="guest-login-button" type="button" disabled={busy} onClick={onSignOut}>
             <strong>{busy ? '로그아웃 중' : '로그인 화면으로 돌아가기'}</strong>

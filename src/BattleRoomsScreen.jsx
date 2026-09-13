@@ -9,6 +9,7 @@ import { maskRankedMatch } from './data/rankedPrivacy'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { getSpeciesProfile } from './data/trainingData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled } from './rankedClient'
+import { startRankedPolling } from './rankedPolling'
 import './ranked.css'
 import './battleRooms.css'
 
@@ -150,12 +151,9 @@ export default function BattleRoomsScreen({
     setRefreshError('')
     if (!enabled || !canAuthenticate) return () => { mountedRef.current = false; generationRef.current += 1 }
     const controller = new AbortController()
-    let timer, running = false, active = true
+    let active = true
     const refresh = async () => {
-      if (running || !active) return
-      clearTimeout(timer)
-      if (operationRef.current) { timer = setTimeout(refresh, 500); return }
-      running = true
+      if (!active || operationRef.current) return false
       const generation = generationRef.current
       try {
         const known = snapshotRef.current.match
@@ -167,6 +165,7 @@ export default function BattleRoomsScreen({
             ...(spectator?.id === target ? { spectateTimelineRevision: spectator.timelineRevision } : {}) } : {}),
         }, { signal: controller.signal })
         if (active && generation === generationRef.current) accept(value)
+        return active && generation === generationRef.current
       } catch (failure) {
         if (active && failure.name !== 'AbortError' && generation === generationRef.current) {
           setConnected(false)
@@ -184,17 +183,14 @@ export default function BattleRoomsScreen({
             setSnapshot(next)
           }
         }
-      } finally {
-        running = false
-        if (active) timer = setTimeout(refresh, snapshotRef.current.room?.phase === 'active' || snapshotRef.current.match ? 1500 : 5000)
+        return false
       }
     }
-    refreshRef.current = () => { clearTimeout(timer); void refresh() }
-    const reconnect = () => { if (!document.hidden) refreshRef.current?.() }
-    window.addEventListener('online', reconnect)
-    document.addEventListener('visibilitychange', reconnect)
-    void refresh()
-    return () => { active = false; mountedRef.current = false; generationRef.current += 1; controller.abort(); clearTimeout(timer); refreshRef.current = null; window.removeEventListener('online', reconnect); document.removeEventListener('visibilitychange', reconnect) }
+    const polling = startRankedPolling({ refresh, getSnapshot: () => snapshotRef.current,
+      visibleInterval: () => operationRef.current ? 500 : snapshotRef.current.room?.phase === 'active' || snapshotRef.current.match ? 1500 : 5000,
+    })
+    refreshRef.current = polling.refresh
+    return () => { active = false; mountedRef.current = false; generationRef.current += 1; controller.abort(); polling.stop(); refreshRef.current = null }
   }, [client, enabled, canAuthenticate, accept])
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   useEffect(() => { setSelection([]); setPlayedRevision(null); setDialog(null) }, [match?.id])

@@ -328,5 +328,37 @@ await check('explicit migration into a new Google account preserves guest progre
   await env.unmount()
 })
 
+await check('guest deletion waits for in-flight upload and cancels queued saves and late local writes', async () => {
+  const saveGate = deferred()
+  const env = environment({ saveGate })
+  const app = await env.mount()
+  let saving, pausing, paused = false
+  await act(async () => { saving = app.current.flush(); app.current.scheduleSave(); await flush() })
+  const writesBefore = env.writes.length
+  await act(async () => { pausing = app.current.pauseForGuestDeletion().then(() => { paused = true }); await flush() })
+  assert.equal(paused, false)
+  await act(async () => { saveGate.resolve({ revision: 'deleted-account-late' }); await Promise.all([pausing, saving]); app.current.scheduleSave(); app.current.retry(); await flush() })
+  assert.equal(paused, true)
+  assert.equal(env.writes.length, writesBefore)
+  assert.equal(env.calls.save.length, 1)
+  assert.equal(await app.current.flush(), false)
+  assert.equal(env.calls.load.length, 1)
+  await env.unmount()
+})
+
+await check('guest deletion quiesces deferred bootstrap before it can create a cloud save or replace storage', async () => {
+  const loadGate = deferred()
+  const env = environment({ loadGate, cloudResult: null })
+  const app = await env.mount()
+  const writesBefore = env.writes.length
+  let pausing
+  await act(async () => { pausing = app.current.pauseForGuestDeletion(); await flush() })
+  await act(async () => { loadGate.resolve(null); await pausing; app.current.retry(); await flush() })
+  assert.equal(env.calls.save.length, 0)
+  assert.equal(env.writes.length, writesBefore)
+  assert.equal(env.calls.load.length, 1)
+  await env.unmount()
+})
+
 delete globalThis.__accountSyncHarness
 console.log(`Validated ${checks} account session sync scenarios (React ${React.version}, real accountStorage).`)

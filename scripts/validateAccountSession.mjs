@@ -536,4 +536,27 @@ if (useAccountApi) await check('unsafe account API addresses are rejected before
   assert.equal(test.server.requests.length, 0)
 })
 
+await check('guest deletion pauses renewals after an in-flight heartbeat and returns its newest lease version', async test => {
+  const browser = new Browser()
+  const guest = { ...test.user('delete-guest'), isAnonymous: true }
+  const handle = await test.acquire(guest, browser)
+  const pending = { started: deferred(), resume: deferred() }
+  test.server.delayedCommitResponse = pending
+  browser.show()
+  await pending.started.promise
+  let done = false
+  const pausing = handle.pauseForGuestDeletion().then(result => { done = true; return result })
+  await settle()
+  assert.equal(done, false)
+  pending.resume.resolve()
+  const lease = await pausing
+  assert.equal(lease.ownerId, handle.ownerId)
+  assert.equal(lease.version, [...test.server.documents.values()][0].updateTime)
+  const requestCount = test.server.requests.length
+  browser.show()
+  await test.timers.advance(ACCOUNT_SESSION_HEARTBEAT_MS)
+  assert.equal(test.server.requests.length, requestCount)
+  assert.equal(handle.isActive(), true)
+})
+
 console.log(`Account session validation passed (${checks.length} checks, ${useAccountApi ? 'Supabase account API' : 'Firestore'}).`)

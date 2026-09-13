@@ -32,8 +32,8 @@ const mockModules = {
     'signInAnonymously', 'linkWithPopup', 'signInWithCredential',
   ],
   './firebaseClient': ['firebaseAuth', 'isFirebaseConfigured', 'missingFirebaseEnvironmentVariables'],
-  './accountStorage': ['clearLocalPlayerData', 'clearPendingGoogleMigration', 'markPendingGoogleMigration', 'backupGuestPlayerData', 'readPlayerSyncState'],
-  './guestIdentityClient': ['resolveGuestIdentity'],
+  './accountStorage': ['clearLocalPlayerData', 'clearPendingGoogleMigration', 'markPendingGoogleMigration', 'backupGuestPlayerData', 'readPlayerSyncState', 'clearGuestPlayerData', 'readGuestDeletion', 'writeGuestDeletion', 'clearGuestDeletion', 'clearCompletedGuestDeletions'],
+  './guestIdentityClient': ['resolveGuestIdentity', 'deleteGuestAccount'],
   './playerProfile': ['deletePlayerProfile', 'ensurePlayerProfile'],
   './accountSession': ['acquireAccountSession', 'ACCOUNT_SESSION_ERROR_CODES'],
 }
@@ -69,7 +69,7 @@ const guestUser = { version: 1, uid: 'local-guest-remembered', displayName: 'Gue
 const anonymousUser = { uid: 'firebase-anonymous-user', isAnonymous: true, providerData: [], getIdToken() { assert.equal(this.uid, 'firebase-anonymous-user'); return Promise.resolve('anonymous-token') } }
 
 function environment({ initialUser = null, rememberedGuest = null, acquireGate = null, rejectAll = false, migrationError = null,
-  configured = true, syncOwner = rememberedGuest?.uid, identityError = null, linkError = null } = {}) {
+  configured = true, syncOwner = rememberedGuest?.uid, identityError = null, linkError = null, pendingDeletion = null } = {}) {
   const windowObject = Object.assign(new EventTarget(), { localStorage: storage(), sessionStorage: storage() })
   const pageshowCallbacks = new Set()
   const addListener = windowObject.addEventListener.bind(windowObject)
@@ -86,7 +86,9 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
   globalThis.window = windowObject
   const observers = new Set()
   const calls = { acquire: [], profiles: [], persistence: [], migrations: [], backups: [], identities: [], signOut: 0,
-    popups: 0, releases: 0, anonymousSignIns: 0, links: 0, credentialSignIns: 0, reauth: 0, deletes: 0, order: [] }
+    popups: 0, releases: 0, anonymousSignIns: 0, links: 0, credentialSignIns: 0, reauth: 0, deletes: 0, guestDeletes: [], guestClears: [], order: [] }
+  const deletionRecords = new Map(pendingDeletion ? [[initialUser.uid, pendingDeletion]] : [])
+  const failures = { serverDelete: null, authDelete: null, storage: null, markerRemove: null }
   let activeHandle = null
   const services = {
     firebaseAuth: configured ? { currentUser: initialUser } : null, isFirebaseConfigured: configured, missingFirebaseEnvironmentVariables: [],
@@ -122,7 +124,38 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
       auth.currentUser = null
       for (const observer of observers) observer(null)
     },
-    async reauthenticateWithPopup() { calls.reauth += 1 }, async deleteUser() { calls.deletes += 1 }, async deletePlayerProfile() {},
+    async reauthenticateWithPopup() { calls.reauth += 1 },
+    async deleteUser(user) {
+      calls.deletes += 1; calls.order.push('firebase-delete')
+      if (failures.authDelete) throw failures.authDelete
+      assert.equal(services.firebaseAuth.currentUser.uid, user.uid)
+      services.firebaseAuth.currentUser = null
+      for (const observer of observers) observer(null)
+    },
+    async deleteGuestAccount(user, lease, { isCurrent }) {
+      assert.equal(isCurrent(), true)
+      assert.equal(user.isAnonymous, true)
+      assert.ok(lease.ownerId && lease.version)
+      calls.guestDeletes.push({ uid: user.uid, lease }); calls.order.push('server-delete')
+      if (failures.serverDelete) throw failures.serverDelete
+      return { deleted: true, uid: user.uid }
+    },
+    readGuestDeletion: uid => deletionRecords.get(uid) ?? null,
+    writeGuestDeletion(uid, value) { if (failures.storage) throw failures.storage; deletionRecords.set(uid, value) },
+    clearGuestDeletion(uid) { if (failures.markerRemove) throw failures.markerRemove; deletionRecords.delete(uid) },
+    clearCompletedGuestDeletions() {
+      for (const [uid, record] of deletionRecords) if (record.serverDeleted && record.authDeleted) {
+        services.clearGuestPlayerData(uid); services.clearGuestDeletion(uid)
+      }
+    },
+    clearGuestPlayerData(uid) {
+      if (failures.storage) throw failures.storage
+      calls.guestClears.push(uid); calls.order.push('local-delete')
+      for (const storage of [windowObject.localStorage, windowObject.sessionStorage]) {
+        if (JSON.parse(storage.getItem('champions-local-guest-v1'))?.uid === uid) storage.removeItem('champions-local-guest-v1')
+      }
+    },
+    async deletePlayerProfile() {},
     async ensurePlayerProfile(user) { calls.profiles.push(user.uid); calls.order.push('profile') },
     clearLocalPlayerData() {}, clearPendingGoogleMigration() {},
     markPendingGoogleMigration(...args) { if (migrationError) throw migrationError; calls.migrations.push(args) },
@@ -137,6 +170,7 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
       const handle = {
         user, options,
         isActive: () => !ended,
+        async pauseForGuestDeletion() { calls.order.push('pause-heartbeat'); return { ownerId: 'owned-session', version: 'latest-heartbeat' } },
         async release() {
           if (ended) return
           ended = true
@@ -180,7 +214,7 @@ function environment({ initialUser = null, rememberedGuest = null, acquireGate =
     services.firebaseAuth.currentUser = nextUser
     for (const observer of observers) observer(nextUser)
   }
-  return { calls, services, windowObject, pageshowCallbacks, emitAuthStateChanged, mount, cleanup, active: () => activeHandle }
+  return { calls, services, failures, deletionRecords, windowObject, pageshowCallbacks, emitAuthStateChanged, mount, cleanup, active: () => activeHandle }
 }
 
 const cases = []
@@ -533,7 +567,7 @@ await check('existing Google credential fallback binds migration and preserves e
   await env.cleanup()
 })
 
-await check('anonymous deletion skips Google reauthentication; logout still clears auth before lease', async () => {
+await check('anonymous deletion and logout delete server, local data and Firebase identity before releasing lease', async () => {
   const env = environment({ initialUser: anonymousUser })
   const app = await env.mount()
   await act(async () => { assert.equal(await app.current.deleteAccount(), true) })
@@ -544,9 +578,95 @@ await check('anonymous deletion skips Google reauthentication; logout still clea
   const second = environment({ initialUser: anonymousUser })
   const loggedIn = await second.mount()
   await act(async () => { await loggedIn.current.signOut() })
-  assert.ok(second.calls.order.indexOf('firebase-signout') < second.calls.order.indexOf('release'))
-  assert.equal(second.calls.signOut, 1)
+  assert.deepEqual(second.calls.order.slice(-5), ['pause-heartbeat', 'server-delete', 'local-delete', 'firebase-delete', 'release'])
+  assert.equal(second.calls.signOut, 0)
+  assert.equal(second.calls.guestDeletes.length, 1)
+  assert.equal(second.deletionRecords.size, 0)
   await second.cleanup()
+})
+
+await check('failed server deletion preserves credentials and data; retry completes the same operation', async () => {
+  const env = environment({ initialUser: anonymousUser })
+  const app = await env.mount()
+  env.failures.serverDelete = new Error('offline')
+  await act(async () => { assert.equal(await app.current.signOut(), false) })
+  assert.equal(app.current.user.uid, anonymousUser.uid)
+  assert.match(app.current.error, /삭제를 완료하지 못했습니다/)
+  assert.equal(env.calls.deletes, 0)
+  assert.deepEqual(env.calls.guestClears, [])
+  assert.equal(env.deletionRecords.get(anonymousUser.uid).serverDeleted, false)
+  const lease = env.calls.guestDeletes[0].lease
+  env.failures.serverDelete = null
+  await act(async () => { assert.equal(await app.current.signOut(), true) })
+  assert.deepEqual(env.calls.guestDeletes[1].lease, lease)
+  assert.equal(app.current.user, null)
+  await env.cleanup()
+})
+
+await check('Firebase deletion failure retries credentials cleanup without repeating confirmed server deletion', async () => {
+  const env = environment({ initialUser: anonymousUser })
+  const app = await env.mount()
+  env.failures.authDelete = new Error('network')
+  await act(async () => { assert.equal(await app.current.signOut(), false) })
+  assert.equal(env.services.firebaseAuth.currentUser.uid, anonymousUser.uid)
+  assert.equal(env.deletionRecords.get(anonymousUser.uid).serverDeleted, true)
+  env.failures.authDelete = null
+  await act(async () => { assert.equal(await app.current.signOut(), true) })
+  assert.equal(env.calls.guestDeletes.length, 1)
+  assert.equal(env.calls.deletes, 2)
+  await env.cleanup()
+})
+
+await check('reload resumes interrupted guest deletion before admission or profile recreation', async () => {
+  const env = environment({ initialUser: anonymousUser,
+    pendingDeletion: { lease: { ownerId: 'prior-session', version: 'prior-version' }, serverDeleted: false } })
+  const app = await env.mount({ strict: true })
+  assert.equal(app.current.ready, true)
+  assert.equal(app.current.user, null)
+  assert.equal(env.calls.guestDeletes.length, 1)
+  assert.deepEqual(env.calls.acquire, [])
+  assert.deepEqual(env.calls.profiles, [])
+  assert.deepEqual(env.calls.identities, [])
+  assert.equal(env.deletionRecords.size, 0)
+  await env.cleanup()
+})
+
+await check('final storage cleanup retries after Firebase identity has already been deleted', async () => {
+  const env = environment({ initialUser: anonymousUser })
+  const app = await env.mount()
+  env.failures.markerRemove = new Error('storage blocked')
+  await act(async () => { assert.equal(await app.current.signOut(), false) })
+  assert.equal(env.services.firebaseAuth.currentUser, null)
+  assert.equal(env.deletionRecords.get(anonymousUser.uid).authDeleted, true)
+  env.failures.markerRemove = null
+  await act(async () => { assert.equal(await app.current.signOut(), true) })
+  assert.equal(env.calls.deletes, 1)
+  assert.equal(env.calls.guestDeletes.length, 1)
+  assert.equal(env.deletionRecords.size, 0)
+  assert.equal(app.current.user, null)
+  await env.cleanup()
+})
+
+await check('Google logout preserves account data and never calls guest deletion', async () => {
+  const env = environment({ initialUser: googleUser })
+  const app = await env.mount()
+  await act(async () => { assert.equal(await app.current.signOut(), true) })
+  assert.equal(env.calls.signOut, 1)
+  assert.equal(env.calls.deletes, 0)
+  assert.deepEqual(env.calls.guestDeletes, [])
+  assert.deepEqual(env.calls.guestClears, [])
+  await env.cleanup()
+})
+
+await check('storage failure blocks deletion before dispatch, preserving recoverable credentials', async () => {
+  const env = environment({ initialUser: anonymousUser })
+  const app = await env.mount()
+  env.failures.storage = new Error('quota')
+  await act(async () => { assert.equal(await app.current.signOut(), false) })
+  assert.equal(app.current.user.uid, anonymousUser.uid)
+  assert.deepEqual(env.calls.guestDeletes, [])
+  assert.equal(env.calls.deletes, 0)
+  await env.cleanup()
 })
 
 delete globalThis.__authProviderHarness
