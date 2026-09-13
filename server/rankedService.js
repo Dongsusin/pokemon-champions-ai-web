@@ -2,6 +2,7 @@ import { createHash, randomUUID, randomBytes } from 'node:crypto'
 import { createRankedProfile, getRankedFormat, settleRankedRatings } from '../src/data/rankedRules.js'
 import { getRankedVpReward } from '../src/data/rankedRewards.js'
 import { maskRankedMatch, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
+import { readPokemonUsage, recordRankedPokemonUsage, reportAiPokemonUsage, validateAiPokemonUsage } from './pokemonUsageService.js'
 
 const QUEUE_LEASE = 30_000
 const SELECT_TIMEOUT = 90_000
@@ -65,7 +66,7 @@ function hasRequest(record, requestId, hash) {
 
 export function createRankedService({ store, engine, now = Date.now, newId = randomUUID,
   makeSeed = () => randomBytes(4).readUInt32LE(), resolveTeam = async (_identity, team) => team,
-  fixtures = null, timeouts = {} }) {
+  fixtures = null, timeouts = {}, usageEnabled = false }) {
   const selectionTimeout = timeouts.selection ?? SELECT_TIMEOUT
   const turnTimeout = timeouts.turn ?? TURN_TIMEOUT
   const replacementTimeout = timeouts.replacement ?? REPLACEMENT_TIMEOUT
@@ -281,10 +282,18 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (!identity || !isId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
     identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32) }
     const action = payload?.action ?? 'status'
-    if (!['status', 'fixtures', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (!['status', 'fixtures', 'usage', 'reportAiUsage', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
     if (action === 'fixtures') {
       if (!fixtures) fail('NOT_FOUND', '테스트 팀은 로컬 테스트에서만 제공됩니다.', 404)
       return { teams: clone(fixtures) }
+    }
+    if (action === 'usage' || action === 'reportAiUsage') {
+      if (usageEnabled !== true) fail('USAGE_DISABLED', '포켓몬 사용률 집계는 아직 운영 서버에서 활성화되지 않았습니다.', 503)
+      if (action === 'usage') return store.transaction(readPokemonUsage)
+      assertRequest(payload)
+      const report = validateAiPokemonUsage(payload)
+      const reportedAt = now()
+      return store.transaction(tx => reportAiPokemonUsage(tx, identity.uid, report, reportedAt))
     }
     const timestamp = now()
     const id = newId()
@@ -372,6 +381,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
           const selected = match.players.map(entry => match.selections[entry.uid].map(index => entry.team[index]))
           match.phase = 'battle'
           const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name), opponentName: maskRankedTrainerName(match.players[1].name), random: seededRandom(seed) })
+          if (usageEnabled === true) await recordRankedPokemonUsage(tx, match, selected, timestamp)
           await afterEngine(tx, match, { state, timeline: [] }, timestamp)
         } else tx.set('matches', match.id, match)
       } else if (action === 'submit') {

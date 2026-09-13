@@ -1,0 +1,359 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'vite'
+import { createMemoryRankedStore } from '../server/rankedStore.js'
+import { startRankedDevServer } from './rankedDevServer.mjs'
+import { canonicalUsageSpeciesId, createDemoUsageSnapshot, getUsageRanking, recordUsageTeams } from '../src/data/pokemonUsage.js'
+import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
+
+const root = fileURLToPath(new URL('../', import.meta.url))
+const output = path.join(root, 'scripts/.cache/pokemon-usage-ui')
+await fs.mkdir(output, { recursive: true })
+const require = createRequire(new URL('../promo/package.json', import.meta.url))
+const { chromium } = require('playwright')
+const checks = []
+const pageErrors = []
+const blockedExternal = new Set()
+const aiReports = []
+const envNames = ['VITE_POKEMON_USAGE_ENABLED', 'VITE_POKEMON_USAGE_DEMO', 'VITE_RANKED_ENABLED', 'VITE_RANKED_LOCAL_TEST', 'VITE_RANKED_API_URL']
+const originalEnv = Object.fromEntries(envNames.map(name => [name, process.env[name]]))
+const store = createMemoryRankedStore()
+const seed = createDemoUsageSnapshot()
+await store.transaction(async tx => {
+  for (const [key, bucket] of Object.entries(seed.buckets)) tx.set('pokemonUsage', key, bucket)
+})
+let backend
+let frontend
+let browser
+const pages = []
+let step = 'setup'
+
+const log = (name, evidence = {}) => {
+  checks.push({ name, passed: true, ...evidence })
+  console.log(`PASS ${name}${Object.keys(evidence).length ? ` ${JSON.stringify(evidence)}` : ''}`)
+}
+const live = async () => backend.service.execute({ uid: 'ranked-test-alice', name: 'Alice' }, { action: 'usage' })
+
+async function waitBucket(key, expected) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const snapshot = await live()
+    if (snapshot.buckets[key].teamCount === expected) return snapshot
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert.equal((await live()).buckets[key].teamCount, expected, `Timed out waiting for ${key} team count`)
+}
+
+async function chooseUsage(page, mode, format) {
+  await page.getByRole('tab', { name: mode === 'ai' ? 'AI 대전' : '레이팅 배틀', exact: true }).click()
+  await page.locator('.pokemon-usage-formats').getByRole('button', { name: format === 'single' ? '싱글배틀' : '더블배틀', exact: true }).click()
+}
+
+async function verifyRows(page, bucket, label) {
+  assert.equal(await page.locator('.pokemon-usage-sample strong').textContent(), bucket.teamCount.toLocaleString('ko-KR'))
+  const expected = getUsageRanking(bucket)
+  const actual = []
+  for (let index = 0; index < 5; index += 1) {
+    await page.getByRole('button', { name: `${index * 20 + 1}~${(index + 1) * 20}위 보기`, exact: true }).click()
+    const rows = await page.locator('.pokemon-usage-row').evaluateAll(elements => elements.map(element => ({
+      rank: Number(element.dataset.usageRank), speciesId: Number(element.dataset.speciesId),
+      count: Number(element.querySelector('.pokemon-usage-count strong').textContent.replaceAll(',', '')),
+      rate: element.querySelector('.pokemon-usage-rate > strong').textContent,
+      delta: element.querySelector('.pokemon-usage-change .pokemon-usage-rate-change').getAttribute('aria-label'),
+      rankChange: element.querySelector('.pokemon-usage-rank-change').getAttribute('aria-label'),
+    })))
+    assert.equal(rows.length, 20)
+    actual.push(...rows)
+  }
+  assert.equal(actual.length, 100)
+  assert.equal(new Set(actual.map(row => row.speciesId)).size, 100)
+  expected.forEach((row, index) => {
+    assert.equal(actual[index].rank, row.rank, `${label}: rank`)
+    assert.equal(actual[index].speciesId, row.speciesId, `${label}: species order`)
+    assert.equal(actual[index].count, row.count, `${label}: usage count`)
+    assert.equal(actual[index].rate, `${row.rate.toFixed(1)}%`, `${label}: usage percentage`)
+    const delta = Number(row.rateDelta.toFixed(1))
+    assert.equal(actual[index].delta, `직전 집계 대비 사용률 ${delta > 0 ? '+' : ''}${delta.toFixed(1)} 퍼센트포인트`)
+    assert.equal(actual[index].rankChange, row.isNew ? '직전 집계에 없던 신규 사용'
+      : row.rankDelta ? `직전 집계 대비 ${Math.abs(row.rankDelta)}위 ${row.rankDelta > 0 ? '상승' : '하락'}` : '직전 집계 대비 순위 유지')
+  })
+  await page.getByRole('button', { name: '1~20위 보기', exact: true }).click()
+}
+
+async function openUsage(page) {
+  await page.locator('.mode-usage').click()
+  await page.locator('.pokemon-usage-screen[data-usage-source="demo"]').waitFor()
+  await page.waitForFunction(() => document.querySelector('.pokemon-usage-panel')?.getAttribute('aria-busy') === 'false')
+  assert.equal(await page.locator('.pokemon-usage-error').count(), 0)
+}
+
+async function dismissDialogue(page) {
+  for (let index = 0; index < 5; index += 1) {
+    const button = page.locator('.battle-trainer-dialogue-box')
+    if (!await button.count()) break
+    await button.click()
+    await page.waitForTimeout(80)
+  }
+}
+
+async function waitBattleReady(page) {
+  await page.locator('.battle-game-screen').waitFor()
+  await page.waitForFunction(() => window.__usageBattle)
+  if (await page.locator('.battle-intro-overlay button').count()) {
+    await page.locator('.battle-intro-overlay button').last().click()
+  }
+  await dismissDialogue(page)
+  await page.waitForFunction(() => window.__usageBattle && !window.__usageBattle.introVisible && !window.__usageBattle.isTurnAnimating)
+}
+
+async function submitMove(page) {
+  await dismissDialogue(page)
+  await page.locator('.battle-command-buttons .fight').click()
+  const slots = await page.evaluate(() => window.__usageBattle.battle.player.activeIndexes.length)
+  for (let slot = 0; slot < slots; slot += 1) {
+    const moves = page.locator('.battle-move-button:not(:disabled)')
+    await moves.first().waitFor()
+    // Prefer Protect in ranked fixtures so both real players can complete a
+    // deterministic turn without a forced replacement interrupting the check.
+    const protect = moves.filter({ hasText: '방어' })
+    await (await protect.count() ? protect.first() : moves.first()).click()
+    if (await page.locator('.battle-target-grid button:not(:disabled)').count()) {
+      await page.locator('.battle-target-grid button:not(:disabled)').first().click()
+    }
+  }
+}
+
+try {
+  backend = await startRankedDevServer({ port: 0, store, testAccounts: true, usageEnabled: true,
+    timeouts: { selection: 180_000, turn: 180_000, playbackGrace: 0 } })
+  Object.assign(process.env, { VITE_POKEMON_USAGE_ENABLED: 'true', VITE_POKEMON_USAGE_DEMO: 'true',
+    VITE_RANKED_ENABLED: 'true', VITE_RANKED_LOCAL_TEST: 'true', VITE_RANKED_API_URL: backend.url })
+  frontend = await createServer({ root, mode: 'ranked-test', plugins: [{ name: 'usage-ui-offline-auth', enforce: 'pre',
+    resolveId(source) { if (/\/auth\/firebaseClient(?:\.js)?$/.test(source)) return '\0usage-ui-auth' },
+    load(id) { if (id === '\0usage-ui-auth') return 'export const firebaseAuth=null; export const firebaseDb=null; export const isFirebaseConfigured=false; export const missingFirebaseEnvironmentVariables=[];' },
+  }], server: { host: '127.0.0.1', port: Number(process.env.POKEMON_USAGE_UI_PORT ?? 5196), strictPort: false, hmr: false }, logLevel: 'error' })
+  await frontend.listen()
+  const address = frontend.httpServer.address()
+  const frontendUrl = `http://127.0.0.1:${address.port}`
+  const allowedOrigins = new Set([frontendUrl, new URL(backend.url).origin])
+  browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
+
+  async function makePage(identity) {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, serviceWorkers: 'block' })
+    await context.addInitScript(value => {
+      window.sessionStorage.setItem('champions-ranked-test-identity-v1', value)
+      // Blocking workers keeps every request visible to the isolation guard.
+      // Chromium may otherwise resolve register() but leave ready pending.
+      if (navigator.serviceWorker) navigator.serviceWorker.register = async () => { throw new Error('Service workers disabled for isolated usage validation') }
+      let seed = 47321
+      Math.random = () => { seed = seed * 16807 % 2147483647; return (seed - 1) / 2147483646 }
+    }, identity)
+    await context.route('**/*', async route => {
+      const url = new URL(route.request().url())
+      if (!allowedOrigins.has(url.origin)) { blockedExternal.add(url.origin); return route.abort('blockedbyclient') }
+      if (url.pathname === '/src/BattleScreen.jsx') {
+        const response = await route.fetch()
+        let body = await response.text()
+        assert(body.includes('const currentLogEntry ='), 'BattleScreen observation anchor changed')
+        body = body.replace('const currentLogEntry =', 'window.__usageBattle={battle,menu,commandSlot,isTurnAnimating,introVisible}; const currentLogEntry =')
+        return route.fulfill({ response, body })
+      }
+      if (url.href === backend.url && route.request().method() === 'POST') {
+        const body = route.request().postDataJSON()
+        if (body?.action === 'reportAiUsage') aiReports.push(body)
+      }
+      return route.continue()
+    })
+    const page = await context.newPage()
+    pages.push(page)
+    page.setDefaultTimeout(20_000)
+    page.on('pageerror', error => pageErrors.push({ identity, message: error.message }))
+    await page.goto(frontendUrl)
+    await page.locator('.mode-usage').waitFor()
+    return page
+  }
+
+  step = 'open integrated GameApp and inspect all four rankings'
+  const alice = await makePage('alice')
+  assert.equal(await alice.locator('.mode-usage').evaluate(element => element.previousElementSibling?.classList.contains('mode-achievements')), true)
+  await openUsage(alice)
+  for (const mode of ['ai', 'ranked']) {
+    for (const format of ['single', 'double']) {
+      await chooseUsage(alice, mode, format)
+      await verifyRows(alice, seed.buckets[`${mode}-${format}`], `${mode}-${format} seed`)
+    }
+  }
+  await alice.screenshot({ path: path.join(output, '01-four-filter-ranked-double.png') })
+  log('real lobby menu directly below achievements opens all 400 correctly calculated seed rows', { teamsPerBucket: 298 })
+
+  step = 'start and play actual AI competition battle'
+  await alice.locator('.pokemon-usage-back').click()
+  await alice.locator('.mode-start').click()
+  await alice.locator('.battle-hub-card.ai').click()
+  await alice.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }).click()
+  await alice.getByRole('button', { name: '이 모드로 시작', exact: true }).click()
+  const selections = alice.locator('.competition-team-selection button')
+  if (await selections.count()) {
+    const required = Number((await alice.locator('.competition-team-selection header strong').textContent()).split('/')[1].trim())
+    const selected = await selections.evaluateAll(elements => elements.flatMap((element, index) => element.getAttribute('aria-pressed') === 'true' ? [index] : []))
+    for (let index = 0; index < required; index += 1) if (!selected.includes(index)) await selections.nth(index).click()
+  }
+  const beforeAi = await live()
+  await alice.getByRole('button', { name: /배틀 시작/ }).click()
+  await alice.waitForFunction(() => window.__usageBattle)
+  const aiState = await alice.evaluate(() => window.__usageBattle.battle)
+  const aiKey = `ai-${aiState.rules.format.id}`
+  const selectedIds = aiState.player.team.map(member => canonicalUsageSpeciesId(member.speciesId))
+  const afterAi = await waitBucket(aiKey, beforeAi.buckets[aiKey].teamCount + 1)
+  assert.deepEqual(afterAi.buckets[aiKey], recordUsageTeams(beforeAi.buckets[aiKey], [selectedIds], afterAi.buckets[aiKey].updatedAt))
+  for (const key of Object.keys(beforeAi.buckets)) if (key !== aiKey) assert.deepEqual(afterAi.buckets[key], beforeAi.buckets[key])
+  await waitBattleReady(alice)
+  await submitMove(alice)
+  await alice.waitForFunction(turn => window.__usageBattle.battle.turn > turn && !window.__usageBattle.isTurnAnimating, aiState.turn, { timeout: 45_000 })
+  await dismissDialogue(alice)
+  await alice.screenshot({ path: path.join(output, '02-ai-actual-turn.png') })
+  await alice.locator('.battle-command-buttons .surrender').click()
+  await dismissDialogue(alice)
+  if (await alice.locator('.battle-result-overlay').count()) await alice.getByRole('button', { name: '배틀 마치기' }).click()
+  await alice.locator('.mode-usage').waitFor()
+  await openUsage(alice)
+  await chooseUsage(alice, 'ai', aiState.rules.format.id)
+  await verifyRows(alice, afterAi.buckets[aiKey], 'after actual AI battle')
+  await alice.screenshot({ path: path.join(output, '03-ai-usage-after-battle.png') })
+  const firstReport = aiReports.find(entry => entry.format === aiState.rules.format.id)
+  assert(firstReport, 'The actual GameApp must report its selected AI team')
+  assert.deepEqual(firstReport.speciesIds.map(canonicalUsageSpeciesId), selectedIds)
+  log('actual AI move, forfeit and report produce exactly one selected human team', { bucket: aiKey, before: 298, after: 299, selectedIds })
+
+  step = 'verify reload and result revisit do not report the same AI battle again'
+  const reportsBeforeReload = aiReports.length
+  await alice.reload()
+  await alice.locator('.mode-usage').waitFor()
+  await openUsage(alice)
+  await chooseUsage(alice, 'ai', aiState.rules.format.id)
+  await verifyRows(alice, afterAi.buckets[aiKey], 'AI reload')
+  assert.deepEqual((await live()).buckets[aiKey], afterAi.buckets[aiKey])
+  assert.equal(aiReports.length, reportsBeforeReload)
+  log('reload and usage refresh preserve the AI count with no duplicate report')
+
+  step = 'prepare second real browser account for ranked matches'
+  const bob = await makePage('bob')
+  await alice.locator('.pokemon-usage-back').click()
+  for (const page of [alice, bob]) {
+    await page.locator('.mode-start').click()
+    await page.locator('.battle-hub-card.ranked').click()
+    await page.getByRole('button', { name: '대전 상대 찾기', exact: true }).waitFor()
+  }
+  assert.equal(await alice.getByLabel('로컬 테스트 계정').inputValue(), 'alice')
+  assert.equal(await bob.getByLabel('로컬 테스트 계정').inputValue(), 'bob')
+  await alice.getByLabel('레이팅 출전 팀').selectOption('ranked-test-team-1')
+  await bob.getByLabel('레이팅 출전 팀').selectOption('ranked-test-team-2')
+
+  for (const format of ['single', 'double']) {
+    step = `actual two-player ${format} ranked selection and first turn`
+    const rankedKey = `ranked-${format}`
+    const beforeRanked = await live()
+    for (const page of [alice, bob]) {
+      await page.locator('.ranked-format-tabs').getByRole('button', { name: format === 'single' ? '싱글배틀' : '더블배틀', exact: true }).click()
+      await page.getByRole('button', { name: '대전 상대 찾기', exact: true }).click()
+    }
+    await Promise.all([alice, bob].map(page => page.locator('.ranked-selection-heading').waitFor()))
+    assert.deepEqual((await live()).buckets[rankedKey], beforeRanked.buckets[rankedKey], 'Queue and incomplete selection are not samples')
+    const count = format === 'single' ? 3 : 4
+    for (const page of [alice, bob]) {
+      const cards = page.locator('button.ranked-pokemon-card')
+      for (let index = 0; index < count; index += 1) await cards.nth(index).click()
+      await page.getByRole('button', { name: '선출 확정', exact: true }).click()
+      if (page === alice) assert.deepEqual((await live()).buckets[rankedKey], beforeRanked.buckets[rankedKey], 'One selection alone is not a sample')
+    }
+    await Promise.all([alice, bob].map(waitBattleReady))
+    const states = await Promise.all([alice, bob].map(page => page.evaluate(() => window.__usageBattle.battle)))
+    const teams = states.map(state => state.player.team.map(member => canonicalUsageSpeciesId(member.speciesId)))
+    const afterRanked = await waitBucket(rankedKey, beforeRanked.buckets[rankedKey].teamCount + 2)
+    assert.deepEqual(afterRanked.buckets[rankedKey], recordUsageTeams(beforeRanked.buckets[rankedKey], teams, afterRanked.buckets[rankedKey].updatedAt))
+    for (const key of Object.keys(beforeRanked.buckets)) if (key !== rankedKey) assert.deepEqual(afterRanked.buckets[key], beforeRanked.buckets[key])
+    await submitMove(alice)
+    await submitMove(bob)
+    await Promise.all([alice, bob].map((page, index) => page.waitForFunction(turn => window.__usageBattle.battle.turn > turn && !window.__usageBattle.isTurnAnimating, states[index].turn, { timeout: 45_000 })))
+    await alice.screenshot({ path: path.join(output, `04-ranked-${format}-actual-turn.png`) })
+    await alice.locator('.ranked-battle-connection').getByRole('button', { name: '기권', exact: true }).click()
+    await alice.getByRole('button', { name: '기권하기', exact: true }).click()
+    await Promise.all([alice, bob].map(page => page.getByRole('button', { name: '레이팅 로비로', exact: true }).waitFor()))
+    await Promise.all([alice, bob].map(page => page.getByRole('button', { name: '레이팅 로비로', exact: true }).click()))
+    assert.deepEqual((await live()).buckets[rankedKey], afterRanked.buckets[rankedKey], 'Result settlement must not count a team again')
+    await alice.locator('.ranked-header .screen-back-button').click()
+    await alice.locator('.battle-hub-heading .screen-back-button').click()
+    await openUsage(alice)
+    await chooseUsage(alice, 'ranked', format)
+    await verifyRows(alice, afterRanked.buckets[rankedKey], `ranked ${format} actual play`)
+    await alice.screenshot({ path: path.join(output, `05-ranked-${format}-usage-after-battle.png`) })
+    log(`real ${format} ranked match, two selections, one turn and result count exactly two teams`, { before: 298, after: 300, selectedTeams: teams })
+    if (format === 'single') {
+      await alice.locator('.pokemon-usage-back').click()
+      await alice.locator('.mode-start').click()
+      await alice.locator('.battle-hub-card.ranked').click()
+    }
+  }
+
+  step = 'actual settings usage tab stays usable at 844 by 390'
+  await alice.locator('.pokemon-usage-back').click()
+  await alice.setViewportSize({ width: 844, height: 390 })
+  await alice.getByRole('button', { name: '설정', exact: true }).click()
+  await alice.getByRole('tab', { name: '사용률', exact: true }).click()
+  const embedded = alice.locator('.settings-usage-open .pokemon-usage-screen')
+  await embedded.waitFor()
+  await alice.waitForFunction(() => document.querySelector('.settings-usage-open .pokemon-usage-panel')?.getAttribute('aria-busy') === 'false')
+  await embedded.getByRole('button', { name: '81~100위 보기', exact: true }).click()
+  assert.equal(await embedded.locator('.pokemon-usage-row').first().getAttribute('data-usage-rank'), '81')
+  assert.equal(await embedded.locator('.pokemon-usage-row').last().getAttribute('data-usage-rank'), '100')
+  await embedded.locator('.pokemon-usage-list-scroll').evaluate(element => { element.scrollTop = element.scrollHeight })
+  const mobileBounds = await embedded.evaluate(element => {
+    const rect = selector => {
+      const box = element.querySelector(selector).getBoundingClientRect()
+      return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height }
+    }
+    const pageButton = element.querySelector('.pokemon-usage-pagination button[aria-current="page"]')
+    const buttonBounds = pageButton.getBoundingClientRect()
+    const hit = document.elementFromPoint(buttonBounds.left + buttonBounds.width / 2, buttonBounds.top + buttonBounds.height / 2)
+    const modal = element.closest('.settings-modal')
+    const modalButton = selector => {
+      const button = modal.querySelector(selector)
+      const bounds = button.getBoundingClientRect()
+      const hitElement = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+      return { top: bounds.top, bottom: bounds.bottom, receivesPointer: Boolean(hitElement && button.contains(hitElement)) }
+    }
+    return { list: rect('.pokemon-usage-list-scroll'), lastRow: rect('[data-usage-rank="100"]'), pagination: rect('.pokemon-usage-pagination'),
+      closeButton: modalButton('.settings-close-button'), doneButton: modalButton('.settings-modal-footer button'),
+      viewport: { width: innerWidth, height: innerHeight }, pageButtonReceivesPointer: Boolean(hit && pageButton.contains(hit)) }
+  })
+  assert(mobileBounds.list.height >= 60, `The embedded ranking needs a usable scroll area: ${JSON.stringify(mobileBounds)}`)
+  assert(mobileBounds.lastRow.top >= mobileBounds.list.top - 1 && mobileBounds.lastRow.bottom <= mobileBounds.list.bottom + 1, `The last ranked row must be reachable within the list: ${JSON.stringify(mobileBounds)}`)
+  assert(mobileBounds.pagination.top >= 0 && mobileBounds.pagination.bottom <= 390, `Pagination must be visible without leaving the modal: ${JSON.stringify(mobileBounds)}`)
+  assert(mobileBounds.pageButtonReceivesPointer, 'The page buttons must not be covered by another element')
+  for (const button of [mobileBounds.closeButton, mobileBounds.doneButton]) {
+    assert(button.top >= 0 && button.bottom <= 390 && button.receivesPointer, `Modal close/done buttons must remain on screen and reachable: ${JSON.stringify(mobileBounds)}`)
+  }
+  await alice.screenshot({ path: path.join(output, '06-mobile-settings-usage-844x390.png') })
+  log('actual settings usage tab exposes scrollable rows and reachable bottom pagination at 844x390', mobileBounds)
+
+  assert.equal(pageErrors.length, 0, JSON.stringify(pageErrors))
+  log('all game and statistics requests stayed on the isolated loopback servers', { blockedExternalOrigins: [...blockedExternal] })
+} catch (error) {
+  checks.push({ name: step, passed: false, error: error.stack })
+  for (let index = 0; index < pages.length; index += 1) {
+    await pages[index].screenshot({ path: path.join(output, `failure-${index}.png`) }).catch(() => {})
+    await fs.writeFile(path.join(output, `failure-${index}.txt`), await pages[index].locator('body').innerText().catch(() => '')).catch(() => {})
+  }
+  console.error(`FAIL ${step}: ${error.stack}`)
+  process.exitCode = 1
+} finally {
+  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ checks, pageErrors, aiReports, blockedExternalOrigins: [...blockedExternal], finalUsage: backend ? await live().catch(() => null) : null }, null, 2))
+  await browser?.close()
+  await frontend?.close()
+  if (backend) await backend.close()
+  else await store.close()
+  for (const name of envNames) if (originalEnv[name] === undefined) delete process.env[name]; else process.env[name] = originalEnv[name]
+}
+console.log(`Pokémon usage real-play UI: ${checks.filter(check => check.passed).length}/${checks.length} checks passed; artifacts: ${output}`)

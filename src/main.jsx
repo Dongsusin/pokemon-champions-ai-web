@@ -3,6 +3,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App, { RankedTestApp } from './App'
 import { isRankedLocalTest } from './rankedClient'
+import { isPokemonUsageDemo } from './pokemonUsageClient'
+import UsageTestApp from './UsageTestApp'
 import { AuthProvider } from './auth/AuthProvider'
 import ResourceBootstrap from './ResourceBootstrap'
 import './styles.css'
@@ -18,7 +20,7 @@ import './mobileLandscape.css'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ResourceBootstrap>
-      {isRankedLocalTest ? <RankedTestApp /> : <AuthProvider>
+      {isPokemonUsageDemo ? <UsageTestApp /> : isRankedLocalTest ? <RankedTestApp /> : <AuthProvider>
         <App />
       </AuthProvider>}
     </ResourceBootstrap>

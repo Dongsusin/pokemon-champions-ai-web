@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Boxes,
+  ChartNoAxesCombined,
   ChevronRight,
   Dumbbell,
   PawPrint,
@@ -22,6 +23,8 @@ import { isRankedLocalTest } from './rankedClient'
 import BattleScreen from './BattleScreen'
 import AchievementsScreen from './AchievementsScreen'
 import AchievementToast from './AchievementToast'
+import PokemonUsagePanel from './PokemonUsagePanel'
+import usePokemonUsage from './usePokemonUsage'
 import { creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
 import { getUnlockedPokemonSkins } from './data/rareRewards'
@@ -256,9 +259,16 @@ const modes = [
     description: '도전 달성과 VP 보상',
     icon: Trophy,
   },
+  {
+    id: 'usage',
+    eyebrow: 'POKÉMON USAGE',
+    title: '포켓몬 사용률',
+    description: 'AI · 레이팅 인기 포켓몬 TOP 100',
+    icon: ChartNoAxesCombined,
+  },
 ]
 
-function GameApp({
+export function GameApp({
   user,
   accountError,
   authBusy,
@@ -270,6 +280,7 @@ function GameApp({
   onSyncBeforeRanked,
   onSignOut,
 }) {
+  const pokemonUsage = usePokemonUsage(user)
   const initialAchievementWallet = useRef(null)
   if (initialAchievementWallet.current === null) initialAchievementWallet.current = loadAchievementWallet()
   const initialRewards = useRef(null)
@@ -609,6 +620,11 @@ function GameApp({
       return
     }
 
+    if (mode.id === 'usage') {
+      setScreen('usage')
+      return
+    }
+
   }
 
   const returnToLobby = () => {
@@ -710,8 +726,9 @@ function GameApp({
     const playerTeam = selectPlayerBattlePokemon(competition.playerTeam, rules, selectedCaptureIds)
     const selectedOpponentPokemon = selectCounterBattlePokemon(opponentTeam.pokemon, playerTeam, rules)
 
+    const usageBattleId = `${competition.id}:${competition.round}:${currentMatch.opponent.id}`
     setBattleMatch({
-      id: `${competition.id}:${competition.round}:${currentMatch.opponent.id}`,
+      id: usageBattleId,
       opponent: currentMatch.opponent,
       opponentTeam: { ...opponentTeam, pokemon: selectedOpponentPokemon },
       playerTeam,
@@ -722,6 +739,10 @@ function GameApp({
     resolvedCompetitionRef.current = null
     settledBattleRef.current = null
     setScreen('battle')
+    if (!pokemonUsage.recordAiBattle({ battleId: usageBattleId, format: rules.format.id,
+      speciesIds: playerTeam.map(pokemon => pokemon.speciesId) })) {
+      showNotice('대전은 시작됐지만 사용률 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인해주세요.')
+    }
   }
 
   const settleCompetitionBattle = (battleSummary) => {
@@ -1202,6 +1223,8 @@ function GameApp({
         />
       ) : screen === 'achievements' ? (
         <AchievementsScreen progress={achievementProgress} balance={vp} onBack={() => setScreen(achievementReturnScreen)} />
+      ) : screen === 'usage' ? (
+        <PokemonUsagePanel usage={pokemonUsage} onBack={returnToLobby} />
       ) : screen === 'shop' ? (
         <ShopScreen
           progress={achievementProgress}
@@ -1247,6 +1270,7 @@ function GameApp({
           achievementProgress={achievementProgress}
           balance={vp}
           settings={settings}
+          pokemonUsage={pokemonUsage}
           user={user}
           accountError={accountError}
           authBusy={authBusy}

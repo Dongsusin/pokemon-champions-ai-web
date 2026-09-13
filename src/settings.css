@@ -10,6 +10,35 @@
   animation: settings-backdrop-in 160ms ease-out both;
 }
 
+.settings-modal.settings-usage-open { width: min(1240px, 96vw); height: min(900px, 94dvh); max-height: 94dvh; }
+.settings-usage-open .settings-modal-body { overflow: hidden; display: flex; min-height: 0; padding: 8px; }
+.settings-usage-panel { flex: 1; min-height: 0; min-width: 0; display: flex; }
+.settings-tabs:has(#settings-usage-tab) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.mode-card.mode-usage { grid-column: 1 / -1; align-items: center; gap: 11px; min-height: 78px; padding: 12px; background: linear-gradient(125deg, #1e4c7deb, #283551f2); }
+.mode-card.mode-usage .mode-icon { color: #92e6ff; background: #6dcbf520; }
+@media (max-height: 500px) {
+  .mode-card.mode-usage { min-height: 62px; padding: 9px 11px; }
+}
+@media (max-height: 510px) and (orientation: landscape) {
+  .settings-modal-backdrop:has(.settings-modal.settings-usage-open) {
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .settings-modal.settings-usage-open { width: min(1240px, 100%); height: 100%; max-height: 100%; min-height: 0; border-width: 2px; border-radius: 12px; }
+  .settings-usage-open .settings-modal-header { min-height: 38px; gap: 9px; padding: 4px 10px; }
+  .settings-usage-open .settings-modal-header small { display: none; }
+  .settings-usage-open .settings-modal-header h2 { font-size: 18px; }
+  .settings-usage-open .settings-header-mark { width: 26px; height: 26px; border-radius: 7px; }
+  .settings-usage-open .settings-header-mark svg { width: 17px; height: 17px; }
+  .settings-usage-open .settings-close-button { width: 28px; height: 28px; border-radius: 7px; }
+  .settings-usage-open .settings-close-button svg { width: 18px; height: 18px; }
+  .settings-usage-open .settings-tabs { gap: 6px; padding: 4px 8px 0; }
+  .settings-usage-open .settings-tabs button { min-height: 28px; gap: 5px; font-size: 11px; }
+  .settings-usage-open .settings-tabs button svg { width: 15px; height: 15px; }
+  .settings-usage-open .settings-modal-body { padding: 5px 8px; }
+  .settings-usage-open .settings-modal-footer { min-height: 36px; padding: 4px 8px; }
+  .settings-usage-open .settings-modal-footer button { min-height: 28px; padding: 3px 14px; font-size: 11px; }
+}
+
 .settings-modal {
   position: relative;
   display: grid;

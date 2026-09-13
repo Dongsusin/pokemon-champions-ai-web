@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  ChartNoAxesCombined,
   Clock3,
   Gamepad2,
   Gauge,
@@ -25,8 +26,9 @@ import {
   X,
 } from 'lucide-react'
 import { AchievementCatalog } from './AchievementsScreen'
+import PokemonUsagePanel from './PokemonUsagePanel'
 
-const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'account']
+const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'usage', 'account']
 
 const ATTACK_ANIMATION_OPTIONS = [
   { value: 'skip', label: '스킵' },
@@ -240,6 +242,7 @@ function AccountPanel({
 function SettingsModal({
   settings,
   achievementProgress,
+  pokemonUsage,
   balance = 0,
   initialTab = 'game',
   user,
@@ -299,7 +302,7 @@ function SettingsModal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}${activeTab === 'usage' ? ' settings-usage-open' : ''}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="settings-modal-header">
           <span className="settings-header-mark"><Sparkles size={22} /></span>
           <div>
@@ -356,6 +359,11 @@ function SettingsModal({
             onClick={() => setActiveTab('achievements')}
           >
             <Trophy size={20} /> 업적
+          </button>
+          <button className={activeTab === 'usage' ? 'selected' : ''} type="button" role="tab"
+            id="settings-usage-tab" aria-controls="settings-usage-panel" aria-selected={activeTab === 'usage'}
+            tabIndex={activeTab === 'usage' ? 0 : -1} onClick={() => setActiveTab('usage')}>
+            <ChartNoAxesCombined size={20} /> 사용률
           </button>
           <button
             className={activeTab === 'account' ? 'selected' : ''}
@@ -444,6 +452,10 @@ function SettingsModal({
           ) : activeTab === 'achievements' ? (
             <div className="settings-achievements-panel" id="settings-achievements-panel" role="tabpanel" aria-labelledby="settings-achievements-tab">
               <AchievementCatalog progress={achievementProgress} balance={balance} embedded />
+            </div>
+          ) : activeTab === 'usage' ? (
+            <div className="settings-usage-panel" id="settings-usage-panel" role="tabpanel" aria-labelledby="settings-usage-tab">
+              {pokemonUsage ? <PokemonUsagePanel usage={pokemonUsage} embedded /> : <p>사용률 집계를 준비하고 있습니다.</p>}
             </div>
           ) : (
             <AccountPanel
