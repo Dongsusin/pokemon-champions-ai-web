@@ -7,6 +7,7 @@ const RETRYABLE = new Set(['40001', '40P01'])
 const keyPattern = /^[a-zA-Z0-9_-]{1,128}$/
 const namespacePattern = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/
 const clone = value => value === undefined ? undefined : structuredClone(value)
+const rankedProfile = (id, value) => ({ id, uid: value.uid ?? id, name: value.name, isGuest: value.isGuest, profiles: clone(value.profiles) })
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 
 function checkAddress(collection, key) {
@@ -114,6 +115,23 @@ export function createPostgresStore({
             else rows.set(change.key, change.value)
           }
           return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
+        },
+        async listRankedProfiles() {
+          assertActive()
+          // Leaderboards need only ratings and display names. Keep private team
+          // snapshots and match histories in Postgres instead of transferring
+          // every complete player document on each explicit leaderboard read.
+          const result = await client.query(`SELECT key, jsonb_build_object(
+            'uid', payload->'uid', 'name', payload->'name', 'isGuest', payload->'isGuest',
+            'profiles', payload->'profiles') AS profile
+            FROM ${TABLE} WHERE namespace = $1 AND collection = $2 ORDER BY key`, [namespace, 'players'])
+          const rows = new Map(result.rows.map(row => [row.key, rankedProfile(row.key, row.profile)]))
+          for (const change of writes.values()) {
+            if (change.collection !== 'players') continue
+            if (change.deleted) rows.delete(change.key)
+            else rows.set(change.key, rankedProfile(change.key, change.value))
+          }
+          return [...rows.values()]
         },
         set(collection, key, value) {
           assertActive(); checkAddress(collection, key)

@@ -57,6 +57,7 @@ VP는 승패와 같은 서버 트랜잭션에서 한 번만 확정한다. 계정
 | --- | --- |
 | `GET /api/ranked` | 자기 프로필, 대기열, 진행 중인 매치 조회 |
 | `GET /api/ranked?action=fixtures` | 로컬 테스트 팀만 반환. 운영에서는 404 |
+| `GET /api/ranked?action=rankedLeaderboard` | 싱글·더블 TOP 10과 형식별 참가자 수, 조회 시각. 서버 게스트 포함 인증 필요 |
 | `POST` `action: join` | `requestId`, `format: single/double`, `team: [6명]` |
 | `POST` `action: cancel` | `requestId`, `queueTicket` |
 | `POST` `action: select` | `requestId`, `matchId`, `revision`, `selection: [팀 인덱스]` |
@@ -67,6 +68,12 @@ VP는 승패와 같은 서버 트랜잭션에서 한 번만 확정한다. 계정
 기본 응답은 `{profile: {single, double}, vpRewards: {uid, total}, queue, match, serverTime}`이다. 매치는 `phase: select/battle/finished`, `revision`, `timelineRevision`, 개인화된 `state`, `timeline`, 제출 여부, 서버 제한 시간, 자기 결과를 제공한다. 상태 폴링에 `matchId`와 이미 받은 `timelineRevision`을 함께 보내면 같은 연출의 대용량 재전송을 생략한다. 이때 `timeline`만 빈 배열이고 현재 상태는 계속 반환한다. 오류는 `{error: {code, message}}`이며 클라이언트는 409 이후 최신 상태를 다시 불러온다.
 
 경기가 끝난 직후에도 해당 경기를 보고 있던 클라이언트의 `matchId` 조회와 종료 명령 응답에는 마지막 턴과 결과를 전달한다. 새로운 대기열이나 진행 경기가 있으면 그 상태를 우선한다. `matchId` 없는 새 상태 조회는 완료 경기를 반환하지 않는다. 화면에서 결과를 닫으면 로컬 경기 데이터와 조회용 `matchId`를 제거하고 진행 중이던 이전 응답도 무효화한다. 서버의 완료 기록은 중복 정산 방지를 위해 보존하며, 진행 중인 경기의 재접속 복구는 유지한다.
+
+### 레이팅 랭킹 조회
+
+`rankedLeaderboard`는 `{boards: {single: {entries, participantCount}, double: {entries, participantCount}}, updatedAt}`를 반환한다. 각 항목은 `rank`, 가려진 `trainerName`, `isGuest`, `isOwn`, `points`, `rating`, `wins`, `losses`, `draws`, `played`만 포함한다. 각 형식의 `played > 0`인 기존 프로필을 정렬해 최대 10명까지 반환한다. 패배로 순위가 내려가면 이전 11위 이하 계정도 다시 비교하므로 새 순위에 진입할 수 있다.
+
+이 조회는 점수 정산이나 대기열 만료 처리를 수행하지 않는다. 서버에 이미 정산된 기록만 읽으며 별도 랭킹 복사본을 저장하지 않는다. Postgres에서는 필요한 이름·프로필 필드만 투영해 한 번에 읽고, 메모리·파일·Firestore 어댑터는 기존 컬렉션 조회를 사용한다. UI는 최초 진입/수동 새로고침에만 요청하고 일반 상태 폴링에 포함하지 않는다.
 
 ## 운영 설정
 

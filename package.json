@@ -87,6 +87,8 @@
     "validate:ranked-vp-ui": "node scripts/validateRankedVpUi.mjs",
     "validate:vp-economy": "node scripts/validateVpEconomy.mjs",
     "validate:ranked-ratings": "node scripts/validateRankedRatings.mjs",
+    "validate:ranked-leaderboard": "node scripts/validateRankedLeaderboard.mjs",
+    "validate:ranked-leaderboard-ui": "node scripts/validateRankedLeaderboardUi.mjs",
     "validate:ranked-privacy": "node scripts/validateRankedPrivacy.mjs",
     "validate:ranked-saved-teams-ui": "node scripts/validateRankedSavedTeamsUi.mjs",
     "validate:ranked-firestore": "node scripts/validateRankedFirestore.mjs",

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, Clock3, Flag, LoaderCircle, RefreshCw, Sh
 import BattleScreen from './BattleScreen'
 import SpriteImage from './SpriteImage'
 import RankedTeamRoster from './RankedTeamRoster'
+import RankedLeaderboard from './RankedLeaderboard'
 import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS, RANKED_TIERS, createRankedProfile, getRankedTier } from './data/rankedRules'
 import { RANKED_VP_REWARDS } from './data/rankedRewards'
@@ -66,6 +67,7 @@ export default function RankedBattleScreen({
   const [serverOffset, setServerOffset] = useState(0)
   const [playedRevision, setPlayedRevision] = useState(null)
   const [confirmForfeit, setConfirmForfeit] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [vpSync, setVpSync] = useState({ uid: null, appliedTotal: -1, pending: false, error: '' })
   const vpCallbackRef = useRef(onVpRewards)
   const vpAccountRef = useRef(user?.uid)
@@ -218,7 +220,7 @@ export default function RankedBattleScreen({
 
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   const match = snapshot.match
-  useEffect(() => { setSelection([]); setPlayedRevision(null); setConfirmForfeit(false) }, [match?.id])
+  useEffect(() => { setSelection([]); setPlayedRevision(null); setConfirmForfeit(false); if (match?.id) setShowLeaderboard(false) }, [match?.id])
   const resultReady = match?.phase === 'finished' && (!match.state || !match.timeline?.length
     || playedRevision === (match.timelineRevision ?? match.revision))
   const roomConflict = Boolean(snapshot.room || match?.roomId)
@@ -335,8 +337,12 @@ export default function RankedBattleScreen({
   </div>
 
   return <main className="ranked-screen">
-    <header className="ranked-header"><button className="screen-back-button" type="button" disabled={busy || Boolean(match && match.phase !== 'finished')} onClick={leave}><ArrowLeft size={18} /> 배틀 선택</button>
-      <div><span>TRAINER VS TRAINER</span><h1>레이팅 배틀</h1></div><span className="ranked-mode-tag">{isRankedLocalTest ? '로컬 테스트' : '온라인 대전'}</span></header>
+    <header className="ranked-header"><button className="screen-back-button" type="button" disabled={busy || Boolean(match && match.phase !== 'finished')} onClick={showLeaderboard ? () => setShowLeaderboard(false) : leave}><ArrowLeft size={18} /> {showLeaderboard ? '레이팅 로비' : '배틀 선택'}</button>
+      <div><span>{showLeaderboard ? 'RANKED LEADERBOARD' : 'TRAINER VS TRAINER'}</span><h1>{showLeaderboard ? '레이팅 랭킹' : '레이팅 배틀'}</h1></div>
+      <aside className="ranked-header-actions">
+        {!showLeaderboard && isRankedEnabled && canAuthenticate && !match && <button className="ranked-leaderboard-open" type="button" disabled={busy} onClick={() => setShowLeaderboard(true)}><Trophy size={16} /> 랭킹 TOP 10</button>}
+        <span className="ranked-mode-tag">{isRankedLocalTest ? '로컬 테스트' : '온라인 대전'}</span>
+      </aside></header>
     {notices}
     {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>현재 환경에서는 참가할 수 없습니다.</p></section>
       : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>온라인 계정으로 참가하세요</h2><p>게스트 또는 Google 로그인 후 레이팅과 경기 기록을 저장하며 참가할 수 있습니다.</p></section>
@@ -364,6 +370,7 @@ export default function RankedBattleScreen({
             onClick={() => fire('select', { matchId: match.id, revision: match.revision, selection })}>{match.selectionSubmitted ? <><Check size={17} /> 선출 완료</> : '선출 확정'}</button>
           <button className="ranked-quiet" type="button" disabled={busy} onClick={() => fire('forfeit', { matchId: match.id })}>선출 포기</button></div>
       </section>
+      : showLeaderboard ? <RankedLeaderboard key={isRankedLocalTest ? identity : user?.uid} client={client} initialFormat={format} queued={Boolean(snapshot.queue)} />
       : <div className="ranked-lobby-grid"><section className="ranked-ladder-panel">
         <div className="ranked-format-tabs" role="group" aria-label="레이팅 형식">{RANKED_FORMATS.map(entry => <button type="button" key={entry.id} aria-pressed={format === entry.id} disabled={busy || Boolean(snapshot.queue)} onClick={() => setFormat(entry.id)}><Swords size={17} />{entry.label}</button>)}</div>
         <RankBadge record={record} />

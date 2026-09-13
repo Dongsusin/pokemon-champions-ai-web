@@ -33,6 +33,8 @@ class FixturePool extends EventEmitter {
         if (text.startsWith('SELECT payload')) {
           const payload = draft.get(address(values)); return { rows: payload === undefined ? [] : [{ payload: copy(payload) }] }
         }
+        if (text.startsWith('SELECT key, jsonb_build_object')) return { rows: [...draft].filter(([key]) => key.startsWith(`${values[0]}/${values[1]}/`))
+          .map(([key, payload]) => ({ key: key.split('/')[2], profile: copy({ uid: payload.uid, name: payload.name, isGuest: payload.isGuest, profiles: payload.profiles }) })) }
         if (text.startsWith('SELECT key, payload')) return { rows: [...draft].filter(([key]) => key.startsWith(`${values[0]}/${values[1]}/`))
           .map(([key, payload]) => ({ key: key.split('/')[2], payload: copy(payload) })).sort((a, b) => a.key.localeCompare(b.key)) }
         if (text.startsWith('INSERT INTO')) { draft.set(address(values), JSON.parse(values[3])); return { rows: [] } }
@@ -98,6 +100,31 @@ test('buffered writes, deletes, repeated reads and collection lists are atomic a
   assert.equal(pool.calls[0].text, 'BEGIN ISOLATION LEVEL SERIALIZABLE')
   assert.deepEqual(pool.calls[1].values, ['8000', '10000', '5000'])
   assert.deepEqual(pool.released, [{ id: 1, discard: false }])
+})
+
+test('ranked projection excludes private payloads and includes atomic buffered changes', async () => {
+  const { pool, store } = fixture()
+  const profile = { single: { played: 1, points: 30 }, double: { played: 0, points: 0 } }
+  pool.rows.set('ranked/players/alice', { uid: 'alice', name: 'Alice', isGuest: false, profiles: profile, team: ['private'], history: ['private'], requests: ['private'] })
+  pool.rows.set('ranked/players/bob', { uid: 'bob', name: 'Bob', profiles: profile })
+  pool.rows.set('account/players/other', { uid: 'other', profiles: profile })
+  await store.transaction(async tx => {
+    const first = await tx.listRankedProfiles()
+    assert.equal(first.length, 2)
+    assert.deepEqual(first[0], { id: 'alice', uid: 'alice', name: 'Alice', isGuest: false, profiles: profile })
+    first[0].profiles.single.points = 9999
+    assert.equal((await tx.listRankedProfiles())[0].profiles.single.points, 30)
+    tx.delete('players', 'bob')
+    tx.set('players', 'charlie', { name: 'Charlie', profiles: profile, team: ['private'] })
+    const updated = await tx.listRankedProfiles()
+    assert.deepEqual(updated.map(player => player.uid), ['alice', 'charlie'])
+    assert(updated.every(player => Object.keys(player).every(key => ['id', 'uid', 'name', 'isGuest', 'profiles'].includes(key))))
+  })
+  const queries = pool.calls.filter(call => call.text.startsWith('SELECT key, jsonb_build_object'))
+  assert.equal(queries.length, 3)
+  assert(queries.every(call => !call.text.includes('SELECT key, payload') && !call.text.includes("payload->'team'")))
+  assert(queries.every(call => JSON.stringify(call.values) === JSON.stringify(['ranked', 'players'])))
+  await store.close()
 })
 
 test('account and ranked namespaces share a pool without sharing documents', async () => {

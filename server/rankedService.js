@@ -4,6 +4,7 @@ import { getRankedVpReward } from '../src/data/rankedRewards.js'
 import { maskRankedMatch, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 import { readPokemonUsage, recordRankedPokemonUsage, reportAiPokemonUsage, validateAiPokemonUsage } from './pokemonUsageService.js'
 import { readFactoryLeaderboard, reportFactoryRun, validateFactoryRankingReport } from './battleFactoryRankingService.js'
+import { readRankedLeaderboard } from './rankedLeaderboardService.js'
 import { createGuestIdentityRegistry } from './guestIdentity.js'
 import { createBattleRoomService, validateRoomPassword } from './battleRoomService.js'
 
@@ -373,13 +374,14 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (!identity || !isId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
     identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32), isGuest: identity.isGuest === true }
     const action = payload?.action ?? 'status'
-    if (!['guestProfile', 'status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit', 'rooms', 'roomCreate', 'roomJoin', 'roomStart', 'roomLeave', 'roomDismissResult'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (!['guestProfile', 'status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'rankedLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit', 'rooms', 'roomCreate', 'roomJoin', 'roomStart', 'roomLeave', 'roomDismissResult'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
     if (action === 'guestProfile') return guestIdentities.create(identity)
     if (identity.isGuest) {
       const profile = await guestIdentities.read(identity)
       identity.name = profile.displayName
     }
     if (action === 'factoryLeaderboard') return store.transaction(tx => readFactoryLeaderboard(tx, identity.uid))
+    if (action === 'rankedLeaderboard') return store.transaction(tx => readRankedLeaderboard(tx, identity.uid, now()))
     if (action === 'reportFactoryRun') {
       const report = validateFactoryRankingReport(payload.report)
       const recordedAt = now()
