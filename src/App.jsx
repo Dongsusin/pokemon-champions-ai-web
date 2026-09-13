@@ -19,6 +19,8 @@ import {
 import BattleSelectScreen from './BattleSelectScreen'
 import BattleHub from './BattleHub'
 import RankedBattleScreen from './RankedBattleScreen'
+import BattleRoomsScreen from './BattleRoomsScreen'
+import BattleRoomsTestLobby from './BattleRoomsTestLobby'
 import BattleFactoryScreen from './BattleFactoryScreen'
 import { isRankedLocalTest } from './rankedClient'
 import BattleScreen from './BattleScreen'
@@ -347,7 +349,8 @@ export function GameApp({
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
-  const displayedTrainerName = screen === 'ranked' ? maskRankedTrainerName(trainerName, user.isAnonymous === true) : trainerName
+  const onlineScreen = screen === 'ranked' || screen === 'rooms'
+  const displayedTrainerName = onlineScreen ? maskRankedTrainerName(trainerName, user.isAnonymous === true) : trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
     if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {
@@ -663,6 +666,11 @@ export function GameApp({
 
   const openBoxFromRanked = () => {
     setBoxReturnScreen('ranked')
+    setScreen('box')
+  }
+
+  const openBoxFromRooms = () => {
+    setBoxReturnScreen('rooms')
     setScreen('box')
   }
 
@@ -1044,7 +1052,7 @@ export function GameApp({
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'rooms' ? ' rooms-view ranked-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -1068,7 +1076,7 @@ export function GameApp({
           <button
             className="status-card currency-card"
             type="button"
-            disabled={screen === 'ranked'}
+            disabled={onlineScreen}
             onClick={openShop}
           >
             <span className="status-icon status-icon-cyan">
@@ -1082,7 +1090,7 @@ export function GameApp({
 
           <div
             className={`player-account${accountError ? ' sync-error' : ''}`}
-            title={accountError || (screen === 'ranked' ? displayedTrainerName : user.email || trainerName)}
+            title={accountError || (onlineScreen ? displayedTrainerName : user.email || trainerName)}
           >
             <span className="player-account-avatar">
               {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : trainerInitial}
@@ -1111,7 +1119,7 @@ export function GameApp({
             <Settings size={21} />
           </button>
 
-          {!battleMusicActive && screen !== 'ranked' && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
+          {!battleMusicActive && !onlineScreen && <button className="icon-button" type="button" aria-label="업적 보기" onClick={openAchievements}>
             <Trophy size={21} />
           </button>}
 
@@ -1167,9 +1175,16 @@ export function GameApp({
       </main>
       ) : screen === 'battle-hub' ? (
         <BattleHub onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
-          onSelectFactory={() => setScreen('factory')} />
+          onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')} />
+      ) : screen === 'rooms' ? (
+        <BattleRoomsScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
+          onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRooms} onBack={() => setScreen('battle-hub')}
+          soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
+          audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
+          onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} />
       ) : screen === 'ranked' ? (
         <RankedBattleScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
+          onOpenRooms={() => setScreen('rooms')}
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRanked} onBack={() => setScreen('battle-hub')}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
@@ -1254,7 +1269,7 @@ export function GameApp({
           inventory={itemInventory}
           onBack={returnFromBox}
           pokemonUsage={pokemonUsage}
-          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : '로비'}
+          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : boxReturnScreen === 'rooms' ? '대전방' : '로비'}
           onEquipItem={equipBattleItem}
           onSetTeraType={setPokemonTeraType}
           onSetDynamaxMode={setPokemonDynamaxMode}
@@ -1444,24 +1459,28 @@ function AccountGameApp({ user, accountError, ...props }) {
 // A separate development-only entry avoids creating or changing real accounts
 // when two browsers exercise the local ranked server.
 export function RankedTestApp() {
-  const [page, setPage] = useState('hub')
+  const [page, setPage] = useState(() => new URLSearchParams(window.location.search).has('roomPlayer') ? 'rooms' : 'hub')
   const [battleActive, setBattleActive] = useState(false)
   const [factoryRun, setFactoryRun] = useState(null)
   const [sound, setSound] = useState(false)
-  const battleVisible = page === 'factory' ? factoryRun?.phase === 'battle' : page === 'ranked' && battleActive
+  const battleVisible = page === 'factory' ? factoryRun?.phase === 'battle' : ['ranked', 'rooms'].includes(page) && battleActive
   if (!isRankedLocalTest) return null
   if (page === 'ai') return <AuthProvider><App /></AuthProvider>
   return <>
     <LandscapeOrientationGate />
-    <div className={`app-shell${page === 'factory' ? ' factory-view' : ' ranked-view'}${battleVisible ? ' battle-view' : ''}`}>
+    <div className={`app-shell${page === 'factory' ? ' factory-view' : ' ranked-view'}${page === 'rooms' ? ' rooms-view' : ''}${battleVisible ? ' battle-view' : ''}`}>
       {page === 'hub'
         ? <BattleHub onBack={() => setPage('ai')} onSelectAi={() => setPage('ai')} onSelectRanked={() => setPage('ranked')}
-            onSelectFactory={() => setPage('factory')} />
+            onSelectFactory={() => setPage('factory')} onSelectRooms={() => setPage('rooms')} />
+        : page === 'rooms'
+          ? <BattleRoomsTestLobby onBack={() => setPage('hub')} onBattleActiveChange={setBattleActive}
+              soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
+              gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />
         : page === 'factory'
           ? <BattleFactoryScreen user={{uid:'ranked-factory-local',displayName:'팩토리 테스트',isLocalGuest:true}} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setPage('hub')}
               soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
               playerGender="male" gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />
-        : <RankedBattleScreen onBack={() => setPage('hub')} onBattleActiveChange={setBattleActive}
+        : <RankedBattleScreen onBack={() => setPage('hub')} onBattleActiveChange={setBattleActive} onOpenRooms={() => setPage('rooms')}
             soundEnabled={sound} onToggleSound={() => setSound(value => !value)}
             gameSettings={{ attackAnimation: 'fast', hpBarSpeed: 'fast' }} audioSettings={{ enabled: sound }} />}
     </div>

@@ -1,12 +1,12 @@
 import { ArrowLeft, ArrowLeftRight, Building2, ChevronRight, Swords, Trophy, UsersRound } from 'lucide-react'
 import './battleHub.css'
 
-export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelectFactory }) {
+export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms }) {
   return (
     <main className="battle-hub">
       <header className="battle-hub-heading">
         <button className="screen-back-button" onClick={onBack} type="button"><ArrowLeft size={19} /> 로비</button>
-        <div><span>BATTLE ARENA</span><h1>어떤 배틀에 도전할까요?</h1><p>유저와의 승부, AI 챔피언 도전, 랜덤 팀으로 오르는 배틀팩토리.</p></div>
+        <div><span>BATTLE ARENA</span><h1>어떤 배틀에 도전할까요?</h1><p>레이팅부터 친구들과의 대회까지, 원하는 방식으로 도전하세요.</p></div>
       </header>
       <section className="battle-hub-options" aria-label="배틀 종류">
         <button type="button" className="battle-hub-card ranked" onClick={onSelectRanked}>
@@ -29,6 +29,13 @@ export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelect
           <p>랜덤 포켓몬 6마리 중 3마리를 선택하고{' '}<br />승리한 상대와 교환하며 다음 층에 도전하세요.</p>
           <span className="battle-hub-tags"><span>3 대 3 AI 대전</span><span><ArrowLeftRight size={15} /> 승리 후 교환</span></span>
           <strong>팩토리에 도전 <ChevronRight size={20} /></strong>
+        </button>
+        <button type="button" className="battle-hub-card rooms" onClick={onSelectRooms}>
+          <span className="battle-hub-emblem"><UsersRound size={48} /></span>
+          <small>FRIENDLY COMPETITION</small><h2>대전방</h2>
+          <p>최대 4명이 함께 모여{' '}<br />토너먼트 또는 리그전으로 대결하세요.</p>
+          <span className="battle-hub-tags"><span>2~4인 대회</span><span>비밀번호 설정</span></span>
+          <strong>방 찾기 · 만들기 <ChevronRight size={20} /></strong>
         </button>
       </section>
     </main>

@@ -50,7 +50,7 @@ function RankBadge({ record, compact = false }) {
 export default function RankedBattleScreen({
   user, teams = [], boxPokemon = [], activeTeamId, onSelectTeam, onOpenBox, onBack, onBeforeJoin,
   soundEnabled = true, gameSettings = {}, playerGender = 'male', audioSettings = {},
-  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards,
+  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards, onOpenRooms,
 }) {
   const [identity, setIdentity] = useState(initialIdentity)
   const [format, setFormat] = useState('single')
@@ -221,7 +221,8 @@ export default function RankedBattleScreen({
   useEffect(() => { setSelection([]); setPlayedRevision(null); setConfirmForfeit(false) }, [match?.id])
   const resultReady = match?.phase === 'finished' && (!match.state || !match.timeline?.length
     || playedRevision === (match.timelineRevision ?? match.revision))
-  const battleVisible = Boolean(match?.state && !resultReady)
+  const roomConflict = Boolean(snapshot.room || match?.roomId)
+  const battleVisible = Boolean(match?.state && !resultReady && !roomConflict)
   useEffect(() => { onBattleActiveChange?.(battleVisible); return () => onBattleActiveChange?.(false) }, [battleVisible, onBattleActiveChange])
 
   const mutate = async (action, payload, before) => {
@@ -301,6 +302,16 @@ export default function RankedBattleScreen({
   const resultVp = Number.isSafeInteger(match?.result?.rewardVp) ? match.result.rewardVp : null
   const rewardTotal = vpLatestRef.current
   const rewardConfirmed = rewardTotal && vpSync.uid === rewardTotal.uid && vpSync.appliedTotal >= rewardTotal.total
+
+  if (roomConflict) return <main className="ranked-screen">
+    <header className="ranked-header"><button className="screen-back-button" type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 선택</button>
+      <div><span>TRAINER VS TRAINER</span><h1>레이팅 배틀</h1></div></header>
+    {notices}
+    <section className="ranked-empty"><UsersRound size={40} /><h2>참가 중인 대전방이 있습니다</h2>
+      <p>대전방으로 돌아가 대회를 진행하거나 방에서 나간 뒤 레이팅에 참가하세요.</p>
+      <button className="ranked-primary" type="button" onClick={onOpenRooms ?? onBack}>대전방으로 돌아가기 <ArrowRight size={17} /></button>
+    </section>
+  </main>
 
   if (battleVisible) return <div className="ranked-live-battle">
     <div className="ranked-battle-connection" role="status"><span>{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{waitingMessage}</span>

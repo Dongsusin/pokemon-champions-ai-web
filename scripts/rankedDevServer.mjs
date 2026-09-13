@@ -86,6 +86,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid port')
   const server = await startRankedDevServer({ port, testAccounts: true })
   console.log(`Local ranked test server: ${server.url}`)
-  console.log('Test accounts: alice / bob / charlie. Data stays in scripts/.cache/ranked-test/state.json.')
+  console.log('Test accounts: alice / bob / charlie / dave. Data stays in scripts/.cache/ranked-test/state.json.')
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => { await server.close(); process.exit(0) })
 }

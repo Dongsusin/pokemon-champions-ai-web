@@ -1,12 +1,13 @@
-.battle-hub { width: min(1320px, 100%); margin: 0 auto; padding: 26px 28px 34px; }
+.battle-hub { width: min(1660px, 100%); margin: 0 auto; padding: 26px 28px 34px; }
 .battle-hub-heading { display: flex; align-items: center; gap: 25px; margin-bottom: 28px; }
 .battle-hub-heading > div > span { color: #83eaff; font-size: 12px; font-weight: 850; letter-spacing: .22em; }
 .battle-hub-heading h1 { margin: 6px 0; font-size: clamp(25px, 3vw, 36px); }
 .battle-hub-heading p { color: #b5c6df; margin: 0; line-height: 1.6; }
-.battle-hub-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.battle-hub-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 .battle-hub-card { --hub-accent: #bec5ff; position: relative; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 385px; padding: clamp(22px, 2.5vw, 32px); border: 1px solid #ffffff38; border-radius: 24px; color: #f3f8ff; text-align: left; font: inherit; background: radial-gradient(ellipse at 90% 5%, #8174c34a, transparent 60%), linear-gradient(145deg,#252c50,#151b35); box-shadow: inset 0 1px #ffffff1f, 0 15px 40px #0003; cursor: pointer; transition: transform .18s, border-color .18s; }
 .battle-hub-card.ai { --hub-accent: #7cecfa; background: radial-gradient(ellipse at 90% 5%, #258a9340, transparent 60%), linear-gradient(145deg,#18394a,#152338); }
 .battle-hub-card.factory { --hub-accent: #ffdb80; background: radial-gradient(ellipse at 90% 5%, #e5b64445, transparent 60%), linear-gradient(145deg,#403627,#232233); }
+.battle-hub-card.rooms { --hub-accent: #a9efb8; background: radial-gradient(ellipse at 90% 5%, #50c17b38, transparent 60%), linear-gradient(145deg,#1d3b37,#162837); }
 .battle-hub-card:hover { transform: translateY(-3px); border-color: var(--hub-accent); }
 .battle-hub-card:focus-visible { outline: 3px solid var(--hub-accent); outline-offset: 4px; }
 .battle-hub-emblem { display: grid; place-items: center; width: 86px; height: 86px; margin-bottom: 24px; border: 1px solid #ffffff38; border-radius: 22px; background: #ffffff0a; color: var(--hub-accent); }
@@ -20,7 +21,7 @@
 .app-shell.ranked-view.battle-view { overflow: hidden; }
 @media (max-width: 1050px) and (min-height: 601px) {
   .battle-hub { padding-inline: 22px; }
-  .battle-hub-options { gap: 14px; }
+  .battle-hub-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .battle-hub-card { padding: 22px; }
   .battle-hub-card p br { display: none; }
 }

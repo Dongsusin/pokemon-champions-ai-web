@@ -11,6 +11,7 @@ const TEST_IDENTITIES = Object.freeze({
   'ranked-test-alice': { uid: 'ranked-test-alice', name: '테스트 트레이너 A' },
   'ranked-test-bob': { uid: 'ranked-test-bob', name: '테스트 트레이너 B' },
   'ranked-test-charlie': { uid: 'ranked-test-charlie', name: '테스트 트레이너 C' },
+  'ranked-test-dave': { uid: 'ranked-test-dave', name: '테스트 트레이너 D' },
 })
 const AUTH_REJECTION_CODES = new Set([
   'auth/argument-error', 'auth/invalid-argument', 'auth/invalid-id-token',
@@ -117,7 +118,7 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
       const payload = request.method === 'GET'
         ? { action: url.searchParams.get('action') || 'status', ...(url.searchParams.has('matchId') ? { matchId: url.searchParams.get('matchId') } : {}), ...(url.searchParams.has('timelineRevision') ? { timelineRevision: url.searchParams.get('timelineRevision') } : {}) }
         : await readPayload(request)
-      if (request.method === 'GET' && !['status', 'fixtures', 'usage', 'factoryLeaderboard'].includes(payload.action)) throw new RankedError('METHOD_NOT_ALLOWED', '상태 변경은 POST 요청만 허용됩니다.', 405)
+      if (request.method === 'GET' && !['status', 'rooms', 'fixtures', 'usage', 'factoryLeaderboard'].includes(payload.action)) throw new RankedError('METHOD_NOT_ALLOWED', '상태 변경은 POST 요청만 허용됩니다.', 405)
       return response(await service.execute(identity, payload), 200, headers)
     } catch (error) {
       if (error instanceof RankedError || (Number.isInteger(error?.status) && error.status >= 400 && error.status < 500)) {

@@ -201,10 +201,10 @@ window.__fixtureFactoryVictory = () => {
       await page.goto(`${origin}/factory-ui.html`)
       await page.getByRole('button', { name: /시작하기/ }).waitFor()
 
-      await check(`${device.id}: one-owned-Pokemon account enters the three-mode hub and receives six rentals`, 'real-ui', async () => {
+      await check(`${device.id}: one-owned-Pokemon account enters the four-mode hub and receives six rentals`, 'real-ui', async () => {
         assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('champions-dex-v2')).length), 1)
         await click(page.getByRole('button', { name: /시작하기/ }))
-        assert.equal(await page.locator('.battle-hub-card').count(), 3)
+        assert.equal(await page.locator('.battle-hub-card').count(), 4)
         await click(page.locator('.battle-hub-card.factory'))
         await page.getByLabel('렌탈 후보 6마리').waitFor()
         assert.equal(await page.locator('.factory-rental-select').count(), 6)

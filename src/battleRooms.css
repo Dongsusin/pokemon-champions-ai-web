@@ -1,0 +1,196 @@
+html:has(.rooms-screen), body:has(.rooms-screen) { overflow: clip; }
+.app-shell:has(> .rooms-screen), .app-shell:has(> .rooms-live-battle) { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: clip; }
+.app-shell:has(> .rooms-screen) > .topbar { flex: 0 0 auto; }
+.rooms-screen { width: min(1480px, 100%); flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: clamp(10px, 1.7vh, 20px) clamp(12px, 2vw, 28px); margin: 0 auto; color: #e9f3ff; overflow: clip; }
+.rooms-screen *, .rooms-dialog * { box-sizing: border-box; }
+.rooms-screen button, .rooms-screen input, .rooms-dialog button, .rooms-dialog input { font: inherit; }
+.rooms-screen button, .rooms-dialog button { cursor: pointer; }
+.rooms-screen button:disabled, .rooms-dialog button:disabled { opacity: .45; cursor: default; }
+.rooms-screen :is(button, input):focus-visible, .rooms-dialog :is(button, input):focus-visible { outline: 3px solid #74e6eb; outline-offset: 3px; }
+.rooms-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex: 0 0 auto; }
+.rooms-header > div { text-align: center; }
+.rooms-header > div > span { color: #8cdcdf; font-size: 10px; letter-spacing: .22em; font-weight: 800; }
+.rooms-header h1 { font-size: clamp(24px, 2.4vw, 34px); margin: 4px 0 0; letter-spacing: -.04em; }
+.rooms-mode-badge { display: flex; align-items: center; gap: 8px; border: 1px solid #44657e; background: #132d42; border-radius: 9px; padding: 10px 13px; color: #b9d7e8; font-size: 12px; }
+.rooms-lobby-grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; flex: 1 1 0; min-height: 0; }
+.rooms-panel { background: linear-gradient(135deg, #182c43f5, #0b182bee); border: 1px solid #385169; border-radius: 18px; padding: 20px; min-width: 0; min-height: 0; }
+.rooms-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex: 0 0 auto; }
+.rooms-panel-title > span { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; }
+.rooms-panel-title > span:last-child { color: #95b9ca; font-size: 12px; }
+.rooms-panel-title svg { color: #87d9db; flex-shrink: 0; }
+.rooms-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid #45647a; background: #20394d; border-radius: 7px; color: #c9e8f4; flex-shrink: 0; }
+.rooms-list-panel, .rooms-team-panel { display: flex; flex-direction: column; gap: 12px; }
+.rooms-list-panel > .rooms-panel-title, .rooms-team-panel > .rooms-panel-title { margin-bottom: 0; }
+.rooms-list { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #45647c transparent; padding-right: 4px; }
+.rooms-room-card { padding: 14px; border: 1px solid #355166; border-radius: 12px; background: #102437c9; margin-bottom: 10px; }
+.rooms-room-card:last-child { margin-bottom: 0; }
+.rooms-room-heading { display: flex; align-items: center; gap: 11px; }
+.rooms-room-heading > div { flex: 1; min-width: 0; }
+.rooms-room-icon { display: grid; place-items: center; background: #21465a; color: #b6eae7; width: 41px; height: 41px; border-radius: 11px; flex-shrink: 0; }
+.rooms-room-heading h2 { margin: 0 0 8px; font-size: 16px; overflow-wrap: anywhere; }
+.rooms-room-heading > b { color: #c6e9e8; font-size: 15px; white-space: nowrap; }
+.rooms-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rooms-tags > span { font-size: 10px; color: #9dc7d4; background: #203a4e; border: 1px solid #3b586d; border-radius: 4px; padding: 3px 6px; }
+.rooms-room-card footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 10px; border-top: 1px solid #294456; }
+.rooms-room-card footer > span { display: flex; gap: 5px; align-items: center; font-size: 11px; color: #829eb5; font-variant-numeric: tabular-nums; }
+.rooms-room-card footer > button { display: flex; align-items: center; gap: 5px; padding: 7px 11px; font-size: 12px; }
+.rooms-list-empty { min-height: 200px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 15px; color: #81b4c8; }
+.rooms-list-empty h2 { color: #dbeaf4; font-size: 17px; margin: 17px 0 8px; }
+.rooms-list-empty p { color: #95adbf; font-size: 12px; line-height: 1.6; }
+.rooms-help { font-size: 11px; line-height: 1.7; color: #93aebf; margin: 0; }
+.rooms-conflict { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; border: 1px solid #826e49; border-radius: 9px; background: #382f25; padding: 12px; color: #edd3a3; font-size: 12px; line-height: 1.6; }
+.rooms-conflict > svg { flex-shrink: 0; }
+.rooms-list-panel > .rooms-help { text-align: center; }
+.rooms-team-panel { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #45647c transparent; }
+.rooms-team-panel .ranked-team-slots { margin: 0; flex-shrink: 0; gap: 6px; }
+.rooms-team-panel .ranked-team-slots button { padding: 9px 3px; }
+.rooms-team-panel .ranked-roster-heading { margin: 0; }
+.rooms-team-panel .ranked-six-grid { flex: 1 0 auto; grid-template-rows: repeat(2, minmax(105px, 1fr)); gap: 8px; }
+.rooms-team-panel .ranked-pokemon-card { min-height: 100px; }
+.rooms-team-panel > .ranked-quiet { margin-top: auto; flex-shrink: 0; }
+.rooms-team-note { display: flex; align-items: center; justify-content: center; gap: 10px; color: #aed3df; }
+.rooms-team-note p { font-size: 12px; line-height: 1.7; margin: 0; }
+.rooms-team-note p span { color: #89a7bc; font-size: 11px; }
+.rooms-competition-grid { display: grid; grid-template-columns: minmax(250px, .75fr) minmax(0, 1.3fr); gap: 18px; flex: 1 1 0; min-height: 0; }
+.rooms-members-panel { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; scrollbar-width: thin; }
+.rooms-members-panel .rooms-panel-title { margin-bottom: 0; }
+.rooms-members-panel > h2 { font-size: 23px; margin: 0; overflow-wrap: anywhere; }
+.rooms-member-list { display: grid; gap: 9px; margin: 4px 0; }
+.rooms-member { display: flex; align-items: center; gap: 11px; border: 1px solid #365269; padding: 10px 12px; border-radius: 10px; background: #102438; min-width: 0; }
+.rooms-member.is-me { border-color: #70a8b4; background: #183d4d; }
+.rooms-member.empty { border-style: dashed; opacity: .55; }
+.rooms-member-avatar { display: grid; place-items: center; width: 35px; height: 35px; background: #294c63; border-radius: 50%; color: #b7dce8; flex-shrink: 0; }
+.rooms-member > div { flex: 1; min-width: 0; }
+.rooms-member strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.rooms-member small { display: block; margin-top: 4px; color: #8babbe; font-size: 10px; }
+.rooms-member > svg { color: #efcd7b; flex-shrink: 0; }
+.rooms-deadline { display: flex; align-items: center; gap: 8px; padding: 10px 0 0; color: #afd3dc; font-size: 12px; }
+.rooms-deadline strong { margin-left: auto; font-size: 22px; font-variant-numeric: tabular-nums; }
+.rooms-members-panel > .ranked-primary { margin-top: auto; }
+.rooms-members-panel > :is(.ranked-primary, .ranked-quiet) { flex-shrink: 0; }
+.rooms-waiting { display: flex; align-items: center; justify-content: center; gap: 10px; color: #9addd8; font-size: 12px; line-height: 1.7; margin: auto 0 0; padding: 15px 5px; }
+.rooms-progress-panel { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #45647c transparent; }
+.rooms-rules { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; text-align: center; min-height: calc(100% - 50px); padding: 20px; }
+.rooms-rules > svg { color: #97e2df; }
+.rooms-rules h2 { margin: 0; font-size: 27px; }
+.rooms-rules p { margin: 0; color: #9db7ca; font-size: 13px; line-height: 1.85; max-width: 470px; }
+.rooms-rules > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; margin: 12px 0; }
+.rooms-rules > div > span { border: 1px solid #37566d; border-radius: 11px; padding: 17px 7px; background: #152d43; font-size: 11px; color: #8fadbf; }
+.rooms-rules strong { display: block; font-size: 15px; color: #d7ebf7; margin-top: 9px; }
+.rooms-match-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
+.rooms-match { border: 1px solid #3b556c; border-radius: 11px; background: #11283d; padding: 13px; }
+.rooms-match.phase-battle, .rooms-match.phase-select { border-color: #65babf; background: #163c4a; }
+.rooms-match header { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: #8cb2c8; margin-bottom: 13px; }
+.rooms-match header b { color: #a3dedc; }
+.rooms-match > div { display: flex; flex-direction: column; gap: 8px; }
+.rooms-match > div > span { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.rooms-match strong { display: inline-flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.rooms-match small { color: #69879d; font-size: 9px; }
+.rooms-match .winner { color: #f4d38b; }
+.rooms-match p { color: #9cbbc8; font-size: 10px; margin: 10px 0 0; }
+.rooms-standings { border: 1px solid #36516a; border-radius: 10px; background: #102237; overflow: hidden; width: 100%; }
+.rooms-standings > div { display: grid; grid-template-columns: minmax(0, 1fr) 84px 50px; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid #2d465d; font-size: 12px; }
+.rooms-standings > div:last-child { border-bottom: 0; }
+.rooms-standings > .rooms-standing-head { color: #89a8bf; background: #192f44; font-size: 10px; }
+.rooms-standings > .is-me { background: #1b3a4d; }
+.rooms-standings > div > :not(:first-child) { text-align: center; font-variant-numeric: tabular-nums; }
+.rooms-standings > div > span:first-child { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rooms-standings strong { overflow-wrap: anywhere; }
+.rooms-standings b { color: #9ddee0; }
+.rooms-standings small { font-size: 9px; color: #8ce3d6; }
+.rooms-empty, .rooms-match-result { flex: 1 1 0; min-height: 0; overflow-y: auto; background: #12253dea; border: 1px solid #3d5971; border-radius: 18px; padding: 35px 20px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+.rooms-empty > svg, .rooms-match-result > svg { color: #9de7e0; }
+.rooms-empty p, .rooms-match-result p { color: #9bb8cc; line-height: 1.7; }
+.rooms-match-result > span { margin-top: 20px; color: #8dacbf; font-size: 12px; }
+.rooms-match-result h2 { margin: 10px 0; font-size: 44px; }
+.rooms-match-result.outcome-win > :is(svg, h2) { color: #f5d487; }
+.rooms-match-result > button { margin-top: 15px; }
+.rooms-result-countdown { color: #8daec1; font-size: 11px; margin-top: 14px; font-variant-numeric: tabular-nums; }
+.rooms-final { flex: 1 1 0; display: flex; align-items: center; flex-direction: column; gap: 13px; overflow-y: auto; text-align: center; padding-top: 30px; }
+.rooms-final > svg { color: #f4d68a; flex-shrink: 0; }
+.rooms-final > span { font-size: 10px; letter-spacing: .18em; color: #96b9c8; }
+.rooms-final h2 { margin: 0; font-size: 30px; }
+.rooms-final p { color: #9ab5c8; font-size: 13px; margin: 0; }
+.rooms-final .rooms-champion { display: flex; align-items: center; gap: 7px; color: #f1d58f; font-size: 18px; }
+.rooms-final .rooms-standings { max-width: 580px; flex-shrink: 0; }
+.rooms-final > button { flex-shrink: 0; margin-top: 7px; }
+.rooms-selection { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.rooms-selection .ranked-team-preview { flex: 1 0 auto; min-height: 140px; }
+.rooms-selection .ranked-team-preview > .ranked-six-grid { flex: 1 0 auto; }
+.rooms-selection .ranked-six-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.rooms-selection .ranked-pokemon-card { min-height: 110px; }
+.rooms-dialog-backdrop { position: fixed; inset: 0; z-index: 1600; background: #020913c9; backdrop-filter: blur(4px); display: grid; place-items: center; padding: 16px; color: #e4f1ff; }
+.rooms-dialog { width: min(460px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border: 1px solid #5b7d96; border-radius: 17px; background: #15283b; padding: 24px; box-shadow: 0 24px 90px #0007; scrollbar-width: thin; }
+.rooms-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.rooms-dialog h2 { margin: 0; font-size: 22px; }
+.rooms-dialog form { display: flex; flex-direction: column; gap: 17px; }
+.rooms-dialog p { color: #a4bfd1; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.rooms-dialog fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.rooms-dialog legend { margin-bottom: 9px; font-size: 12px; color: #c5deec; }
+.rooms-field { display: block; color: #c6dfef; font-size: 12px; }
+.rooms-field small { float: right; font-size: 10px; color: #91adbf; }
+.rooms-field input { display: block; width: 100%; margin-top: 9px; border: 1px solid #446279; background: #0d2033; border-radius: 8px; color: #edf7ff; padding: 12px; font-size: 14px; }
+.rooms-field input::placeholder { color: #6f8fa6; font-size: 12px; }
+.rooms-choice-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rooms-choice-tabs button { padding: 11px; border-radius: 8px; border: 1px solid #426079; background: #10273c; color: #9ebbcf; }
+.rooms-choice-tabs button[aria-pressed=true] { border-color: #7bd6d8; background: #285360; color: #d9fcf7; }
+.rooms-dialog-actions { display: flex; justify-content: center; gap: 10px; margin-top: 22px; }
+.rooms-danger { border: 1px solid #ad7b80; border-radius: 8px; padding: 10px 16px; color: #ffdbdf; background: #623c46; }
+.rooms-forfeit-copy { text-align: center; }
+.rooms-forfeit-copy > svg { color: #eac18d; }
+.app-shell:has(> .rooms-live-battle) > .rooms-live-battle > .battle-game-screen { flex: 1 1 0; min-height: 0; height: auto; }
+.app-shell:has(> .rooms-live-battle) > .rooms-local-controls { display: none; }
+@media (max-width: 1000px) {
+  .rooms-screen { padding: 10px 12px; gap: 10px; }
+  .rooms-panel { padding: 14px; border-radius: 13px; }
+  .rooms-lobby-grid { gap: 12px; grid-template-columns: 1fr 1fr; }
+  .rooms-competition-grid { gap: 12px; grid-template-columns: minmax(230px, .85fr) minmax(0, 1.1fr); }
+  .rooms-panel-title > span { font-size: 12px; }
+  .rooms-room-card { padding: 10px; }
+  .rooms-room-icon { width: 31px; height: 31px; }
+  .rooms-room-heading { gap: 7px; }
+  .rooms-room-heading h2 { font-size: 13px; }
+  .rooms-room-heading > b { font-size: 12px; }
+  .rooms-rules { padding: 10px 0; }
+  .rooms-rules h2 { font-size: 22px; }
+  .rooms-rules > div { gap: 6px; }
+  .rooms-rules strong { font-size: 12px; }
+  .rooms-match-list { grid-template-columns: 1fr; }
+  .rooms-header h1 { font-size: 25px; }
+}
+@media (max-height: 650px) {
+  .rooms-header > div > span { font-size: 8px; }
+  .rooms-header h1 { font-size: 22px; margin-top: 2px; }
+  .rooms-header .screen-back-button { padding: 9px 12px; font-size: 12px; }
+  .rooms-mode-badge { padding: 8px 10px; font-size: 10px; }
+  .rooms-panel { padding: 12px; }
+  .rooms-team-panel { gap: 8px; }
+  .rooms-team-panel .ranked-six-grid { grid-template-rows: repeat(2, minmax(76px, 1fr)); }
+  .rooms-team-panel .ranked-pokemon-card { min-height: 76px; padding: 5px; }
+  .rooms-team-panel .ranked-pokemon-card img { height: 36px; width: 50px; }
+  .rooms-team-panel .ranked-pokemon-card strong { font-size: 10px; }
+  .rooms-team-panel .ranked-pokemon-card small { font-size: 8px; }
+  .rooms-team-panel .ranked-team-slots button { padding: 5px; }
+  .rooms-team-note { display: none; }
+  .rooms-selection { padding: 14px; }
+  .rooms-selection .ranked-selection-heading h2 { font-size: 19px; }
+  .rooms-selection .ranked-pokemon-card { min-height: 90px; }
+  .rooms-selection .ranked-team-preview { margin-top: 13px; }
+  .rooms-selection .ranked-selection-actions { margin-top: 12px; }
+  .rooms-final { padding-top: 15px; gap: 10px; }
+}
+@media (max-width: 620px) and (orientation: portrait) {
+  .rooms-lobby-grid, .rooms-competition-grid { display: flex; flex-direction: column; overflow-y: auto; }
+  .rooms-list-panel { min-height: 360px; flex-shrink: 0; }
+  .rooms-team-panel, .rooms-members-panel, .rooms-progress-panel { overflow: visible; flex-shrink: 0; }
+  .rooms-list { max-height: 420px; }
+  .rooms-mode-badge { display: none; }
+  .rooms-header > div { margin-left: auto; }
+  .rooms-header h1 { font-size: 22px; }
+  .rooms-header > div > span { font-size: 8px; }
+  .rooms-selection .ranked-six-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rooms-selection .ranked-selection-actions { flex-wrap: wrap; }
+  .rooms-selection .ranked-selection-actions > p { flex-basis: 100%; }
+  .rooms-dialog { padding: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .rooms-screen .ranked-spin, .rooms-dialog .ranked-spin { animation: none; } }
