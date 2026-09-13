@@ -136,6 +136,50 @@ async function assertViewport(player, label, selectors) {
   for (const bounds of geometry.elements) assert(bounds.left >= -1 && bounds.top >= -1 && bounds.right <= geometry.viewport.width + 1 && bounds.bottom <= geometry.viewport.height + 1, `${label}: clipped ${bounds.selector} ${bounds.text}`)
 }
 
+async function assertWaitingPanel(player, label, expectedMembers) {
+  await player.page.locator('.rooms-members-panel').waitFor()
+  await player.page.evaluate(() => document.fonts.ready)
+  // Touch viewports can settle after the keyboard or a page change. Measure
+  // the real layout once stable, instead of assuming physical screenshot size.
+  await player.page.waitForFunction(() => {
+    const panel = document.querySelector('.rooms-members-panel')
+    if (!panel) return false
+    const r = panel.getBoundingClientRect()
+    const key = JSON.stringify([innerWidth, innerHeight, visualViewport?.scale, r.x, r.y, r.width, r.height])
+    if (window.__roomsWaitingStable?.key !== key) window.__roomsWaitingStable = { key, since: performance.now() }
+    return performance.now() - window.__roomsWaitingStable.since >= 350
+  })
+  await player.page.screenshot({ path: path.join(output, `${label}.png`) })
+  const geometry = await player.page.evaluate(() => {
+    const panel = document.querySelector('.rooms-members-panel')
+    const rect = node => { const r = node.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height } }
+    const selectors = ['.rooms-members-heading', '.rooms-panel-title', '.rooms-members-heading h2', '.rooms-tags', '.rooms-member-list', '.rooms-members-footer', '.rooms-deadline', '.rooms-help', '.rooms-waiting', '.rooms-member-actions button']
+    return {
+      viewport: { width: innerWidth, height: innerHeight, scale: visualViewport?.scale, mobileLayout: document.documentElement.dataset.mobileLayout },
+      panel: { ...rect(panel), clientHeight: panel.clientHeight, scrollHeight: panel.scrollHeight, clientWidth: panel.clientWidth, scrollWidth: panel.scrollWidth },
+      elements: selectors.flatMap(selector => [...panel.querySelectorAll(selector)].map(node => ({ selector, text: node.textContent.trim().slice(0, 70), ...rect(node) }))),
+      cards: [...panel.querySelectorAll('.rooms-member')].map(card => ({
+        empty: card.classList.contains('empty'), ...rect(card),
+        contents: [...card.querySelectorAll(':scope > .rooms-member-avatar, :scope > div, :scope > div > strong, :scope > div > small, :scope > svg')].map(node => ({ tag: node.tagName, text: node.textContent.trim(), ...rect(node) })),
+        text: [...card.querySelectorAll('strong, small')].map(node => { const range = document.createRange(); range.selectNodeContents(node); return { text: node.textContent.trim(), ...rect(range) } }),
+      })),
+    }
+  })
+  layouts.push({ label, ...geometry })
+  const inside = (inner, outer) => inner.left >= outer.left - 1 && inner.top >= outer.top - 1 && inner.right <= outer.right + 1 && inner.bottom <= outer.bottom + 1
+  const visible = r => r.width > 0 && r.height > 0
+  assert(geometry.panel.scrollHeight <= geometry.panel.clientHeight + 1, `${label}: waiting panel Y overflow (${geometry.panel.scrollHeight} > ${geometry.panel.clientHeight})`)
+  assert(geometry.panel.scrollWidth <= geometry.panel.clientWidth + 1, `${label}: waiting panel X overflow`)
+  assert(inside(geometry.panel, { left: 0, top: 0, right: geometry.viewport.width, bottom: geometry.viewport.height }), `${label}: waiting panel outside viewport`)
+  for (const element of geometry.elements) assert(visible(element) && inside(element, geometry.panel), `${label}: clipped/hidden ${element.selector} ${element.text}`)
+  assert.equal(geometry.cards.length, 4, `${label}: all four participant slots must remain visible`)
+  assert.equal(geometry.cards.filter(card => !card.empty).length, expectedMembers, `${label}: participant count`)
+  for (const [index, card] of geometry.cards.entries()) {
+    assert(visible(card) && inside(card, geometry.panel), `${label}: participant slot ${index + 1} outside panel`)
+    for (const content of [...card.contents, ...card.text]) assert(visible(content) && inside(content, card), `${label}: participant slot ${index + 1} content exceeds card bounds: ${content.text || content.tag}`)
+  }
+}
+
 async function runScenario(browser, scenario) {
   const store = createMemoryRankedStore()
   const api = await startRankedDevServer({ port: 0, testAccounts: true, store })
@@ -178,9 +222,10 @@ async function runScenario(browser, scenario) {
       assert.equal(value.room.format, scenario.format)
       assert.equal(value.room.locked, true)
       assert(value.room.startDeadlineAt - value.serverTime <= 600_000 && value.room.startDeadlineAt - value.serverTime > 580_000)
-      assert(await host.page.getByRole('button', { name: '2명부터 시작할 수 있습니다', exact: true }).isDisabled())
+      assert(await host.page.getByRole('button', { name: '2명부터 시작 가능', exact: true }).isDisabled())
       const before = await host.page.locator('.rooms-deadline strong').textContent()
       await host.page.waitForFunction(before => document.querySelector('.rooms-deadline strong')?.textContent !== before, before, { timeout: 3000 })
+      await assertWaitingPanel(host, `${scenario.id}-waiting-one`, 1)
     })
     await check(`${scenario.id}: wrong PIN stays outside, correct PIN joins and host controls stay private`, async () => {
       for (const [index, player] of players.slice(1).entries()) {
@@ -204,7 +249,19 @@ async function runScenario(browser, scenario) {
       await host.page.waitForFunction(count => window.__lastRoomsSnapshot?.room?.members?.length === count, scenario.participantCount)
       const room = (await snapshot(host)).room
       if (scenario.participantCount === 4) assert(room.startDeadlineAt - (await snapshot(host)).serverTime <= 60_000, 'Fourth join must shorten the server deadline')
-      await host.page.screenshot({ path: path.join(output, `${scenario.id}-waiting.png`) })
+      await assertWaitingPanel(host, `${scenario.id}-waiting`, scenario.participantCount)
+      const guest = players[1]
+      await guest.page.waitForFunction(count => window.__lastRoomsSnapshot?.room?.members?.length === count, scenario.participantCount)
+      await assertWaitingPanel(guest, `${scenario.id}-waiting-guest`, scenario.participantCount)
+      if (!scenario.mobile) {
+        // A short desktop window also guards against a temporarily unscaled
+        // touch viewport compressing participant cards beneath their contents.
+        for (const player of [host, guest]) {
+          await player.page.setViewportSize({ width: 844, height: 390 })
+          try { await assertWaitingPanel(player, `${scenario.id}-waiting-compact-${player.identity}`, scenario.participantCount) }
+          finally { await player.page.setViewportSize(scenario.viewport) }
+        }
+      }
       await host.click(host.page.getByRole('button', { name: '대회 시작', exact: true }))
       await waitSnapshot(host, () => window.__lastRoomsSnapshot?.room?.phase === 'active')
       const active = (await snapshot(host)).room
