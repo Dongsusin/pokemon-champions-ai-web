@@ -16,6 +16,11 @@ import './moveAnimationDirector.css'
 import './settings.css'
 import './auth.css'
 import './mobileLandscape.css'
+import './gameTextScale.css'
+import { loadGameSettings } from './gameSettings'
+import { applyGameTextScale } from './gameTextScale'
+
+applyGameTextScale(loadGameSettings().game.textScale)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Boxes,
   ChartNoAxesCombined,
@@ -45,6 +45,7 @@ import { useAccountGameData } from './auth/useAccountGameData'
 import { hasActiveAccountSession } from './auth/accountSession'
 import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { createGameAudio } from './gameAudio'
+import { applyGameTextScale } from './gameTextScale'
 import {
   SETTINGS_STORAGE_KEY,
   createDefaultGameSettings,
@@ -327,6 +328,7 @@ export function GameApp({
   const finishedBattleRef = useRef(null)
   const [itemInventory, setItemInventory] = useState(storedItemInventory.current)
   const [settings, setSettings] = useState(loadGameSettings)
+  useLayoutEffect(() => { applyGameTextScale(settings.game.textScale) }, [settings.game.textScale])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState('game')
   const [settingsOpenId, setSettingsOpenId] = useState(0)

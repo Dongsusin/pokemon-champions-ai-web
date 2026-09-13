@@ -20,6 +20,7 @@ import {
   Swords,
   Trash2,
   Trophy,
+  Type,
   UserRound,
   Volume2,
   VolumeX,
@@ -27,8 +28,10 @@ import {
 } from 'lucide-react'
 import { AchievementCatalog } from './AchievementsScreen'
 import PokemonUsagePanel from './PokemonUsagePanel'
+import { GAME_TEXT_SCALES } from './gameSettings'
 
 const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'usage', 'account']
+const TEXT_SCALE_OPTIONS = GAME_TEXT_SCALES.map((value) => ({ value, label: `${value}배` }))
 
 const ATTACK_ANIMATION_OPTIONS = [
   { value: 'skip', label: '스킵' },
@@ -391,6 +394,16 @@ function SettingsModal({
               aria-labelledby="settings-game-tab"
               key="game-settings"
             >
+              <SegmentedSetting
+                label="글자 크기"
+                icon={Type}
+                value={settings.game.textScale}
+                options={TEXT_SCALE_OPTIONS}
+                onChange={(value) => onChange('game', 'textScale', value)}
+              />
+              <p className="settings-text-scale-preview" aria-live="polite">
+                현재 글자 크기 {settings.game.textScale}배 · 기본 크기는 1배입니다.
+              </p>
               <SegmentedSetting
                 label="플레이어 캐릭터"
                 icon={UserRound}

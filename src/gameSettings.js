@@ -1,4 +1,5 @@
 export const SETTINGS_STORAGE_KEY = 'champions-settings-v1'
+export const GAME_TEXT_SCALES = Object.freeze([0.5, 1, 1.5, 2])
 
 const ATTACK_ANIMATION_MODES = new Set(['skip', 'normal', 'fast', 'very-fast'])
 const HP_BAR_SPEEDS = new Set(['slow', 'normal', 'fast', 'instant'])
@@ -7,6 +8,7 @@ const AUDIO_KEYS = ['master', 'music', 'ui', 'event', 'effects', 'cries']
 
 export const DEFAULT_GAME_SETTINGS = {
   game: {
+    textScale: 1,
     playerGender: 'male',
     attackAnimation: 'normal',
     hpBarSpeed: 'normal',
@@ -51,6 +53,9 @@ export function normalizeGameSettings(value = {}) {
 
   return {
     game: {
+      textScale: GAME_TEXT_SCALES.includes(game.textScale)
+        ? game.textScale
+        : defaults.game.textScale,
       playerGender: PLAYER_GENDERS.has(game.playerGender)
         ? game.playerGender
         : defaults.game.playerGender,

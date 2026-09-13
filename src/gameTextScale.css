@@ -1,0 +1,84 @@
+/* Keep rem and browser zoom unchanged; inherited body text scales once. */
+body { font-size: 1rem; }
+
+.settings-text-scale-preview {
+  margin: 0 14px 6px;
+  color: #a5deda;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-option-row,
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-audio-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-option-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-option-label svg { flex-shrink: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-segmented-control { grid-auto-columns: minmax(0, 1fr); }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-segmented-control button { padding: 6px; overflow-wrap: anywhere; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-tabs button { min-width: 0; flex-wrap: wrap; gap: 4px; padding: 6px 4px; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-modal-footer { flex-wrap: wrap; }
+
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-log-panel {
+  grid-template-rows: minmax(29px, auto) minmax(0, 1fr);
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-log-panel p.battle-log-current {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-button {
+  grid-template-columns: minmax(40px, max-content) minmax(0, 1fr) max-content max-content max-content;
+  column-gap: 8px;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-name { padding-left: 3px; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-name strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-grid {
+  grid-template-rows: repeat(2, minmax(min-content, 1fr));
+  overflow-y: auto;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-option {
+  min-height: calc(40px * var(--game-text-scale, 1));
+}
+/* Hover details must escape the scrollable command list at larger sizes. */
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-option .battle-move-tooltip {
+  position: fixed;
+  z-index: 250;
+  inset: auto max(12px, 2vw) 43dvh auto;
+  width: min(460px, calc(100vw - 32px));
+  max-height: 45dvh;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-target-card {
+  grid-template-rows: minmax(16px, auto) minmax(0, 1fr) auto;
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .ranked-roster-card strong {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+@media (max-width: 1000px) {
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-button {
+    grid-template-columns: minmax(32px, max-content) minmax(0, 1fr) max-content max-content;
+  }
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.battle-view .battle-move-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: minmax(min-content, 1fr);
+  }
+}
+
+@media (max-height: 510px) and (orientation: landscape) {
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-modal-backdrop { padding: 8px 18px; }
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-modal { max-height: calc(100dvh - 20px); }
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-modal-header { min-height: 0; padding: 5px 12px; }
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-modal-header small { display: none; }
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-modal-footer { padding: 5px 12px; }
+}
