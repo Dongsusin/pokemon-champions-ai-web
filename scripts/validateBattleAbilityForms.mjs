@@ -814,6 +814,8 @@ for (const [sourceSlug, expectedGmaxSlug] of [
       pokemon('snorlax', ['selfdestruct']),
       pokemon('snorlax', ['protect'], { captureId: 'soul-heart-backup' }),
     ],
+    // Exercise Self-Destruct, not AI lead selection (which can choose backup).
+    { ...rules(), pvp: true },
   )
   state = turn(state, { type: 'move', moveIndex: 0 }, { type: 'move', moveIndex: 0 })
   assert.equal(state.player.team[0].statStages.specialAttack, 1)

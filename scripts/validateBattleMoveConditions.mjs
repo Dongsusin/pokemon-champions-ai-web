@@ -27,8 +27,8 @@ function battlePokemon(slug, moveIds, captureId) {
 }
 
 function createFakeOutBattle({ aiUsesFakeOut = false } = {}) {
-  const fakeOutUser = battlePokemon('persian', ['fakeout', 'tackle'], 'fake-out-user')
-  const target = battlePokemon('snorlax', ['splash'], 'fake-out-target')
+  const fakeOutUser = battlePokemon('persian', ['fakeout', 'scratch'], 'fake-out-user')
+  const target = battlePokemon('wailord', ['splash'], 'fake-out-target')
   const backup = battlePokemon('magikarp', ['splash'], 'fake-out-backup')
 
   return createBattle({

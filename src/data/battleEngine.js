@@ -330,6 +330,12 @@ const HELD_ITEM_FORM_RULES = Object.freeze({
   'wellspring-mask': { species: 'ogerpon', form: 'ogerpon-wellspring-mask' },
 })
 
+const CROWNED_SIGNATURE_MOVES = Object.freeze({
+  'zacian-crowned': 'behemothblade',
+  'zamazenta-crowned': 'behemothbash',
+})
+const ANTI_DYNAMAX_MOVE_IDS = new Set(['behemothblade', 'behemothbash', 'dynamaxcannon'])
+
 const OGERPON_TERA_FORM_RULES = Object.freeze({
   ogerpon: { form: 'ogerpon-teal-tera', teraType: '풀', boost: { speed: 1 } },
   'ogerpon-wellspring-mask': {
@@ -542,6 +548,16 @@ function moveRuntime(move, fallbackIndex) {
   }
 }
 
+function crownedMoveRuntime(move, formSlug) {
+  const signatureId = CROWNED_SIGNATURE_MOVES[formSlug]
+  if (move.id !== 'ironhead' || !signatureId) return move
+  // Replace the whole move definition: Iron Head's flinch effect and 15 PP
+  // must not survive the Crowned form's signature move (5 PP, 100 power).
+  const signature = moveRuntime(getMoveById(signatureId))
+  const spentPp = Math.max(0, move.maxPp - move.currentPp)
+  return { ...signature, currentPp: Math.max(0, signature.maxPp - spentPp) }
+}
+
 function buildBattlePokemon(entry, index, teamGimmicks = []) {
   const hasConfiguredMoves = Array.isArray(entry.moveIds) || Array.isArray(entry.moves)
   const configuredMoveCount = Math.min(4, Math.max(
@@ -586,7 +602,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     maxHp: stats.hp,
     originalMaxHp: stats.hp,
     hp: stats.hp,
-    moves: normalizedMoves.map(moveRuntime),
+    moves: normalizedMoves.map(moveRuntime).map(move => crownedMoveRuntime(move, profile.slug)),
     fainted: false,
     status: null,
     statStages: {
@@ -1246,6 +1262,12 @@ function trappingAbilitySource(state, pokemon) {
     if (opponent.ability === '자력') return pokemon.types.includes('강철')
     return opponent.ability === '개미지옥' && isGrounded(pokemon, state)
   }) ?? null
+}
+
+function isMoveTrapped(pokemon) {
+  return Boolean(pokemon.trappedTurns > 0 || pokemon.trappedByMoveSourceBattleId || pokemon.noRetreatActive)
+    && !pokemon.types.includes('고스트')
+    && !hasActiveHeldItem(pokemon, 'shed-shell')
 }
 
 function abilityCanBeChanged(pokemon) {
@@ -2750,6 +2772,7 @@ function calculateDamage(state, attacker, defender, move, random, powerMultiplie
   let modifier = getMoveStab(attacker, move.type, move.pledgeStabOverride, move.stellarBoosted)
     * effectiveness
     * (move.spreadModifier ?? 1)
+    * (defender.dynamaxActive && ANTI_DYNAMAX_MOVE_IDS.has(move.id) ? 2 : 1)
     * environmentMoveMultiplier(state, attacker, defender, move)
     * randomFactor
     * (critical ? 1.5 : 1)
@@ -3448,11 +3471,11 @@ function applyVolatileEffect(
   }
 
   if (['spiderweb', 'meanlook', 'block'].includes(volatileStatus)) {
-    if (target.trappedTurns > 0) return false
-    target.trappedTurns = 999
-    target.trapSourceName = sourceName
-    target.trapSourceBattleId = source?.battleId ?? null
-    target.trapDamages = false
+    if (target.trappedByMoveSourceBattleId || target.types.includes('고스트') || !source?.battleId) return false
+    // Showdown's linked `trapped` volatile is independent of partial binding
+    // and No Retreat. Its source leaving the field removes only this trap.
+    target.trappedByMoveSourceBattleId = source.battleId
+    target.trappedByMoveName = sourceName
     appendLog(state, `${target.name}은(는) 도망치거나 교체할 수 없게 되었다!`, 'status')
     return true
   }
@@ -3613,10 +3636,12 @@ function applyVolatileEffect(
 
   if (volatileStatus === 'noretreat') {
     if (target.noRetreatActive) return false
+    // An existing `trapped` volatile omits No Retreat's volatile, allowing
+    // repeated boosts. Partial binding, Octolock and abilities do not qualify.
+    if (target.trappedByMoveSourceBattleId) return false
     target.noRetreatActive = true
-    target.trappedTurns = 999
-    target.trapSourceName = sourceName
-    changeStages(state, target, { attack: 1, defense: 1, specialAttack: 1, specialDefense: 1, speed: 1 })
+    appendLog(state, `${target.name}은(는) 배수의진을 펼쳤다!`, 'status')
+    // The move's structured boosts are applied once by applyEffectPayload.
     return true
   }
 
@@ -4350,6 +4375,14 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
   if (setFieldEffectFromMove(state, move)) return true
   if (NO_EFFECT_MOVE_IDS.has(move.id)) {
     appendLog(state, `${move.name}! 하지만 배틀에는 아무 일도 일어나지 않았다.`, 'muted')
+    return true
+  }
+
+  if (['meanlook', 'block', 'spiderweb'].includes(move.id)) {
+    if (!applyVolatileEffect(state, defender, move.id, move.name, random, move.id, { source: attacker })) {
+      attacker.moveFailedThisTurn = true
+      appendLog(state, `${move.name}으로 상대를 붙잡을 수 없어 실패했다!`, 'muted')
+    }
     return true
   }
 
@@ -5275,6 +5308,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.slug = form.slug
   pokemon.name = form.name
   pokemon.formName = form.formName ?? form.name
+  pokemon.moves = pokemon.moves.map(move => crownedMoveRuntime(move, form.slug))
   pokemon.originalTypes = [...form.types]
   pokemon.types = pokemon.teraActive && pokemon.teraType !== '스텔라' ? [pokemon.teraType] : [...form.types]
   pokemon.ability = preservedAbility
@@ -5523,6 +5557,10 @@ function activateTraceAbility(state, sideId, activeSlot, pokemon) {
 
 function releaseTrapsSourcedBy(state, sourcePokemon) {
   allBattlePokemon(state).forEach((pokemon) => {
+    if (pokemon.trappedByMoveSourceBattleId === sourcePokemon?.battleId) {
+      pokemon.trappedByMoveSourceBattleId = null
+      pokemon.trappedByMoveName = null
+    }
     if (pokemon.infatuationSourceBattleId === sourcePokemon?.battleId) {
       pokemon.infatuated = false
       pokemon.infatuationSourceBattleId = null
@@ -7051,6 +7089,7 @@ function batonPassSnapshot(pokemon) {
     minimized: pokemon.minimized,
     laserFocusActive: pokemon.laserFocusActive,
     octolockActive: pokemon.octolockActive,
+    noRetreatActive: pokemon.noRetreatActive,
   }
 }
 
@@ -7315,6 +7354,9 @@ function resolvePledgeCombination(side, move) {
 }
 
 function specialMoveFailureReason(state, attacker, defender, move, { isChargeContinuation = false } = {}) {
+  if (move.id === 'noretreat' && attacker.noRetreatActive) {
+    return '이미 배수의진을 펼쳐 다시 사용할 수 없다!'
+  }
   if (state.environment?.gravityTurns > 0 && move.flags?.includes('gravity')) {
     return '중력이 강해 기술을 사용할 수 없다!'
   }
@@ -9310,6 +9352,8 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.trapSourceBattleId = null
   pokemon.trapDamages = false
   pokemon.trapDamageDivisor = 8
+  pokemon.trappedByMoveSourceBattleId = null
+  pokemon.trappedByMoveName = null
   pokemon.tormented = false
   pokemon.lastMoveIndex = null
   pokemon.criticalStageBoost = 0
@@ -9490,13 +9534,11 @@ function performSwitch(
   }
   if (!isAutomatic && current.hp > 0 && !current.fainted) {
     const abilitySource = trappingAbilitySource(state, current)
-    const moveTrapped = current.trappedTurns > 0
-      && !current.types.includes('고스트')
-      && !hasActiveHeldItem(current, 'shed-shell')
+    const moveTrapped = isMoveTrapped(current)
     if (moveTrapped || current.skyDropSourceBattleId || abilitySource) {
       appendLog(
         state,
-        `${current.name}은(는) ${current.skyDropSourceBattleId ? '프리폴' : current.trapSourceName ?? abilitySource?.ability ?? '기술의 효과'} 때문에 교체할 수 없다!`,
+        `${current.name}은(는) ${current.skyDropSourceBattleId ? '프리폴' : current.noRetreatActive ? '배수의진' : current.trappedByMoveName ?? current.trapSourceName ?? abilitySource?.ability ?? '기술의 효과'} 때문에 교체할 수 없다!`,
         abilitySource ? 'ability' : 'status',
       )
       return false
@@ -10737,6 +10779,7 @@ function estimateAiDamage(state, attacker, defender, move, targetHp = defender.h
       * effectiveness
       * environmentMoveMultiplier(state, attacker, defender, move)
       * 0.925
+      * (defender.dynamaxActive && ANTI_DYNAMAX_MOVE_IDS.has(move.id) ? 2 : 1)
       * expectedCriticalMultiplier
       * semiInvulnerable.powerMultiplier
 
@@ -11329,6 +11372,9 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   const targetHp = Math.max(1, Number(context.targetHp ?? defender.hp) || defender.hp)
   const priority = environmentMovePriority(state, projectedAttacker, resolvedMove)
 
+  if (resolvedMove.id === 'noretreat' && projectedAttacker.noRetreatActive) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
+  }
   if (resolvedMove.id === 'aurawheel' && !currentSpeciesSlug(projectedAttacker).startsWith('morpeko')) {
     return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }
   }
@@ -11939,7 +11985,7 @@ function chooseStrategicSwitches(
   planning,
   prediction = false,
 ) {
-  if (attacker.trappedTurns > 0 || trappingAbilitySource(state, attacker) || attacker.dynamaxActive) return []
+  if (isMoveTrapped(attacker) || trappingAbilitySource(state, attacker) || attacker.dynamaxActive) return []
   const side = getSide(state, sideId)
   const opposingSide = getOtherSide(state, sideId)
   const switchOptions = availableBenchIndexes(side)
@@ -13072,7 +13118,7 @@ export function getBattleSwitchIndexes(state, sideId = 'player', activeSlot = 0)
   if (!current || current.commanding || current.commandedByBattleId || forcedActionForPokemon(current)) return []
   if (current.hp > 0 && !current.fainted && (
     current.skyDropSourceBattleId || trappingAbilitySource(state, current)
-    || current.trappedTurns > 0 && !current.types.includes('고스트') && !hasActiveHeldItem(current, 'shed-shell')
+    || isMoveTrapped(current)
   )) return []
   return availableBenchIndexes(side)
 }

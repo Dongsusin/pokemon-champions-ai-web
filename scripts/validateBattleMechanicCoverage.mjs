@@ -8,6 +8,7 @@ import {
   forcePlayerSwitch,
   getForcedBattleAction,
   getBattleMovePreview,
+  getBattleSwitchIndexes,
   getEffectiveBattleStat,
   playBattleTurnWithActions,
 } from '../src/data/battleEngine.js'
@@ -405,13 +406,19 @@ function preventOpponent(state, slot = 0) {
 
 {
   let state = battle(
-    [pokemon('drednaw', ['jawlock'])],
-    [pokemon('snorlax', ['splash'])],
+    [pokemon('drednaw', ['jawlock']), pokemon('wailord', ['splash'])],
+    [pokemon('snorlax', ['protect']), pokemon('wailord', ['splash'])],
   )
+  state.opponent.activeIndex = 0
+  state.opponent.activeIndexes = [0]
+  assert.deepEqual(getBattleSwitchIndexes(state, 'player'), [1])
+  assert.deepEqual(getBattleSwitchIndexes(state, 'opponent'), [1])
   preventOpponent(state)
   state = turn(state, [move()], [move()])
-  assert(state.player.team[0].trappedTurns > 0)
-  assert(state.opponent.team[0].trappedTurns > 0)
+  assert.equal(state.player.team[0].trappedByMoveSourceBattleId, state.opponent.team[0].battleId)
+  assert.equal(state.opponent.team[0].trappedByMoveSourceBattleId, state.player.team[0].battleId)
+  assert.deepEqual(getBattleSwitchIndexes(state, 'player'), [])
+  assert.deepEqual(getBattleSwitchIndexes(state, 'opponent'), [])
 }
 
 {
@@ -560,6 +567,8 @@ function preventOpponent(state, slot = 0) {
     [pokemon('snorlax', ['tackle']), pokemon('persian', ['scratch'])],
     2,
   )
+  state.opponent.activeIndex = 0
+  state.opponent.activeIndexes = [0, 1]
   state.player.team[0].stats.speed = 999
   state.player.team[1].stats.speed = 1
   state.opponent.team[0].stats.speed = 100
@@ -580,6 +589,8 @@ function preventOpponent(state, slot = 0) {
     [pokemon('snorlax', ['tackle']), pokemon('persian', ['scratch'])],
     2,
   )
+  state.opponent.activeIndex = 0
+  state.opponent.activeIndexes = [0, 1]
   state.player.team[0].stats.speed = 999
   state.player.team[1].stats.speed = 1
   state.opponent.team[0].stats.speed = 500
