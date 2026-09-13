@@ -15,13 +15,23 @@ class FixturePool extends EventEmitter {
   rollbackFailure = false
   connectCount = 0
   ended = false
+  countError = null
+  countReply = undefined
   constructor(config) { super(); this.config = config; this.options = config }
   async connect() {
     const id = ++this.connectCount
     let draft
     return {
       query: async (text, values = []) => {
-        this.calls.push({ id, text, values: copy(values) })
+        const config = typeof text === 'object' ? text : null
+        if (config) { values = config.values ?? []; text = config.text }
+        this.calls.push({ id, text, values: copy(values), ...(config ? { queryTimeout: config.query_timeout } : {}) })
+        if (text.startsWith('SELECT COUNT(*)')) {
+          if (this.countError) throw this.countError
+          const count = [...this.rows].filter(([key, value]) => key.startsWith(`${values[0]}/${values[1]}/`)
+            && typeof value.expiresAt === 'number' && value.expiresAt > values[2]).length
+          return { rows: [{ count: this.countReply === undefined ? String(count) : this.countReply }] }
+        }
         if (text.startsWith('BEGIN')) { draft = new Map(copy([...this.rows])); return { rows: [] } }
         if (text.startsWith('SELECT set_config')) return { rows: [] }
         if (text === 'ROLLBACK') { if (this.rollbackFailure) throw sqlError('08006'); draft = null; return { rows: [] } }
@@ -209,6 +219,45 @@ test('transaction handles expire after commit and store close waits for active w
   assert.throws(() => view.set('sessions', 'bob', {}), /ended/)
   await assert.rejects(view.get('sessions', 'alice'), /ended/)
   assert.equal(pool.rows.get('ranked/sessions/alice').active, true)
+})
+
+test('online session COUNT is namespace filtered, bounded, private and outside a serializable transaction', async () => {
+  const { pool, store } = fixture({ namespace: 'account' })
+  pool.rows.set('account/sessions/alice', { expiresAt: 1001, ownerId: 'private-owner', version: 'private-version' })
+  pool.rows.set('account/sessions/guest', { expiresAt: 90000 })
+  pool.rows.set('account/sessions/expired', { expiresAt: 999 })
+  pool.rows.set('account/sessions/boundary', { expiresAt: 1000 })
+  pool.rows.set('account/sessions/malformed', { expiresAt: 'never' })
+  pool.rows.set('ranked/sessions/foreign', { expiresAt: 90000 })
+  pool.rows.set('account/profiles/unrelated', { expiresAt: 90000 })
+  assert.equal(await store.countActiveSessions(1000), 2)
+  assert.equal(pool.calls.length, 1)
+  const query = pool.calls[0]
+  assert(query.text.startsWith('SELECT COUNT(*) AS count'))
+  assert(!/SELECT\s+(?:payload|key)/i.test(query.text))
+  assert(query.text.includes("jsonb_typeof(payload->'expiresAt') = 'number'"))
+  assert.deepEqual(query.values, ['account', 'sessions', 1000])
+  assert.equal(query.queryTimeout, 2000)
+  assert.deepEqual(pool.released, [{ id: 1, discard: false }])
+  await assert.rejects(store.countActiveSessions(NaN), /timestamp/)
+  await assert.rejects(store.countActiveSessions(-1), /timestamp/)
+  assert.equal(pool.connectCount, 1)
+  await store.close()
+  await assert.rejects(store.countActiveSessions(1000), /closed/)
+})
+
+test('failed or malformed session counts discard their socket without issuing rollback or writes', async () => {
+  const { pool, store } = fixture({ namespace: 'account' })
+  pool.countError = sqlError('57014')
+  await assert.rejects(store.countActiveSessions(1000), error => error.code === '57014')
+  pool.countError = null
+  for (const response of ['NaN', '-1', null, '9007199254740992']) {
+    pool.countReply = response
+    await assert.rejects(store.countActiveSessions(1000), /result/)
+  }
+  assert(pool.released.every(release => release.discard === true))
+  assert(pool.calls.every(call => call.text.startsWith('SELECT COUNT(*)')))
+  assert.equal(pool.rows.size, 0)
 })
 
 test('migration exposes documents only to the dedicated server role under forced RLS', async () => {

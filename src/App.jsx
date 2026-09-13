@@ -46,6 +46,7 @@ import { hasActiveAccountSession } from './auth/accountSession'
 import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { createGameAudio } from './gameAudio'
 import { applyGameTextScale } from './gameTextScale'
+import OnlinePlayersBadge from './OnlinePlayersBadge'
 import {
   SETTINGS_STORAGE_KEY,
   createDefaultGameSettings,
@@ -1058,20 +1059,24 @@ export function GameApp({
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
-      <header className="topbar">
-        <div className="brand" aria-label="Pokémon Champions Arena">
-          <span className="brand-mark">
-            <img
-              src="/assets/brand/champions-arena-emblem.png"
-              alt=""
-              aria-hidden="true"
-              draggable="false"
-            />
-          </span>
-          <span className="brand-title" aria-hidden="true">
-            <small>Pokémon</small>
-            <strong>Champions Arena</strong>
-          </span>
+      <header className={`topbar${screen === 'lobby' ? ' has-online-players' : ''}`}>
+        <div className="topbar-brand-group">
+          <div className="brand" aria-label="Pokémon Champions Arena">
+            <span className="brand-mark">
+              <img
+                src="/assets/brand/champions-arena-emblem.png"
+                alt=""
+                aria-hidden="true"
+                draggable="false"
+              />
+            </span>
+            <span className="brand-title" aria-hidden="true">
+              <small>Pokémon</small>
+              <strong>Champions Arena</strong>
+            </span>
+          </div>
+
+          {screen === 'lobby' && <OnlinePlayersBadge userId={user.uid} />}
         </div>
 
         <div className="top-status">

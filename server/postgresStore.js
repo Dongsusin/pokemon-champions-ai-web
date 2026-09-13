@@ -177,9 +177,45 @@ export function createPostgresStore({
     throw new Error('Postgres transaction retry limit exceeded')
   }
 
+  async function countActiveSessions(timestamp) {
+    if (closed) throw new Error('Postgres document store is closed')
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) throw new TypeError('Invalid session count timestamp')
+    const client = await pool.connect()
+    let discard = false
+    try {
+      // The namespace/collection/key primary key already deduplicates each UID.
+      // Anonymous and Google accounts use the same leases; no profile join or
+      // personal document payload is needed. This is deliberately outside a
+      // SERIALIZABLE transaction so renewals cannot conflict with the aggregate.
+      const result = await client.query({
+        text: `SELECT COUNT(*) AS count FROM ${TABLE}
+          WHERE namespace = $1 AND collection = $2
+          AND CASE WHEN jsonb_typeof(payload->'expiresAt') = 'number'
+            THEN (payload->>'expiresAt')::numeric > $3 ELSE FALSE END`,
+        values: [namespace, 'sessions', timestamp],
+        query_timeout: 2_000,
+      })
+      const rawCount = result.rows[0]?.count
+      const count = typeof rawCount === 'number' || (typeof rawCount === 'string' && /^\d+$/.test(rawCount)) ? Number(rawCount) : NaN
+      if (!Number.isSafeInteger(count) || count < 0) throw new Error('Invalid session count result')
+      return count
+    } catch (error) {
+      // query_timeout can reject before the server finishes. Discard that
+      // socket instead of returning an outstanding query to the shared pool.
+      discard = true
+      throw error
+    } finally { client.release(discard) }
+  }
+
   return {
     transaction(work) {
       const operation = transact(work)
+      active.add(operation)
+      void operation.then(() => active.delete(operation), () => active.delete(operation))
+      return operation
+    },
+    countActiveSessions(timestamp) {
+      const operation = countActiveSessions(timestamp)
       active.add(operation)
       void operation.then(() => active.delete(operation), () => active.delete(operation))
       return operation

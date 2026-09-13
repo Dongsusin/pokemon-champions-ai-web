@@ -1,3 +1,5 @@
+import { updateOnlinePlayers, clearOnlinePlayers } from './onlinePlayers.js'
+
 export const ACCOUNT_SESSION_LEASE_MS = 90_000
 export const ACCOUNT_SESSION_HEARTBEAT_MS = 20_000
 export const ACCOUNT_SESSION_ERROR_CODES = {
@@ -106,6 +108,7 @@ export async function acquireAccountSession(user, options = {}) {
   let expiryTimer = null
   let heartbeatPromise = null
   let releasePromise = null
+  let onlineSample = null
 
   const isActive = () => !ended && admitted && (user.isLocalGuest || now() < deadline)
   const handle = { ownerId, isActive, release }
@@ -158,6 +161,7 @@ export async function acquireAccountSession(user, options = {}) {
       ended = true
       admitted = false
       detach()
+      clearOnlinePlayers(user.uid, ownerId)
       if (activeSessions.get(user.uid) === handle) activeSessions.delete(user.uid)
       unlockBrowser()
     }
@@ -232,6 +236,10 @@ export async function acquireAccountSession(user, options = {}) {
       throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
     }
     scheduleLeaseChecks(requestStartedAt)
+    if (serverStorage) {
+      onlineSample = data?.onlinePlayers
+      if (admitted) updateOnlinePlayers(user.uid, ownerId, onlineSample)
+    }
   }
 
   function heartbeat() {
@@ -286,6 +294,7 @@ export async function acquireAccountSession(user, options = {}) {
     }
     admitted = true
     activeSessions.set(user.uid, handle)
+    updateOnlinePlayers(user.uid, ownerId, onlineSample)
     return handle
   } catch (error) {
     await release()

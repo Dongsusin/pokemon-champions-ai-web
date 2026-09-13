@@ -4,6 +4,8 @@ import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
 
 export const ACCOUNT_LEASE_MS = 90_000
 export const ACCOUNT_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024
+export const ONLINE_PLAYERS_CACHE_MS = 15_000
+export const ONLINE_PLAYERS_STALE_MS = 60_000
 const keys = new Set(PLAYER_STORAGE_KEYS)
 const clone = value => structuredClone(value)
 const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value)
@@ -28,6 +30,31 @@ export function validateAccountPayload(payload) {
 }
 
 export function createAccountService({ store, guestRegistry, now = Date.now, newVersion = randomUUID }) {
+  let onlineSample = null, pendingCount = null, lastCountAttemptAt = null
+  const usableSample = timestamp => Number.isSafeInteger(timestamp) && onlineSample && timestamp >= onlineSample.sampledAt
+    && timestamp - onlineSample.sampledAt < ONLINE_PLAYERS_STALE_MS
+    ? { ...onlineSample, staleAfterMs: ONLINE_PLAYERS_STALE_MS - (timestamp - onlineSample.sampledAt) } : undefined
+  async function readOnlinePlayers() {
+    if (typeof store.countActiveSessions !== 'function') return undefined
+    const timestamp = now()
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) return undefined
+    if (pendingCount) return pendingCount
+    if (lastCountAttemptAt !== null && timestamp >= lastCountAttemptAt
+      && timestamp - lastCountAttemptAt < ONLINE_PLAYERS_CACHE_MS) return usableSample(timestamp)
+    lastCountAttemptAt = timestamp
+    pendingCount = (async () => {
+      try {
+        const count = await store.countActiveSessions(timestamp)
+        if (!Number.isSafeInteger(count) || count < 0) throw new Error('Invalid online player count')
+        onlineSample = { count, sampledAt: timestamp }
+      } catch {
+        // Presence is optional. An aggregate outage must never invalidate a
+        // login or a lease that has already been renewed successfully.
+      }
+      return usableSample(now())
+    })()
+    try { return await pendingCount } finally { pendingCount = null }
+  }
   async function requireActive(tx, uid, ownerId) {
     const session = await tx.get('sessions', uid)
     if (!session || session.ownerId !== ownerId || session.expiresAt <= now()) {
@@ -67,7 +94,7 @@ export function createAccountService({ store, guestRegistry, now = Date.now, new
       // Versions belong to this request; transaction retries cannot resurrect
       // a stale release or generate a different lease for the same attempt.
       const version = action === 'sessionAcquire' || action === 'sessionHeartbeat' ? newVersion() : null
-      return store.transaction(async tx => {
+      const result = await store.transaction(async tx => {
         const uid = identity.uid
         const timestamp = now()
         if (action === 'sessionAcquire') {
@@ -122,6 +149,11 @@ export function createAccountService({ store, guestRegistry, now = Date.now, new
         tx.delete(action === 'deleteGameData' ? 'gameData' : 'profiles', uid)
         return { deleted: true }
       })
+      if (action !== 'sessionAcquire' && action !== 'sessionHeartbeat') return result
+      // Count only after COMMIT. Aggregating all leases inside a SERIALIZABLE
+      // renewal would create conflicts between otherwise independent players.
+      const onlinePlayers = await readOnlinePlayers()
+      return onlinePlayers ? { ...result, onlinePlayers } : result
     },
   }
 }
