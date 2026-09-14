@@ -456,20 +456,28 @@
   top: 6%;
   left: 2%;
   z-index: 32;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  align-items: flex-start;
   gap: clamp(5px, 0.7vw, 11px);
   width: min(50%, 960px);
   pointer-events: none;
 }
 
 .app-shell.battle-view .raid-standard-battle .raid-opponent-status-row .opponent-status-anchor {
-  position: relative;
-  top: auto;
-  left: auto;
-  width: auto;
+  position: static;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
+  transform: none;
   pointer-events: auto;
+}
+
+.app-shell.battle-view .raid-standard-battle .raid-opponent-status-row .opponent-status-anchor.is-acting {
+  transform: translateY(-2px);
 }
 
 .app-shell.battle-view .raid-standard-battle .opponent-status-anchor {
