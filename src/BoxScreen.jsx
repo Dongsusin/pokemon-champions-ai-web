@@ -213,7 +213,7 @@ function BoxScreen({
   const selectedDynamaxMode = selectedPokemon?.dynamaxMode ?? 'dynamax'
   const selectedCanGigantamax = selectedPokemon ? canGigantamax(selectedPokemon.speciesId) : false
   const selectedGigantamaxProfile = selectedPokemon ? getGigantamaxProfile(selectedPokemon.speciesId) : null
-  const equippedItemCounts = useMemo(() => getEquippedBattleItemCounts(pokemon), [pokemon])
+  const equippedItemCounts = useMemo(() => getEquippedBattleItemCounts(teamPokemon), [teamPokemon])
   const ownedItems = useMemo(
     () => getOwnedBattleItems(inventory),
     [inventory],
@@ -818,7 +818,7 @@ function BoxScreen({
               <div>
                 <small>HELD ITEM STORAGE</small>
                 <h2 id="item-equip-title">{selectedPokemon.name}의 지닌 도구</h2>
-                <p>보유한 배틀 아이템은 포켓몬 한 마리에게만 장착할 수 있습니다.</p>
+                <p>같은 팀에서는 동일한 배틀 아이템을 한 마리에게만 장착할 수 있습니다.</p>
               </div>
               <button type="button" aria-label="지닌 도구 선택창 닫기" onClick={closeItemPicker}>
                 <X size={20} />

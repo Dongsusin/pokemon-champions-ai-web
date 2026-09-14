@@ -890,12 +890,12 @@ export function GameApp({
 
   const equipBattleItem = (captureId, itemId) => {
     const targetPokemon = boxPokemon.find((pokemon) => pokemon.captureId === captureId)
-    const equipResult = attemptItemEquip(boxPokemon, itemInventory, captureId, itemId)
+    const equipResult = attemptItemEquip(boxPokemon, itemInventory, captureId, itemId, teamIds)
 
     if (!equipResult.ok) {
       gameAudioRef.current?.playEvent('error')
       if (equipResult.reason === 'item-unavailable') {
-        showNotice(`${equipResult.item.name}은(는) 다른 포켓몬이 사용 중입니다.`)
+        showNotice(`${equipResult.item.name}은(는) 현재 팀의 다른 포켓몬이 사용 중입니다.`)
       } else {
         showNotice('해당 지닌 도구를 장착할 수 없습니다.')
       }
