@@ -195,6 +195,26 @@ for (const [sourceSlug, itemId, expectedMegaSlug] of [
 }
 
 {
+  const megaProfile = profileBySlug.get('mewtwo-mega-y')
+  const state = battle(
+    [pokemon('mewtwo', ['protect'], { heldItemId: 'mewtwonite-y', isShiny: true })],
+    [pokemon('snorlax')],
+  )
+  const nextState = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'mega' },
+    { type: 'move', moveIndex: 0 },
+  )
+  const transformed = nextState.player.team[0]
+  assert.equal(transformed.speciesId, megaProfile.id)
+  assert.equal(transformed.isShiny, true)
+  assert.equal(transformed.spriteFront, megaProfile.spriteFrontShiny)
+  assert.equal(transformed.spriteBack, megaProfile.spriteBackShiny)
+  assert.deepEqual(transformed.spriteFrontFallback, megaProfile.spriteFrontShinyFallback)
+  assert.deepEqual(transformed.spriteBackFallback, megaProfile.spriteBackShinyFallback)
+}
+
+{
   const state = battle(
     [pokemon('meowstic-female', ['protect'], { heldItemId: 'meowsticite' })],
     [pokemon('snorlax')],
@@ -240,6 +260,24 @@ for (const [sourceSlug, expectedGmaxSlug] of [
     { type: 'move', moveIndex: 0 },
   )
   assert.equal(nextState.player.team[0].speciesId, profileBySlug.get(expectedGmaxSlug).id)
+}
+
+{
+  const gmaxProfile = profileBySlug.get('toxtricity-low-key-gmax')
+  const state = battle(
+    [pokemon('toxtricity-low-key', ['protect'], { dynamaxMode: 'gigantamax', isShiny: true })],
+    [pokemon('snorlax')],
+  )
+  const nextState = turn(
+    state,
+    { type: 'move', moveIndex: 0, gimmick: 'dynamax' },
+    { type: 'move', moveIndex: 0 },
+  )
+  const transformed = nextState.player.team[0]
+  assert.equal(transformed.speciesId, gmaxProfile.id)
+  assert.equal(transformed.isShiny, true)
+  assert.equal(transformed.spriteFront, gmaxProfile.spriteFrontShiny)
+  assert.equal(transformed.spriteBack, gmaxProfile.spriteBackShiny)
 }
 
 {

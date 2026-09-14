@@ -5326,6 +5326,25 @@ function relatedFormBySlug(pokemon, slug) {
   return baseProfile ? { ...baseProfile, ...visualOverride, id: baseProfile.id } : null
 }
 
+function battleFormSprites(form, transformed = form, isShiny = false) {
+  if (isShiny) {
+    return {
+      spriteFront: form.spriteFrontShiny ?? transformed.spriteFrontShiny ?? form.spriteFront ?? transformed.spriteFront,
+      spriteBack: form.spriteBackShiny ?? transformed.spriteBackShiny ?? form.spriteBack ?? transformed.spriteBack,
+      spriteFrontFallback: form.spriteFrontShinyFallback ?? transformed.spriteFrontShinyFallback
+        ?? form.spriteFrontFallback ?? transformed.spriteFrontFallback,
+      spriteBackFallback: form.spriteBackShinyFallback ?? transformed.spriteBackShinyFallback
+        ?? form.spriteBackFallback ?? transformed.spriteBackFallback,
+    }
+  }
+  return {
+    spriteFront: form.spriteFront ?? transformed.spriteFront,
+    spriteBack: form.spriteBack ?? transformed.spriteBack,
+    spriteFrontFallback: form.spriteFrontFallback ?? transformed.spriteFrontFallback,
+    spriteBackFallback: form.spriteBackFallback ?? transformed.spriteBackFallback,
+  }
+}
+
 function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options = {}) {
   const form = typeof targetFormOrSlug === 'string'
     ? relatedFormBySlug(pokemon, targetFormOrSlug)
@@ -5372,10 +5391,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.originalMaxHp = nextBaseMaxHp
   pokemon.maxHp = nextMaxHp
   pokemon.hp = previousHp <= 0 ? 0 : Math.max(1, Math.min(nextMaxHp, Math.ceil(preservedHp)))
-  pokemon.spriteFront = form.spriteFront ?? transformed.spriteFront
-  pokemon.spriteBack = form.spriteBack ?? transformed.spriteBack
-  pokemon.spriteFrontFallback = form.spriteFrontFallback ?? transformed.spriteFrontFallback
-  pokemon.spriteBackFallback = form.spriteBackFallback ?? transformed.spriteBackFallback
+  Object.assign(pokemon, battleFormSprites(form, transformed, pokemon.isShiny))
   pokemon.skinId = transformed.skinId
   if (transformed.skinId) {
     pokemon.spriteFront = transformed.spriteFront
@@ -5874,10 +5890,7 @@ function transformGigantamax(pokemon) {
   pokemon.speciesId = form.id
   pokemon.name = form.name
   pokemon.formName = form.formName ?? form.name
-  pokemon.spriteFront = form.spriteFront
-  pokemon.spriteBack = form.spriteBack
-  pokemon.spriteFrontFallback = form.spriteFrontFallback
-  pokemon.spriteBackFallback = form.spriteBackFallback
+  Object.assign(pokemon, battleFormSprites(form, form, pokemon.isShiny))
   return true
 }
 
