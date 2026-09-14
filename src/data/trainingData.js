@@ -759,6 +759,9 @@ const SUPPLEMENTAL_LEARNSET_MOVE_IDS = new Map([
   // Ferrothorn likewise retains Ferroseed's egg move after evolution.
   // Source: pokemon-showdown/data/learnsets.ts, ferroseed.leechseed (5E–8E).
   [598, ['leechseed']],
+  // Pokémon Champions promotes Night Slash to a Sirfetch'd machine move.
+  // Source: pokemon-showdown/data/mods/champions/learnsets.ts, sirfetchd.nightslash (9M).
+  [865, ['nightslash']],
   [10155, ['sunsteelstrike']],
   [10156, ['moongeistbeam']],
 ])
