@@ -748,6 +748,10 @@ export function resolveMoveForPokemon(move, pokemon) {
 
 const LEARNABLE_MOVES_BY_PROFILE_ID = new Map()
 const SUPPLEMENTAL_LEARNSET_MOVE_IDS = new Map([
+  // Deoxys retains Extreme Speed when changing from Speed Forme. PokeAPI
+  // lists it only for that forme; Showdown's shared Deoxys learnset has 9L73.
+  // Source: pokemon-showdown/data/learnsets.ts, deoxys.extremespeed.
+  [386, ['extremespeed']],
   // Jellicent retains Frillish's Gen 8 egg move after evolution. PokeAPI's
   // per-species move lists omit it from Jellicent, including its female form.
   // Source: pokemon-showdown/data/learnsets.ts, frillish.strengthsap (8E).
