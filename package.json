@@ -70,6 +70,8 @@
     "validate:account-session": "node scripts/validateAccountSession.mjs",
     "validate:online-players": "node scripts/validateOnlinePlayersServer.mjs && node scripts/validateOnlinePlayersClient.mjs",
     "validate:online-players-ui": "node scripts/validateOnlinePlayersUi.mjs",
+    "validate:global-chat": "node scripts/validateGlobalChatServer.mjs && node scripts/validateGlobalChatClient.mjs",
+    "validate:global-chat-ui": "node scripts/validateGlobalChatUi.mjs",
     "validate:account-recovery-ui": "node scripts/validateAccountRecoveryUi.mjs",
     "validate:achievements": "node scripts/validateBattleAchievementFacts.mjs && node scripts/validateAchievements.mjs && node scripts/validateEliteAchievements.mjs && node scripts/validateRareRewards.mjs && node scripts/validateRareRewardAssets.mjs && node scripts/validateAchievementRewards.mjs && node scripts/validateAchievementStorage.mjs && node scripts/validateAccountGameData.mjs",
     "validate:achievements-ui": "node scripts/validateAchievementUi.mjs && node scripts/validateSkinSpritesUi.mjs",

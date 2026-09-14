@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { sortFactoryRankingEntries } from '../src/data/battleFactoryRanking.js'
+import { eraseGuestGlobalChat } from './globalChatService.js'
 
 const hashOwner = (prefix, uid) => createHash('sha256').update(`${prefix}:${uid}`).digest('hex')
 const deletedName = '탈퇴한 게스트'
@@ -15,6 +16,7 @@ export async function eraseGuestRankedData({ store, guestRegistry, rooms, settle
   await guestRegistry.beginDeletion(identity)
   return store.transaction(async tx => {
     await guestRegistry.erase(identity, tx)
+    await eraseGuestGlobalChat(tx, uid)
     await lobbyLock(tx)
     tx.delete('queue', uid)
     await rooms.eraseGuest(tx, uid, surrogate, timestamp)
