@@ -12,10 +12,13 @@ import {
   Zap,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
+import './drawGuarantee.css'
 import {
   DRAW_BANNER_ORDER,
   DRAW_RARITY_ORDER,
   RARITY_META,
+  STANDARD_DRAW_BATCH_SIZE,
+  STANDARD_DRAW_NEW_SPECIES_GUARANTEE,
   getDrawBanner,
   getPickupRotationRemainingMs,
 } from './data/pokemonPool'
@@ -81,6 +84,7 @@ function DrawBannerCard({ banner, pickupRemainingMs }) {
       <div className="draw-banner-copy">
         <span>{banner.eyebrow}</span>
         <h2>{banner.title}</h2>
+        {banner.id === 'standard' && <strong className="draw-standard-guarantee">{STANDARD_DRAW_BATCH_SIZE}회 중 미보유 최소 {STANDARD_DRAW_NEW_SPECIES_GUARANTEE}종 확정</strong>}
         {banner.pickup && <strong>{banner.pickup.name} 픽업</strong>}
       </div>
 
@@ -101,6 +105,11 @@ function DrawBannerCard({ banner, pickupRemainingMs }) {
         <span>{String(DRAW_BANNER_ORDER.indexOf(banner.id) + 1).padStart(2, '0')} / 03</span>
         {banner.pickup ? (
           <strong><Clock3 size={14} /> 다음 픽업까지 {formatCountdown(pickupRemainingMs)}</strong>
+        ) : banner.id === 'standard' ? (
+          <strong className="draw-standard-guarantee-note">
+            <span>남은 미보유가 {STANDARD_DRAW_NEW_SPECIES_GUARANTEE}종 미만이면 남은 포켓몬 모두 보장</span>
+            <small>등급 표시는 기본 확률 · 확정 대상은 보유 현황에 따라 조정</small>
+          </strong>
         ) : (
           <strong>{banner.shinyOnly ? '모든 결과가 이로치로 등장' : '일반·전설·환상 이로치 등장 가능'}</strong>
         )}
@@ -320,7 +329,7 @@ function HatchScreen({
             </button>
           </div>
 
-          <div className="draw-banner-rate-board" aria-label="등급별 등장 확률">
+          <div className="draw-banner-rate-board" aria-label={activeBanner.id === 'standard' ? '등급별 기본 등장 확률' : '등급별 등장 확률'}>
             {DRAW_RARITY_ORDER.map((rarity) => (
               <div className={`draw-rate-chip rarity-${rarity}`} key={rarity}>
                 <span>{RARITY_META[rarity].stars}</span>

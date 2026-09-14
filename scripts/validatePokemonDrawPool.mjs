@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict'
 import {
   BASE_SHINY_ODDS,
   DRAW_BANNERS,
@@ -7,7 +8,11 @@ import {
   PICKUP_ROTATION_MS,
   POKEMON_POOL,
   RARITY_META,
+  STANDARD_DRAW_NEW_SPECIES_GUARANTEE,
+  DUPLICATE_DRAW_REFUND_VP,
   createPokemonDraw,
+  mergePokemonDraws,
+  migratePokemonCollection,
   getCurrentLegendaryPickup,
   getPokemonRarity,
   getShinyOdds,
@@ -184,12 +189,109 @@ if (shinyDraws.some((pokemon) => !pokemon.isShiny || pokemon.shinyChance !== 1))
   failures.push('이로치 뽑기에서 일반색 포켓몬이 등장함')
 }
 
+let guaranteeChecks = 0
+function checkGuarantee(name, run) {
+  try { run(); guaranteeChecks += 1 }
+  catch (error) { failures.push(`${name}: ${error.message}`) }
+}
+const collectionOf = ids => ids.map(id => ({ speciesId: id, dexSpeciesId: id, directDrawCount: 0 }))
+const draw = (collection, random = () => 0.5, options = {}) => createPokemonDraw(10, collection, random, { now: 0, ...options })
+function assertMinimumNew(collection, results, expected = 3) {
+  const before = new Set(migratePokemonCollection(collection).map(pokemon => pokemon.dexSpeciesId))
+  const missing = POKEMON_POOL.filter(pokemon => !before.has(pokemon.id)).length
+  const newIds = new Set(results.filter(pokemon => !before.has(pokemon.id)).map(pokemon => pokemon.id))
+  assert(newIds.size >= Math.min(expected, missing), `${newIds.size} new species; expected ${Math.min(expected, missing)}`)
+  const merged = mergePokemonDraws(collection, results)
+  assert.equal(merged.results.filter(result => !result.isDuplicate).length, newIds.size)
+  assert.equal(merged.duplicateRefundVp, (results.length - newIds.size) * DUPLICATE_DRAW_REFUND_VP)
+  return merged
+}
+
+checkGuarantee('empty account gets three distinct species even when every random roll repeats', () => {
+  const collection = []
+  const results = draw(collection, () => 0)
+  assert.equal(results.length, 10)
+  assert.equal(STANDARD_DRAW_NEW_SPECIES_GUARANTEE, 3)
+  assert.deepEqual(collection, [])
+  assert.equal(new Set(results.map(pokemon => pokemon.id)).size, 3)
+  assertMinimumNew(collection, results)
+})
+checkGuarantee('partial collections retain ten draws, original ownership and correct NEW/refund results across seeds', () => {
+  const collection = collectionOf(POKEMON_POOL.filter((_, index) => index % 2 === 0).map(pokemon => pokemon.id))
+  const original = JSON.stringify(collection)
+  for (let seed = 1; seed <= 40; seed += 1) {
+    const results = draw(collection, createSeededRandom(seed))
+    assert.equal(results.length, 10)
+    assert(results.every(pokemon => poolIds.has(pokemon.id) && pokemon.shinyChance === 1 / BASE_SHINY_ODDS))
+    assertMinimumNew(collection, results)
+  }
+  assert.equal(JSON.stringify(collection), original)
+})
+checkGuarantee('already unlocked branches and shiny/form ownership are not new candidates', () => {
+  const excludedFamilies = new Set([...getEvolutionSpeciesIds(133), 6])
+  const collection = collectionOf(POKEMON_POOL.filter(pokemon => !excludedFamilies.has(pokemon.id) && ![150, 151, 384].includes(pokemon.id)).map(pokemon => pokemon.id))
+  // An old-format Eevee unlocks every branch; a stored Charizard Mega-X form
+  // belongs to the base species and owning only its shiny still counts as owned.
+  collection.push({ speciesId: 133 }, { speciesId: 10034, isShiny: true, directDrawCount: 1 })
+  const merged = assertMinimumNew(collection, draw(collection, () => 0))
+  assert.deepEqual(merged.results.filter(result => !result.isDuplicate).map(result => result.id).sort((a, b) => a - b), [150, 151, 384])
+})
+for (const remaining of [0, 1, 2, 3]) {
+  checkGuarantee(`${remaining} unowned species left: award all possible new species without rerolling forever`, () => {
+    const missing = [150, 151, 384].slice(0, remaining)
+    const collection = collectionOf(POKEMON_POOL.filter(pokemon => !missing.includes(pokemon.id)).map(pokemon => pokemon.id))
+    let calls = 0
+    const results = draw(collection, () => { calls += 1; return 0 })
+    const merged = assertMinimumNew(collection, results)
+    assert.deepEqual(merged.results.filter(result => !result.isDuplicate).map(result => result.id).sort((a, b) => a - b), missing.slice().sort((a, b) => a - b))
+    assert(calls <= 46, `Unexpected rerolls: ${calls}`)
+  })
+}
+checkGuarantee('separate purchases and multiple ten-draw batches each observe the updated collection', () => {
+  const collection = collectionOf(POKEMON_POOL.filter(pokemon => pokemon.rarity !== 'legend').map(pokemon => pokemon.id))
+  const results = createPokemonDraw(20, collection, () => 0, { bannerId: 'standard', now: 0 })
+  const first = assertMinimumNew(collection, results.slice(0, 10))
+  const second = assertMinimumNew(first.collection, results.slice(10))
+  assertMinimumNew(second.collection, draw(second.collection, () => 0))
+  assert.deepEqual(createPokemonDraw(0, collection, () => 0), [])
+})
+checkGuarantee('a purchase with at least three natural new species needs no forced roll', () => {
+  let calls = 0
+  const results = draw([], () => {
+    const index = calls++
+    return index % 4 === 1 ? Math.floor(index / 4) / DRAW_RARITY_POOLS.common.length : 0.1
+  })
+  assert.equal(calls, 40)
+  assert.equal(new Set(results.map(pokemon => pokemon.id)).size, 10)
+})
+checkGuarantee('single draws and incomplete batches preserve normal rates and do not receive a three-species guarantee', () => {
+  const results = createPokemonDraw(9, [], () => 0, { bannerId: 'standard', now: 0 })
+  assert.equal(new Set(results.map(pokemon => pokemon.id)).size, 1)
+  assert.equal(results.length, 9)
+})
+for (const bannerId of ['pickup', 'shiny']) {
+  checkGuarantee(`${bannerId} retains ten duplicate results with unchanged refunds and shiny behavior`, () => {
+    const collection = collectionOf(POKEMON_POOL.map(pokemon => pokemon.id))
+    const results = draw(collection, () => 0.5, { bannerId })
+    assert.equal(new Set(results.map(pokemon => pokemon.id)).size, 1)
+    assert(results.every(pokemon => pokemon.bannerId === bannerId && pokemon.isShiny === (bannerId === 'shiny')))
+    assert.equal(mergePokemonDraws(collection, results).duplicateCount, 10)
+    const unownedResults = draw([], () => 0.5, { bannerId })
+    assert.equal(new Set(unownedResults.map(pokemon => pokemon.id)).size, 1)
+  })
+}
+checkGuarantee('prices and base rarity/shiny rates remain unchanged', () => {
+  assert.deepEqual(Object.values(DRAW_BANNERS).map(banner => banner.price), [1000, 1800, 3600])
+  assert.deepEqual(DRAW_RARITY_ORDER.map(rarity => RARITY_META[rarity].rate), [0.5, 0.32, 0.14, 0.03, 0.01])
+  assert.equal(BASE_SHINY_ODDS, 4096)
+})
+
 if (failures.length > 0) {
   console.error(failures.slice(0, 30).join('\n'))
   if (failures.length > 30) console.error(`외 ${failures.length - 30}건`)
   process.exitCode = 1
 } else {
   process.stdout.write(
-    `Validated ${POKEMON_POOL.length} final-evolution candidates, ${LEGENDARY_MYTHICAL_POOL.length} EX pickups, and 3 draw banners.\n`,
+    `Validated ${POKEMON_POOL.length} final-evolution candidates, ${LEGENDARY_MYTHICAL_POOL.length} EX pickups, 3 draw banners and ${guaranteeChecks} guarantee checks.\n`,
   )
 }

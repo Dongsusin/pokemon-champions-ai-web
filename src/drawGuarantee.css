@@ -1,0 +1,26 @@
+.draw-banner-copy > .draw-standard-guarantee {
+  max-width: 100%;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.draw-banner-footer:has(.draw-standard-guarantee-note) {
+  gap: 12px;
+  padding-block: 5px;
+}
+
+.draw-banner-footer > .draw-standard-guarantee-note {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  line-height: 1.4;
+  text-align: right;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.draw-standard-guarantee-note > small {
+  color: #c9dce9;
+  font-size: 0.9em;
+  font-weight: 500;
+}

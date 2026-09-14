@@ -54,7 +54,6 @@ async function runCase(name, tutorial, individualFirst, mobile = false) {
     assert(source.includes('const trainerInitial =') && source.includes('const completeDrawTutorial = (pokemon) => {'))
     source = source.replace('const trainerInitial =', `window.__hatchQA={screen,vp,drawResults,drawTutorialStep,boxPokemon,open:()=>selectMode({id:'hatch'})}; const trainerInitial =`)
       .replace('const completeDrawTutorial = (pokemon) => {', 'const completeDrawTutorial = (pokemon) => { window.__tutorialCompleteCalls=(window.__tutorialCompleteCalls||0)+1;')
-      + '\nexport {GameApp};\n'
     await route.fulfill({ response, body: source })
   })
   await context.addInitScript(({ tutorial, initialBalance }) => {
@@ -74,9 +73,30 @@ async function runCase(name, tutorial, individualFirst, mobile = false) {
     assert.equal(await page.evaluate(() => window.__hatchQA.screen), 'hatch')
     assert.equal(await page.evaluate(() => window.__hatchQA.drawTutorialStep), 'draw')
   } else await page.evaluate(() => window.__hatchQA.open())
+  await page.getByText('10회 중 미보유 최소 3종 확정', { exact: true }).waitFor()
+  assert(await page.getByText('남은 미보유가 3종 미만이면 남은 포켓몬 모두 보장', { exact: true }).isVisible())
+  assert(await page.getByLabel('등급별 기본 등장 확률', { exact: true }).isVisible())
+  if (!tutorial) {
+    for (const bannerId of ['pickup', 'shiny']) {
+      await page.getByRole('button', { name: getDrawBanner(bannerId).title, exact: true }).click()
+      assert.equal(await page.locator('.draw-standard-guarantee').count(), 0, 'Other draw types must not advertise the standard-only guarantee')
+      assert.equal(await page.locator('.draw-standard-guarantee-note').count(), 0)
+      assert((await page.locator('.draw-banner-price').innerText()).includes(getDrawBanner(bannerId).price.toLocaleString()))
+    }
+    await page.getByRole('button', { name: getDrawBanner('standard').title, exact: true }).click()
+  }
+  await page.locator('.draw-banner-card').evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)))
+  const guaranteeBounds = await page.locator('.draw-standard-guarantee, .draw-standard-guarantee-note').evaluateAll(elements => elements.map(element => {
+    const rect = element.getBoundingClientRect()
+    const card = element.closest('.draw-banner-card').getBoundingClientRect()
+    return rect.left >= card.left && rect.right <= card.right + 1 && rect.top >= card.top && rect.bottom <= card.bottom + 1
+  }))
+  assert(guaranteeBounds.every(Boolean), 'Standard guarantee and its exception must fit inside the banner')
+  await page.screenshot({ path: path.join(output, `${name}-banner.png`) })
   await page.getByRole('button', { name: '10회 뽑기', exact: true }).click()
   await page.waitForFunction(() => window.__hatchQA.drawResults.length === 10)
   const afterDraw = await inventorySnapshot(page)
+  assert(await page.evaluate(() => new Set(window.__hatchQA.drawResults.filter(result => !result.isDuplicate).map(result => result.id)).size >= 3), 'The actual standard draw must grant at least three distinct new species')
   const refund = await page.evaluate(() => window.__hatchQA.drawResults.reduce((sum, result) => sum + (result.duplicateRefundVp || 0), 0))
   assert.equal(afterDraw.balance, initialBalance - getDrawBanner('standard').price + refund)
   assert.equal(afterDraw.collection.reduce((sum, pokemon) => sum + pokemon.directDrawCount, 0), 10, 'The draw must grant exactly ten results before reveal')
@@ -124,6 +144,7 @@ try {
   console.log('Initial and ordinary hatch QA passed: ten reveals, one tutorial completion, repeated-click protection, no duplicate Pokemon/VP, reload persistence, and mobile button visibility.')
   console.log(`Screenshots: ${output}`)
 } catch (error) {
+  console.error('Browser errors:', errors)
   await activePage?.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {})
   throw error
 } finally {

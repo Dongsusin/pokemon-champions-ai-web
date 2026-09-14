@@ -14,6 +14,8 @@ export const LEGENDARY_DRAW_RATE = 0.01
 export const PICKUP_ROTATION_MS = 60 * 60 * 1000
 export const INITIAL_VP_BALANCE = 50_000
 export const DUPLICATE_DRAW_REFUND_VP = 50
+export const STANDARD_DRAW_BATCH_SIZE = 10
+export const STANDARD_DRAW_NEW_SPECIES_GUARANTEE = 3
 
 export const DRAW_BANNERS = {
   standard: {
@@ -180,6 +182,21 @@ function rollPokemonForBanner(bannerId, random, now) {
   return randomPoolEntry(pool, random)
 }
 
+function rollUnownedPokemon(unowned, random) {
+  const pools = DRAW_RARITY_ORDER.map((rarity) => ({
+    rarity,
+    pokemon: DRAW_RARITY_POOLS[rarity].filter((pokemon) => unowned.has(pokemon.id)),
+  })).filter(({ pokemon }) => pokemon.length > 0)
+  const totalRate = pools.reduce((sum, { rarity }) => sum + RARITY_META[rarity].rate, 0)
+  const roll = Math.min(0.999999999, Math.max(0, Number(random()) || 0)) * totalRate
+  let cumulativeRate = 0
+  for (const pool of pools) {
+    cumulativeRate += RARITY_META[pool.rarity].rate
+    if (roll < cumulativeRate) return randomPoolEntry(pool.pokemon, random)
+  }
+  return randomPoolEntry(pools.at(-1).pokemon, random)
+}
+
 export function createPokemonDraw(count = 10, collection = [], random = Math.random, options = {}) {
   if (typeof collection === 'function') {
     random = collection
@@ -194,9 +211,36 @@ export function createPokemonDraw(count = 10, collection = [], random = Math.ran
   const drawCounts = collectionDrawCounts(collection)
   const banner = getDrawBanner(options.bannerId, options.now)
   const drawTimestamp = normalizedTimestamp(options.now)
+  // Match the collection/NEW badge rules, including unlocked evolutions,
+  // alternate forms and shiny-only ownership. Direct draw count is not ownership.
+  const owned = banner.id === 'standard'
+    ? new Set(migratePokemonCollection(collection).map((pokemon) => pokemon.dexSpeciesId))
+    : null
+  const unowned = owned ? new Set(POKEMON_POOL.filter((pokemon) => !owned.has(pokemon.id)).map((pokemon) => pokemon.id)) : null
+  let newlyDrawnInBatch = []
+  let guaranteedCount = 0
 
   return Array.from({ length: count }, (_, index) => {
-    const pokemon = rollPokemonForBanner(banner.id, random, drawTimestamp)
+    const batchIndex = index % STANDARD_DRAW_BATCH_SIZE
+    if (unowned && batchIndex === 0) {
+      newlyDrawnInBatch = []
+      guaranteedCount = count - index >= STANDARD_DRAW_BATCH_SIZE
+        ? Math.min(STANDARD_DRAW_NEW_SPECIES_GUARANTEE, unowned.size) : 0
+    }
+    let pokemon = rollPokemonForBanner(banner.id, random, drawTimestamp)
+    // Keep ordinary rolls. Replace a duplicate only when all remaining slots
+    // are needed to reach the minimum; sampling a finite pool avoids reroll loops.
+    if (unowned && !unowned.has(pokemon.id)
+      && STANDARD_DRAW_BATCH_SIZE - batchIndex <= guaranteedCount - newlyDrawnInBatch.length) {
+      pokemon = rollUnownedPokemon(unowned, random)
+    }
+    if (unowned?.delete(pokemon.id)) newlyDrawnInBatch.push(pokemon.id)
+    if (unowned && batchIndex === STANDARD_DRAW_BATCH_SIZE - 1) {
+      // A later batch sees the evolutions unlocked by the completed purchase.
+      for (const speciesId of newlyDrawnInBatch) {
+        for (const relatedId of getEvolutionSpeciesIds(speciesId)) unowned.delete(relatedId)
+      }
+    }
     const previousDrawCount = drawCounts.get(pokemon.id) ?? 0
     const shinyChance = banner.shinyOnly ? 1 : getShinyChance()
     const isShiny = banner.shinyOnly || rollShiny(random)
