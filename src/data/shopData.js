@@ -91,7 +91,7 @@ export function attemptItemPurchase(balance, inventory, itemId) {
   }
 }
 
-export function attemptItemEquip(pokemon, inventory, captureId, itemId) {
+export function attemptItemEquip(pokemon, inventory, captureId, itemId, teamCaptureIds = null) {
   const currentPokemon = Array.isArray(pokemon) ? pokemon : []
   const targetPokemon = currentPokemon.find((entry) => entry.captureId === captureId)
   const normalizedItemId = itemId || null
@@ -119,8 +119,15 @@ export function attemptItemEquip(pokemon, inventory, captureId, itemId) {
   if (!item) return { ok: false, reason: 'unknown-item', pokemon: currentPokemon }
 
   const currentInventory = normalizeItemInventory(inventory)
+  const scopedCaptureIds = Array.isArray(teamCaptureIds)
+    ? new Set([...teamCaptureIds, captureId])
+    : null
   const equippedElsewhere = currentPokemon.reduce((count, entry) => (
-    entry.captureId !== captureId && entry.heldItemId === item.id ? count + 1 : count
+    entry.captureId !== captureId
+      && (!scopedCaptureIds || scopedCaptureIds.has(entry.captureId))
+      && entry.heldItemId === item.id
+      ? count + 1
+      : count
   ), 0)
   const availableQuantity = (currentInventory[item.id] ?? 0) - equippedElsewhere
 

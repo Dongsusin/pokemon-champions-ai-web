@@ -72,6 +72,7 @@
     "validate:draw-pool": "node scripts/validatePokemonDrawPool.mjs",
     "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",
     "validate:account-sync": "node scripts/validateAccountGameData.mjs",
+    "validate:team-held-items": "node scripts/validateTeamScopedHeldItems.mjs",
     "validate:account-session": "node scripts/validateAccountSession.mjs",
     "validate:online-players": "node scripts/validateOnlinePlayersServer.mjs && node scripts/validateOnlinePlayersClient.mjs",
     "validate:online-players-ui": "node scripts/validateOnlinePlayersUi.mjs",
