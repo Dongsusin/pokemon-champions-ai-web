@@ -349,20 +349,20 @@
 }
 
 .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-0 {
-  --battle-stage-center: 70%;
-  --battle-stage-floor: 50%;
+  --battle-stage-center: 60%;
+  --battle-stage-floor: 37%;
   z-index: 11;
 }
 
 .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-1 {
-  --battle-stage-center: 54%;
-  --battle-stage-floor: 52%;
+  --battle-stage-center: 39%;
+  --battle-stage-floor: 39%;
   z-index: 10;
 }
 
 .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-2 {
-  --battle-stage-center: 38%;
-  --battle-stage-floor: 54%;
+  --battle-stage-center: 18%;
+  --battle-stage-floor: 41%;
   z-index: 9;
 }
 
@@ -451,6 +451,31 @@
   transition: transform 180ms ease, filter 180ms ease;
 }
 
+.raid-standard-battle .raid-opponent-status-row {
+  position: absolute;
+  top: 6%;
+  left: 2%;
+  z-index: 32;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(5px, 0.7vw, 11px);
+  width: min(66%, 930px);
+  pointer-events: none;
+}
+
+.app-shell.battle-view .raid-standard-battle .raid-opponent-status-row .opponent-status-anchor {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: auto;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.app-shell.battle-view .raid-standard-battle .raid-opponent-status-row .opponent-status-anchor.slot-0 { grid-column: 3; }
+.app-shell.battle-view .raid-standard-battle .raid-opponent-status-row .opponent-status-anchor.slot-1 { grid-column: 2; grid-row: 1; }
+.app-shell.battle-view .raid-standard-battle .raid-opponent-status-row .opponent-status-anchor.slot-2 { grid-column: 1; grid-row: 1; }
+
 .app-shell.battle-view .raid-standard-battle .opponent-status-anchor {
   left: 2%;
 }
@@ -481,6 +506,12 @@
 
 .app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-2 {
   bottom: 63%;
+}
+
+.app-shell.battle-view .raid-standard-battle .player-status-anchor.raid-own-status {
+  right: 2%;
+  bottom: 3%;
+  top: auto;
 }
 
 .raid-standard-battle .battle-status-anchor.is-acting {
@@ -1067,6 +1098,14 @@
   .raid-standard-battle .raid-standard-participant-strip > span > small {
     max-width: 42px;
   }
+}
+
+/* The local player's HP card stays in the lower-right even when that trainer
+   owns slot 2 or 3 and compact-layout slot rules appear later in this file. */
+.app-shell.battle-view .raid-standard-battle .player-status-anchor.raid-own-status.raid-own-status {
+  top: auto;
+  right: 2%;
+  bottom: 3%;
 }
 
 @media (prefers-reduced-motion: reduce) {

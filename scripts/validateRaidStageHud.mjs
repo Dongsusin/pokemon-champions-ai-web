@@ -16,6 +16,9 @@ try {
   const prelude = render(getRaidBattleView(state, 'hud-player'))
   assert.equal(count(prelude, /class="battle-game-header raid-standard-battle-header"/g), 1)
   assert.equal(count(prelude, /class="battle-status-anchor opponent-status-anchor/g), 3, 'All prelude opponents retain their individual HP')
+  assert.equal(count(prelude, /class="battle-status-anchor player-status-anchor/g), 1, 'Only the local player HP panel is shown')
+  assert.equal(count(prelude, /class="battle-pokemon-inspector side-/g), 6, 'Every active Pokemon has a standard status tooltip')
+  assert.equal(count(prelude, /class="raid-opponent-status-row"/g), 1, 'Opponent HP panels share one horizontal row')
   assert(prelude.includes('남은 행동 시간 1:05'))
   for (const label of ['이번 턴의 행동을 선택하세요.', 'raid-header-withdraw', '배틀 사운드 끄기', '환경 설정', 'rule-raid-weather', 'rule-raid-terrain']) assert(prelude.includes(label), label)
   assert(!prelude.includes('raid-online-bar'))
@@ -27,7 +30,7 @@ try {
   const boss = render(view, { bossHud })
   assert.equal(count(boss, /class="raid-boss-hp"/g), 1, 'Main boss HP is shown exactly once in the center')
   assert.equal(count(boss, /class="battle-status-anchor opponent-status-anchor/g), 0, 'No duplicate standard HP panel for the boss')
-  assert.equal(count(boss, /class="battle-status-anchor player-status-anchor/g), 3, 'All ally HP panels are preserved')
+  assert.equal(count(boss, /class="battle-status-anchor player-status-anchor/g), 1, 'Only the local player HP panel is preserved')
   assert(boss.includes('보스 진영 출전 포켓몬'), 'Boss party indicators are preserved')
   assert.equal(count(boss, /class="battle-pokemon-stage opponent/g), 1, 'Boss sprite remains visible')
 

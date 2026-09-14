@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Clock3,
   Crown,
@@ -10,6 +11,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
+import BattlePokemonStatusTooltip from './BattlePokemonStatusTooltip'
 import {
   BattleArenaEffects,
   BattleFieldEffects,
@@ -127,16 +129,6 @@ function actorOwnerLabel(actor, side) {
   return actor?.displayName ?? '협동 트레이너'
 }
 
-function inspectorText(actor, side) {
-  const details = [
-    actorOwnerLabel(actor, side),
-    actor?.ability ? '특성 ' + actor.ability : null,
-    actor?.heldItemName ? '도구 ' + actor.heldItemName : null,
-    actor?.status?.label ? '상태 ' + actor.status.label : null,
-  ].filter(Boolean)
-  return (actor?.name ?? '포켓몬') + ' · ' + details.join(' · ')
-}
-
 function stageStatusClassName(side, actor, cue, slot) {
   const classes = ['battle-status-anchor', side + '-status-anchor', 'slot-' + slot]
   if (actor?.fainted || finite(actor?.hp) <= 0) classes.push('is-fainted')
@@ -195,7 +187,7 @@ function RaidPartyIndicators({ actors, side }) {
   )
 }
 
-function RaidStagePokemon({ actor, side, slot, cue, animationMode }) {
+function RaidStagePokemon({ actor, side, slot, cue, animationMode, inspectorProps }) {
   const isPlayer = side === 'player'
   const visual = raidFormVisual(actor, side)
   const sprite = visual?.src ?? (isPlayer ? actor.spriteBack : actor.spriteFront)
@@ -205,9 +197,7 @@ function RaidStagePokemon({ actor, side, slot, cue, animationMode }) {
       className={battleStageClassName(side, actor, cue, slot) + (visual?.aura ? ' raid-form-' + visual.aura : '')}
       style={battleStageStyle(cue, animationMode)}
       tabIndex={0}
-      role="img"
-      aria-label={inspectorText(actor, side)}
-      title={inspectorText(actor, side)}
+      {...inspectorProps}
     >
       <span className="battle-pokemon-shadow" aria-hidden="true" />
       <PokemonSprite
@@ -244,6 +234,9 @@ export default function RaidBattleStage({
   statusText = '',
   onWithdraw,
 }) {
+  const [hoveredActor, setHoveredActor] = useState(null)
+  const [focusedActor, setFocusedActor] = useState(null)
+  const [pinnedActor, setPinnedActor] = useState(null)
   const allies = activeRaidActors(battle, 'player').slice(0, 3).map(normalizeRaidActor)
   const enemies = activeRaidActors(battle, 'opponent').slice(0, 3).map(normalizeRaidActor)
   const rules = raidRules(battle)
@@ -251,6 +244,37 @@ export default function RaidBattleStage({
   const participantCount = asArray(raid?.participants).filter(participant => !participant?.withdrawn).length
   const isPrelude = isPreludePhase(raid, battle)
   const hasCentralBoss = Boolean(bossHud && enemies.some(actor => isMainBoss(actor, raid, battle)))
+  const ownAlly = allies.find(actor => actor.isMine) ?? allies[0] ?? null
+  const inspectedActor = hoveredActor ?? focusedActor ?? pinnedActor
+  const actorKey = (side, actor, slot) => `${side}-${actor?.battleId ?? actor?.actorId ?? slot}`
+  const inspectorProps = (side, actor, slot) => {
+    const key = actorKey(side, actor, slot)
+    return {
+      role: 'button',
+      'aria-label': `${actor.name} 현재 상태 보기`,
+      'aria-describedby': `${key}-pokemon-status-tooltip`,
+      'aria-expanded': inspectedActor === key,
+      onPointerEnter: event => { if (event.pointerType === 'mouse') setHoveredActor(key) },
+      onPointerLeave: event => { if (event.pointerType === 'mouse') setHoveredActor(current => current === key ? null : current) },
+      onPointerDown: event => {
+        if (event.pointerType === 'mouse') return
+        event.stopPropagation()
+        setPinnedActor(current => current === key ? null : key)
+      },
+      onFocus: event => { if (event.currentTarget.matches(':focus-visible')) setFocusedActor(key) },
+      onBlur: () => setFocusedActor(current => current === key ? null : current),
+      onKeyDown: event => {
+        if (event.key === 'Escape') {
+          setFocusedActor(null)
+          setPinnedActor(null)
+          event.currentTarget.blur()
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setPinnedActor(current => current === key ? null : key)
+        }
+      },
+    }
+  }
   const sceneClass = [
     'battle-arena',
     'raid-standard-battle-arena',
@@ -309,6 +333,7 @@ export default function RaidBattleStage({
         className={sceneClass}
         style={{ '--battle-hp-duration': Math.max(0, finite(hpTransitionMs, 350)) + 'ms' }}
         aria-label="협동 보스전 전장"
+        onPointerDown={event => { if (event.pointerType !== 'mouse') setPinnedActor(null) }}
       >
         {(bossHud || participantCount) && <div className="raid-standard-boss-hud" aria-label="보스 상태">
           {bossHud}
@@ -316,6 +341,7 @@ export default function RaidBattleStage({
           <RaidParticipantStrip participants={raid?.participants} raid={raid} />
         </div>}
 
+        <div className="raid-opponent-status-row" aria-label="상대 포켓몬 체력">
         {enemies.map((actor, index) => {
           if (bossHud && isMainBoss(actor, raid, battle)) return null
           const slot = actorSlot(actor, index)
@@ -326,14 +352,30 @@ export default function RaidBattleStage({
             </div>
           )
         })}
-        {allies.map((actor, index) => {
-          const slot = actorSlot(actor, index)
+        </div>
+        {ownAlly && (() => {
+          const index = allies.indexOf(ownAlly)
+          const slot = actorSlot(ownAlly, index)
           return (
-            <div className={stageStatusClassName('player', actor, cue, slot)} key={'player-status-' + (actor.battleId ?? slot)}>
-              <BattleStatusPanel pokemon={actor} side="player" trainerName={actorOwnerLabel(actor, 'player')} publicView={!actor.isMine} />
-              {index === 0 && <RaidPartyIndicators actors={allies} side="player" />}
+            <div className={`${stageStatusClassName('player', ownAlly, cue, slot)} raid-own-status`} key={'player-status-' + (ownAlly.battleId ?? slot)}>
+              <BattleStatusPanel pokemon={ownAlly} side="player" trainerName={actorOwnerLabel(ownAlly, 'player')} publicView={false} />
+              <RaidPartyIndicators actors={allies} side="player" />
             </div>
           )
+        })()}
+
+        {[...enemies.map((actor, index) => ({ actor, side: 'opponent', slot: actorSlot(actor, index) })),
+          ...allies.map((actor, index) => ({ actor, side: 'player', slot: actorSlot(actor, index) }))].map(({ actor, side, slot }) => {
+          const key = actorKey(side, actor, slot)
+          return <BattlePokemonStatusTooltip
+            id={`${key}-pokemon-status-tooltip`}
+            key={`${key}-tooltip`}
+            pokemon={actor}
+            side={side}
+            trainerName={actorOwnerLabel(actor, side)}
+            publicView={side === 'player' && !actor.isMine}
+            visible={inspectedActor === key}
+          />
         })}
 
         <div className={battleCameraClassName(cue)} style={battleStageStyle(cue, animationMode)}>
@@ -351,11 +393,11 @@ export default function RaidBattleStage({
 
           {enemies.map((actor, index) => {
             const slot = actorSlot(actor, index)
-            return <RaidStagePokemon actor={actor} side="opponent" slot={slot} cue={cue} animationMode={animationMode} key={'opponent-stage-' + (actor.battleId ?? slot)} />
+            return <RaidStagePokemon actor={actor} side="opponent" slot={slot} cue={cue} animationMode={animationMode} inspectorProps={inspectorProps('opponent', actor, slot)} key={'opponent-stage-' + (actor.battleId ?? slot)} />
           })}
           {allies.map((actor, index) => {
             const slot = actorSlot(actor, index)
-            return <RaidStagePokemon actor={actor} side="player" slot={slot} cue={cue} animationMode={animationMode} key={'player-stage-' + (actor.battleId ?? slot)} />
+            return <RaidStagePokemon actor={actor} side="player" slot={slot} cue={cue} animationMode={animationMode} inspectorProps={inspectorProps('player', actor, slot)} key={'player-stage-' + (actor.battleId ?? slot)} />
           })}
 
           <BattleWeatherEffects weatherId={rules.weather.id} layer="front" />
