@@ -1,0 +1,232 @@
+/* Room browsing and preparation share the viewport left by the app topbar. */
+html:has(.raid-room-browser, .raid-room-screen),
+body:has(.raid-room-browser, .raid-room-screen) { overflow: clip; }
+.app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: clip; }
+.app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) > .topbar { flex: 0 0 auto; }
+.raid-lobby-screen.raid-room-browser,
+.app-shell.raid-view > .raid-room-screen { display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; gap: clamp(8px, 1.6dvh, 16px); padding: clamp(10px, 1.8dvh, 20px) clamp(12px, 2vw, 28px); container: raid-room / size; }
+:is(.raid-room-browser, .raid-room-screen) .raid-page-header { flex: 0 0 auto; align-items: center; gap: 16px; margin: 0; grid-template-columns: auto minmax(0, 1fr) auto; }
+:is(.raid-room-browser, .raid-room-screen) .raid-page-header > div { min-width: 0; }
+:is(.raid-room-browser, .raid-room-screen) .raid-page-header > div > span { font-size: 10px; }
+:is(.raid-room-browser, .raid-room-screen) .raid-page-header h1 { margin: 3px 0 0; font-size: 27px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.raid-room-browser, .raid-room-screen) .raid-page-header > .screen-back-button { padding: 8px 12px; min-height: 0; font-size: 12px; }
+:is(.raid-room-browser, .raid-room-screen) .raid-page-header aside { grid-column: auto; min-height: 0; padding: 6px 10px; font-size: 11px; }
+:is(.raid-room-browser, .raid-room-screen) .raid-notice { flex: 0 0 auto; margin: 0; padding: 7px 10px; }
+
+.raid-room-browser .raid-room-browser-heading { flex: 0 0 auto; grid-template-columns: auto 100px minmax(0, 1fr) auto; gap: 14px; margin: 0; }
+.raid-room-browser .raid-room-browser-heading > .raid-boss-card { height: 90px; padding: 6px; border-radius: 13px; }
+.raid-room-browser .raid-room-browser-heading > .raid-boss-card .sprite-image-viewport,
+.raid-room-browser .raid-room-browser-heading > .raid-boss-card > img { width: 53px; height: 49px; }
+.raid-room-browser .raid-room-browser-heading > .raid-boss-card h2 { font-size: 15px; }
+.raid-room-browser .raid-room-browser-heading > .raid-boss-card > .raid-boss-card-number { display: none; }
+.raid-room-browser .raid-room-browser-heading > div { min-width: 0; grid-column: auto; }
+.raid-room-browser .raid-room-browser-heading > div h2 { margin: 3px 0; font-size: 25px; line-height: 1.2; }
+.raid-room-browser .raid-room-browser-heading > div p { font-size: 12px; line-height: 1.5; }
+.raid-room-browser .raid-room-browser-heading > div > span { font-size: 9px; }
+.raid-room-browser .raid-room-browser-heading > section { grid-column: auto; gap: 7px; }
+.raid-room-browser .raid-room-browser-heading :is(button.raid-secondary, button.raid-primary),
+.raid-room-browser .raid-room-browser-heading > button { min-width: 0; padding: 9px 12px; font-size: 12px; white-space: nowrap; }
+.raid-room-browser .raid-room-list { flex: 1 1 0; min-height: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); align-content: stretch; gap: 12px; padding: 14px; overflow: clip; }
+.raid-room-browser .raid-room-card { min-width: 0; min-height: 0; max-height: 250px; padding: 15px; }
+.raid-room-browser .raid-room-card > strong { flex: 0 0 auto; margin: 16px 0 7px; }
+.raid-room-browser .raid-room-card p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raid-room-browser .raid-room-card button { flex: 0 0 auto; margin-top: auto; padding: 9px; font-size: 12px; }
+.raid-room-browser .raid-empty-rooms { min-width: 0; min-height: 0; padding: 10px; }
+.raid-room-browser .raid-empty-rooms h2 { font-size: 20px; }
+.raid-room-pagination { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 12px; color: #b5d8e8; font-size: 11px; }
+.raid-room-pagination button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 35px; padding: 7px 10px; border: 1px solid #78b5ce70; border-radius: 8px; color: #d4f4fa; font: inherit; background: #173852c9; cursor: pointer; }
+.raid-room-pagination button:disabled { opacity: .4; cursor: default; }
+.raid-room-pagination button:focus-visible { outline: 2px solid #91f3eb; outline-offset: 2px; }
+
+.raid-room-screen .raid-room-layout { flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: 16px; }
+.raid-room-screen :is(.raid-room-members, .raid-room-entry) { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: clamp(12px, 2dvh, 22px); overflow: visible; }
+.raid-room-screen .raid-room-members > header { flex: 0 0 auto; margin-bottom: 12px; }
+.raid-room-screen .raid-member-slots { flex: 1 1 0; min-height: 0; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.raid-room-screen .raid-member-slot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); align-content: center; gap: 6px 8px; min-width: 0; min-height: 0; padding: 12px 14px; }
+.raid-room-screen .raid-member-slot > span { align-self: center; font-size: 10px; }
+.raid-room-screen .raid-member-slot > div { grid-column: 1 / -1; grid-row: 2; min-width: 0; min-height: 0; grid-template-columns: minmax(48px, 20%) minmax(0, 1fr); grid-template-rows: 1fr 1fr; align-content: center; gap: 3px 12px; margin: 0; }
+.raid-room-screen .raid-member-slot > div > strong { grid-column: 2; grid-row: 1; align-self: end; min-width: 0; font-size: 18px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raid-room-screen .raid-member-slot > div > small { grid-column: 2; grid-row: 2; align-self: start; min-width: 0; font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raid-room-screen .raid-member-slot > div > :is(.sprite-image-viewport, .raid-npc-trainer-image, svg) { grid-column: 1; grid-row: 1 / -1; justify-self: center; align-self: center; width: 100%; height: 100%; min-height: 0; max-width: 110px; max-height: 120px; }
+.raid-room-screen .raid-member-slot > div > svg { max-height: 40px; max-width: 40px; }
+.raid-room-screen .raid-member-slot .raid-npc-trainer-image { display: flex; align-items: center; justify-content: center; }
+.raid-room-screen .raid-member-slot .raid-npc-trainer-image img { display: block; width: 100%; height: 100%; max-height: 120px; object-fit: contain; }
+.raid-room-screen .raid-member-slot > b { float: none; grid-column: 2; grid-row: 1; align-self: center; margin: 0; font-size: 11px; line-height: 1.25; white-space: nowrap; }
+.raid-room-screen .raid-room-entry { position: relative; gap: 10px; }
+.raid-room-screen .raid-room-entry > span { flex: 0 0 auto; font-size: 10px; }
+.raid-room-screen .raid-room-entry > h2 { flex: 0 0 auto; margin: 0; padding-right: calc(80px + 35px * var(--game-text-scale, 1)); font-size: 24px; line-height: 1.25; }
+.raid-selected-pokemon-info { display: flex; flex: 1 1 0; min-height: 0; min-width: 0; }
+.raid-selected-pokemon-info > * { min-width: 0; min-height: 0; width: 100%; }
+.raid-room-screen :is(.raid-selected-pokemon, .raid-select-pokemon) { flex: 1 1 0; min-height: 0; height: 100%; padding: 16px; gap: 16px; }
+.raid-room-screen .raid-selected-pokemon { cursor: help; }
+.raid-room-screen .raid-selected-pokemon .sprite-image-viewport,
+.raid-room-screen .raid-selected-pokemon img { flex: 0 1 38%; width: 38%; min-width: 0; height: 100%; max-height: 210px; object-fit: contain; }
+.raid-room-screen .raid-selected-pokemon > div { display: flex; flex: 1 1 0; flex-direction: column; justify-content: center; gap: 4px; min-height: 0; }
+.raid-room-screen .raid-selected-pokemon strong { margin: 0; font-size: 23px; line-height: 1.2; }
+.raid-room-screen .raid-selected-pokemon :is(small, span) { font-size: 12px; line-height: 1.25; }
+.raid-room-screen .raid-selected-pokemon .raid-partner-hint { margin-top: 5px; font-size: 10px; line-height: 1.3; }
+.raid-change-pokemon { position: absolute; top: 22px; right: 22px; display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; border: 1px solid #83ccda75; border-radius: 8px; color: #b5f1f2; font: inherit; font-size: 11px; line-height: 1.2; background: #143c50; cursor: pointer; }
+.raid-selected-pokemon-info > .raid-change-pokemon { width: auto; min-height: 0; }
+.raid-change-pokemon:disabled { opacity: .45; cursor: default; }
+.raid-change-pokemon:focus-visible,
+.raid-room-screen .raid-selected-pokemon:focus-visible { outline: 3px solid #9cefe5; outline-offset: 2px; }
+.raid-room-screen .raid-room-entry > p { flex: 0 0 auto; margin: 0; font-size: 11px; line-height: 1.5; }
+.raid-room-screen .raid-room-actions { flex: 0 0 auto; gap: 8px; }
+.raid-room-screen :is(.raid-room-actions button, .raid-start-button) { min-width: 0; padding: 10px; font-size: 13px; line-height: 1.3; }
+.raid-room-screen .raid-start-button { flex: 0 0 auto; margin: 0; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .raid-room-screen .raid-selected-pokemon .raid-partner-hint { display: none; }
+html[data-game-text-scale="2"] .raid-room-screen .raid-selected-pokemon { padding: 10px; }
+html[data-game-text-scale="2"] .raid-room-screen .raid-selected-pokemon strong { font-size: 18px; }
+html[data-game-text-scale="2"] .raid-room-screen .raid-selected-pokemon :is(small, span) { font-size: 10px; }
+
+@container raid-room (max-height: 570px) {
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header > div > span { display: none; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header h1 { font-size: 23px; margin: 0; }
+  .raid-room-browser .raid-room-browser-heading { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
+  .raid-room-browser .raid-room-browser-heading > .raid-boss-card { display: none; }
+  .raid-room-browser .raid-room-browser-heading > div p,
+  .raid-room-browser .raid-room-browser-heading > div > span { display: none; }
+  .raid-room-browser .raid-room-browser-heading > div h2 { font-size: 22px; }
+  .raid-room-screen .raid-room-entry > span { display: none; }
+  .raid-room-screen .raid-room-entry > h2 { font-size: 20px; }
+  .raid-room-screen .raid-room-members > header > div { font-size: 15px; }
+  .raid-room-screen .raid-member-slot > div > strong { font-size: 16px; }
+  .raid-room-screen .raid-room-entry { gap: 8px; }
+  .raid-room-screen .raid-room-entry > p { font-size: 10px; }
+  .raid-change-pokemon { top: 12px; right: 12px; }
+}
+@container raid-room (max-height: 380px) {
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header { gap: 8px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header h1 { font-size: 18px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header > .screen-back-button { padding: 4px 8px; font-size: 10px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header aside,
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header aside label { font-size: 9px; padding: 3px 6px; }
+  .raid-room-browser .raid-room-browser-heading > div h2 { font-size: 17px; }
+  .raid-room-browser .raid-room-browser-heading > button,
+  .raid-room-browser .raid-room-browser-heading :is(button.raid-secondary, button.raid-primary) { padding: 5px 7px; font-size: 10px; }
+  .raid-room-browser .raid-room-list { padding: 8px; gap: 8px; }
+  .raid-room-browser .raid-room-card { padding: 8px; }
+  .raid-room-browser .raid-room-card > strong { margin: 7px 0 4px; font-size: 13px; }
+  .raid-room-browser .raid-room-card :is(header, header small, p) { font-size: 10px; }
+  .raid-room-browser .raid-room-card button { padding: 5px; font-size: 10px; }
+  .raid-room-browser .raid-empty-rooms h2 { font-size: 16px; margin: 7px 0 3px; }
+  .raid-room-browser .raid-empty-rooms p { font-size: 10px; }
+  .raid-room-browser .raid-empty-rooms svg { width: 26px; height: 26px; }
+  .raid-room-pagination { font-size: 10px; }
+  .raid-room-pagination button { padding: 4px 7px; }
+  .raid-room-screen .raid-room-layout { gap: 8px; }
+  .raid-room-screen :is(.raid-room-members, .raid-room-entry) { padding: 10px; border-radius: 12px; }
+  .raid-room-screen .raid-room-members > header { margin-bottom: 6px; }
+  .raid-room-screen .raid-room-members > header > div { font-size: 12px; gap: 6px; }
+  .raid-room-screen .raid-member-slots { gap: 6px; }
+  .raid-room-screen .raid-member-slot { padding: 6px 8px; gap: 3px 6px; }
+  .raid-room-screen .raid-member-slot > span { font-size: 8px; }
+  .raid-room-screen .raid-member-slot > b { font-size: 9px; }
+  .raid-room-screen .raid-member-slot > div > strong { font-size: 12px; }
+  .raid-room-screen .raid-member-slot > div > small { font-size: 9px; }
+  .raid-room-screen .raid-room-entry { gap: 6px; }
+  .raid-room-screen .raid-room-entry > h2 { font-size: 15px; }
+  .raid-room-screen .raid-room-entry > p { display: none; }
+  .raid-room-screen :is(.raid-selected-pokemon, .raid-select-pokemon) { padding: 7px 10px; gap: 8px; }
+  .raid-room-screen .raid-selected-pokemon strong { font-size: 16px; }
+  .raid-room-screen .raid-selected-pokemon :is(small, span) { font-size: 10px; }
+  .raid-room-screen .raid-selected-pokemon .raid-partner-hint { display: none; }
+  .raid-room-screen :is(.raid-room-actions button, .raid-start-button) { padding: 6px; font-size: 11px; }
+  .raid-change-pokemon { top: 8px; right: 10px; padding: 4px 7px; font-size: 9px; }
+}
+@container raid-room (max-height: 260px) {
+  .raid-room-screen .raid-room-members > header > div { font-size: 10px; }
+  .raid-room-screen .raid-room-members > header > span { font-size: 9px; }
+  .raid-room-screen .raid-member-slot { grid-template-rows: minmax(0, 1fr); gap: 5px; }
+  .raid-room-screen .raid-member-slot > span { display: none; }
+  .raid-room-screen .raid-member-slot > div { grid-column: 1; grid-row: 1; grid-template-columns: 36px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 6px; }
+  .raid-room-screen .raid-member-slot > div > strong { align-self: center; font-size: 10px; }
+  .raid-room-screen .raid-member-slot > div > small { display: none; }
+  .raid-room-screen .raid-member-slot > b { font-size: 8px; }
+  .raid-room-screen .raid-room-entry > h2 { font-size: 12px; }
+  .raid-room-screen .raid-selected-pokemon strong { font-size: 13px; }
+  .raid-room-screen .raid-selected-pokemon :is(small, span) { font-size: 8px; }
+  .raid-room-screen :is(.raid-room-actions button, .raid-start-button) { font-size: 9px; padding: 4px; }
+  .raid-room-browser .raid-room-card header { font-size: 8px; }
+  .raid-room-browser .raid-room-card p { display: none; }
+  .raid-room-browser .raid-room-card > strong { margin: 4px 0; font-size: 11px; }
+  .raid-room-browser .raid-empty-rooms p { display: none; }
+}
+@media (max-height: 620px) and (orientation: landscape) {
+  /* A wrapped app header can consume most of a phone's landscape height at
+     2x text. Keep every action available in one compact row on these pages. */
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) > .topbar { display: grid; grid-template-columns: auto minmax(84px, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; height: 56px; padding: 5px 12px; flex-wrap: nowrap; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .topbar-brand-group { gap: 9px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .brand { gap: 7px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .brand-mark { width: 34px; height: 34px; flex-basis: 34px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .brand-title small { font-size: 7px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .brand-title strong { font-size: 12px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .online-players-badge { padding: 4px 7px; gap: 5px; border-radius: 9px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .online-players-badge > svg { width: 16px; height: 16px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .online-players-copy { gap: 2px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .online-players-copy small { font-size: 7px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .online-players-copy strong { font-size: 11px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .online-players-copy strong span { font-size: 8px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .global-chat { width: 100%; min-width: 0; margin: 0; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .global-chat-trigger { min-height: 42px; height: 42px; gap: 6px; padding: 4px 7px; border-radius: 9px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .global-chat-trigger svg { width: 16px; height: 16px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .global-chat-preview-meta { font-size: 7px; line-height: 1.2; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .global-chat-preview-text { font-size: 9px; line-height: 1.25; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .global-chat-label { font-size: 8px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .top-status { flex-wrap: nowrap; gap: 6px; min-width: 0; margin: 0; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) :is(.status-card, .player-account) { gap: 5px; min-width: 0; min-height: 42px; height: 42px; padding: 4px 7px; border-radius: 9px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) :is(.status-icon, .player-account-avatar) { width: 27px; height: 27px; flex: 0 0 27px; border-radius: 7px; font-size: 9px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .status-icon svg { width: 16px; height: 16px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) :is(.status-card small, .player-account-copy small) { font-size: 6px; line-height: 1.2; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .status-card strong { font-size: 10px; line-height: 1.2; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .player-account { max-width: 145px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .player-account-copy strong { font-size: 9px; line-height: 1.2; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .icon-button { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 9px; }
+  .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .icon-button svg { width: 17px; height: 17px; }
+  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) .brand-title { display: none; }
+  html[data-game-text-scale="2"] .raid-room-screen .raid-selected-pokemon strong { font-size: 14px; }
+  html[data-game-text-scale="2"] .raid-room-screen .raid-selected-pokemon :is(small, span) { font-size: 8px; }
+  .raid-lobby-screen.raid-room-browser,
+  .app-shell.raid-view > .raid-room-screen { padding: 6px 10px 8px; gap: 6px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-picker-backdrop { padding: 10px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; max-height: calc(100dvh - 20px); padding: 15px; overflow: visible; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog > :is(header, p, fieldset, button) { grid-column: 1 / -1; margin: 0; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog > label { margin: 0; gap: 5px; font-size: 11px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog h2 { margin: 0; font-size: 17px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog header span { display: none; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog input { padding: 7px 9px; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog > p { font-size: 10px; line-height: 1.4; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-room-dialog > .raid-primary { padding: 8px; font-size: 11px; }
+}
+@media (max-width: 650px) and (orientation: portrait) {
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header aside { display: none; }
+  :is(.raid-room-browser, .raid-room-screen) .raid-page-header { grid-template-columns: auto minmax(0, 1fr); }
+  .raid-room-browser .raid-room-browser-heading { grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+  .raid-room-browser .raid-room-browser-heading > .raid-boss-card { display: none; }
+  .raid-room-browser .raid-room-browser-heading > div > :is(span, p) { display: none; }
+  .raid-room-browser .raid-room-browser-heading > section { grid-column: 1 / -1; }
+  .raid-room-browser .raid-room-browser-heading > section > button { flex: 1; }
+  .raid-room-browser .raid-room-list { grid-template-columns: 1fr; grid-template-rows: repeat(3, minmax(0, 1fr)); }
+  .raid-room-browser .raid-empty-rooms { grid-row: 1 / -1; }
+  .raid-room-browser .raid-room-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 10px; }
+  .raid-room-browser .raid-room-card header { grid-column: 1 / -1; }
+  .raid-room-browser .raid-room-card > strong { margin: 5px 0; align-self: center; }
+  .raid-room-browser .raid-room-card p { align-self: start; }
+  .raid-room-browser .raid-room-card button { grid-column: 2; grid-row: 2 / -1; align-self: center; margin: 0; }
+  .raid-room-screen .raid-room-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1.05fr); gap: 8px; }
+  .raid-room-screen :is(.raid-room-members, .raid-room-entry) { padding: 10px; }
+  .raid-room-screen .raid-room-members > header { margin-bottom: 6px; }
+  .raid-room-screen .raid-room-members > header > div { font-size: 12px; }
+  .raid-room-screen .raid-member-slot { padding: 5px 8px; }
+  .raid-room-screen .raid-member-slot > div { grid-template-columns: 45px minmax(0, 1fr); }
+  .raid-room-screen .raid-member-slot > span { font-size: 8px; }
+  .raid-room-screen .raid-member-slot > b { font-size: 9px; }
+  .raid-room-screen .raid-member-slot > div > strong { font-size: 12px; }
+  .raid-room-screen .raid-member-slot > div > small { font-size: 9px; }
+  .raid-room-screen .raid-room-entry > span,
+  .raid-room-screen .raid-room-entry > p { display: none; }
+  .raid-room-screen .raid-room-entry > h2 { font-size: 17px; }
+  .raid-room-screen .raid-room-entry { gap: 6px; }
+  .raid-room-screen :is(.raid-room-actions button, .raid-start-button) { padding: 6px; font-size: 11px; }
+  .raid-change-pokemon { top: 8px; right: 10px; }
+}

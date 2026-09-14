@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeft, Check, ChevronRight, Crown, Flag, HeartPulse, KeyRound,
+  ArrowLeft, Check, ChevronLeft, ChevronRight, Crown, Flag, HeartPulse, KeyRound,
   Info, LoaderCircle, LockKeyhole, Play, Plus, RefreshCw, Shield, Sparkles, Swords,
   UsersRound, Wifi, WifiOff, X, ScrollText,
 } from 'lucide-react'
@@ -8,6 +8,8 @@ import PokemonSprite from './PokemonSprite'
 import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
 import FactoryInfoTooltip from './FactoryInfoTooltip'
+import RaidPartnerPreview from './RaidPartnerPreview'
+import TrainerSprite from './TrainerSprite'
 import { firebaseAuth } from './auth/firebaseClient'
 import { createBattleAudio } from './battleAudio'
 import { RAID_BOSS_CATALOG as RAID_BOSSES } from './data/raidCatalog'
@@ -16,6 +18,7 @@ import { getBattleItem } from './data/shopData'
 import { createRaidClient, createRaidRequestId, isRaidEnabled, isRaidLocalTest } from './raidClient'
 import './raid.css'
 import './raidBossSelection.css'
+import './raidRoomLayout.css'
 import './raidStandardBattle.css'
 import RaidBattleStage from './RaidBattleStage'
 import RaidBattleCommands from './RaidBattleCommands'
@@ -27,7 +30,6 @@ const EMPTY = Object.freeze({ catalog: null, rooms: [], room: null, raid: null, 
 const LOCAL_IDENTITY_KEY = 'champions-raid-test-identity-v1'
 const BOSS_COLORS = { mewtwo: '#ba8cff', hooh: '#ffb45e', lugia: '#7fdcf9' }
 const OWNED_ROOM_STATUSES = new Set(['lobby', 'waiting', 'ready', 'starting'])
-const NPC_ROLE_LABELS = Object.freeze({ attack: '공격 지원', support: '회복 · 지원' })
 const RAID_STAT_LABELS = Object.freeze({
   attack: '공격', defense: '방어', specialAttack: '특공', specialDefense: '특방',
   speed: '스피드', accuracy: '명중', evasion: '회피',
@@ -237,22 +239,6 @@ function ActorLoadoutDetails({ actor }) {
   </div>
 }
 
-function PokemonLoadoutPreview({ pokemon }) {
-  if (!pokemon) return null
-  const abilityName = pokemon.ability
-  const ability = getAbility(abilityName)
-  const item = getBattleItem(pokemon.heldItemId)
-  const moves = asArray(pokemon.moves).map(move => typeof move === 'string' ? getMove(move) : move).filter(Boolean)
-  return <section className="raid-loadout-preview" aria-label="선택 포켓몬 상세 정보">
-    <header><Info size={14} /> 탭하거나 포인터를 올려 상세 효과를 확인하세요</header>
-    <div className="raid-loadout-meta">
-      {abilityName && <FactoryInfoTooltip title={abilityName} description={ability?.description} meta={ability?.trigger ? `발동 조건 · ${ability.trigger}` : undefined}><span role="button" aria-label={`${abilityName} 특성 설명`}><Sparkles size={13} /> 특성 · {abilityName}</span></FactoryInfoTooltip>}
-      <FactoryInfoTooltip title={item?.name ?? pokemon.heldItemName ?? '지닌 도구 없음'} description={item?.description ?? item?.effect ?? (pokemon.heldItemName ? '현재 지니고 있는 도구입니다.' : '')}><span role="button" aria-label="지닌 도구 설명">{item && <BattleItemSprite item={item} size={16} draggable="false" />} 도구 · {item?.name ?? pokemon.heldItemName ?? '없음'}</span></FactoryInfoTooltip>
-    </div>
-    {moves.length > 0 && <div className="raid-loadout-moves">{moves.map((move, index) => <MoveDetails key={`${move?.id ?? move?.name ?? index}-${index}`} move={move} />)}</div>}
-  </section>
-}
-
 function phaseLabel(raid) {
   const phase = String(raid?.phase ?? raid?.battle?.raid?.phase ?? raid?.stage ?? '')
   if (phase === '1' || phase === 'stage1' || phase === 'vanguard' || phase === 'prelude') return '1단계 · 전초전'
@@ -325,26 +311,27 @@ function RaidBossHp({ actor, hpTransitionMs }) {
 }
 
 function RoomCard({ room, onJoin, busy }) {
-  const isPrivate = room.visibility === 'private' || room.locked
+  const isPrivate = Boolean(room.hasPassword || room.locked)
   const starting = !OWNED_ROOM_STATUSES.has(String(room.status ?? '').toLowerCase())
   return <article className="raid-room-card">
-    <header><span>{isPrivate ? <LockKeyhole size={14} /> : <UsersRound size={14} />}{isPrivate ? '비공개' : '공개'}</span><small>{room.memberCount ?? asArray(room.members).length} / {room.capacity ?? 3}</small></header>
+    <header><span>{isPrivate ? <LockKeyhole size={14} /> : <UsersRound size={14} />}{isPrivate ? '비밀번호' : '공개'}</span><small>{room.memberCount ?? asArray(room.members).length} / {room.capacity ?? 3}</small></header>
     <strong>{room.title || `${room.hostName ?? '트레이너'}의 보스전`}</strong><p>{room.hostName ?? '트레이너'} · {starting ? '진행 중' : '참가자 대기 중'}</p>
-    <button type="button" disabled={busy || starting} onClick={() => onJoin(room)}>{isPrivate ? <><KeyRound size={15} /> 코드로 참가</> : <><Plus size={15} /> 참가하기</>}</button>
+    <button type="button" disabled={busy || starting} onClick={() => onJoin(room)}>{isPrivate ? <><KeyRound size={15} /> 비밀번호로 참가</> : <><Plus size={15} /> 참가하기</>}</button>
   </article>
 }
 
-function OwnedPokemonPicker({ pokemon = [], selectedId, onSelect, onClose }) {
+function OwnedPokemonPicker({ pokemon = [], selectedId, onSelect, onClose, busy = false, error }) {
   const [query, setQuery] = useState('')
   const filtered = pokemon.filter(entry => String(entry?.name ?? getSpeciesProfile(entry?.speciesId)?.name ?? '').includes(query.trim()))
   return <div className="raid-picker-backdrop" role="presentation"><section className="raid-pokemon-picker" role="dialog" aria-modal="true" aria-labelledby="raid-pokemon-picker-title">
     <header><div><span>ONE POKÉMON RAID ENTRY</span><h2 id="raid-pokemon-picker-title">출전 포켓몬 1마리를 선택하세요</h2></div><button type="button" aria-label="선택창 닫기" onClick={onClose}><X size={20} /></button></header>
     <p>대기 포켓몬으로 교체할 수 없습니다. 선택한 한 마리로 끝까지 함께합니다.</p>
+    {error && <div className="raid-notice error" role="alert">{error}</div>}
     <input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="포켓몬 이름 검색" aria-label="보유 포켓몬 검색" />
     <div className="raid-owned-grid">{filtered.map(entry => {
       const profile = getSpeciesProfile(entry.speciesId)
       const selected = selectedId === entry.captureId
-      return <button type="button" key={entry.captureId} className={selected ? 'selected' : ''} onClick={() => onSelect(entry.captureId)} aria-pressed={selected}>
+      return <button type="button" key={entry.captureId} disabled={busy} className={selected ? 'selected' : ''} onClick={() => onSelect(entry.captureId)} aria-pressed={selected}>
         <SpriteImage src={entry.spriteFront ?? (entry.isShiny ? profile?.spriteFrontShiny : profile?.spriteFront)} fallbackSrc={profile?.spriteFrontFallback} alt="" draggable="false" />
         <strong>{entry.name ?? profile?.name}</strong><small>Lv.{entry.level ?? 50} · {(entry.types ?? profile?.types ?? []).join(' · ')}</small>{selected && <span><Check size={14} /> 선택</span>}
       </button>
@@ -353,35 +340,17 @@ function OwnedPokemonPicker({ pokemon = [], selectedId, onSelect, onClose }) {
   </section></div>
 }
 
-function RaidInviteCodeDialog({ code, copied, onCopy, onClose }) {
-  return <div className="raid-picker-backdrop" role="presentation"><section className="raid-room-dialog raid-invite-dialog" role="dialog" aria-modal="true" aria-labelledby="raid-invite-title">
-    <header><div><span>PRIVATE RAID INVITE</span><h2 id="raid-invite-title">초대 코드를 공유하세요</h2></div><button type="button" aria-label="초대 코드 닫기" onClick={onClose}><X size={20} /></button></header>
-    <p>비공개 방의 코드는 지금 한 번만 표시됩니다. 참가자는 보스전 방 목록의 <b>초대 코드로 참가</b>에서 입력할 수 있습니다.</p>
-    <output className="raid-invite-code" aria-label="초대 코드">{code}</output>
-    <button className="raid-primary" type="button" onClick={onCopy}><KeyRound size={17} /> {copied ? '복사됨' : '코드 복사'}</button>
-    <small>이 창을 닫으면 코드를 다시 표시할 수 없습니다.</small>
-  </section></div>
-}
-
-function RaidRoomLobby({ room, boxPokemon, selectedCaptureId, onPick, onReady, onNpcRolesChange, onStart, onLeave, busy, error, connected }) {
+function RaidRoomLobby({ room, boxPokemon, selectedCaptureId, onPick, onReady, onStart, onLeave, busy, error, connected }) {
   const members = asArray(room?.members)
   const member = members.find(entry => entry?.isOwn)
   const selectedId = member?.selectedPokemon?.captureId ?? member?.selectedPokemonId ?? selectedCaptureId
   // Never let two missing ids match a malformed collection entry. Until the
   // player deliberately picks a capture, show the explicit selection CTA.
   const selected = selectedId ? boxPokemon.find(entry => entry.captureId === selectedId) : null
-  const profile = getSpeciesProfile(selected?.speciesId)
   const host = Boolean(member?.isHost || room?.isHost)
   const allReady = members.filter(entry => !entry?.isAi).every(entry => entry?.ready)
   const startLabel = (room?.memberCount ?? members.length) <= 1 ? '솔로로 시작' : '보스전 시작'
-  const npcRoles = asArray(room?.npcRoles)
   const npcSlots = asArray(room?.npcSlots)
-  const emptySlots = [0, 1, 2].filter(slot => !members.some(entry => Number(entry?.slotId ?? entry?.slot ?? -1) === slot && !entry?.withdrawn))
-  const changeNpcRole = (index, role) => {
-    const next = emptySlots.map((_, roleIndex) => npcRoles[roleIndex] ?? (roleIndex === 0 ? 'attack' : 'support'))
-    next[index] = role
-    onNpcRolesChange?.(next)
-  }
   return <main className="raid-room-screen">
     <header className="raid-page-header"><button className="screen-back-button" type="button" disabled={busy} onClick={onLeave}><ArrowLeft size={18} /> 보스 선택</button><div><span>CO-OP RAID ROOM</span><h1>{room?.title ?? '보스전 대기실'}</h1></div><aside>{connected ? <><Wifi size={15} /> 연결됨</> : <><WifiOff size={15} /> 복구 중</>}</aside></header>
     {error && <div className="raid-notice error" role="alert">{error}</div>}
@@ -389,25 +358,18 @@ function RaidRoomLobby({ room, boxPokemon, selectedCaptureId, onPick, onReady, o
       <article className="raid-room-members"><header><div><UsersRound size={20} /><strong>참가자 대기실</strong></div><span>{room?.memberCount ?? members.length} / {room?.capacity ?? 3}명</span></header>
         <div className="raid-member-slots">{[0, 1, 2].map(slot => {
           const entry = members.find(candidate => Number(candidate?.slotId ?? candidate?.slot ?? -1) === slot)
-          const pokemon = entry?.selectedPokemon
+          const pokemon = entry?.selectedPokemon ?? (entry?.isOwn ? selected : null)
           const memberProfile = getSpeciesProfile(pokemon?.speciesId)
           const npcSlot = npcSlots.find(candidate => Number(candidate?.slotId) === slot)
-          const emptyIndex = emptySlots.indexOf(slot)
-          const role = npcSlot?.role ?? npcRoles[emptyIndex] ?? (emptyIndex === 0 ? 'attack' : 'support')
           return <article key={slot} className={`raid-member-slot${entry?.isOwn ? ' own' : ''}${entry?.ready ? ' ready' : ''}`}>
-            {entry ? <><span>{entry.isOwn ? 'YOU' : entry.isAi ? 'NPC' : 'PLAYER'} · SLOT {slot + 1}</span><div>{pokemon && <SpriteImage src={pokemon.icon ?? memberProfile?.icon} fallbackSrc={memberProfile?.iconFallback} alt="" draggable="false" />}<strong>{entry.name ?? '트레이너'}</strong><small>{pokemon?.name ?? (entry.ready ? '출전 포켓몬 확인됨' : '포켓몬 선택 중')}</small></div><b>{entry.ready ? <><Check size={14} /> 준비 완료</> : '준비 중'}</b></> : <><span>NPC SLOT {slot + 1}</span><div><UsersRound size={28} /><strong>{npcSlot?.name ?? '지원 AI'}</strong><small>{NPC_ROLE_LABELS[role] ?? '지원 역할을 준비하고 있습니다.'}</small></div><b>{NPC_ROLE_LABELS[role] ?? '지원 AI'}</b></>}
+            {entry ? <><span>{entry.isOwn ? 'YOU' : entry.isAi ? 'NPC' : 'PLAYER'} · SLOT {slot + 1}</span><div>{pokemon && <SpriteImage src={pokemon.icon ?? memberProfile?.icon} fallbackSrc={memberProfile?.iconFallback} alt="" draggable="false" />}<strong>{entry.name ?? '트레이너'}</strong><small>{pokemon?.name ?? (entry.ready ? '출전 포켓몬 확인됨' : '포켓몬 선택 중')}</small></div><b>{entry.ready ? <><Check size={14} /> 준비 완료</> : '준비 중'}</b></> : <><span>NPC SLOT {slot + 1}</span><div>{npcSlot?.trainer ? <TrainerSprite trainer={npcSlot.trainer} className="raid-npc-trainer-image" /> : <UsersRound size={28} />}<strong>{npcSlot?.name ?? 'AI 트레이너'}</strong><small>{getSpeciesProfile(npcSlot?.speciesId)?.name ?? '함께 도전할 파트너'}</small></div><b>AI 참가</b></>}
           </article>
         })}</div>
       </article>
       <article className="raid-room-entry"><span>YOUR RAID PARTNER</span><h2>출전 포켓몬</h2>
-        {selected ? <button type="button" className="raid-selected-pokemon" onClick={onPick} disabled={busy}><SpriteImage src={selected.spriteFront ?? profile?.spriteFront} fallbackSrc={profile?.spriteFrontFallback} alt="" draggable="false" /><div><small>Lv.{selected.level ?? 50}</small><strong>{selected.name ?? profile?.name}</strong><span>{(selected.types ?? profile?.types ?? []).join(' · ')}</span></div><ChevronRight size={18} /></button>
+        {selected ? <RaidPartnerPreview pokemon={selected} onChange={onPick} busy={busy} />
           : <button type="button" className="raid-select-pokemon" onClick={onPick} disabled={busy}><Plus size={22} /><span>보유 포켓몬 선택</span><small>한 마리만 출전할 수 있습니다.</small></button>}
-        {selected && <PokemonLoadoutPreview pokemon={selected} />}
-        {host && emptySlots.length > 0 && <section className="raid-npc-role-picker" aria-label="지원 NPC 역할 선택"><header><UsersRound size={15} /><strong>지원 NPC 역할</strong><small>역할을 바꾸면 모두 다시 준비해야 합니다.</small></header>{emptySlots.map((slot, index) => {
-          const current = npcRoles[index] ?? (index === 0 ? 'attack' : 'support')
-          return <div key={slot}><span>SLOT {slot + 1}</span>{['attack', 'support'].map(role => <button key={role} type="button" disabled={busy || !selected} className={current === role ? 'selected' : ''} onClick={() => changeNpcRole(index, role)}>{NPC_ROLE_LABELS[role]}</button>)}</div>
-        })}</section>}
-        <p><Shield size={17} /> 내 포켓몬이 준비되면 <b>준비 완료</b>를 누르세요.<br />실제 참가자가 없는 슬롯은 역할에 맞는 NPC가 채웁니다.</p>
+        <p><Shield size={17} /> 포켓몬을 선택하고 <b>준비 완료</b>를 누르세요.<br />빈자리는 AI 트레이너가 함께합니다.</p>
         <div className="raid-room-actions"><button type="button" className="raid-secondary" disabled={busy} onClick={onLeave}>나가기</button><button type="button" className="raid-primary" disabled={busy || !selected || Boolean(member?.ready)} onClick={onReady}>{member?.ready ? <><Check size={17} /> 준비 완료</> : '준비 완료'}</button></div>
         {host && <button type="button" className="raid-start-button" disabled={busy || !member?.ready || !allReady} onClick={onStart}><Play size={17} /> {startLabel}</button>}
       </article>
@@ -546,10 +508,8 @@ export default function RaidScreen({
   const [createOpen, setCreateOpen] = useState(false)
   const [joinRoom, setJoinRoom] = useState(null)
   const [roomTitle, setRoomTitle] = useState('')
-  const [visibility, setVisibility] = useState('public')
   const [roomCode, setRoomCode] = useState('')
-  const [issuedInviteCode, setIssuedInviteCode] = useState('')
-  const [inviteCopied, setInviteCopied] = useState(false)
+  const [roomPage, setRoomPage] = useState(0)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [selectedCaptureId, setSelectedCaptureId] = useState(null)
   const [pollEpoch, setPollEpoch] = useState(0)
@@ -779,6 +739,10 @@ export default function RaidScreen({
   const deadline = timeValue(snapshot.raid?.deadlineAt)
   const secondsLeft = Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - now - serverOffset) / 1000)) : null
   const rooms = asArray(snapshot.rooms).filter(room => !selectedBossId || room.bossId === selectedBossId)
+  const pageCount = Math.max(1, Math.ceil(rooms.length / 3))
+  const visiblePage = Math.min(roomPage, pageCount - 1)
+  const visibleRooms = rooms.slice(visiblePage * 3, visiblePage * 3 + 3)
+  useEffect(() => setRoomPage(0), [selectedBossId])
 
   const switchLocalIdentity = value => {
     if (!['alice', 'bob', 'charlie'].includes(value)) return
@@ -807,16 +771,12 @@ export default function RaidScreen({
   }, [snapshot.room])
 
   async function createRoom({ solo = false } = {}) {
-    if (!selectedBossId) return
-    const effectiveVisibility = solo ? 'private' : visibility
-    const value = await fire('roomCreate', { bossId: selectedBossId, title: roomTitle.trim() || (solo ? '솔로 보스전' : undefined), visibility: effectiveVisibility }, onBeforeJoin)
+    if (!selectedBossId || (!solo && roomCode && !/^\d{4}$/.test(roomCode))) return
+    const value = await fire('roomCreate', {
+      bossId: selectedBossId, title: solo ? '솔로 보스전' : roomTitle.trim() || undefined,
+      password: solo ? '' : roomCode, solo,
+    }, onBeforeJoin)
     if (value) {
-      const inviteCode = value?.inviteCode ?? value?.room?.inviteCode
-      // Solo rooms are private only to keep them out of the public browser;
-      // there is nobody to invite, so showing the one-time code over the
-      // Pokémon picker obscures the next required action.
-      setIssuedInviteCode(!solo && typeof inviteCode === 'string' ? inviteCode : '')
-      setInviteCopied(false)
       setCreateOpen(false)
       setRoomCode('')
       setRoomTitle('')
@@ -824,23 +784,22 @@ export default function RaidScreen({
     }
   }
   async function joinSelectedRoom() {
-    if (!joinRoom) return
-    const invite = joinRoom.mode === 'invite'
-    const value = await fire('roomJoin', invite
-      ? { code: roomCode.trim().toUpperCase() }
-      : { roomId: joinRoom.id, roomRevision: joinRoom.roomRevision }, onBeforeJoin)
+    if (!joinRoom || ((joinRoom.hasPassword || joinRoom.locked) && !/^\d{4}$/.test(roomCode))) return
+    const value = await fire('roomJoin', {
+      roomId: joinRoom.id, roomRevision: joinRoom.roomRevision, password: roomCode,
+    }, onBeforeJoin)
     if (value) { setJoinRoom(null); setRoomCode(''); setPickerOpen(true) }
   }
-  function selectCapture(captureId) { setSelectedCaptureId(captureId); setPickerOpen(false) }
+  async function selectCapture(captureId) {
+    const room = snapshotRef.current.room
+    if (!room?.id) return
+    const value = await fire('roomReady', { roomId: room.id, roomRevision: room.roomRevision, pokemon: { captureId }, ready: false }, onBeforeJoin)
+    if (value) { setSelectedCaptureId(captureId); setPickerOpen(false) }
+  }
   async function ready() {
     const room = snapshotRef.current.room
     if (!room?.id || !selectedCaptureId) return
     await fire('roomReady', { roomId: room.id, roomRevision: room.roomRevision, pokemon: { captureId: selectedCaptureId }, ready: true }, onBeforeJoin)
-  }
-  async function setNpcRoles(npcRoles) {
-    const room = snapshotRef.current.room
-    if (!room?.id || !selectedCaptureId) return
-    await fire('roomReady', { roomId: room.id, roomRevision: room.roomRevision, pokemon: { captureId: selectedCaptureId }, ready: true, npcRoles }, onBeforeJoin)
   }
   async function leaveRoom() {
     const room = snapshotRef.current.room
@@ -851,7 +810,6 @@ export default function RaidScreen({
     mutationFenceRef.current += 1
     setSelectedCaptureId(null)
     setSelectedBossId(null)
-    setIssuedInviteCode('')
   }
   async function dismissResult() {
     const current = snapshotRef.current
@@ -876,7 +834,6 @@ export default function RaidScreen({
     snapshotRef.current = next
     setSnapshot(next)
     setSelectedBossId(null)
-    setIssuedInviteCode('')
     // The terminal-result poll intentionally stopped. Start a fresh lobby
     // cycle only after the server confirms that this result was dismissed.
     setPollEpoch(value => value + 1)
@@ -892,20 +849,38 @@ export default function RaidScreen({
     soundEnabled={soundEnabled} gameSettings={gameSettings} audioSettings={audioSettings} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} />
   if (snapshot.room) return <>
     <RaidRoomLobby room={snapshot.room} boxPokemon={boxPokemon} selectedCaptureId={selectedCaptureId} onPick={() => setPickerOpen(true)} onReady={ready} onStart={() => fire('roomStart', { roomId: snapshot.room.id, roomRevision: snapshot.room.roomRevision })}
-      onNpcRolesChange={setNpcRoles} onLeave={leaveRoom} busy={busy} error={error || refreshError} connected={connected} />
-    {pickerOpen && <OwnedPokemonPicker pokemon={boxPokemon} selectedId={selectedCaptureId} onSelect={selectCapture} onClose={() => setPickerOpen(false)} />}
-    {issuedInviteCode && <RaidInviteCodeDialog code={issuedInviteCode} copied={inviteCopied} onCopy={async () => {
-      try { await navigator.clipboard?.writeText?.(issuedInviteCode); setInviteCopied(true) } catch { setInviteCopied(false) }
-    }} onClose={() => setIssuedInviteCode('')} />}
+      onLeave={leaveRoom} busy={busy} error={error || refreshError} connected={connected} />
+    {pickerOpen && <OwnedPokemonPicker pokemon={boxPokemon} selectedId={selectedCaptureId} onSelect={selectCapture} onClose={() => setPickerOpen(false)} busy={busy} error={error} />}
+
   </>
 
-  return <main className={`raid-lobby-screen${selectedBoss ? '' : ' raid-boss-chooser'}`}>
+  return <main className={`raid-lobby-screen${selectedBoss ? ' raid-room-browser' : ' raid-boss-chooser'}`}>
     <header className="raid-page-header"><button className="screen-back-button" type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 선택</button><div><span>CO-OP BOSS RAID</span><h1>{selectedBoss ? '협동 보스전' : '보스 선택'}</h1></div><aside>{isRaidLocalTest ? <label>로컬 테스트<select value={identity} onChange={event => switchLocalIdentity(event.target.value)}><option value="alice">Alice</option><option value="bob">Bob</option><option value="charlie">Charlie</option></select></label> : <span>{connected ? <><Wifi size={15} /> 실시간 연결</> : <><WifiOff size={15} /> 연결 중</>}</span>}</aside></header>
     {(error || refreshError) && <div className="raid-notice error" role="alert">{error || refreshError}<button type="button" onClick={() => refresh({ quiet: false })}><RefreshCw size={14} /> 다시 연결</button></div>}
     {!selectedBoss ? <section className="raid-boss-grid" aria-label="도전할 보스 선택">{bosses.map(boss => <BossCard boss={boss} key={boss.id} onClick={() => setSelectedBossId(boss.id)} />)}</section>
-      : <><header className="raid-room-browser-heading"><button type="button" onClick={() => setSelectedBossId(null)}><ArrowLeft size={16} /> 보스 선택</button><BossCard boss={selectedBoss} /><div><span>RAID ROOM LIST</span><h2>{selectedBoss.name} 보스전</h2><p>공개 방에 참가하거나 나만의 방을 만드세요. 비공개 방은 서버가 발급한 8자리 초대 코드로만 참가할 수 있습니다.</p></div><section><button className="raid-secondary" type="button" disabled={busy} onClick={() => { setVisibility('private'); setRoomTitle('솔로 보스전'); setRoomCode(''); createRoom({ solo: true }) }}><HeartPulse size={17} /> 솔로 도전</button><button className="raid-secondary" type="button" disabled={busy} onClick={() => { setJoinRoom({ mode: 'invite', title: '초대 코드로 참가' }); setRoomCode('') }}><KeyRound size={17} /> 초대 코드 참가</button><button className="raid-primary" type="button" disabled={busy} onClick={() => { setCreateOpen(true); setVisibility('public'); setRoomTitle('') }}><Plus size={17} /> 방 만들기</button></section></header>
-        <section className="raid-room-list">{rooms.length ? rooms.map(room => <RoomCard room={room} key={room.id} busy={busy} onJoin={room => { setJoinRoom(room); setRoomCode('') }} />) : <div className="raid-empty-rooms"><UsersRound size={34} /><h2>참가할 공개 방이 없습니다</h2><p>새 방을 만들어 가장 먼저 보스전에 도전하세요.</p></div>}</section></>}
-    {createOpen && <div className="raid-picker-backdrop" role="presentation"><section className="raid-room-dialog" role="dialog" aria-modal="true" aria-label="보스전 방 만들기"><header><div><span>CREATE RAID ROOM</span><h2>{selectedBoss?.name} 보스전 방 만들기</h2></div><button type="button" onClick={() => setCreateOpen(false)}><X size={20} /></button></header><label>방 제목<input maxLength={24} value={roomTitle} placeholder="예: 전설 레이드 도전" onChange={event => setRoomTitle(event.target.value)} /></label><fieldset><legend>공개 설정</legend><label><input type="radio" checked={visibility === 'public'} onChange={() => setVisibility('public')} /> 공개 방</label><label><input type="radio" checked={visibility === 'private'} onChange={() => setVisibility('private')} /> 비공개 방</label></fieldset>{visibility === 'private' && <p className="raid-private-note"><KeyRound size={15} /> 방을 만든 뒤 서버가 8자리 초대 코드를 한 번 발급합니다.</p>}<p>최대 3명이 참가하며, 빈 자리는 NPC 지원 포켓몬이 채웁니다.</p><button className="raid-primary" type="button" disabled={busy} onClick={() => createRoom()}>방 만들기 <ChevronRight size={17} /></button></section></div>}
-    {joinRoom && <div className="raid-picker-backdrop" role="presentation"><section className="raid-room-dialog" role="dialog" aria-modal="true" aria-label={joinRoom.mode === 'invite' ? '초대 코드로 보스전 참가' : '보스전 방 참가'}><header><div><span>JOIN RAID ROOM</span><h2>{joinRoom.mode === 'invite' ? '초대 코드로 참가' : joinRoom.title || '보스전 방 참가'}</h2></div><button type="button" onClick={() => setJoinRoom(null)}><X size={20} /></button></header>{joinRoom.mode === 'invite' && <label>8자리 초대 코드<input autoFocus autoCapitalize="characters" spellCheck="false" maxLength={8} value={roomCode} placeholder="예: A7K9Q2PW" onChange={event => setRoomCode(event.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 8))} /></label>}<p>{joinRoom.mode === 'invite' ? '초대받은 8자리 코드를 입력하세요. 코드가 맞으면 비공개 방에 바로 참가합니다.' : `${joinRoom.hostName ?? '트레이너'}의 공개 방에 참가합니다. 입장 후 내 보유 포켓몬 한 마리를 선택하세요.`}</p><button className="raid-primary" type="button" disabled={busy || (joinRoom.mode === 'invite' && roomCode.length !== 8)} onClick={joinSelectedRoom}>참가하기 <ChevronRight size={17} /></button></section></div>}
+      : <><header className="raid-room-browser-heading">
+        <button type="button" onClick={() => setSelectedBossId(null)}><ArrowLeft size={16} /> 보스 선택</button><BossCard boss={selectedBoss} />
+        <div><span>RAID ROOM LIST</span><h2>{selectedBoss.name} 보스전</h2><p>참가할 방을 선택하세요. 잠긴 방은 방장이 정한 숫자 4자리 비밀번호로 입장합니다.</p></div>
+        <section><button className="raid-secondary" type="button" disabled={busy} onClick={() => createRoom({ solo: true })}><HeartPulse size={17} /> 솔로 도전</button><button className="raid-primary" type="button" disabled={busy} onClick={() => { setCreateOpen(true); setRoomCode(''); setRoomTitle(''); setError('') }}><Plus size={17} /> 방 만들기</button></section>
+      </header>
+        <section className="raid-room-list" aria-label="참가할 보스전 방">{visibleRooms.length ? visibleRooms.map(room => <RoomCard room={room} key={room.id} busy={busy} onJoin={room => { setJoinRoom(room); setRoomCode(''); setError('') }} />) : <div className="raid-empty-rooms"><UsersRound size={34} /><h2>참가할 방이 없습니다</h2><p>새 방을 만들어 가장 먼저 보스전에 도전하세요.</p></div>}</section>
+        {pageCount > 1 && <nav className="raid-room-pagination" aria-label="보스전 방 목록 페이지"><button type="button" aria-label="이전 방 목록" disabled={visiblePage === 0} onClick={() => setRoomPage(visiblePage - 1)}><ChevronLeft size={18} /> 이전</button><span>{visiblePage + 1} / {pageCount}</span><button type="button" aria-label="다음 방 목록" disabled={visiblePage === pageCount - 1} onClick={() => setRoomPage(visiblePage + 1)}>다음 <ChevronRight size={18} /></button></nav>}
+      </>}
+    {createOpen && <div className="raid-picker-backdrop" role="presentation"><form className="raid-room-dialog" role="dialog" aria-modal="true" aria-label="보스전 방 만들기" onSubmit={event => { event.preventDefault(); createRoom() }}>
+      <header><div><span>CREATE RAID ROOM</span><h2>{selectedBoss?.name} 보스전 방 만들기</h2></div><button type="button" aria-label="방 만들기 닫기" onClick={() => setCreateOpen(false)}><X size={20} /></button></header>
+      <label>방 제목<input autoFocus maxLength={24} value={roomTitle} placeholder="예: 전설 레이드 도전" onChange={event => setRoomTitle(event.target.value)} /></label>
+      <label>비밀번호 (선택)<input type="password" inputMode="numeric" pattern="[0-9]{4}" autoComplete="new-password" maxLength={4} value={roomCode} placeholder="숫자 4자리 · 비워두면 공개 방" onChange={event => setRoomCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 4))} /></label>
+      <p>최대 3명 · 빈자리는 무작위 AI 트레이너가 참가합니다.</p>
+      {error && <div className="raid-notice error" role="alert">{error}</div>}
+      <button className="raid-primary" type="submit" disabled={busy || Boolean(roomCode && roomCode.length !== 4)}>방 만들기 <ChevronRight size={17} /></button>
+    </form></div>}
+    {joinRoom && <div className="raid-picker-backdrop" role="presentation"><form className="raid-room-dialog" role="dialog" aria-modal="true" aria-label="보스전 방 참가" onSubmit={event => { event.preventDefault(); joinSelectedRoom() }}>
+      <header><div><span>JOIN RAID ROOM</span><h2>{joinRoom.title || '보스전 방 참가'}</h2></div><button type="button" aria-label="방 참가 닫기" onClick={() => setJoinRoom(null)}><X size={20} /></button></header>
+      {(joinRoom.hasPassword || joinRoom.locked) && <label>비밀번호<input autoFocus required type="password" inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" maxLength={4} value={roomCode} placeholder="숫자 4자리" onChange={event => setRoomCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 4))} /></label>}
+      <p>{joinRoom.hasPassword || joinRoom.locked ? '방장이 설정한 비밀번호를 입력하세요.' : `${joinRoom.hostName ?? '트레이너'}의 방에 참가합니다. 입장 후 출전 포켓몬을 선택하세요.`}</p>
+      {error && <div className="raid-notice error" role="alert">{error}</div>}
+      <button className="raid-primary" type="submit" disabled={busy || ((joinRoom.hasPassword || joinRoom.locked) && roomCode.length !== 4)}>참가하기 <ChevronRight size={17} /></button>
+    </form></div>}
+
   </main>
 }

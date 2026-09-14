@@ -133,6 +133,7 @@
     "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
     "validate:battle-retention": "node scripts/validateBattleRetention.mjs",
     "validate:raid-mechanics": "node scripts/validateRaidMechanics.mjs",
+    "validate:raid-trainers": "node scripts/validateRaidTrainers.mjs",
     "validate:raid-journeys": "node scripts/validateRaidJourneys.mjs",
     "validate:raid-wallet": "node scripts/validateRaidWallet.mjs",
     "validate:raid-replay": "node scripts/validateRaidReplaySafety.mjs",
@@ -146,7 +147,7 @@
     "validate:raid-hud": "node scripts/validateRaidStageHud.mjs",
     "validate:raid-playback": "node scripts/validateRaidPlayback.mjs",
     "raid:test": "node scripts/startRaidTest.mjs",
-    "validate:raid": "npm run validate:raid-mechanics && npm run validate:raid-presentation && npm run validate:raid-hud && npm run validate:raid-playback && npm run validate:raid-service && npm run validate:raid-replay && npm run validate:raid-polling && npm run validate:raid-http && npm run validate:raid-retention && npm run validate:raid-wallet && npm run validate:raid-journeys"
+    "validate:raid": "npm run validate:raid-mechanics && npm run validate:raid-trainers && npm run validate:raid-presentation && npm run validate:raid-hud && npm run validate:raid-playback && npm run validate:raid-service && npm run validate:raid-replay && npm run validate:raid-polling && npm run validate:raid-http && npm run validate:raid-retention && npm run validate:raid-wallet && npm run validate:raid-journeys"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",

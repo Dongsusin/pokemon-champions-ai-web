@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto'
-import { createBattle, createBattlePreviewPokemon, playBattleTurnWithActions, getActivePokemonList, getBattleMoveSelectionState, getBattleMoveTargets, getBattleMovePreview, getAvailableBattleMechanics, getForcedBattleAction, getBattleStruggleAction, chooseRaidEngineAction, getEffectiveBattleWeatherId, getTypeEffectiveness } from '../src/data/battleEngine.js'
-import { normalizePokemon, getSpeciesProfile, getMoveById, getLearnableMoves } from '../src/data/trainingData.js'
+import { createBattle, createBattlePreviewPokemon, playBattleTurnWithActions, getActivePokemonList, getBattleMoveSelectionState, getBattleMoveTargets, getBattleMovePreview, getAvailableBattleMechanics, getForcedBattleAction, getBattleStruggleAction, chooseRaidEngineAction, getEffectiveBattleWeatherId } from '../src/data/battleEngine.js'
+import { normalizePokemon, getSpeciesProfile, getMove, getMoveById, getLearnableMoves } from '../src/data/trainingData.js'
 import { canonicalizeRankedTeam } from './rankedBattle.js'
-import { RAID_BOSSES, RAID_NPCS, RAID_DEFAULTS, RAID_SCHEMA_VERSION, RAID_ENGINE_VERSION, RAID_RULE_VERSION, getRaidBoss } from '../src/data/raidRules.js'
+import { RAID_BOSSES, RAID_DEFAULTS, RAID_SCHEMA_VERSION, RAID_ENGINE_VERSION, RAID_RULE_VERSION, getRaidBoss } from '../src/data/raidRules.js'
 import { raidEvent } from '../src/data/raidPolicy.js'
 import { RAID_PRESENTATION_ENVIRONMENT_FIELDS } from '../src/data/raidPresentation.js'
+import { createRaidNpcAssignments, getRaidNpcTrainer, getRaidNpcLoadout } from './raidTrainers.js'
 
 export { RAID_BOSSES, RAID_DEFAULTS }
 export function raidRandom(seed) {
@@ -34,7 +35,15 @@ function createStage(raidId, bossId, members, phase, seed) {
   const random = raidRandom(seed)
   const battle = createBattle({ playerPokemon: members.map((member, index) => ({ ...member.pokemon, captureId: `raid-ally-${index}` })), playerName: '협동 트레이너', opponent: { id: `raid-${bossId}`, name: phase === 1 ? `${boss.name} 전초전` : boss.name, tier: 'S' }, opponentTeam: { pokemon: enemies.map((entry, index) => createRaidPreset(entry, `raid-enemy-${phase}-${index}`)), battleGimmicks: [], strategy: {} }, rules: rules(), random })
   battle.raid = { raidId, bossId, phase, phaseEpoch: phase, schemaVersion: RAID_SCHEMA_VERSION, engineVersion: RAID_ENGINE_VERSION, ruleVersion: RAID_RULE_VERSION, members: structuredClone(members), usedMechanicsByOwner: {}, primaryBossId: phase === 2 ? battle.opponent.team[0].battleId : null, crossedGates: [], firedMechanics: [], pendingGates: [], events: [], eventSequence: 0, totalTurns: 0 }
-  battle.player.team.forEach((actor, index) => { actor.raidOwnerId = members[index].ownerId; actor.raidDisplayName = members[index].displayName; actor.raidNpc = Boolean(members[index].isNpc) })
+  battle.player.team.forEach((actor, index) => {
+    actor.raidOwnerId = members[index].ownerId
+    actor.raidDisplayName = members[index].displayName
+    actor.raidNpc = Boolean(members[index].isNpc)
+    if (members[index].trainer) {
+      actor.raidTrainer = structuredClone(members[index].trainer)
+      actor.raidTrainerImage = members[index].trainerImage
+    }
+  })
   battle.opponent.team.forEach((actor, index) => { actor.raidDisplayName = enemies[index].trainer })
   if (phase === 2) {
     const actor = battle.opponent.team[0]
@@ -48,20 +57,43 @@ function createStage(raidId, bossId, members, phase, seed) {
   raidEvent(battle, 'stage-start', `${boss.name} ${phase === 1 ? '전초전' : '본 보스전'}을 시작합니다.`)
   return battle
 }
-export function createRaidBattle({ raidId, bossId, members, npcRoles = [], seed = 'raid' }) {
+export function createRaidNpcMember(assignment, index) {
+  const profile = getRaidNpcTrainer(assignment)
+  const source = getRaidNpcLoadout(assignment)
+  if (!profile || !source) invalid('지원 AI 트레이너 정보를 확인할 수 없습니다.')
+  // Generated AI sets may use the ability of an eventual Mega form. Normalize
+  // the starting form, then validate the same legal fields as human entrants.
+  // Rebuild IDs so stale generated move IDs cannot override repaired names.
+  const prepared = normalizePokemon({ ...source, captureId: `npc-${index}` })
+  const pokemon = canonicalizeRankedTeam([{ ...prepared, moveIds: prepared.moves.map(name => getMove(name).id) }], { registeredSize: 1 })[0]
+  return { ownerId: `npc-${index}`, displayName: profile.name, isNpc: true,
+    trainer: profile.trainer, trainerImage: profile.image, pokemon }
+}
+export function createRaidBattle({ raidId, bossId, members, npcTrainers = [], seed = 'raid' }) {
   if (!Array.isArray(members) || members.length < 1 || members.length > 3 || new Set(members.map((m) => m.ownerId)).size !== members.length) invalid('참가자는 1~3명이어야 합니다.')
-  const registered = members.map((member) => ({ ownerId: String(member.ownerId), displayName: String(member.displayName || '트레이너').slice(0, 24), isNpc: Boolean(member.isNpc), pokemon: canonicalizeRankedTeam([member.pokemon], { registeredSize: 1 })[0] }))
+  const registered = members.map((member, index) => ({
+    ownerId: String(member.ownerId), displayName: String(member.displayName || '트레이너').slice(0, 24),
+    slotId: Number.isInteger(member.slotId) && member.slotId >= 0 && member.slotId < 3 ? member.slotId : index,
+    isNpc: Boolean(member.isNpc), pokemon: canonicalizeRankedTeam([member.pokemon], { registeredSize: 1 })[0],
+  }))
+  const occupiedSlots = new Set(registered.map(member => member.slotId))
+  if (occupiedSlots.size !== registered.length) invalid('참가자 슬롯이 중복되었습니다.')
+  const emptySlots = [0, 1, 2].filter(slot => !occupiedSlots.has(slot))
+  const missing = 3 - registered.length
+  const configured = (Array.isArray(npcTrainers) ? npcTrainers : []).slice(0, missing).map(assignment => {
+    const profile = getRaidNpcTrainer(assignment)
+    return profile ? { ...profile, slotId: assignment.slotId } : null
+  })
+  const assignments = configured.length === missing && configured.every(Boolean)
+    && new Set(configured.map(trainer => trainer.trainerId)).size === missing
+    ? configured : createRaidNpcAssignments(seed).slice(0, missing)
   while (registered.length < 3) {
-    const i = registered.length
-    const role = npcRoles[i - members.length] ?? (i === 2 ? 'support' : 'attack')
-    const candidates = RAID_NPCS.filter((preset) => role === 'support' ? preset.role === 'support' : preset.role !== 'support')
-    const commonWeakness = (preset) => {
-      const types = getSpeciesProfile(preset.speciesId).types
-      return ['불꽃', '물', '전기', '풀', '얼음', '격투', '독', '땅', '비행', '에스퍼', '벌레', '바위', '고스트', '드래곤', '악', '강철', '페어리'].reduce((sum, type) => sum + (getTypeEffectiveness(type, types) > 1 ? registered.filter((member) => getTypeEffectiveness(type, member.pokemon.types) > 1).length : 0), 0)
-    }
-    const preset = candidates.sort((a, b) => commonWeakness(a) - commonWeakness(b))[0] ?? RAID_NPCS[1]
-    registered.push({ ownerId: `npc-${i}`, displayName: preset.role === 'support' ? '지원 AI' : '공격 AI', isNpc: true, pokemon: createRaidPreset(preset, `npc-${i}`) })
+    const index = registered.length - members.length
+    const slotId = emptySlots[index]
+    const assignment = assignments.find(candidate => candidate.slotId === slotId) ?? assignments[index]
+    registered.push({ ...createRaidNpcMember(assignment, slotId), slotId })
   }
+  registered.sort((left, right) => left.slotId - right.slotId)
   return createStage(String(raidId), bossId, registered, 1, seed)
 }
 export function startRaidBossStage(battle, { seed = 'boss-stage' } = {}) {
@@ -146,7 +178,15 @@ export function resolveRaidTurn(battle, commandsByOwner, { seed = 'turn' } = {})
   return next
 }
 const ACTOR_FIELDS = ['battleId', 'speciesId', 'originalSpeciesId', 'name', 'level', 'types', 'hp', 'maxHp', 'stats', 'statStages', 'status', 'fainted', 'ability', 'nature', 'heldItemId', 'heldItemName', 'teraType', 'teraActive', 'dynamaxActive', 'dynamaxMode', 'usedBattleMechanicId', 'raidForm', 'raidVitalityStage', 'baseRaidMaxHp', 'activeFromTurn', 'raidDisplayName', 'spriteFront', 'spriteBack', 'spriteFrontFallback', 'spriteBackFallback', 'isShiny']
-function publicActor(actor, ownerId, index, sideId) { return { ...Object.fromEntries(ACTOR_FIELDS.filter((key) => actor[key] !== undefined).map((key) => [key, structuredClone(actor[key])])), actorId: actor.battleId, slot: index, sideId, isMine: actor.raidOwnerId === ownerId, isNpc: Boolean(actor.raidNpc), ownerId: sideId === 'player' ? `ally-${index + 1}` : null, displayName: actor.raidDisplayName ?? actor.name } }
+function publicActor(actor, ownerId, index, sideId) {
+  return {
+    ...Object.fromEntries(ACTOR_FIELDS.filter((key) => actor[key] !== undefined).map((key) => [key, structuredClone(actor[key])])),
+    actorId: actor.battleId, slot: index, sideId, isMine: actor.raidOwnerId === ownerId,
+    isNpc: Boolean(actor.raidNpc), ownerId: sideId === 'player' ? `ally-${index + 1}` : null,
+    displayName: actor.raidDisplayName ?? actor.name,
+    ...(actor.raidTrainer ? { trainer: structuredClone(actor.raidTrainer), trainerImage: actor.raidTrainerImage } : {}),
+  }
+}
 export function getRaidBattleView(battle, ownerId) {
   assertVersion(battle)
   const actor = ownedActor(battle, ownerId)

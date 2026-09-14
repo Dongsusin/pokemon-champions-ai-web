@@ -12,7 +12,9 @@ import { normalizePokemon, getLearnableMoves, getMoveById } from '../src/data/tr
 // battle engine. The isolated in-memory DB/authenticator are test-only; no
 // production account, DB, environment or force-HP endpoint is touched.
 const loadouts = {
-  mewtwo: [248, ['crunch', 'stoneedge', 'icepunch', 'dragondance']],
+  // The solo case must exercise stage two even when its random AI partners
+  // share a weakness. This legal Psychic/Ice set clears the Poison prelude.
+  mewtwo: [150, ['psystrike', 'icebeam', 'shadowball', 'protect']],
   hooh: [382, ['originpulse', 'waterspout', 'icebeam', 'thunder']],
   lugia: [1008, ['electrodrift', 'thunderbolt', 'calmmind', 'protect']],
 }

@@ -6,6 +6,7 @@ import { maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 import { readTrainerNickname } from '../src/data/trainerNickname.js'
 import { containsChatProfanity } from './chatModeration.js'
 import { createGuestIdentityRegistry } from './guestIdentity.js'
+import { createRaidNpcAssignments, getRaidNpcAssignments } from './raidTrainers.js'
 import {
   createRaidRetentionIndex,
   planRaidRetentionCleanup,
@@ -19,8 +20,8 @@ import {
 const MAX_ROOMS = 10
 const ROOM_WAIT_MS = 10 * 60_000
 const ROOM_FULL_MS = 60_000
-const ROOM_CODE_ATTEMPTS = 5
-const ROOM_CODE_ATTEMPT_WINDOW_MS = 60_000
+const ROOM_PASSWORD_ATTEMPTS = 5
+const ROOM_PASSWORD_ATTEMPT_WINDOW_MS = 60_000
 const COMMAND_MS = (RAID_DEFAULTS.commandSeconds ?? 45) * 1000
 const RESOLUTION_LEASE_MS = 20_000
 // A normal status fetch is intentionally read-only.  Clients renew this
@@ -59,30 +60,35 @@ function sanitizeTitle(value) {
   return title
 }
 
-function normalizeNpcRoles(value) {
-  if (value === undefined) return null
-  if (!Array.isArray(value) || value.length > 2 || value.some(role => !['attack', 'support'].includes(role))) {
-    fail('INVALID_NPC_ROLES', '지원 NPC 역할을 다시 선택해주세요.')
+function normalizeRoomPassword(value) {
+  if (value === undefined || value === '') return ''
+  if (typeof value !== 'string' || !/^[0-9]{4}$/.test(value)) {
+    fail('INVALID_ROOM_PASSWORD', '비밀번호는 숫자 4자리로 입력해주세요.')
   }
-  return [...value]
+  return value
 }
 
-function defaultNpcRoles(humanCount) {
-  if (humanCount <= 1) return ['attack', 'support']
-  if (humanCount === 2) return ['support']
-  return []
-}
+const roomHasPassword = room => room?.hasPassword === true || Boolean(room?.passwordHash || room?.codeHash)
+const isSoloRoom = room => room?.solo === true || room?.visibility === 'private'
 
 function roomMemberCount(room) {
   if (Number.isSafeInteger(room?.memberCount) && room.memberCount >= 0) return room.memberCount
   return room?.members?.filter(member => !member.isNpc && !member.withdrawn).length ?? 0
 }
 
-function roomNpcRoles(room) {
-  const humanCount = roomMemberCount(room)
-  const missing = Math.max(0, 3 - humanCount)
-  const configured = Array.isArray(room?.npcRoles) ? room.npcRoles.slice(0, missing) : []
-  return [...configured, ...defaultNpcRoles(humanCount).slice(configured.length, missing)]
+function roomNpcSlots(room) {
+  const occupiedSlots = new Set(Array.isArray(room.members)
+    ? room.members.filter(member => !member.withdrawn).map(member => member.slotId)
+    : room.occupiedSlots ?? Array.from({ length: roomMemberCount(room) }, (_, slotId) => slotId))
+  const trainers = getRaidNpcAssignments(room)
+  const used = new Set()
+  // Keep the original AI in slots 1 and 2 when humans come and go. If the
+  // host leaves, the remaining unused trainer can fill the vacant slot 0.
+  return [1, 2, 0].filter(slotId => !occupiedSlots.has(slotId)).map(slotId => {
+    const index = slotId > 0 ? slotId - 1 : trainers.findIndex((_, candidate) => !used.has(candidate))
+    used.add(index)
+    return { ...trainers[index], slotId, isAi: true }
+  }).sort((a, b) => a.slotId - b.slotId)
 }
 
 function normalizeIdentity(input) {
@@ -185,6 +191,8 @@ function raidRoomIndex(room) {
     bossId: room.bossId,
     title: room.title,
     visibility: room.visibility,
+    solo: isSoloRoom(room),
+    hasPassword: roomHasPassword(room),
     hostUid: room.hostUid,
     hostName: room.hostName,
     hostNickname: room.hostNickname,
@@ -194,9 +202,8 @@ function raidRoomIndex(room) {
     memberCount: roomMemberCount(room),
     createdAt: room.createdAt,
     firstFullAt: room.firstFullAt,
-    npcRoles: clone(room.npcRoles ?? null),
-    codeHash: room.codeHash ?? null,
-    codeSalt: room.codeSalt ?? null,
+    occupiedSlots: (room.members ?? []).filter(member => !member.withdrawn).map(member => member.slotId),
+    npcTrainers: getRaidNpcAssignments(room),
   }
 }
 
@@ -251,10 +258,10 @@ function passwordHash(password, salt) {
 }
 
 function verifyPassword(room, supplied) {
-  if (!room.codeHash) return true
-  if (typeof supplied !== 'string' || !/^[A-HJ-NP-Z2-9]{8}$/.test(supplied)) return false
-  const expected = Buffer.from(room.codeHash, 'hex')
-  const actual = Buffer.from(passwordHash(supplied, room.codeSalt), 'hex')
+  if (!roomHasPassword(room)) return true
+  if (!room.passwordHash || typeof supplied !== 'string' || !/^[0-9]{4}$/.test(supplied)) return false
+  const expected = Buffer.from(room.passwordHash, 'hex')
+  const actual = Buffer.from(passwordHash(supplied, room.passwordSalt), 'hex')
   return expected.length === actual.length && timingSafeEqual(expected, actual)
 }
 
@@ -274,16 +281,15 @@ function publicMember(member, viewerUid, hostUid) {
 
 function publicRoom(room, viewerUid) {
   if (!room) return null
-  const npcRoles = roomNpcRoles(room)
   const members = Array.isArray(room.members) ? room.members : []
-  const occupiedSlots = new Set(members.filter(member => !member.withdrawn).map(member => member.slotId))
-  const npcSlots = [0, 1, 2].filter(slotId => !occupiedSlots.has(slotId))
   return {
     id: room.id,
     bossId: room.bossId,
     title: room.title,
     visibility: room.visibility,
-    locked: Boolean(room.codeHash),
+    solo: isSoloRoom(room),
+    locked: roomHasPassword(room),
+    hasPassword: roomHasPassword(room),
     hostName: maskRankedTrainerName(room.hostName, room.hostIsGuest === true, room.hostNickname),
     isHost: room.hostUid === viewerUid,
     status: room.status,
@@ -293,13 +299,7 @@ function publicRoom(room, viewerUid) {
     createdAt: room.createdAt,
     startDeadlineAt: room.status === 'waiting' ? roomDeadline(room) : null,
     activeRaidId: room.activeRaidId ?? null,
-    npcRoles,
-    npcSlots: npcRoles.map((role, index) => ({
-      slotId: npcSlots[index] ?? index,
-      role,
-      name: role === 'support' ? '지원 AI' : '공격 AI',
-      isAi: true,
-    })),
+    npcSlots: roomNpcSlots(room),
     members: members.map(member => publicMember(member, viewerUid, room.hostUid)),
   }
 }
@@ -454,10 +454,6 @@ export function createRaidService({
   now = Date.now,
   newId = randomUUID,
   makeSeed = () => randomBytes(4).readUInt32LE(),
-  makeRoomCode = () => {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    return [...randomBytes(8)].map(byte => alphabet[byte % alphabet.length]).join('')
-  },
   guestRegistry = null,
   timeouts = {},
 } = {}) {
@@ -817,29 +813,26 @@ export function createRaidService({
     return { expired: false, resumed: false }
   }
 
-  async function createRoom(tx, identity, payload, timestamp, id, salt, inviteCodes) {
+  async function createRoom(tx, identity, payload, timestamp, id, salt, seed) {
     assertBoss(engine, payload.bossId)
     const title = sanitizeTitle(payload.title ?? `${catalogFromEngine(engine).find(boss => boss.id === payload.bossId)?.name ?? '보스'} 레이드`)
-    const visibility = payload.visibility === 'private' ? 'private' : payload.visibility === undefined || payload.visibility === 'public' ? 'public' : null
-    if (!visibility) fail('INVALID_VISIBILITY', '공개 또는 비공개 방을 선택해주세요.')
-    // Raid invite codes are generated by the server.  A caller-provided code
-    // is never trusted or stored, even if it happens to match the format.
+    const password = normalizeRoomPassword(payload.password)
+    // Solo rooms stay outside public browsing; every multiplayer room can be
+    // discovered by its id and may optionally require its own numeric password.
+    const solo = payload.solo === true || payload.visibility === 'private'
+    const visibility = solo ? 'private' : 'public'
     const pointer = await loadPointer(tx, identity)
     const player = await loadRankedPlayer(tx, identity)
     await assertRaidAvailable(tx, pointer, player, timestamp)
     await lobbyLock(tx)
     const current = await tx.list('raidRoomIndex')
     if (current.filter(room => room.status === 'waiting').length >= MAX_ROOMS) fail('ROOM_LIMIT', '보스전 방은 최대 10개까지 열 수 있습니다.', 409)
-    const code = visibility === 'private'
-      ? (Array.isArray(inviteCodes) ? inviteCodes : []).find(candidate => typeof candidate === 'string' && /^[A-HJ-NP-Z2-9]{8}$/.test(candidate)
-        && !current.some(existing => existing.status === 'waiting' && existing.visibility === 'private' && verifyPassword(existing, candidate)))
-      : null
-    if (visibility === 'private' && !code) throw new Error('Unable to allocate a private raid invite code')
     const room = {
       id,
       bossId: payload.bossId,
       title,
       visibility,
+      solo,
       hostUid: identity.uid,
       hostName: identity.name,
       hostNickname: identity.nickname,
@@ -849,9 +842,9 @@ export function createRaidService({
       firstFullAt: null,
       roomRevision: 1,
       activeRaidId: null,
-      npcRoles: normalizeNpcRoles(payload.npcRoles),
-      codeHash: code ? passwordHash(code, salt) : null,
-      codeSalt: code ? salt : null,
+      npcTrainers: createRaidNpcAssignments(seed),
+      passwordHash: password ? passwordHash(password, salt) : null,
+      passwordSalt: password ? salt : null,
       members: [{
         uid: identity.uid, name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest === true,
         slotId: 0, joinedAt: timestamp, lastSeenAt: timestamp, ready: false, withdrawn: false, isNpc: false, pokemon: null,
@@ -865,51 +858,43 @@ export function createRaidService({
     saveRoomIndex(tx, room)
     tx.set('raidPlayers', pointer.uid, pointer)
     tx.set('players', player.uid, player)
-    return { room, inviteCode: code }
+    return room
   }
 
   async function joinRoom(tx, identity, payload, timestamp) {
-    const normalizedCode = typeof (payload.code ?? payload.password) === 'string'
-      ? (payload.code ?? payload.password).trim().toUpperCase() : ''
-    const recordCodeFailure = async scope => {
+    const suppliedPassword = payload.password ?? ''
+    const recordPasswordFailure = async scope => {
       const attemptId = joinAttemptKey(scope, identity.uid)
       const attempt = await tx.get('raidJoinAttempts', attemptId)
       if (attempt?.blockedUntil > timestamp) {
-        return { code: 'ROOM_CODE_RATE_LIMITED', message: '초대 코드 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.', status: 429 }
+        return { code: 'ROOM_PASSWORD_RATE_LIMITED', message: '비밀번호 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.', status: 429 }
       }
-      const fresh = !attempt || !Number.isSafeInteger(attempt.windowStartedAt) || timestamp - attempt.windowStartedAt >= ROOM_CODE_ATTEMPT_WINDOW_MS
+      const fresh = !attempt || !Number.isSafeInteger(attempt.windowStartedAt) || timestamp - attempt.windowStartedAt >= ROOM_PASSWORD_ATTEMPT_WINDOW_MS
       const count = fresh ? 1 : (Number.isSafeInteger(attempt.count) ? attempt.count : 0) + 1
       tx.set('raidJoinAttempts', attemptId, {
         id: attemptId,
         scope,
         windowStartedAt: fresh ? timestamp : attempt.windowStartedAt,
         count,
-        blockedUntil: count >= ROOM_CODE_ATTEMPTS ? timestamp + ROOM_CODE_ATTEMPT_WINDOW_MS : 0,
+        blockedUntil: count >= ROOM_PASSWORD_ATTEMPTS ? timestamp + ROOM_PASSWORD_ATTEMPT_WINDOW_MS : 0,
       })
-      return { code: 'ROOM_CODE_INVALID', message: '초대 코드가 올바르지 않습니다.', status: 403 }
+      return { code: 'ROOM_PASSWORD_INVALID', message: '비밀번호가 올바르지 않습니다.', status: 403 }
     }
 
-    let room
-    const directRoom = payload.roomId !== undefined && payload.roomId !== null && payload.roomId !== ''
-    if (directRoom) {
-      if (!isId(payload.roomId)) fail('INVALID_ROOM', '방 식별자가 올바르지 않습니다.')
-      room = await tx.get('raidRooms', payload.roomId)
-    } else {
-      if (!/^[A-HJ-NP-Z2-9]{8}$/.test(normalizedCode)) return { codeError: await recordCodeFailure('lookup') }
-      const candidates = await tx.list('raidRoomIndex')
-      const candidate = candidates.find(entry => entry.status === 'waiting' && entry.visibility === 'private' && verifyPassword(entry, normalizedCode)) ?? null
-      room = candidate ? await tx.get('raidRooms', candidate.id) : null
-      if (!room) return { codeError: await recordCodeFailure('lookup') }
-    }
+    // A password never identifies a room. Different rooms can safely choose
+    // the same four digits because joins always target an explicit room id.
+    if (!isId(payload.roomId)) fail('INVALID_ROOM', '참가할 방을 먼저 선택해주세요.')
+    const room = await tx.get('raidRooms', payload.roomId)
     if (!room) fail('ROOM_NOT_FOUND', '방이 종료되었거나 삭제되었습니다.', 404)
     if (room.status !== 'waiting') fail('ROOM_STARTED', '이미 시작한 방에는 참가할 수 없습니다.', 409)
     if (room.members.some(member => member.uid === identity.uid && !member.withdrawn)) return room
-    if (directRoom) assertRoomRevision(room, payload, { required: true })
+    if (isSoloRoom(room)) fail('ROOM_SOLO_ONLY', '솔로 도전에는 다른 트레이너가 참가할 수 없습니다.', 403)
+    assertRoomRevision(room, payload, { required: true })
     if (room.members.filter(member => !member.isNpc && !member.withdrawn).length >= 3) fail('ROOM_FULL', '방이 가득 찼습니다.', 409)
     const attemptId = joinAttemptKey(room.id, identity.uid)
     const attempt = await tx.get('raidJoinAttempts', attemptId)
-    if (attempt?.blockedUntil > timestamp) return { codeError: { code: 'ROOM_CODE_RATE_LIMITED', message: '초대 코드 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.', status: 429 } }
-    if (room.codeHash && !verifyPassword(room, normalizedCode)) return { codeError: await recordCodeFailure(room.id) }
+    if (attempt?.blockedUntil > timestamp) return { passwordError: { code: 'ROOM_PASSWORD_RATE_LIMITED', message: '비밀번호 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.', status: 429 } }
+    if (roomHasPassword(room) && !verifyPassword(room, suppliedPassword)) return { passwordError: await recordPasswordFailure(room.id) }
     if (attempt) tx.delete('raidJoinAttempts', attemptId)
     const pointer = await loadPointer(tx, identity)
     const player = await loadRankedPlayer(tx, identity)
@@ -921,8 +906,8 @@ export function createRaidService({
       uid: identity.uid, name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest === true,
       slotId, joinedAt: timestamp, lastSeenAt: timestamp, ready: false, withdrawn: false, isNpc: false, pokemon: null,
     })
-    // A changed party changes both the selected ally composition and the
-    // available NPC roles.  Everyone confirms readiness again.
+    // A changed party replaces one AI teammate. Everyone confirms readiness
+    // again while the trainer assigned to the other empty slot stays stable.
     for (const member of room.members) member.ready = false
     if (room.members.filter(member => !member.isNpc && !member.withdrawn).length === 3 && room.firstFullAt === null) room.firstFullAt = timestamp
     room.roomRevision += 1
@@ -945,11 +930,6 @@ export function createRaidService({
     assertRoomRevision(room, payload, { required: true })
     const member = room.members.find(entry => entry.uid === identity.uid && !entry.withdrawn)
     if (!member) fail('ROOM_FORBIDDEN', '이 방에 참가한 계정만 편성할 수 있습니다.', 403)
-    if (payload.npcRoles !== undefined) {
-      if (room.hostUid !== identity.uid) fail('ROOM_HOST_ONLY', '방장만 지원 NPC 역할을 정할 수 있습니다.', 403)
-      room.npcRoles = normalizeNpcRoles(payload.npcRoles)
-      for (const entry of room.members) entry.ready = false
-    }
     const ready = payload.ready !== false
     member.ready = ready
     member.pokemon = ready ? clone(selectedPokemon) : null
@@ -1001,7 +981,7 @@ export function createRaidService({
       member.pokemon = clone(verified)
     }
     const members = participantList(room)
-    const battle = clone(requireEngine('createRaidBattle')({ raidId, bossId: room.bossId, members, ...(room.npcRoles ? { npcRoles: room.npcRoles } : {}), seed }))
+    const battle = clone(requireEngine('createRaidBattle')({ raidId, bossId: room.bossId, members, npcTrainers: roomNpcSlots(room), seed }))
     const run = {
       id: raidId,
       roomId: room.id,
@@ -1519,9 +1499,9 @@ export function createRaidService({
     }
     const grantedVp = (Number.isSafeInteger(result?.rewardVp) ? result.rewardVp : 0) + (Number.isSafeInteger(result?.firstClearVp) ? result.firstClearVp : 0)
     const visibleRooms = roomIndexes.filter(entry => entry.status === 'waiting' && roomDeadline(entry) > timestamp
-      // Private invitations are code-only.  The host still sees their own
-      // entry; non-host members receive their room through the direct pointer.
-      && (entry.visibility === 'public' || entry.hostUid === uid))
+      // Locked multiplayer rooms are discoverable. Only solo challenges are
+      // hidden from other trainers, independently of password protection.
+      && (!isSoloRoom(entry) || entry.hostUid === uid))
     const response = {
       catalog: catalogFromEngine(engine),
       rooms: visibleRooms.map(entry => publicRoom(entry, uid)).sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)),
@@ -1614,9 +1594,6 @@ export function createRaidService({
     const id = newId()
     const seed = makeSeed()
     const salt = randomBytes(16).toString('hex')
-    const inviteCodes = action === 'roomCreate'
-      ? Array.from({ length: 16 }, () => makeRoomCode())
-      : []
     let selectedPokemon = null
     assertRequest(payload)
     if (action === 'roomReady' && payload.ready !== false) selectedPokemon = clone(await resolvePokemon(identity, selectionPayload(payload)))
@@ -1667,14 +1644,12 @@ export function createRaidService({
         }
       }
       let claim = null
-      let issuedInviteCode = null
       if (action === 'roomCreate') {
-        const created = await createRoom(tx, identity, payload, timestamp, id, salt, inviteCodes)
-        issuedInviteCode = created.inviteCode
+        await createRoom(tx, identity, payload, timestamp, id, salt, seed)
       }
       else if (action === 'roomJoin') {
         const joined = await joinRoom(tx, identity, payload, timestamp)
-        if (joined?.codeError) return { error: joined.codeError }
+        if (joined?.passwordError) return { error: joined.passwordError }
       }
       else if (action === 'roomReady') await setReady(tx, identity, payload, timestamp, selectedPokemon)
       else if (action === 'roomHeartbeat') await heartbeatRoom(tx, identity, payload, timestamp)
@@ -1714,10 +1689,6 @@ export function createRaidService({
         sinceRevision: payload.sinceRevision ?? payload.revision,
         timestamp,
       })
-      if (issuedInviteCode) {
-        response.inviteCode = issuedInviteCode
-        if (response.room?.isHost) response.room.inviteCode = issuedInviteCode
-      }
       return { response, claim }
     })
     if (transactionResult.error) throw new RaidError(transactionResult.error.code, transactionResult.error.message, transactionResult.error.status)

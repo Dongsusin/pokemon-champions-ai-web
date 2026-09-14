@@ -86,9 +86,9 @@ test('resolved battle cues add ranked-style playback grace once, without client-
   assert.equal(timedOut.raid.turnNumber, resolved.raid.turnNumber + 1, 'The bounded server deadline still resolves absent input')
 })
 
-async function createRoom(env, { owner = 0, bossId = 'mewtwo', visibility = 'public', title = '서비스 검증 레이드' } = {}) {
-  const view = await env.call(owner, 'roomCreate', { bossId, visibility, title })
-  return { roomId: view.room.id, inviteCode: view.inviteCode, view }
+async function createRoom(env, { owner = 0, bossId = 'mewtwo', password, solo = false, title = '서비스 검증 레이드' } = {}) {
+  const view = await env.call(owner, 'roomCreate', { bossId, password, solo, title })
+  return { roomId: view.room.id, view }
 }
 
 async function startRaid(env, members, options = {}) {
@@ -239,22 +239,115 @@ test('public catalog and event projections exclude legacy boss pattern threshold
   assert.equal(event.message, '뮤츠의 모습이 변했다.', 'Already occurred battle effects remain visible')
 })
 
-test('private invite codes are server issued, hidden from listings, and persist per-user brute-force limits', async () => {
+test('four-digit room passwords are hashed, listed only as locks, and enforce persistent per-user attempt limits', async () => {
   const env = fixture()
-  const { roomId, inviteCode } = await createRoom(env, { visibility: 'private', title: '초대 전용' })
-  assert.match(inviteCode, /^[A-HJ-NP-Z2-9]{8}$/)
+  const password = '0123'
+  const { roomId, view } = await createRoom(env, { password, title: '비밀번호 방' })
+  assert.equal(view.inviteCode, undefined)
+  assert.equal(view.room.inviteCode, undefined)
+  assert.equal(view.room.locked, true)
   const raw = await env.store.inspect()
   const stored = raw.collections.raidRooms[roomId]
-  assert(stored.codeHash && stored.codeHash !== inviteCode)
-  assert.equal(JSON.stringify(raw).includes(inviteCode), false)
-  assert.equal((await env.call(1, 'status')).rooms.some(room => room.id === roomId), false, 'private rooms stay out of public browse')
+  assert(stored.passwordHash && stored.passwordHash !== password)
+  assert(stored.passwordSalt)
+  assert.equal(stored.password, undefined)
+  assert.equal(stored.codeHash, undefined)
+  const index = raw.collections.raidRoomIndex[roomId]
+  assert.equal(index.hasPassword, true)
+  for (const key of ['password', 'passwordHash', 'passwordSalt', 'codeHash', 'codeSalt']) assert.equal(index[key], undefined, key)
+  const listed = (await env.call(1, 'status')).rooms.find(room => room.id === roomId)
+  assert(listed, 'Password-protected rooms remain discoverable')
+  assert.equal(listed.locked, true)
+  assert.equal(listed.hasPassword, true)
+  for (const key of ['password', 'passwordHash', 'passwordSalt', 'codeHash', 'codeSalt']) assert.equal(listed[key], undefined, key)
   for (let attempt = 0; attempt < 5; attempt++) {
-    await rejectCode(env.call(1, 'roomJoin', { code: 'AAAAAAAA' }), 'ROOM_CODE_INVALID')
+    await rejectCode(env.call(1, 'roomJoin', { roomId, roomRevision: listed.roomRevision, password: '9999' }), 'ROOM_PASSWORD_INVALID')
   }
-  await rejectCode(env.call(1, 'roomJoin', { code: 'AAAAAAAA' }), 'ROOM_CODE_RATE_LIMITED')
-  const joined = await env.call(2, 'roomJoin', { code: inviteCode })
+  await rejectCode(env.call(1, 'roomJoin', { roomId, roomRevision: listed.roomRevision, password }), 'ROOM_PASSWORD_RATE_LIMITED')
+  const joined = await env.call(2, 'roomJoin', { roomId, roomRevision: listed.roomRevision, password })
   assert.equal(joined.room.memberCount, 2)
   assert.equal(JSON.stringify(joined).includes(env.users[0].uid), false)
+  env.advance(60_001)
+  const retried = await env.call(1, 'roomJoin', { roomId, roomRevision: joined.room.roomRevision, password })
+  assert.equal(retried.room.memberCount, 3, 'Only the failed user is rate limited and can retry after the cooldown')
+  assert.equal(Object.keys((await env.store.inspect()).collections.raidJoinAttempts).length, 0)
+})
+
+test('room passwords require exactly four digits and never locate rooms without their id', async () => {
+  const env = fixture()
+  for (const password of ['1', '123', '12345', '12a4', ' 1234', '１２３４', 1234, null]) {
+    await rejectCode(createRoom(env, { password }), 'INVALID_ROOM_PASSWORD')
+  }
+  assert.equal((await env.call(0, 'status')).rooms.length, 0)
+  const first = await createRoom(env, { password: '0000' })
+  const second = await createRoom(env, { owner: 1, password: '0000' })
+  const raw = await env.store.inspect()
+  assert.notEqual(raw.collections.raidRooms[first.roomId].passwordHash, raw.collections.raidRooms[second.roomId].passwordHash, 'Each room salts the same password independently')
+  await rejectCode(env.call(2, 'roomJoin', { password: '0000' }), 'INVALID_ROOM')
+  await rejectCode(env.call(2, 'roomJoin', { code: 'ABCDEFGH' }), 'INVALID_ROOM')
+  const joined = await env.call(2, 'roomJoin', { roomId: second.roomId, roomRevision: second.view.room.roomRevision, password: '0000' })
+  assert.equal(joined.room.id, second.roomId)
+  assert.equal((await env.call(0, 'status')).room.memberCount, 1, 'The identical password does not join the other room')
+})
+
+test('solo rooms stay unlisted and refuse additional players without generating invitation codes', async () => {
+  const env = fixture()
+  const { roomId, view } = await createRoom(env, { solo: true, password: '' })
+  assert.equal(view.inviteCode, undefined)
+  assert.equal(view.room.solo, true)
+  assert.equal(view.room.locked, false)
+  assert.equal((await env.call(1, 'status')).rooms.some(room => room.id === roomId), false)
+  await rejectCode(env.call(1, 'roomJoin', { roomId, roomRevision: view.room.roomRevision }), 'ROOM_SOLO_ONLY')
+  const owned = await env.call(0, 'status')
+  assert.equal(owned.room.id, roomId)
+  assert.equal(owned.room.memberCount, 1)
+})
+
+test('random AI trainers remain stable across polling, player joins, host succession and battle start', async () => {
+  const env = fixture()
+  const created = await env.call(0, 'roomCreate', {
+    bossId: 'mewtwo', title: '트레이너 편성 검증', npcRoles: ['forged'],
+    npcTrainers: [{ trainerId: 'forged-client-trainer', name: 'forged-client-name' }],
+  })
+  const roomId = created.room.id
+  const originalNpcs = created.room.npcSlots
+  assert.equal(originalNpcs.length, 2)
+  assert.equal(new Set(originalNpcs.map(npc => npc.trainerId)).size, 2)
+  assert(originalNpcs.every(npc => npc.image && npc.trainer.name === npc.name))
+  assert.equal(JSON.stringify(created).includes('forged-client'), false)
+  assert.equal(created.room.npcRoles, undefined)
+  assert.deepEqual((await env.call(0, 'status')).room.npcSlots, originalNpcs)
+  const joined = await env.call(1, 'roomJoin', { roomId, roomRevision: created.room.roomRevision })
+  assert.deepEqual(joined.room.npcSlots, originalNpcs.filter(npc => npc.slotId === 2), 'A player replaces slot 1 while the other AI stays')
+  const hostReady = await env.call(0, 'roomReady', {
+    roomId, roomRevision: joined.room.roomRevision,
+    pokemon: { captureId: env.owned.get(env.users[0].uid).captureId },
+  })
+  const teammateReady = await env.call(1, 'roomReady', {
+    roomId, roomRevision: hostReady.room.roomRevision,
+    pokemon: { captureId: env.owned.get(env.users[1].uid).captureId },
+    npcRoles: ['attack', 'attack'], npcTrainers: [{ trainerId: 'forged-client-trainer' }],
+  })
+  assert.equal(teammateReady.room.members.every(member => member.ready), true, 'Legacy role fields do not mutate the party or clear anyone else’s ready state')
+  await env.call(0, 'roomLeave', { roomId, roomRevision: teammateReady.room.roomRevision })
+  const inherited = await env.call(1, 'status')
+  assert.equal(inherited.room.isHost, true)
+  assert.deepEqual(inherited.room.npcSlots.map(npc => npc.slotId), [0, 2])
+  assert.equal(inherited.room.npcSlots[1].trainerId, originalNpcs[1].trainerId)
+  assert.equal(new Set(inherited.room.npcSlots.map(npc => npc.trainerId)).size, 2)
+  const ready = await env.call(1, 'roomReady', {
+    roomId, roomRevision: inherited.room.roomRevision,
+    pokemon: { captureId: env.owned.get(env.users[1].uid).captureId },
+  })
+  const started = await env.call(1, 'roomStart', { roomId, roomRevision: ready.room.roomRevision })
+  const run = await env.store.transaction(tx => tx.get('raidRuns', started.raid.id))
+  assert.equal(run.battle.player.team[1].raidOwnerId, env.users[1].uid, 'Human ownership stays in the same slot after host succession')
+  for (const npc of inherited.room.npcSlots) {
+    const actor = run.battle.player.team[npc.slotId]
+    assert.equal(actor.raidTrainer.id, npc.trainerId)
+    assert.equal(actor.raidDisplayName, npc.name)
+    assert.equal(actor.raidTrainerImage, npc.image)
+  }
 })
 
 test('room capacity, ready revisions, and concurrent start requests preserve one three-player raid', async () => {

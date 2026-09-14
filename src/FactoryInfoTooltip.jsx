@@ -2,7 +2,7 @@ import { cloneElement, useEffect, useId, useLayoutEffect, useRef, useState } fro
 import { createPortal } from 'react-dom'
 import './factoryInfoTooltip.css'
 
-export default function FactoryInfoTooltip({ children, title, description, meta, focusable = true }) {
+export default function FactoryInfoTooltip({ children, title, description, content, meta, focusable = true, className = '' }) {
   const id = useId()
   const anchor = useRef(null)
   const tooltip = useRef(null)
@@ -28,7 +28,7 @@ export default function FactoryInfoTooltip({ children, title, description, meta,
       left: clamp(target.left + (target.width - box.width) / 2, window.innerWidth - box.width - margin),
       top: clamp(above ? target.top - box.height - gap : target.bottom + gap, window.innerHeight - box.height - margin),
     })
-  }, [open, title, description, meta])
+  }, [open, title, description, content, meta])
 
   useEffect(() => {
     if (!open) return
@@ -54,7 +54,7 @@ export default function FactoryInfoTooltip({ children, title, description, meta,
     }
   }, [open])
 
-  if (!description) return children
+  if (!description && !content) return children
 
   return <>{cloneElement(children, {
     ref: anchor,
@@ -68,11 +68,11 @@ export default function FactoryInfoTooltip({ children, title, description, meta,
     onClick: event => { event.stopPropagation(); show() },
   })}
     {/* Modal tooltips must stay inside the native dialog's top layer. */}
-    {open && createPortal(<div ref={tooltip} id={id} role="tooltip" className="factory-info-tooltip"
+    {open && createPortal(<div ref={tooltip} id={id} role="tooltip" className={`factory-info-tooltip ${className}`.trim()}
       style={{ ...position, visibility: position ? 'visible' : 'hidden' }} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}
       onClick={event => event.stopPropagation()}>
       <strong className="factory-info-tooltip-title">{title}</strong>
-      <p className="factory-info-tooltip-description">{description}</p>
+      {content ?? <p className="factory-info-tooltip-description">{description}</p>}
       {meta && <p className="factory-info-tooltip-meta">{meta}</p>}
     </div>, anchor.current?.closest('dialog') ?? document.body)}
   </>
