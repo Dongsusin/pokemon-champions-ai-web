@@ -1424,7 +1424,7 @@
 
 .training-sort-control {
   display: grid;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: auto repeat(3, 1fr);
   gap: 4px;
   align-items: center;
   min-width: 0;

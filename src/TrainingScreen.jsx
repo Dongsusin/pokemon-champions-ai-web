@@ -138,6 +138,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   const [selectedId, setSelectedId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [pokemonSearch, setPokemonSearch] = useState('')
   const [pokemonSort, setPokemonSort] = useState('obtained')
+  const [teamOnly, setTeamOnly] = useState(false)
   const [draftPokemonById, setDraftPokemonById] = useState({})
   const [spriteSide, setSpriteSide] = useState('front')
   const [movePickerSlot, setMovePickerSlot] = useState(null)
@@ -165,11 +166,15 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
 
     return membershipMap
   }, [pokemon, teams])
+  const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0] ?? null
   const filteredTrainingPokemon = useMemo(() => {
     const query = pokemonSearch.trim().toLocaleLowerCase('ko-KR')
-    const matchingPokemon = query ? trainingPokemon.filter((entry) => (
-      entry.name.toLocaleLowerCase('ko-KR').includes(query)
-    )) : trainingPokemon
+    const matchingPokemon = trainingPokemon.filter((entry) => {
+      const matchesSearch = !query || entry.name.toLocaleLowerCase('ko-KR').includes(query)
+      const memberships = teamMembershipByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? []
+      const matchesTeam = !teamOnly || memberships.some((membership) => membership.id === activeTeam?.id)
+      return matchesSearch && matchesTeam
+    })
 
     if (pokemonSort === 'obtained') return matchingPokemon
     return [...matchingPokemon].sort((left, right) => {
@@ -177,13 +182,18 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
       const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
       return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
     })
-  }, [pokemonSearch, pokemonSort, trainingPokemon])
+  }, [activeTeam?.id, pokemonSearch, pokemonSort, teamMembershipByFamily, teamOnly, trainingPokemon])
 
   useEffect(() => {
     if (!trainingPokemon.some((entry) => entry.captureId === selectedId)) {
       setSelectedId(trainingPokemon[0]?.captureId ?? null)
     }
   }, [trainingPokemon, selectedId])
+
+  useEffect(() => {
+    if (!teamOnly || filteredTrainingPokemon.some((entry) => entry.captureId === selectedId)) return
+    setSelectedId(filteredTrainingPokemon[0]?.captureId ?? null)
+  }, [filteredTrainingPokemon, selectedId, teamOnly])
 
   useEffect(() => {
     if (movePickerSlot === null && profilePicker === null) return undefined
@@ -580,12 +590,12 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
             </div>
             <strong aria-live="polite">
               {filteredTrainingPokemon.length}
-              <em>{pokemonSearch.trim() ? ` / ${trainingPokemon.length}계열` : '계열'}</em>
+              <em>{pokemonSearch.trim() || teamOnly ? ` / ${trainingPokemon.length}계열` : '계열'}</em>
             </strong>
           </div>
 
           <div className="training-filter-row">
-            <div className="training-sort-control" role="group" aria-label="포켓몬 정렬 기준">
+            <div className="training-sort-control" role="group" aria-label="포켓몬 목록 보기 및 정렬 기준">
               <ArrowDownAZ size={14} aria-hidden="true" />
               <button
                 className={pokemonSort === 'obtained' ? 'active' : ''}
@@ -602,6 +612,16 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                 onClick={() => setPokemonSort('number')}
               >
                 번호순
+              </button>
+              <button
+                className={teamOnly ? 'active' : ''}
+                type="button"
+                aria-pressed={teamOnly}
+                aria-label={`${activeTeam?.name ?? '현재 팀'}에 편성된 포켓몬만 보기`}
+                title={`${activeTeam?.name ?? '현재 팀'} 편성만 보기`}
+                onClick={() => setTeamOnly((current) => !current)}
+              >
+                팀만
               </button>
             </div>
             <label className="training-roster-search">
@@ -666,10 +686,10 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
             })}
             {trainingPokemon.length > 0 && filteredTrainingPokemon.length === 0 && (
               <div className="training-roster-no-results" role="status">
-                <Search size={26} />
-                <strong>검색 결과가 없습니다.</strong>
-                <span>다른 포켓몬 이름을 입력해 보세요.</span>
-                <button type="button" onClick={() => setPokemonSearch('')}>검색 초기화</button>
+                {teamOnly ? <ShieldCheck size={26} /> : <Search size={26} />}
+                <strong>{teamOnly ? `${activeTeam?.name ?? '현재 팀'}에 편성된 포켓몬이 없습니다.` : '검색 결과가 없습니다.'}</strong>
+                <span>{teamOnly ? '팀 편성 필터를 해제하거나 다른 팀에서 트레이닝을 열어보세요.' : '다른 포켓몬 이름을 입력해 보세요.'}</span>
+                <button type="button" onClick={() => { setPokemonSearch(''); setTeamOnly(false) }}>필터 초기화</button>
               </div>
             )}
           </div>
