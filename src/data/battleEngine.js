@@ -1799,6 +1799,16 @@ function isStatusMove(move) {
   return move?.categoryId === 'status' || move?.category === '변화'
 }
 
+function goodAsGoldBlocksMove(attacker, defender, move) {
+  // Side hazards and field effects do not hit the Pokemon holding the ability.
+  return isStatusMove(move)
+    && !['self', 'allySide', 'allyTeam', 'foeSide', 'all'].includes(move.target)
+    && attacker !== defender
+    && (!attacker.battleId || attacker.battleId !== defender.battleId)
+    && defender.ability === '황금몸'
+    && !moveIgnoresAbility(move, defender)
+}
+
 function moveSecondaryEffects(move) {
   return move?.secondaries ?? (move?.secondary ? [move.secondary] : [])
 }
@@ -8373,7 +8383,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         })
         return
       }
-      if (!['self', 'allySide', 'allyTeam'].includes(move.target) && !moveIgnoresAbility(move, defender) && defender.ability === '황금몸') {
+      if (goodAsGoldBlocksMove(attacker, defender, move)) {
         appendLog(state, `${defender.name}의 황금몸! 변화 기술을 막아냈다!`, 'ability')
         pushTimelineStep(timeline, state, {
           phase: 'resolve',
@@ -11523,7 +11533,7 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
         )
         ||
         projectedAttacker.ability === '짓궂은마음' && defender.types.includes('악')
-        || !resolvedMove.ignoreAbility && defender.ability === '황금몸'
+        || goodAsGoldBlocksMove(projectedAttacker, defender, resolvedMove)
         || !resolvedMove.ignoreAbility
           && defender.ability === '매직미러'
           && resolvedMove.flags?.includes('reflectable')

@@ -49,7 +49,7 @@
     "validate:no-retreat": "node scripts/validateNoRetreat.mjs",
     "validate:kingambit-abilities": "node scripts/validateSupremeOverlord.mjs && node scripts/validateKingambitSecondaryAbilities.mjs && node scripts/validateKingambitAbilityDescriptions.mjs",
     "validate:kingambit-abilities-ui": "node scripts/validateKingambitAbilityUi.mjs",
-    "validate:battle-ability-effects": "node scripts/validateBattleAbilityEffects.mjs",
+    "validate:battle-ability-effects": "node scripts/validateBattleAbilityEffects.mjs && node scripts/validateGoodAsGoldHazards.mjs",
     "validate:season-megas": "node scripts/validateSeasonMegaAbilities.mjs && node scripts/validatePokemonForms.mjs",
     "validate:battle-status": "node scripts/validateBattleStatusAudit.mjs",
     "validate:battle-interactions": "node scripts/validateBattleAbilityAudit.mjs && node scripts/validateBattleMoveAudit.mjs && node scripts/validateBattleItemHpAudit.mjs && node scripts/validateBattleTargetingAudit.mjs",
