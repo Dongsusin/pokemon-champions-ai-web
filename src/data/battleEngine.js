@@ -653,6 +653,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     usedBattleMechanicId: null,
     transformSnapshot: null,
     illusionSnapshot: null,
+    illusionSpeciesId: null,
     tracedAbilityBase: null,
     proteanUsed: false,
     bondTriggered: false,
@@ -1352,6 +1353,7 @@ function restoreIllusion(pokemon) {
   if (!pokemon?.illusionSnapshot) return false
   Object.assign(pokemon, pokemon.illusionSnapshot)
   pokemon.illusionSnapshot = null
+  pokemon.illusionSpeciesId = null
   return true
 }
 
@@ -1373,6 +1375,7 @@ function activateIllusion(state, sideId, pokemon) {
     spriteFrontFallback: pokemon.spriteFrontFallback,
     spriteBackFallback: pokemon.spriteBackFallback,
   }
+  pokemon.illusionSpeciesId = disguise.speciesId
   pokemon.name = disguise.name
   pokemon.spriteFront = disguise.spriteFront
   pokemon.spriteBack = disguise.spriteBack
@@ -3370,7 +3373,9 @@ function applyDrainingRecovery(
   sourceName,
   { ignoreDrainedAbility = false } = {},
 ) {
-  const recoveryAmount = amount * drainingRecoveryMultiplier(recipient)
+  // TryHeal modifiers use the game's fixed-point rounding, not truncation.
+  // Big Root can otherwise lose one HP on Strength Sap and ordinary drains.
+  const recoveryAmount = Math.floor((Math.floor(amount) * 4096 * drainingRecoveryMultiplier(recipient) + 2047) / 4096)
   if (!ignoreDrainedAbility && drainedPokemon?.ability === '해감액') {
     if (recipient.ability === '매직가드') {
       appendLog(state, `${recipient.name}은(는) 매직가드로 해감액의 데미지를 받지 않았다!`, 'ability')
@@ -4794,19 +4799,23 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
   }
   if (move.id === 'strengthsap') {
     if (defender.statStages.attack <= -6) {
+      attacker.moveFailedThisTurn = true
       appendLog(state, `${defender.name}의 공격은 더 이상 떨어지지 않는다!`, 'muted')
       return true
     }
     // Strength Sap uses the target's Attack stat and stages, without battle
     // modifiers such as Huge Power, Choice Band, or the Ruin abilities.
     const drainAmount = Math.max(1, Math.floor(defender.stats.attack * stageMultiplier(defender.statStages.attack ?? 0)))
-    changeStages(state, defender, { attack: -1 }, {
+    const changed = changeStages(state, defender, { attack: -1 }, {
       source: attacker,
       ignoreAbility: Boolean(move.ignoreAbility),
     })
-    applyDrainingRecovery(state, attacker, defender, drainAmount, move.name, {
-      ignoreDrainedAbility: moveIgnoresAbility(move, defender),
-    })
+    // Liquid Ooze is not bypassed by Mold Breaker. A blocked stat drop still
+    // permits recovery, and full HP still permits the drop; fail only if neither
+    // effect happens (or Attack was already at -6 above).
+    const recovered = applyDrainingRecovery(state, attacker, defender, drainAmount, move.name)
+    attacker.moveFailedThisTurn = !changed && recovered === 0
+    if (attacker.moveFailedThisTurn) appendLog(state, '그러나 힘흡수는 효과가 없었다!', 'muted')
     return true
   }
   if (move.id === 'purify') {
@@ -5864,6 +5873,20 @@ function inferConfiguredMechanics(pokemon) {
   }).filter(Boolean)
 }
 
+const DYNAMAX_FORBIDDEN_BASE_SPECIES = new Set([888, 889, 890])
+
+function speciesAllowsDynamax(speciesId) {
+  const profile = getSpeciesProfile(speciesId)
+  return !DYNAMAX_FORBIDDEN_BASE_SPECIES.has(Number(profile?.parentSpeciesId ?? profile?.id ?? speciesId))
+}
+
+function pokemonAllowsDynamax(pokemon) {
+  // Transform copies the current species without changing the original party
+  // species. Illusion also prevents Dynamax while its forbidden disguise lasts.
+  return speciesAllowsDynamax(pokemon.speciesId)
+    && (!pokemon.illusionSnapshot || speciesAllowsDynamax(pokemon.illusionSpeciesId))
+}
+
 export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot = null) {
   if (!state || state.winner) return []
   if (!state.rules?.pvp && sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'easy') return []
@@ -5879,7 +5902,7 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
     available.push({ id: 'tera', label: `테라스탈 · ${getBattleTeraType(pokemon)}`, shortLabel: 'TERA' })
   }
 
-  if (!side.usedMechanics.dynamax && allow('dynamax')) {
+  if (!side.usedMechanics.dynamax && allow('dynamax') && pokemonAllowsDynamax(pokemon)) {
     available.push({
       id: 'dynamax',
       label: pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스',

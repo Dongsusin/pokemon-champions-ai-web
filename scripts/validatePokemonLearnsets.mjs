@@ -38,6 +38,25 @@ for (const profile of profiles) {
   }
 }
 
+// Evolution must retain Frillish's legal egg move through training, saved-team
+// normalization and battle construction, for both male and female profiles.
+const strengthSap = getMoveById('strengthsap')
+for (const slug of ['frillish', 'frillish-f', 'jellicent', 'jellicent-f']) {
+  const profile = profiles.find((candidate) => candidate.slug === slug)
+  const saved = { captureId: `learnset-validation-${slug}`, speciesId: profile?.id, moves: [strengthSap.name] }
+  const normalized = normalizePokemon(saved)
+  const battlePokemon = createBattlePreviewPokemon(normalized)
+  if (!profile || !canPokemonLearnMove(profile.id, strengthSap.name)
+    || normalized.moves[0] !== strengthSap.name || battlePokemon.moves[0]?.id !== strengthSap.id) {
+    failures.push(`${slug}: 합법적인 힘흡수가 트레이닝/저장/배틀에서 유지되지 않음`)
+  }
+}
+for (const speciesId of [25, 132, 321]) {
+  if (canPokemonLearnMove(speciesId, strengthSap.name)) {
+    failures.push(`${speciesId}: 힘흡수 보완이 관련 없는 포켓몬에 적용됨`)
+  }
+}
+
 const surf = getMoveById('surf')
 const transform = getMoveById('transform')
 const dittoPreview = createBattlePreviewPokemon({

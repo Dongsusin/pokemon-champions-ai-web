@@ -747,7 +747,11 @@ export function resolveMoveForPokemon(move, pokemon) {
 }
 
 const LEARNABLE_MOVES_BY_PROFILE_ID = new Map()
-const SUPPLEMENTAL_FORM_MOVE_IDS = new Map([
+const SUPPLEMENTAL_LEARNSET_MOVE_IDS = new Map([
+  // Jellicent retains Frillish's Gen 8 egg move after evolution. PokeAPI's
+  // per-species move lists omit it from Jellicent, including its female form.
+  // Source: pokemon-showdown/data/learnsets.ts, frillish.strengthsap (8E).
+  [593, ['strengthsap']],
   [10155, ['sunsteelstrike']],
   [10156, ['moongeistbeam']],
 ])
@@ -779,7 +783,9 @@ export function getLearnableMoves(speciesId) {
     : fallbackSpecies?.learnsetMoveIds ?? []
   const learnableMoves = [
     ...learnsetMoveIds.map((moveNumber) => MOVE_BY_NUMBER[moveNumber]),
-    ...(SUPPLEMENTAL_FORM_MOVE_IDS.get(profileId) ?? []).map((moveId) => MOVE_BY_ID[moveId]),
+    ...(SUPPLEMENTAL_LEARNSET_MOVE_IDS.get(profileId)
+      ?? SUPPLEMENTAL_LEARNSET_MOVE_IDS.get(fallbackSpecies?.id)
+      ?? []).map((moveId) => MOVE_BY_ID[moveId]),
   ].filter((move, index, moves) => (
     isBattleMoveSupported(move)
       && moves.findIndex((candidate) => candidate?.id === move.id) === index
