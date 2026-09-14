@@ -14,8 +14,15 @@ import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'scripts/.cache/empty-training-moves-ui')
 await fs.mkdir(output, { recursive: true })
-const collection = migratePokemonCollection([normalizePokemon({ speciesId: 6, captureId: 'dex-6', directDrawCount: 1 })])
+const collection = migratePokemonCollection([
+  normalizePokemon({ speciesId: 6, captureId: 'dex-6', directDrawCount: 1 }),
+  normalizePokemon({ speciesId: 9, captureId: 'dex-9', directDrawCount: 1 }),
+])
 const pokemon = getTrainingRosterPokemon(collection).find(entry => entry.speciesId === 6)
+const teamState = {
+  activeTeamId: 'team-1',
+  teams: [{ id: 'team-1', name: '팀 1', pokemonIds: [pokemon.captureId] }],
+}
 assert.equal(pokemon.moves.length, 4)
 const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
@@ -65,14 +72,15 @@ try {
   ]) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     const settings = createDefaultGameSettings(); settings.audio.enabled = false; settings.game.textScale = device.scale
-    await context.addInitScript(({ settings, collection, settingsKey }) => {
+    await context.addInitScript(({ settings, collection, settingsKey, teamState }) => {
       if (sessionStorage.getItem('empty-training-moves-initialized')) return
       localStorage.setItem(settingsKey, JSON.stringify(settings))
       localStorage.setItem('champions-dex-v2', JSON.stringify(collection))
+      localStorage.setItem('champions-teams-v1', JSON.stringify(teamState))
       localStorage.setItem('champions-draw-tutorial-v1', 'complete')
       localStorage.setItem('champions-vp-v1', '50000')
       sessionStorage.setItem('empty-training-moves-initialized', 'true')
-    }, { settings, collection, settingsKey: SETTINGS_STORAGE_KEY })
+    }, { settings, collection, settingsKey: SETTINGS_STORAGE_KEY, teamState })
     await context.route(/^https:\/\//, route => {
       if (route.request().resourceType() === 'image') return route.fulfill({ contentType: 'image/gif', body: sprite })
       blockedRequests.push(route.request().url()); return route.abort()
@@ -99,6 +107,18 @@ try {
     }
     await page.goto(`http://127.0.0.1:${port}/empty-training-moves.html`)
     await openTraining()
+
+    await check(`${device.id}: current-team filter shows only the active team's Pokemon`, async () => {
+      const rosterCards = page.locator('.training-roster-card')
+      assert.equal(await rosterCards.count(), 2)
+      const teamFilter = page.getByRole('button', { name: '팀 1에 편성된 포켓몬만 보기', exact: true })
+      await activate(teamFilter)
+      assert.equal(await rosterCards.count(), 1)
+      assert.match(await rosterCards.first().getAttribute('aria-label'), /리자몽/)
+      assert.equal(await teamFilter.getAttribute('aria-pressed'), 'true')
+      await activate(teamFilter)
+      assert.equal(await rosterCards.count(), 2)
+    })
 
     const dialog = page.getByRole('dialog', { name: '배울 수 있는 기술', exact: true })
     const clearChoice = () => dialog.getByRole('button', { name: '빈 기술로 설정', exact: true })
