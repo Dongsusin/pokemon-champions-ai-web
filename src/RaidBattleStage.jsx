@@ -1,9 +1,13 @@
 import {
+  Clock3,
   Crown,
+  Flag,
   Settings,
   UsersRound,
   Volume2,
   VolumeX,
+  Wifi,
+  WifiOff,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
 import {
@@ -18,7 +22,7 @@ import {
   TeraTypeJewel,
 } from './BattleScreen'
 import { activeRaidActors, normalizeRaidActor } from './data/raidCommandView'
-import { RAID_FORM_MANIFEST } from './data/raidRules'
+import { RAID_FORM_MANIFEST } from './data/raidCatalog'
 import './raidBattleStage.css'
 
 const WEATHER_LABELS = Object.freeze({
@@ -84,6 +88,18 @@ function isPreludePhase(raid, battle) {
 function actorSlot(actor, fallback) {
   const slot = finite(actor?.slot ?? actor?.slotId, fallback)
   return Math.max(0, Math.min(2, Math.trunc(slot)))
+}
+
+function isMainBoss(actor, raid, battle) {
+  const primaryId = raid?.primaryBossId ?? battle?.raid?.primaryBossId ?? raid?.battle?.raid?.primaryBossId ?? raid?.bossActorId
+  const id = actor?.battleId ?? actor?.actorId
+  return Boolean(actor?.isBoss || actor?.raidBoss || actor?.boss || (primaryId && id === primaryId))
+}
+
+function remainingTime(seconds) {
+  if (seconds == null) return '—'
+  const value = Math.max(0, Math.floor(finite(seconds)))
+  return Math.floor(value / 60) + ':' + String(value % 60).padStart(2, '0')
 }
 
 function raidFormVisual(actor, side) {
@@ -222,6 +238,11 @@ export default function RaidBattleStage({
   onToggleSound,
   onOpenSettings,
   bossHud = null,
+  connected = true,
+  busy = false,
+  secondsLeft = null,
+  statusText = '',
+  onWithdraw,
 }) {
   const allies = activeRaidActors(battle, 'player').slice(0, 3).map(normalizeRaidActor)
   const enemies = activeRaidActors(battle, 'opponent').slice(0, 3).map(normalizeRaidActor)
@@ -229,6 +250,7 @@ export default function RaidBattleStage({
   const turn = Math.max(1, Math.trunc(finite(battle?.turn ?? raid?.turnNumber ?? raid?.turn, 1)))
   const participantCount = asArray(raid?.participants).filter(participant => !participant?.withdrawn).length
   const isPrelude = isPreludePhase(raid, battle)
+  const hasCentralBoss = Boolean(bossHud && enemies.some(actor => isMainBoss(actor, raid, battle)))
   const sceneClass = [
     'battle-arena',
     'raid-standard-battle-arena',
@@ -248,6 +270,10 @@ export default function RaidBattleStage({
           <small>TURN</small>
           <strong>{turn}</strong>
         </div>
+        <div className={'raid-header-status' + (connected ? '' : ' is-disconnected')} role="status" title={statusText}>
+          {connected ? <Wifi size={15} aria-hidden="true" /> : <WifiOff size={15} aria-hidden="true" />}
+          <span>{statusText}</span>
+        </div>
         <div className="battle-header-cluster">
           <div className="battle-rule-hud" aria-label="현재 보스전 필드 규칙">
             <BattleRuleBadge
@@ -262,13 +288,13 @@ export default function RaidBattleStage({
               label={rules.terrain.label + turnSuffix(rules.terrain.turns)}
               description={rules.terrain.label + ' 효과가 현재 전장에 적용됩니다.'}
             />
-            <BattleRuleBadge
-              id="raid-format"
-              category="배틀"
-              label="3인 협동"
-              description="각 트레이너는 자신의 포켓몬 한 마리로 보스전의 같은 턴에 행동합니다."
-            />
           </div>
+          <div className="raid-header-deadline" aria-label={'남은 행동 시간 ' + remainingTime(secondsLeft)}>
+            <Clock3 size={14} aria-hidden="true" /><b>{remainingTime(secondsLeft)}</b>
+          </div>
+          <button className="raid-header-withdraw" type="button" disabled={busy || !connected} onClick={onWithdraw}>
+            <Flag size={14} aria-hidden="true" /><span>기권</span>
+          </button>
           <div className="battle-header-actions">
             <span><UsersRound size={14} /> {participantCount || allies.length || 1}인 협동</span>
             <button type="button" aria-label={soundEnabled ? '배틀 사운드 끄기' : '배틀 사운드 켜기'} onClick={onToggleSound}>
@@ -286,15 +312,17 @@ export default function RaidBattleStage({
       >
         {(bossHud || participantCount) && <div className="raid-standard-boss-hud" aria-label="보스 상태">
           {bossHud}
+          {hasCentralBoss && <RaidPartyIndicators actors={enemies} side="opponent" />}
           <RaidParticipantStrip participants={raid?.participants} raid={raid} />
         </div>}
 
         {enemies.map((actor, index) => {
+          if (bossHud && isMainBoss(actor, raid, battle)) return null
           const slot = actorSlot(actor, index)
           return (
             <div className={stageStatusClassName('opponent', actor, cue, slot)} key={'opponent-status-' + (actor.battleId ?? slot)}>
               <BattleStatusPanel pokemon={actor} side="opponent" trainerName={actorOwnerLabel(actor, 'opponent')} publicView={false} />
-              {index === 0 && <RaidPartyIndicators actors={enemies} side="opponent" />}
+              {index === 0 && !hasCentralBoss && <RaidPartyIndicators actors={enemies} side="opponent" />}
             </div>
           )
         })}

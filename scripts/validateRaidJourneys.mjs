@@ -82,11 +82,8 @@ for (const [bossId, [speciesId, moveIds]] of Object.entries(loadouts)) for (cons
       time += 11_000
       const views = await Promise.all(identities.map((_, i) => request(i, 'status')))
       for (const view of views) assert.deepEqual(summary(view.raid.battle), summary(views[0].raid.battle), 'All member projections must share HP/forms/turn')
-      if (snapshot.raid.lifecycle === 'intermission') {
-        snapshot = await request(0, 'raidAdvance', { raidId, decisionToken: snapshot.raid.decisionToken })
-        stages.add(snapshot.raid.phase)
-        continue
-      }
+      stages.add(views[0].raid.phase)
+      assert.notEqual(views[0].raid.lifecycle, 'intermission', 'The boss stage starts without a manual advance request')
       const stored = await store.transaction(tx => tx.get('raidRuns', raidId))
       stored.battle.raid.firedMechanics.forEach(gate => seenGates.add(gate))
       // Recreate the service during a real run, preserving only persisted DB

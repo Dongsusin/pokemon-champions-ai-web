@@ -42,7 +42,7 @@ export function sanitizeRaidPresentation(input) {
   if (input.rules) result.rules = { weather: publicRule(input.rules.weather), terrain: publicRule(input.rules.terrain) }
   if (input.environment) result.environment = pick(input.environment, RAID_PRESENTATION_ENVIRONMENT_FIELDS)
   if (input.raid) {
-    result.raid = pick(input.raid, ['phase', 'primaryBossId', 'enraged', 'crossedGates', 'firedMechanics'])
+    result.raid = pick(input.raid, ['phase', 'primaryBossId', 'enraged'])
     if (input.raid.weatherLock === null) result.raid.weatherLock = null
     else if (input.raid.weatherLock) result.raid.weatherLock = pick(input.raid.weatherLock, ['id', 'duration', 'suppressionAllowed', 'suppressed'])
   }
@@ -67,7 +67,7 @@ export function captureRaidPresentation(state, { reset = false } = {}) {
     actors: Object.fromEntries(actors.map(actor => [actor.actorId, actor])),
     rules: { weather: publicRule(state.rules?.weather), terrain: publicRule(state.rules?.terrain) },
     environment: Object.fromEntries(RAID_PRESENTATION_ENVIRONMENT_FIELDS.map(key => [key, state.environment?.[key] ?? null])),
-    raid: { ...pick(state.raid, ['phase', 'primaryBossId', 'crossedGates', 'firedMechanics']),
+    raid: { ...pick(state.raid, ['phase', 'primaryBossId']),
       enraged: Boolean(state.raid.enraged), weatherLock: state.raid.weatherLock ? pick(state.raid.weatherLock, ['id', 'duration', 'suppressionAllowed']) : null },
     logSequence: state.raid.presentationLogSequence ?? 0,
   }

@@ -419,18 +419,7 @@ async function playUntil(predicate, label, maxTurns = 16) {
   for (let turn = 0; turn < maxTurns; turn += 1) {
     const current = await status()
     if (predicate(current)) return current
-    if (current.raid?.lifecycle === 'intermission') {
-      try {
-        const next = await apiRequest(players[0], 'raidAdvance', {
-          raidId: current.raid.id,
-          decisionToken: current.raid.decisionToken,
-        })
-        if (predicate(next)) return next
-      } catch (error) {
-        if (error?.code !== 'STALE_DECISION' && error?.code !== 'WRONG_PHASE') throw error
-      }
-      continue
-    }
+    assert.notEqual(current.raid?.lifecycle, 'intermission', 'A new raid must automatically continue to the boss stage')
     // Reset the HTTP test bucket between full server-authoritative turns while
     // staying well inside the real command deadline.
     clock += 10_001
@@ -657,21 +646,22 @@ try {
     assert(Number.isInteger(commands[0].moveIndex))
   })
 
-  await check('the real server reaches the stage-two gate and the UI advances it', async () => {
-    const intermission = await playUntil(snapshot => snapshot.raid?.lifecycle === 'intermission', 'stage one intermission')
-    assert.equal(intermission.raid.stage, 1)
+  await check('the real server automatically starts stage two without an advance button', async () => {
+    const bossStage = await playUntil(snapshot => snapshot.raid?.stage === 2, 'automatic boss-stage transition')
+    assert.equal(bossStage.raid.lifecycle, 'input')
     await host.page.setViewportSize({ width: 844, height: 390 })
     await reopenRaid(host)
-    await host.page.locator('.raid-intermission-screen').waitFor()
-    await capture(host, '844x390-intermission', ['.raid-intermission-screen > section', '.raid-intermission-party', '.raid-intermission-screen .raid-primary'])
-    await host.page.getByRole('button', { name: '본 보스전 시작', exact: true }).click()
     await host.page.locator('.raid-battle-screen').waitFor()
+    await host.page.locator('.raid-boss-hp').waitFor()
+    assert.equal(await host.page.getByRole('button', { name: '본 보스전 시작', exact: true }).count(), 0)
+    assert.equal(await host.page.locator('.raid-online-bar').count(), 0)
+    await capture(host, '844x390-auto-boss-stage', ['.battle-game-header', '.raid-standard-boss-hud .raid-boss-hp', '.raid-standard-commands'])
     const afterAdvance = await status(host)
     assert.equal(afterAdvance.raid.stage, 2)
     assert.equal(afterAdvance.raid.lifecycle, 'input')
   })
 
-  await check('stage-two 50 percent form and four-segment boss HP render from the safe engine projection', async () => {
+  await check('the current boss form and a single continuous boss HP bar render without pattern hints', async () => {
     const armored = await playUntil(snapshot => bossActor(snapshot)?.raidForm === 'armored', 'armored Mewtwo 50% gate', 18)
     assert.equal(armored.raid.battle.raid.phase, 2)
     const agreed = await reloadAndCompareBattleViews('armored-mewtwo-refresh')
@@ -679,7 +669,8 @@ try {
     await capture(host, '844x390-armored-gate', ['.battle-game-header', '.raid-standard-battle-arena', '.raid-standard-commands'])
     await charlie.page.locator('.battle-pokemon-stage.opponent.raid-form-armored').waitFor()
     await capture(charlie, '932x430-armored-gate', ['.raid-standard-boss-hud .raid-boss-hp', '.battle-pokemon-stage.opponent.raid-form-armored', '.raid-standard-commands'])
-    assert.equal(await charlie.page.locator('.raid-boss-hp-track > b').count(), 3)
+    assert.equal(await charlie.page.locator('.raid-boss-hp').count(), 1)
+    assert.equal(await charlie.page.locator('.raid-boss-hp-track > b, .raid-boss-mechanics, .raid-boss-gates').count(), 0)
   })
 
   await check('a terminal result survives reconnect, displays the server VP, and dismisses without restoring the old raid', async () => {

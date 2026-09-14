@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeft, Check, ChevronRight, Clock3, Crown, Flag, HeartPulse, KeyRound,
+  ArrowLeft, Check, ChevronRight, Crown, Flag, HeartPulse, KeyRound,
   Info, LoaderCircle, LockKeyhole, Play, Plus, RefreshCw, Shield, Sparkles, Swords,
   UsersRound, Wifi, WifiOff, X, ScrollText,
 } from 'lucide-react'
@@ -10,7 +10,7 @@ import BattleItemSprite from './BattleItemSprite'
 import FactoryInfoTooltip from './FactoryInfoTooltip'
 import { firebaseAuth } from './auth/firebaseClient'
 import { createBattleAudio } from './battleAudio'
-import { RAID_BOSSES } from './data/raidRules'
+import { RAID_BOSS_CATALOG as RAID_BOSSES } from './data/raidCatalog'
 import { getAbility, getMove, getSpeciesProfile, typeClassName } from './data/trainingData'
 import { getBattleItem } from './data/shopData'
 import { createRaidClient, createRaidRequestId, isRaidEnabled, isRaidLocalTest } from './raidClient'
@@ -37,7 +37,6 @@ const timeValue = value => typeof value === 'number' ? value : Date.parse(value)
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value ?? {}, key)
 const actorId = (actor, fallback) => String(actor?.actorId ?? actor?.battleId ?? actor?.id ?? actor?.slotId ?? fallback ?? '')
 const asArray = value => Array.isArray(value) ? value : []
-const clockText = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, '0')}`
 
 function hpTransitionDuration(speed) {
   if (speed === 'instant') return 0
@@ -286,7 +285,6 @@ function BossCard({ boss, selected, onClick }) {
     <span className="raid-boss-card-number">0{RAID_BOSSES.findIndex(entry => entry.id === boss.id) + 1}</span>
     <SpriteImage src={boss.spriteFront ?? profile?.spriteFront} fallbackSrc={boss.spriteFrontFallback ?? profile?.spriteFrontFallback} alt="" draggable="false" />
     <small>CO-OP BOSS RAID</small><h2>{boss.name}</h2><p>{boss.subtitle}</p>
-    <span className="raid-boss-gates">{Object.entries(boss.gates ?? {}).sort(([left], [right]) => Number(right) - Number(left)).map(([gate, label]) => <span key={gate}><b>{gate}%</b>{label}</span>)}</span>
     <strong>도전 준비 <ChevronRight size={18} /></strong>
   </>
   return onClick ? <button type="button" className={`raid-boss-card${selected ? ' selected' : ''}`} style={{ '--boss-color': color }} onClick={onClick}>{contents}</button>
@@ -316,25 +314,13 @@ function RaidActor({ actor, side, own = false, npc = false, boss = false, submit
   </article>
 }
 
-function RaidBossHp({ actor, raid, hpTransitionMs }) {
+function RaidBossHp({ actor, hpTransitionMs }) {
   const hp = actorHp(actor)
   const label = actorName(actor, '보스')
-  const raidView = raid?.battle?.raid ?? raid
-  const vitality = actor?.raidVitalityStage ?? raidView?.vitalityStage
-  const enrage = actor?.enraged ?? raidView?.enraged
-  const weatherLock = raidView?.weatherLock
-  const rain = weatherLock?.id === 'rain' || weatherLock === 'rain'
-  const suppressed = Boolean(weatherLock?.suppressed ?? weatherLock?.isSuppressed ?? weatherLock?.effectSuppressed)
-  const fired = new Set(asArray(raidView?.firedMechanics).map(value => String(value)))
-  const gates = RAID_BOSSES.find(entry => entry.id === (raid?.bossId ?? raidView?.bossId))?.gates ?? {}
   return <section className="raid-boss-hp" aria-label={`${label} HP`}>
-    <header><span><Crown size={17} /> FINAL BOSS</span><strong>{label}</strong><small>{vitality ? `생명력 ${vitality}단계` : '본체 HP 보호 적용'}</small></header>
-    <div className="raid-boss-hp-track" style={hpTransitionMs === undefined ? undefined : { '--raid-hp-transition': `${hpTransitionMs}ms` }}><i style={{ width: `${hp.percent}%` }} />{[25, 50, 75].map(value => <b key={value} style={{ left: `${value}%` }}><span>{value}%</span></b>)}</div>
-    <footer><span>{Math.ceil(hp.hp).toLocaleString()} / {Math.ceil(hp.maxHp).toLocaleString()} HP</span><span>{enrage && '격노 · 2회 공격'}{rain && `${enrage ? ' · ' : ''}${suppressed ? '고정 비 · 효과 일시 무효' : '고정 비'}`}</span></footer>
-    {(Object.keys(gates).length > 0 || actorStatStages(actor).length > 0) && <div className="raid-boss-mechanics" aria-label="보스 HP 구간 기믹과 능력 변화">{Object.entries(gates).sort(([left], [right]) => Number(right) - Number(left)).map(([threshold, mechanic]) => {
-      const active = fired.has(threshold) || fired.has(`gate-${threshold}`) || fired.has(String(mechanic)) || (Number(threshold) === 25 && enrage)
-      return <span className={active ? 'active' : ''} key={threshold}><b>{threshold}%</b>{mechanic}</span>
-    })}<StatStageBadges actor={actor} className="boss-stat-stages" /></div>}
+    <header><span><Crown size={17} /> FINAL BOSS</span><strong>{label}</strong></header>
+    <div className="raid-boss-hp-track" style={hpTransitionMs === undefined ? undefined : { '--raid-hp-transition': `${hpTransitionMs}ms` }}><i style={{ width: `${hp.percent}%` }} /></div>
+    <footer><span>{Math.max(0, Math.ceil(hp.hp)).toLocaleString()} / {Math.ceil(hp.maxHp).toLocaleString()} HP</span><span>{Math.ceil(hp.percent)}%</span></footer>
   </section>
 }
 
@@ -429,28 +415,11 @@ function RaidRoomLobby({ room, boxPokemon, selectedCaptureId, onPick, onReady, o
   </main>
 }
 
-function RaidIntermission({ raid, battle, busy, connected, onAdvance, onWithdraw, error, onRefresh }) {
-  const allies = activeActors(battle, 'ally')
-  const nextBoss = RAID_BOSSES.find(entry => entry.id === raid?.bossId)
-  return <main className="raid-intermission-screen">
-    <section>
-      <span className="raid-intermission-emblem"><Shield size={38} /></span>
-      <small>STAGE 1 CLEAR · CO-OP BOSS RAID</small>
-      <h1>전초전을 돌파했습니다!</h1>
-      <p>{nextBoss?.name ?? '보스'}가 모습을 드러내기 전에 파트너들이 전투를 정비합니다.</p>
-      <div className="raid-intermission-party">{allies.map((actor, index) => <RaidActor key={actorId(actor, index)} actor={actor} side="ally" own={actorId(actor) === String(raid?.ownActorId)} npc={Boolean(actor?.isNpc)} />)}</div>
-      <p className="raid-intermission-rule">본 보스전은 같은 포켓몬으로 진행하며 HP·PP·상태와 전장이 초기화됩니다. 각 참가자는 단계마다 기믹을 한 번 사용할 수 있습니다.</p>
-      {error && <div className="raid-notice error" role="alert">{error}<button type="button" onClick={onRefresh}><RefreshCw size={14} /> 다시 연결</button></div>}
-      <div><button className="raid-secondary" type="button" disabled={busy} onClick={onWithdraw}><Flag size={16} /> 철수</button><button className="raid-primary" type="button" disabled={busy || !connected} onClick={onAdvance}><Crown size={17} /> 본 보스전 시작</button></div>
-    </section>
-  </main>
-}
-
 function RaidWithdrawDialog({ busy, connected, onClose, onWithdraw }) {
   return <div className="raid-picker-backdrop"><section className="raid-room-dialog raid-withdraw-dialog" role="alertdialog" aria-modal="true" aria-labelledby="raid-withdraw-title"><Flag size={28} /><h2 id="raid-withdraw-title">이번 보스전에서 철수할까요?</h2><p>남은 참가자들은 전투를 계속할 수 있습니다.</p><div><button type="button" className="raid-secondary" onClick={onClose}>계속 대전</button><button type="button" className="raid-primary" disabled={busy || !connected} onClick={onWithdraw}>철수하기</button></div></section></div>
 }
 
-function RaidBattle({ raid, result, playback, replayPending, busy, connected, secondsLeft, onSubmit, onRevoke, onWithdraw, onAdvance, error, onRefresh, soundEnabled, audioSettings, gameSettings = {}, onToggleSound, onOpenSettings }) {
+function RaidBattle({ raid, result, playback, replayPending, busy, connected, secondsLeft, onSubmit, onRevoke, onWithdraw, error, onRefresh, soundEnabled, audioSettings, gameSettings = {}, onToggleSound, onOpenSettings }) {
   const battle = playback.raidId === raid.id ? playback.battle ?? raid.battle : raid.battle
   const allies = activeActors(battle, 'ally')
   const enemies = activeActors(battle, 'enemy')
@@ -504,20 +473,20 @@ function RaidBattle({ raid, result, playback, replayPending, busy, connected, se
       .finally(() => { attempt.pending = false })
   }, [canAct, raid.decisionToken, battle.forcedAction])
   const waitText = !connected ? '연결을 복구하고 있습니다.' : busy ? '행동을 전송하고 있습니다.'
+    : raid.lifecycle === 'intermission' ? '보스전으로 이어지고 있습니다.'
     : submitted ? '다른 참가자가 행동을 선택하고 있습니다.' : secondsLeft === 0 ? '행동 시간이 끝났습니다. 전투 진행을 기다려 주세요.'
       : ownActor?.fainted ? '내 포켓몬이 쓰러졌습니다. 동료의 전투를 지켜보세요.' : '이번 턴의 행동을 선택하세요.'
   const withdrawDialog = confirmWithdraw && <RaidWithdrawDialog busy={busy} connected={connected} onClose={() => setConfirmWithdraw(false)} onWithdraw={onWithdraw} />
-  if (raid.lifecycle === 'intermission' && !playing) return <><RaidIntermission raid={raid} battle={battle} busy={busy} connected={connected} onAdvance={onAdvance} onWithdraw={() => setConfirmWithdraw(true)} error={error} onRefresh={onRefresh} />{withdrawDialog}</>
   const latestEvent = playback.events?.at(-1)
   const currentMessage = cue?.message ?? battle.log?.at(-1)?.message ?? latestEvent?.message ?? waitText
   const history = asArray(battle.log).slice(-14).filter((entry, index, list) => index !== list.length - 1 || entry.message !== currentMessage)
   const turn = Math.max(1, cue?.turn ?? battle.turn ?? raid.turnNumber ?? 1)
   return <main className={`battle-game-screen raid-battle-screen raid-standard-battle cue-${cue?.phase ?? 'command'}${reducedMotion ? ' reduce-motion' : ''}`} style={{ '--battle-hp-duration': `${hpTransitionMs}ms`, '--raid-hp-transition': `${hpTransitionMs}ms` }}>
-    <div className="raid-online-bar" role="status"><span>{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{playing ? '배틀 진행 중' : waitText}</span><div><Clock3 size={14} /><b>{secondsLeft === null ? '—' : clockText(secondsLeft)}</b><button type="button" disabled={busy} onClick={() => setConfirmWithdraw(true)}><Flag size={14} /> 기권</button></div></div>
     {error && <div className="raid-notice error" role="alert">{error}<button type="button" onClick={onRefresh}><RefreshCw size={14} /> 다시 연결</button></div>}
     <RaidBattleStage battle={{ ...battle, turn }} raid={displayRaid} cue={cue} animationMode={reducedMotion ? 'skip' : animationMode} hpTransitionMs={hpTransitionMs}
+      connected={connected} busy={busy} secondsLeft={secondsLeft} statusText={playing ? '배틀 진행 중' : waitText} onWithdraw={() => setConfirmWithdraw(true)}
       soundEnabled={soundEnabled} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} showDamageNumbers={gameSettings.showDamageNumbers !== false}
-      bossHud={boss && <RaidBossHp actor={boss} raid={displayRaid} hpTransitionMs={hpTransitionMs} />} />
+      bossHud={boss && <RaidBossHp actor={boss} hpTransitionMs={hpTransitionMs} />} />
     <section className="battle-command-deck">
       <aside className="battle-log-panel"><header><span><ScrollText size={15} /> 배틀 로그</span><strong>TURN {turn}</strong></header><div className="battle-log-body"><div className="battle-log-scroll" ref={logRef} aria-label="배틀 로그" aria-live="polite">
         {history.map((entry, index) => <p className={`tone-${entry.tone ?? 'neutral'}`} key={`${index}-${entry.message}`}>{entry.message}</p>)}
@@ -919,7 +888,6 @@ export default function RaidScreen({
   if (battleVisible) return <RaidBattle playback={playback} replayPending={replayPending} raid={snapshot.raid} result={result} busy={busy} connected={connected} secondsLeft={secondsLeft} error={error || refreshError}
     onRefresh={() => refreshRef.current?.()} onRevoke={() => fire('raidRevoke', { raidId: snapshot.raid.id, revision: snapshot.raid.revision, decisionToken: snapshot.raid.decisionToken, commandVersion: snapshot.raid.ownCommandVersion })}
     onWithdraw={() => fire('raidWithdraw', { raidId: snapshot.raid.id })}
-    onAdvance={() => fire('raidAdvance', { raidId: snapshot.raid.id, decisionToken: snapshot.raid.decisionToken })}
     onSubmit={command => fire('raidSubmit', { raidId: snapshot.raid.id, revision: snapshot.raid.revision, decisionToken: snapshot.raid.decisionToken, commandVersion: (snapshot.raid.ownCommandVersion ?? 0) + 1, command })}
     soundEnabled={soundEnabled} gameSettings={gameSettings} audioSettings={audioSettings} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} />
   if (snapshot.room) return <>

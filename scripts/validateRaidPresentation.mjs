@@ -6,6 +6,19 @@ import { normalizePokemon, getLearnableMoves, getMoveById } from '../src/data/tr
 import { applyRaidPresentation, captureRaidPresentation, sanitizeRaidPresentation, stampRaidPresentationLog } from '../src/data/raidPresentation.js'
 import { createRaidCommandBattle } from '../src/data/raidCommandView.js'
 import { raidEvent, beginRaidDamageRoot, applyBattleHpLoss, finishRaidDamageRoot } from '../src/data/raidPolicy.js'
+import { RAID_BOSS_CATALOG } from '../src/data/raidCatalog.js'
+import { RAID_BOSSES } from '../src/data/raidRules.js'
+
+test('selection catalog contains only public identity metadata while encounter presets retain their legal move sets', () => {
+  assert.deepEqual(RAID_BOSS_CATALOG.map(boss => boss.id), ['mewtwo', 'hooh', 'lugia'])
+  for (const boss of RAID_BOSS_CATALOG) {
+    assert.deepEqual(Object.keys(boss).sort(), ['id', 'name', 'speciesId', 'subtitle'])
+    const rules = RAID_BOSSES.find(entry => entry.id === boss.id)
+    for (const key of Object.keys(boss)) assert.equal(rules[key], boss[key])
+    assert.equal(rules.moves.length, 4)
+    assert.equal(rules.stageOne.length, 3)
+  }
+})
 
 const owner = index => `private-presentation-owner-${index}`
 function fixture(speciesId, ids) {
@@ -126,7 +139,7 @@ test('charging and recharging expose authoritative forced actions accepted witho
   }
 })
 
-test('boss gate frames preserve HP ratio, transformed identity and raid additions separately', () => {
+test('boss frames retain actual HP, forms and stat changes without exposing mechanic thresholds', () => {
   const state = fixture(150, ['psychic', 'aurasphere', 'recover', 'protect'])
   state.raid.phase = 2
   state.raid.primaryBossId = state.opponent.team[0].battleId
@@ -144,7 +157,13 @@ test('boss gate frames preserve HP ratio, transformed identity and raid addition
   assert.equal(shown.opponent.team[0].name, '아머드 뮤츠')
   assert.equal(shown.opponent.team[0].hp / shown.opponent.team[0].maxHp, 0.5)
   assert.equal(shown.opponent.team[0].raidForm, 'armored')
-  assert.deepEqual(shown.raid.firedMechanics, [50])
+  assert.equal(shown.opponent.team[0].statStages.attack, 1)
+  assert(!Object.hasOwn(shown.raid, 'crossedGates'))
+  assert(!Object.hasOwn(shown.raid, 'firedMechanics'))
+  const current = getRaidBattleView(state, owner(0))
+  assert(!Object.hasOwn(current.raid, 'crossedGates'))
+  assert(!Object.hasOwn(current.raid, 'firedMechanics'))
+  assert(current.log.some(entry => entry.message.includes('갑옷을 장착했다')), 'Actual battle events still explain the visible transformation')
 })
 
 test('presentation sanitizer rejects private state and caps actors, logs and removals', () => {
@@ -153,6 +172,7 @@ test('presentation sanitizer rejects private state and caps actors, logs and rem
   frame.state = { secret: 'hidden-state' }
   frame.actors[0].raidOwnerId = 'hidden-owner'
   frame.actors[0].moves = [{ name: 'hidden-move' }]
+  frame.raid = { ...frame.raid, crossedGates: [75, 50], firedMechanics: [50], pendingGates: [25], gates: { 25: 'hidden-pattern' }, summonPool: ['hidden-summon'], reviveOrder: [2, 1, 0] }
   frame.actors = [...frame.actors, ...frame.actors]
   frame.logs = Array.from({ length: 100 }, () => ({ message: '공개', tone: 'normal', command: 'hidden-command' }))
   frame.removedActorIds = Array.from({ length: 20 }, (_, index) => `removed-${index}`)
@@ -160,7 +180,8 @@ test('presentation sanitizer rejects private state and caps actors, logs and rem
   assert.equal(safe.actors.length, 6)
   assert.equal(safe.logs.length, 32)
   assert.equal(safe.removedActorIds.length, 6)
-  for (const secret of ['hidden-state', 'hidden-owner', 'hidden-move', 'hidden-command', owner(0)]) assert(!JSON.stringify(safe).includes(secret))
+  for (const secret of ['hidden-state', 'hidden-owner', 'hidden-move', 'hidden-command', 'hidden-pattern', 'hidden-summon', owner(0)]) assert(!JSON.stringify(safe).includes(secret))
+  for (const key of ['crossedGates', 'firedMechanics', 'pendingGates', 'gates', 'summonPool', 'reviveOrder']) assert(!Object.hasOwn(safe.raid, key))
   assert(!JSON.stringify(getRaidBattleView(state, owner(0))).includes('presentationFrame'))
 })
 

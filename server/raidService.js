@@ -311,7 +311,6 @@ function catalogFromEngine(engine) {
     name: boss.name,
     subtitle: boss.subtitle,
     speciesId: boss.speciesId,
-    gates: clone(boss.gates ?? {}),
   }))
 }
 
@@ -328,7 +327,7 @@ function publicEvents(view) {
   return events.slice(-MAX_PUBLIC_EVENTS).map(event => {
     if (!isPlain(event)) return null
     const result = {}
-    for (const key of ['id', 'kind', 'type', 'message', 'turn', 'phase', 'cuePhase', 'actorId', 'targetActorId', 'targetIds', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'moveTarget', 'movePriority', 'moveMultihit', 'moveDrain', 'moveRecoil', 'moveStatus', 'moveSelfdestruct', 'moveFlags', 'moveDescription', 'moveGeneration', 'animationType', 'animationVariant', 'animationVariantKey', 'animationReferenceKey', 'gimmickId', 'mechanicId', 'mechanicLabel', 'mechanicType', 'mechanicMode', 'actorPreviousName', 'spriteBeforeFront', 'spriteBeforeBack', 'spriteBeforeFrontFallback', 'spriteBeforeBackFallback', 'spriteAfterFront', 'spriteAfterBack', 'spriteAfterFrontFallback', 'spriteAfterBackFallback', 'formSourceName', 'result', 'damage', 'critical', 'effectiveness', 'hitIndex', 'hitCount', 'hp', 'maxHp', 'form', 'gate', 'outcome', 'requested', 'applied', 'rootId', 'sideId']) {
+    for (const key of ['id', 'kind', 'type', 'message', 'turn', 'phase', 'cuePhase', 'actorId', 'targetActorId', 'targetIds', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'moveTarget', 'movePriority', 'moveMultihit', 'moveDrain', 'moveRecoil', 'moveStatus', 'moveSelfdestruct', 'moveFlags', 'moveDescription', 'moveGeneration', 'animationType', 'animationVariant', 'animationVariantKey', 'animationReferenceKey', 'gimmickId', 'mechanicId', 'mechanicLabel', 'mechanicType', 'mechanicMode', 'actorPreviousName', 'spriteBeforeFront', 'spriteBeforeBack', 'spriteBeforeFrontFallback', 'spriteBeforeBackFallback', 'spriteAfterFront', 'spriteAfterBack', 'spriteAfterFrontFallback', 'spriteAfterBackFallback', 'formSourceName', 'result', 'damage', 'critical', 'effectiveness', 'hitIndex', 'hitCount', 'hp', 'maxHp', 'form', 'outcome', 'requested', 'applied', 'rootId', 'sideId']) {
       if (event[key] !== undefined) result[key] = clone(event[key])
     }
     if (Array.isArray(event.changes)) result.changes = event.changes.slice(0, 12).map(change => {
@@ -1226,7 +1225,13 @@ export function createRaidService({
       return clone(run)
     })
     if (!base) return null
-    const nextBattle = clone(await requireEngine('resolveRaidTurn')(clone(base.battle), clone(base.resolution.commands), { seed: base.resolution.seed }))
+    const resolvedBattle = clone(await requireEngine('resolveRaidTurn')(clone(base.battle), clone(base.resolution.commands), { seed: base.resolution.seed }))
+    // Keep the final prelude cues and the reset presentation in the same
+    // deterministic result. The resolution CAS commits both stages once;
+    // clients replay that event order before enabling boss commands.
+    const nextBattle = requireEngine('getRaidOutcome')(resolvedBattle) === 'stage-cleared'
+      ? clone(await requireEngine('startRaidBossStage')(resolvedBattle, { seed: `${base.resolution.seed}:boss-stage` }))
+      : resolvedBattle
     const outcome = requireEngine('getRaidOutcome')(nextBattle)
     return transaction(identity, async tx => {
       const run = await loadRun(tx, claim.raidId)
@@ -1242,11 +1247,7 @@ export function createRaidService({
       run.commands = {}
       run.resolution = null
       run.updatedAt = timestamp
-      if (outcome === 'stage-cleared') {
-        run.lifecycle = 'intermission'
-        run.deadlineAt = null
-        run.decisionToken = `intermission_${run.phaseEpoch}_${run.revision}`
-      } else if (winnerFromOutcome(outcome)) {
+      if (winnerFromOutcome(outcome)) {
         await settleRun(tx, run, outcome, timestamp)
       } else {
         run.lifecycle = 'input'
@@ -1258,6 +1259,26 @@ export function createRaidService({
       saveRun(tx, run)
       return snapshot(tx, identity.uid, { timestamp })
     })
+  }
+
+  async function transitionLegacyIntermission(tx, run, timestamp, seed) {
+    if (run.lifecycle !== 'intermission') return false
+    const previousCursor = run.eventCursor
+    const battle = clone(await requireEngine('startRaidBossStage')(clone(run.battle), { seed }))
+    run.battle = battle
+    run.phase = Number(battle?.raid?.phase ?? battle?.phase ?? 2)
+    run.phaseEpoch = Number(battle?.raid?.phaseEpoch ?? run.phaseEpoch + 1)
+    run.turnNumber = Number(battle?.turn ?? 1)
+    run.lifecycle = 'input'
+    run.deadlineAt = timestamp + commandMs + playbackGraceMs
+    run.revision += 1
+    run.commands = {}
+    run.resolution = null
+    run.decisionToken = typeof battle?.raid?.decisionToken === 'string' ? battle.raid.decisionToken : nextDecisionToken(run)
+    run.updatedAt = timestamp
+    await persistEvents(tx, run, battle, previousCursor)
+    saveRun(tx, run)
+    return true
   }
 
   async function advanceStage(tx, identity, payload, timestamp, seed, resolutionId) {
@@ -1280,19 +1301,7 @@ export function createRaidService({
     if (payload.decisionToken !== undefined && payload.decisionToken !== decisionToken(run)) {
       fail('STALE_DECISION', '단계 전환 상태가 바뀌었습니다. 최신 상태를 불러와주세요.', 409)
     }
-    const previousCursor = run.eventCursor
-    const battle = clone(await requireEngine('startRaidBossStage')(clone(run.battle), { seed }))
-    run.battle = battle
-    run.phase = Number(battle?.raid?.phase ?? battle?.phase ?? 2)
-    run.phaseEpoch = Number(battle?.raid?.phaseEpoch ?? run.phaseEpoch + 1)
-    run.turnNumber = Number(battle?.turn ?? 1)
-    run.lifecycle = 'input'
-    run.deadlineAt = timestamp + commandMs
-    run.revision += 1
-    run.decisionToken = typeof battle?.raid?.decisionToken === 'string' ? battle.raid.decisionToken : nextDecisionToken(run)
-    run.updatedAt = timestamp
-    await persistEvents(tx, run, battle, previousCursor)
-    saveRun(tx, run)
+    await transitionLegacyIntermission(tx, run, timestamp, seed)
     return { run, claim: null }
   }
 
@@ -1365,6 +1374,7 @@ export function createRaidService({
       saveRun(tx, run)
       return null
     }
+    if (await transitionLegacyIntermission(tx, run, timestamp, seed)) return null
     const claim = claimResolution(run, timestamp, id, seed)
     // A duplicate mutation can still renew this caller's presence even when
     // the turn is not ready to resolve. Keep its compact header in sync.
@@ -1382,6 +1392,7 @@ export function createRaidService({
       saveRun(tx, run)
       return { run, claim: null }
     }
+    if (await transitionLegacyIntermission(tx, run, timestamp, seed)) return { run, claim: null }
     const claim = claimResolution(run, timestamp, resolutionId, seed)
     saveRun(tx, run)
     return { run, claim }

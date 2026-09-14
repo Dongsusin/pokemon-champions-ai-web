@@ -8,6 +8,7 @@ import * as raidEngine from '../server/raidBattle.js'
 import { RAID_RETENTION_MS } from '../server/raidRetention.js'
 import { RAID_DEFAULTS } from '../src/data/raidRules.js'
 import { getMoveById, normalizePokemon } from '../src/data/trainingData.js'
+import { createRaidBattlePlayback } from '../src/raidBattlePlayback.js'
 
 const clone = value => structuredClone(value)
 const READ_ACTIONS = new Set(['status', 'catalog', 'rooms', 'raidList'])
@@ -123,6 +124,120 @@ async function finishWinningRaid(env, { owner = 0 } = {}) {
   assert.equal(finished.result?.raidId, raidId)
   return { raidId, view: finished }
 }
+
+async function preparePreludeFinalTurn(env, raidId) {
+  await env.store.transaction(async tx => {
+    const run = await tx.get('raidRuns', raidId)
+    for (const [index, actor] of run.battle.opponent.team.entries()) {
+      actor.hp = index === 0 ? 1 : 0
+      actor.fainted = index !== 0
+    }
+    for (const actor of run.battle.player.team) {
+      actor.hp = Math.max(1, Math.floor(actor.maxHp / 2))
+      actor.status = 'brn'
+      actor.statStages.speed = 6
+      actor.moves[0].currentPp = 2
+      actor.usedBattleMechanicId = 'tera'
+    }
+    run.battle.raid.usedMechanicsByOwner = Object.fromEntries(env.users.slice(0, 3).map(user => [user.uid, true]))
+    tx.set('raidRuns', raidId, run)
+  })
+  return env.call(0, 'status', { raidId })
+}
+
+test('the real prelude final turn automatically enters the boss once for concurrent participants and retains replay order', async () => {
+  const env = fixture()
+  const { raidId } = await startRaid(env, [0, 1, 2])
+  const before = await preparePreludeFinalTurn(env, raidId)
+  const run = await env.store.transaction(tx => tx.get('raidRuns', raidId))
+  const command = { type: 'move', moveIndex: 0, targetActorId: run.battle.opponent.team[0].battleId }
+  const submit = { raidId, decisionToken: before.raid.decisionToken, commandVersion: 1, command }
+  await Promise.all([0, 1, 2].map(index => env.call(index, 'raidSubmit', submit)))
+  const after = await env.call(0, 'status', { raidId, eventCursor: before.raid.eventCursor })
+  assert.equal(after.raid.lifecycle, 'input')
+  assert.equal(after.raid.stage, 2)
+  assert.equal(after.raid.turnNumber, 1)
+  assert.notEqual(after.raid.decisionToken, before.raid.decisionToken)
+  assert.equal(after.raid.deadlineAt - env.now(), 60_000, 'The final prelude cues receive bounded playback grace')
+  const stored = await env.store.transaction(tx => tx.get('raidRuns', raidId))
+  assert.equal(stored.battle.raid.totalTurns, 1)
+  assert.equal(stored.battle.raid.phaseEpoch, 2)
+  assert.deepEqual(stored.commands, {})
+  assert.equal(stored.resolution, null)
+  assert.deepEqual(stored.battle.raid.usedMechanicsByOwner, {})
+  for (const actor of stored.battle.player.team) {
+    assert.equal(actor.hp, actor.maxHp)
+    assert(!actor.status)
+    assert(!actor.usedBattleMechanicId)
+    assert.equal(actor.statStages.speed, 0)
+    assert(actor.moves.every(move => move.currentPp === move.maxPp))
+  }
+  const transitionIndex = after.raid.events.findIndex(event => event.kind === 'stage-transition')
+  const faintIndex = after.raid.events.findIndex(event => event.kind === 'battle-cue' && event.cuePhase === 'faint')
+  assert(faintIndex >= 0 && transitionIndex > faintIndex, 'Final hit and faint cues come before boss presentation')
+  assert.equal(after.raid.events.filter(event => event.kind === 'stage-transition').length, 1)
+  assert.equal(after.raid.events[transitionIndex].presentation.resetActors, true)
+  const pending = [], frames = []
+  const playback = createRaidBattlePlayback({ publish: frame => frames.push(clone(frame)), duration: () => 1,
+    schedule: callback => { pending.push(callback); return pending.length }, unschedule: () => {} })
+  playback.receive(before.raid)
+  playback.receive(after.raid)
+  assert.equal(playback.getSnapshot().battle.raid.phase, 1, 'Authoritative boss arrival does not jump over the prelude replay')
+  while (pending.length) pending.shift()()
+  const faintFrame = frames.find(frame => frame.cue?.cuePhase === 'faint')
+  const bossFrame = frames.find(frame => frame.cue?.kind === 'stage-transition')
+  assert.equal(faintFrame.battle.raid.phase, 1)
+  assert.equal(bossFrame.battle.raid.phase, 2)
+  assert.equal(bossFrame.battle.opponent.team.length, 1)
+  playback.dispose()
+  const oldDecision = env.call(0, 'raidSubmit', { ...submit, commandVersion: 2 })
+  await rejectCode(oldDecision, 'STALE_DECISION')
+  await Promise.all([0, 1, 2].map(index => env.call(index, 'raidHeartbeat', { raidId })))
+  const reconnected = await env.call(2, 'status', { raidId })
+  assert.equal(reconnected.raid.stage, 2)
+  assert.equal(reconnected.raid.turnNumber, 1)
+  assert.equal(reconnected.raid.deadlineAt, after.raid.deadlineAt)
+  const eventRows = Object.values((await env.store.inspect()).collections.raidEvents)
+  assert.equal(eventRows.flatMap(row => row.events).filter(event => event.kind === 'stage-transition').length, 1)
+})
+
+test('legacy saved intermissions resume automatically through heartbeat without a stage button', async () => {
+  const env = fixture()
+  const { raidId } = await startRaid(env, [0, 1, 2])
+  await preparePreludeFinalTurn(env, raidId)
+  await env.store.transaction(async tx => {
+    const run = await tx.get('raidRuns', raidId)
+    run.battle.opponent.team.forEach(actor => { actor.hp = 0; actor.fainted = true })
+    run.lifecycle = 'intermission'
+    run.deadlineAt = null
+    tx.set('raidRuns', raidId, run)
+  })
+  await Promise.all([0, 1, 2].map(index => env.call(index, 'raidHeartbeat', { raidId })))
+  const resumed = await env.call(0, 'status', { raidId })
+  assert.equal(resumed.raid.lifecycle, 'input')
+  assert.equal(resumed.raid.stage, 2)
+  assert.equal(resumed.raid.turnNumber, 1)
+  assert.equal(resumed.raid.events.filter(event => event.kind === 'stage-transition').length, 1)
+})
+
+test('public catalog and event projections exclude legacy boss pattern thresholds', async () => {
+  const engine = { ...raidEngine, getRaidCatalog: () => raidEngine.RAID_BOSSES.map(boss => ({ ...boss, gates: { 50: 'unreleased boss pattern' } })) }
+  const env = fixture({ engine })
+  const catalog = await env.call(0, 'catalog')
+  assert.equal(JSON.stringify(catalog).includes('unreleased boss pattern'), false)
+  const { raidId } = await startRaid(env, [0])
+  await env.store.transaction(async tx => {
+    const run = await tx.get('raidRuns', raidId)
+    run.eventChunks = []
+    run.battle.raid.events.push({ id: `${raidId}:2`, kind: 'boss-mechanic', message: '뮤츠의 모습이 변했다.', gate: 50 })
+    tx.set('raidRuns', raidId, run)
+  })
+  const snapshot = await env.call(0, 'status', { raidId })
+  const event = snapshot.raid.events.find(entry => entry.kind === 'boss-mechanic')
+  assert(event)
+  assert.equal(event.gate, undefined)
+  assert.equal(event.message, '뮤츠의 모습이 변했다.', 'Already occurred battle effects remain visible')
+})
 
 test('private invite codes are server issued, hidden from listings, and persist per-user brute-force limits', async () => {
   const env = fixture()

@@ -179,7 +179,7 @@ export function getRaidBattleView(battle, ownerId) {
     environment: Object.fromEntries(RAID_PRESENTATION_ENVIRONMENT_FIELDS.filter(key => battle.environment?.[key] !== undefined).map(key => [key, structuredClone(battle.environment[key])])),
     raid: {
       raidId: battle.raid.raidId, bossId: battle.raid.bossId, phase: battle.raid.phase, phaseEpoch: battle.raid.phaseEpoch,
-      primaryBossId: battle.raid.primaryBossId, crossedGates: [...battle.raid.crossedGates], firedMechanics: [...battle.raid.firedMechanics],
+      primaryBossId: battle.raid.primaryBossId,
       enraged: Boolean(battle.raid.enraged),
       weatherLock: battle.raid.weatherLock ? { ...battle.raid.weatherLock, suppressed: getEffectiveBattleWeatherId(battle) !== 'rain' } : null,
       events: structuredClone(battle.raid.events), eventSequence: battle.raid.eventSequence,
