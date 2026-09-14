@@ -752,6 +752,9 @@ const SUPPLEMENTAL_LEARNSET_MOVE_IDS = new Map([
   // per-species move lists omit it from Jellicent, including its female form.
   // Source: pokemon-showdown/data/learnsets.ts, frillish.strengthsap (8E).
   [593, ['strengthsap']],
+  // Ferrothorn likewise retains Ferroseed's egg move after evolution.
+  // Source: pokemon-showdown/data/learnsets.ts, ferroseed.leechseed (5E–8E).
+  [598, ['leechseed']],
   [10155, ['sunsteelstrike']],
   [10156, ['moongeistbeam']],
 ])
