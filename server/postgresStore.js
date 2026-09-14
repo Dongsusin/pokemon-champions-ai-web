@@ -265,6 +265,48 @@ export function createPostgresStore({
     throw new Error('Postgres transaction retry limit exceeded')
   }
 
+  async function countRankedQueue(timestamp) {
+    if (closed) throw new Error('Postgres document store is closed')
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) throw new TypeError('Invalid ranked queue count timestamp')
+    const client = await pool.connect()
+    let discard = false
+    try {
+      // Aggregate both formats in one read-committed statement. The primary key
+      // locates the queue and matching player ticket without exporting teams,
+      // UIDs, nicknames, or battling players to the function/client.
+      const result = await client.query({
+        text: `SELECT COUNT(*) FILTER (WHERE q.payload->>'format' = 'single') AS single,
+          COUNT(*) FILTER (WHERE q.payload->>'format' = 'double') AS double,
+          MIN((q.payload->>'expiresAt')::numeric) AS next_expiry
+          FROM ${TABLE} q JOIN ${TABLE} p
+            ON p.namespace = q.namespace AND p.collection = 'players' AND p.key = q.key
+          WHERE q.namespace = $1 AND q.collection = 'queue'
+            AND q.payload->>'format' IN ('single', 'double')
+            AND q.payload->>'uid' = q.key
+            AND jsonb_typeof(q.payload->'ticket') = 'string' AND q.payload->>'ticket' <> ''
+            AND p.payload->>'queueTicket' = q.payload->>'ticket'
+            AND COALESCE(p.payload->>'activeMatchId', '') = ''
+            AND CASE WHEN jsonb_typeof(q.payload->'expiresAt') = 'number'
+              THEN (q.payload->>'expiresAt')::numeric > $2
+                AND (q.payload->>'expiresAt')::numeric <= 9007199254740991
+                AND (q.payload->>'expiresAt')::numeric = trunc((q.payload->>'expiresAt')::numeric)
+              ELSE FALSE END`,
+        values: [namespace, timestamp],
+        query_timeout: 2_000,
+      })
+      const row = result.rows[0]
+      const count = value => typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value)) ? Number(value) : NaN
+      const single = count(row?.single), double = count(row?.double)
+      const nextExpiry = row?.next_expiry == null ? null : Number(row.next_expiry)
+      if (!Number.isSafeInteger(single) || single < 0 || !Number.isSafeInteger(double) || double < 0
+        || (nextExpiry !== null && (!Number.isSafeInteger(nextExpiry) || nextExpiry <= timestamp))) throw new Error('Invalid ranked queue count result')
+      return { single, double, nextExpiry }
+    } catch (error) {
+      discard = true
+      throw error
+    } finally { client.release(discard) }
+  }
+
   async function countActiveSessions(timestamp) {
     if (closed) throw new Error('Postgres document store is closed')
     if (!Number.isSafeInteger(timestamp) || timestamp < 0) throw new TypeError('Invalid session count timestamp')
@@ -304,6 +346,12 @@ export function createPostgresStore({
     },
     countActiveSessions(timestamp) {
       const operation = countActiveSessions(timestamp)
+      active.add(operation)
+      void operation.then(() => active.delete(operation), () => active.delete(operation))
+      return operation
+    },
+    countRankedQueue(timestamp) {
+      const operation = countRankedQueue(timestamp)
       active.add(operation)
       void operation.then(() => active.delete(operation), () => active.delete(operation))
       return operation

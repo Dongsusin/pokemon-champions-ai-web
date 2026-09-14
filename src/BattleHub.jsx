@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { ArrowLeft, Building2, Check, ChevronRight, Crown, Swords, Trophy, UsersRound } from 'lucide-react'
 import SpriteImage from './SpriteImage'
 import TrainerSprite from './TrainerSprite'
+import RankedQueueCounts from './RankedQueueCounts'
 import { getSpeciesProfile } from './data/trainingData'
 import './battleHub.css'
 
@@ -25,7 +26,7 @@ function ModeArtwork({ mode }) {
   </div>
 }
 
-export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms, onSelectRaid }) {
+export default function BattleHub({ user, onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms, onSelectRaid }) {
   const [selectedId, setSelectedId] = useState(initialMode)
   const tabRefs = useRef([])
   const panelId = useId()
@@ -93,6 +94,7 @@ export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelect
       <header className="battle-hub-heading">
         <button className="screen-back-button" onClick={onBack} type="button"><ArrowLeft size={18} /> 로비</button>
         <div><span>BATTLE ARENA</span><h1>모드 선택</h1></div>
+        <RankedQueueCounts user={user} />
         <span className="battle-hub-position"><strong>{String(selectedIndex + 1).padStart(2, '0')}</strong> / {String(modes.length).padStart(2, '0')}</span>
       </header>
       <nav className="battle-hub-dock" aria-label="배틀 모드 선택">
