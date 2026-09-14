@@ -5236,10 +5236,11 @@ function highestBattleStatKey(pokemon) {
 }
 
 function applyKnockoutAbility(state, attacker) {
-  const rule = KNOCKOUT_STAT_ABILITY_RULES[attacker.ability]
+  const abilityRule = KNOCKOUT_STAT_ABILITY_RULES[attacker.ability]
+  const rule = abilityRule?.forms ? abilityRule.forms[currentSpeciesSlug(attacker)] : abilityRule
   if (!rule || attacker.fainted || attacker.hp <= 0) return false
   const boosts = rule.highestStat ? { [highestBattleStatKey(attacker)]: 1 } : rule.boosts
-  appendLog(state, `${attacker.name}의 ${attacker.ability}!`, 'ability')
+  appendLog(state, `${attacker.name}의 ${rule.activationName ?? attacker.ability}!`, 'ability')
   changeStages(state, attacker, boosts)
   return true
 }
@@ -5862,6 +5863,14 @@ function transformPokemon(state, pokemon, formId, mechanicId) {
   if (!form) return false
 
   if (!changeBattleForm(state, pokemon, form, MECHANIC_LABELS[mechanicId], { log: false, animate: false })) return false
+  // A permanent battle form replaces the ability that will return after
+  // suppression or switching. Do not restore the pre-Mega ability from an
+  // old Gastro Acid, Neutralizing Gas, or Trace snapshot.
+  pokemon.originalAbility = pokemon.ability
+  pokemon.neutralizedAbility = null
+  pokemon.tracedAbilityBase = null
+  if (pokemon.abilitySuppressed && !ABILITY_SUPPRESSION_IMMUNE_NAMES.has(pokemon.ability)) pokemon.ability = ''
+  refreshNeutralizingGas(state, { reactivate: false })
   pokemon.megaActive = mechanicId === 'mega'
   pokemon.primalActive = mechanicId === 'primal'
   pokemon.ultraActive = mechanicId === 'ultra'

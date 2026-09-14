@@ -163,6 +163,11 @@ export const KNOCKOUT_STAT_ABILITY_RULES = Object.freeze({
   비스트부스트: { highestStat: true },
   자기과신: { boosts: { attack: 1 } },
   흑의울음: { boosts: { specialAttack: 1 } },
+  // Both rider forms share the Korean name, but have different KO boosts.
+  혼연일체: { forms: {
+    'calyrex-ice': { boosts: { attack: 1 }, activationName: '백의울음' },
+    'calyrex-shadow': { boosts: { specialAttack: 1 }, activationName: '흑의울음' },
+  } },
 })
 
 export const FORM_ABILITY_NAMES = new Set([
