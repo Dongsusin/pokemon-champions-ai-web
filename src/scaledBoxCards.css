@@ -214,14 +214,6 @@ html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .team-box-sele
     align-items: stretch;
   }
 
-  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .team-box-selection .pokedex-selection-meta {
-    flex-wrap: wrap;
-  }
-
-  html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .team-box-selection .pokedex-selection-meta > span {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
 }
 
 @media (max-width: 850px) {

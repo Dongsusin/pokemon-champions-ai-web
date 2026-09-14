@@ -12009,14 +12009,8 @@
 
   .pokedex-selection.has-selection > .type-chip-list {
     grid-column: 3;
-    grid-row: 1;
+    grid-row: 1 / 3;
     align-self: center;
-  }
-
-  .pokedex-selection.has-selection .pokedex-selection-meta {
-    grid-column: 3;
-    grid-row: 2;
-    align-self: stretch;
   }
 
   .pokedex-selection.has-selection .pokedex-held-item-button {

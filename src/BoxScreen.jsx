@@ -25,7 +25,6 @@ import BattleItemSprite from './BattleItemSprite'
 import PokemonSprite from './PokemonSprite'
 import {
   getPokemonEvolutionFamilyKey,
-  getShinyOdds,
   getTrainingRosterPokemon,
 } from './data/pokemonPool'
 import {
@@ -729,10 +728,6 @@ function BoxScreen({
                   {selectedProfile.types.map((type) => (
                     <span className={`game-type-chip type-${typeClassName(type)}`} key={type}>{type}</span>
                   ))}
-                </div>
-                <div className="pc-selection-meta pokedex-selection-meta">
-                  <span>직접 획득 <strong>{selectedPokemon.directDrawCount ?? 0}회</strong></span>
-                  <span>다음 이로치 <strong>1/{getShinyOdds(selectedPokemon.directDrawCount ?? 0).toLocaleString()}</strong></span>
                 </div>
                 <button
                   className={`pokedex-held-item-button${selectedHeldItem ? ' equipped' : ''}`}
