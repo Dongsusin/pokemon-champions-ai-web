@@ -38,9 +38,10 @@ for (const profile of profiles) {
   }
 }
 
-// Legal pre-evolution egg moves must survive the picker, saved-team
+// Legal inherited and form-shared moves must survive the picker, saved-team
 // normalization and battle construction without leaking into unrelated species.
 for (const { moveId, slugs, unrelated } of [
+  { moveId: 'extremespeed', slugs: ['deoxys', 'deoxys-attack', 'deoxys-defense', 'deoxys-speed'], unrelated: [25, 132, 150] },
   { moveId: 'strengthsap', slugs: ['frillish', 'frillish-f', 'jellicent', 'jellicent-f'], unrelated: [25, 132, 321] },
   { moveId: 'leechseed', slugs: ['ferroseed', 'ferrothorn'], unrelated: [25, 132, 593] },
 ]) {
