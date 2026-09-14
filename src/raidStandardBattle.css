@@ -19,6 +19,14 @@
 .raid-standard-battle .battle-command-buttons { height: 100%; min-height: 0; }
 .raid-standard-battle .battle-move-menu,
 .raid-standard-battle .battle-target-menu { flex: 1; min-height: 0; overflow-y: auto; }
+.raid-standard-battle .battle-target-icon :is(img, svg:where(.sprite-image-viewport)) {
+  display: block;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
 .raid-standard-battle .battle-move-menu > header { flex-wrap: wrap; gap: 4px 8px; }
 .raid-standard-battle .battle-move-grid { min-height: 0; }
 .raid-standard-battle .raid-command-wait,
