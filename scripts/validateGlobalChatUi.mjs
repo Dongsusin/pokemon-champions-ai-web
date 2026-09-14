@@ -159,7 +159,7 @@ try {
           } else result = await handler(new Request(`${origin}/api/chat`, { method: request.method, headers: request.headers, body }))
           const resultText = await result.text()
           const parsed = JSON.parse(resultText)
-          Object.assign(observed, { status: result.status, hasMessages: Array.isArray(parsed.messages), messageCount: parsed.messages?.length, revision: parsed.revision })
+          Object.assign(observed, { status: result.status, errorCode: parsed.error?.code, hasMessages: Array.isArray(parsed.messages), messageCount: parsed.messages?.length, revision: parsed.revision })
           response.writeHead(result.status, Object.fromEntries(result.headers))
           response.end(resultText)
         } catch (error) {
@@ -264,6 +264,63 @@ try {
     await sendButton(a.page).click()
     await a.page.waitForFunction(() => document.querySelector('textarea[aria-label="전체 채팅 메시지"]')?.value === '')
     assert.equal(await a.page.locator(selectors.text).filter({ hasText: '연결 오류 후에도 남아야 하는 초안' }).count(), 1)
+  })
+  await test('server rejects profanity at the 200-codepoint boundary, keeps the draft and guidance through polling, and accepts an edited message', async () => {
+    advance()
+    await expanded(a.page)
+    await expanded(b.page)
+    const before = await localRequest('global-chat-ui-b-token', { action: 'read', expanded: true })
+    const blockedText = `${'😀'.repeat(197)} 시발`
+    assert.equal([...blockedText].length, 200)
+    // The UI must count codepoints, retaining the final Korean word after 197
+    // surrogate-pair emoji; truncating at 200 UTF-16 units would hide the test.
+    await input(a.page).fill(`${blockedText}초과`)
+    assert.equal(await input(a.page).inputValue(), blockedText)
+    assert.match(await a.page.locator('.global-chat-counter').innerText(), /^200\s*\/\s*200$/)
+    const refused = a.page.waitForResponse(response => response.url() === `${origin}/api/chat`
+      && response.request().method() === 'POST' && response.request().postDataJSON()?.action === 'send')
+    await sendButton(a.page).click()
+    const refusal = await refused
+    assert.equal(refusal.status(), 422)
+    assert.equal((await refusal.json()).error?.code, 'CHAT_PROFANITY')
+    const alert = a.page.locator('.global-chat-error[role="alert"]')
+    await alert.waitFor()
+    assert.match(await alert.innerText(), /욕설|비속어/)
+    assert.equal(await input(a.page).inputValue(), blockedText)
+    assert.equal(await input(a.page).isEditable(), true)
+
+    // Exercise the hook's normal read path in both browsers after rejection.
+    // A successful poll must not silently erase the sending user's guidance.
+    const readCompleted = [a.page, b.page].map(page => page.waitForResponse(response => response.url() === `${origin}/api/chat`
+      && response.request().method() === 'POST' && response.request().postDataJSON()?.action === 'read'))
+    await Promise.all([a.page, b.page].map(page => page.evaluate(() => window.dispatchEvent(new Event('online')))))
+    for (const response of await Promise.all(readCompleted)) {
+      assert.equal(response.status(), 200)
+      await response.finished()
+    }
+    await a.page.waitForTimeout(250)
+    assert.match(await alert.innerText(), /욕설|비속어/)
+    assert.equal(await input(a.page).inputValue(), blockedText)
+    for (const page of [a.page, b.page]) {
+      assert.equal(await page.locator(selectors.text).filter({ hasText: blockedText }).count(), 0)
+      assert(!(await trigger(page).innerText()).includes('시발'), 'Rejected text reached the latest-message preview')
+    }
+    const after = await localRequest('global-chat-ui-b-token', { action: 'read', expanded: true })
+    assert.equal(after.revision, before.revision, 'Rejection mutated the public feed')
+    assert.equal(after.latest?.id, before.latest?.id)
+    assert(after.messages.every(message => message.text !== blockedText), 'Rejected text was persisted in the shared history')
+    await a.page.screenshot({ path: path.join(output, 'profanity-rejection-draft.png') })
+
+    const correctedText = '내용을 수정한 정상 채팅입니다 😀'
+    await input(a.page).fill(correctedText)
+    await alert.waitFor({ state: 'hidden' })
+    await sendButton(a.page).click()
+    await a.page.waitForFunction(() => document.querySelector('textarea[aria-label="전체 채팅 메시지"]')?.value === '')
+    await b.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await b.page.locator(selectors.text).filter({ hasText: correctedText }).waitFor()
+    assert.equal(await b.page.locator(selectors.text).filter({ hasText: correctedText }).count(), 1)
+    assert.equal(await b.page.locator(selectors.text).filter({ hasText: blockedText }).count(), 0)
+    assert.equal((await localRequest('global-chat-ui-b-token', { action: 'read' })).latest?.text, correctedText)
   })
   await test('message markup stays literal text and never creates executable HTML', async () => {
     const text = '<img src=x onerror="window.__chatXss=1"> & <script>window.__chatXss=1</script>'

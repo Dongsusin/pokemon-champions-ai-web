@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
+import { CHAT_PROFANITY_MESSAGE, containsChatProfanity } from './chatModeration.js'
 
 export const GLOBAL_CHAT_MAX_MESSAGES = 30
 export const GLOBAL_CHAT_MAX_TEXT_LENGTH = 200
@@ -14,7 +15,8 @@ const contentHash = text => createHash('sha256').update(text).digest('hex')
 const publicName = (name, isGuest) => {
   const masked = maskRankedTrainerName(name, isGuest)
   const points = [...masked]
-  return points.length <= 64 ? masked : `${points.slice(0, 62).join('')}**`
+  const bounded = points.length <= 64 ? masked : `${points.slice(0, 62).join('')}**`
+  return containsChatProfanity(bounded) ? '트**' : bounded
 }
 const publicMessage = (message, owner) => message ? {
   id: message.id, name: message.name, text: message.text, createdAt: message.createdAt,
@@ -39,6 +41,7 @@ export function normalizeGlobalChatText(value) {
     .replace(/[\p{Cc}\p{Cs}\p{Bidi_Control}\u00ad\u180e\u200b\u2060-\u2064\ufeff]/gu, '').trim()
   if (!/[^\p{M}\p{Cf}\s]/u.test(text)) fail('INVALID_TEXT', '채팅 내용을 입력해주세요.')
   if ([...text].length > GLOBAL_CHAT_MAX_TEXT_LENGTH) fail('TEXT_TOO_LONG', '채팅은 200자까지 입력할 수 있습니다.')
+  if (containsChatProfanity(text)) fail('CHAT_PROFANITY', CHAT_PROFANITY_MESSAGE, 422)
   return text
 }
 

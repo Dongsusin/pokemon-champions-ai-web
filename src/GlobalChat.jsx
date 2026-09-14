@@ -25,7 +25,7 @@ function trimMessage(value) {
 
 export default function GlobalChat({ user }) {
   const [expanded, setExpanded] = useState(false)
-  const { latest, messages, loading, error, sending, sendMessage, refresh, available } = useGlobalChat(user, expanded)
+  const { latest, messages, loading, error, sendErrorCode, sending, sendMessage, refresh, available, clearSendError } = useGlobalChat(user, expanded)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState('')
@@ -45,6 +45,7 @@ export default function GlobalChat({ user }) {
   const messageLength = Array.from(draft).length
   const pending = sending || submitting
   const errorText = (typeof error === 'string' ? error : error?.message) || localError
+  const contentRejected = ['CHAT_PROFANITY', 'INVALID_TEXT', 'TEXT_TOO_LONG'].includes(sendErrorCode)
 
   const captureScroll = useCallback(() => {
     const list = listRef.current
@@ -219,7 +220,7 @@ export default function GlobalChat({ user }) {
         </div>
 
         <form className="global-chat-composer" onSubmit={handleSubmit}>
-          {errorText && <div className="global-chat-error" role="alert"><span>{errorText}</span><button type="button" aria-label="채팅 다시 연결" disabled={loading} onClick={retry}><RefreshCw size={15} aria-hidden="true" />다시 연결</button></div>}
+          {errorText && <div className="global-chat-error" role="alert"><span>{errorText}</span>{!contentRejected && <button type="button" aria-label="채팅 다시 연결" disabled={loading} onClick={retry}><RefreshCw size={15} aria-hidden="true" />다시 연결</button>}</div>}
           {!available && !errorText && <p className="global-chat-unavailable" role="status">채팅에 연결되면 메시지를 보낼 수 있습니다.</p>}
           <div className="global-chat-input-row">
             <textarea
@@ -229,7 +230,7 @@ export default function GlobalChat({ user }) {
               rows={2}
               value={draft}
               readOnly={pending}
-              onChange={(event) => { setDraft(composingRef.current ? event.target.value : trimMessage(event.target.value)); setLocalError('') }}
+              onChange={(event) => { setDraft(composingRef.current ? event.target.value : trimMessage(event.target.value)); setLocalError(''); clearSendError() }}
               onCompositionStart={() => { composingRef.current = true }}
               onCompositionEnd={(event) => { composingRef.current = false; setDraft(trimMessage(event.currentTarget.value)) }}
               onKeyDown={(event) => {
@@ -239,7 +240,7 @@ export default function GlobalChat({ user }) {
             />
             <button type="submit" className="global-chat-send" aria-label="메시지 보내기" disabled={pending || !available || !draft.trim() || messageLength > MAX_MESSAGE_LENGTH}><Send size={18} aria-hidden="true" /><span>{pending ? '전송 중' : '보내기'}</span></button>
           </div>
-          <div className="global-chat-composer-meta"><span className="global-chat-input-hint">Enter 전송 · Shift+Enter 줄바꿈</span><span id={`${id}-counter`} className="global-chat-counter">{messageLength} / {MAX_MESSAGE_LENGTH}</span></div>
+          <div className="global-chat-composer-meta"><span className="global-chat-policy">욕설·비속어 금지</span><span className="global-chat-input-hint">Enter 전송</span><span id={`${id}-counter`} className="global-chat-counter">{messageLength} / {MAX_MESSAGE_LENGTH}</span></div>
         </form>
         <span className="global-chat-sr-only" role="status" aria-live="polite">{newMessageCount ? `새 메시지 ${newMessageCount}개가 있습니다.` : announcement}</span>
       </dialog>, document.body,

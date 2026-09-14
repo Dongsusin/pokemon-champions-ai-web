@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MAX_CHARACTERS, createGlobalChatClient } from './globalChatClient'
 
-const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sending: false })
+const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sendError: '', sendErrorCode: '', sending: false })
 const CLOSED_POLL_MS = 15_000
 const OPEN_POLL_MS = 4_000
 
@@ -71,24 +71,24 @@ export default function useGlobalChat(user, expanded) {
       if (!current() || session.send) return false
       const content = text.trim()
       if (!content || [...content].length > CHAT_MAX_CHARACTERS) {
-        setState(previous => ({ ...previous, error: `채팅은 1~${CHAT_MAX_CHARACTERS}자까지 입력해주세요.` }))
+        setState(previous => ({ ...previous, sendError: `채팅은 1~${CHAT_MAX_CHARACTERS}자까지 입력해주세요.`, sendErrorCode: 'INVALID_TEXT' }))
         return false
       }
       const controller = new AbortController()
       session.send = controller
       // Reuse the receipt after an uncertain network result, preventing duplicates.
       if (session.pendingSend?.text !== content) session.pendingSend = { text: content, requestId: crypto.randomUUID() }
-      setState(previous => ({ ...previous, sending: true, error: '' }))
+      setState(previous => ({ ...previous, sending: true, error: '', sendError: '', sendErrorCode: '' }))
       try {
         const snapshot = await client.request('send', session.pendingSend, { signal: controller.signal })
         if (!current()) return false
         session.apply(snapshot)
         session.pendingSend = null
         session.failureCount = 0
-        setState(previous => ({ ...previous, error: '' }))
+        setState(previous => ({ ...previous, error: '', sendError: '', sendErrorCode: '' }))
         return true
       } catch (error) {
-        if (current() && error.name !== 'AbortError') setState(previous => ({ ...previous, error: error.message }))
+        if (current() && error.name !== 'AbortError') setState(previous => ({ ...previous, sendError: error.message, sendErrorCode: error.code ?? '' }))
         return false
       } finally {
         session.send = null
@@ -117,7 +117,10 @@ export default function useGlobalChat(user, expanded) {
   useEffect(() => { void sessionRef.current?.refresh() }, [expanded])
   const refresh = useCallback(() => { void sessionRef.current?.refresh() }, [])
   const sendMessage = useCallback(text => sessionRef.current?.sendMessage(text) ?? Promise.resolve(false), [])
+  const clearSendError = useCallback(() => setState(previous => ({ ...previous, sendError: '', sendErrorCode: '' })), [])
   // Do not show one account's private isOwn flags while another signs in.
   const view = sessionRef.current?.uid === user?.uid && available ? state : { ...fresh(), loading: false }
-  return { ...view, available, refresh, sendMessage }
+  // Background polling can recover a connection, but must not erase a rejected
+  // send's explanation before the player has a chance to edit the message.
+  return { ...view, error: view.sendError || view.error, available, refresh, sendMessage, clearSendError }
 }

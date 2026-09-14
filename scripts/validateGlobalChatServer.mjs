@@ -4,6 +4,7 @@ import { createGuestIdentityRegistry } from '../server/guestIdentity.js'
 import { createGlobalChatService, GLOBAL_CHAT_MAX_MESSAGES, GLOBAL_CHAT_SEND_COOLDOWN_MS } from '../server/globalChatService.js'
 import { createGlobalChatHttpHandler, GLOBAL_CHAT_HTTP_MAX_BYTES } from '../server/globalChatHttp.js'
 import { eraseGuestRankedData } from '../server/guestAccountCleanup.js'
+import { CHAT_PROFANITY_MESSAGE } from '../server/chatModeration.js'
 
 const tests = []
 const test = (name, run) => tests.push({ name, run })
@@ -190,6 +191,37 @@ test('invalid actions, identities, revisions and request IDs leave the feed unto
   assert.deepEqual((await env.database.inspect()).collections, {})
 })
 
+test('profanity is rejected before storage, cooldown or receipts and a corrected retry can reuse its ID', async () => {
+  const env = environment()
+  await env.send(alice, '좋은 대전이었어요')
+  const before = await env.database.inspect()
+  env.reads.length = 0
+  // Rejection takes place even during a cooldown, without consuming a new send.
+  for (const text of ['시발', '씨.1.발', 'ㅂ ㅅ', 'f u c k', 'sh1t']) {
+    await assert.rejects(env.send(alice, text, { requestId: 'moderated-request' }), error => {
+      assert.equal(error.code, 'CHAT_PROFANITY')
+      assert.equal(error.status, 422)
+      assert.equal(error.message, CHAT_PROFANITY_MESSAGE)
+      assert.equal(error.message.includes(text), false)
+      return true
+    })
+  }
+  assert.deepEqual(env.reads, [], 'Rejected text must never enter a storage transaction')
+  assert.deepEqual(await env.database.inspect(), before, 'Existing messages and receipts remain byte-for-byte unchanged')
+  const corrected = await env.send(bob, '다시 도전해 볼게요', { requestId: 'moderated-request' })
+  assert.equal(corrected.revision, 2)
+  assert.equal(corrected.messages.length, 2)
+  const replay = await env.send(bob, '다시 도전해 볼게요', { requestId: 'moderated-request' })
+  assert.equal(replay.revision, 2)
+})
+
+test('masking never exposes a profane first syllable of an authenticated name', async () => {
+  const env = environment()
+  const result = await env.send({ ...alice, name: '좆' }, '안녕하세요')
+  assert.equal(result.latest.name, '트**')
+  assert.equal((await env.send({ ...bob, name: '시바' }, '반갑습니다')).latest.name, '시**')
+})
+
 const origin = 'https://game.example.test'
 const request = (payload = { action: 'read' }, options = {}) => new Request(`${origin}/api/chat`, {
   method: options.method ?? 'POST',
@@ -211,6 +243,21 @@ test('HTTP allows authenticated same-origin chat and exposes safe cooldown metad
   assert.equal(limited.status, 429)
   assert.equal(limited.headers.get('retry-after'), '3')
   assert.equal((await limited.json()).error.retryAfterMs, 3000)
+})
+
+test('direct HTTP cannot bypass moderation; rejected text is private and corrected text sends immediately', async () => {
+  const env = environment()
+  const handler = createGlobalChatHttpHandler({ service: env.service, authenticate: async () => alice, now: env.now })
+  const blockedText = `${'가'.repeat(198)}시발`
+  const blocked = await handler(request({ action: 'send', text: blockedText, requestId: 'direct-http-moderated', moderationPassed: true }))
+  assert.equal(blocked.status, 422)
+  const payload = await blocked.json()
+  assert.deepEqual(payload, { error: { code: 'CHAT_PROFANITY', message: CHAT_PROFANITY_MESSAGE } })
+  assert.equal(JSON.stringify(payload).includes(blockedText), false)
+  assert.deepEqual((await env.database.inspect()).collections, {})
+  const corrected = await handler(request({ action: 'send', text: '즐겁게 대전해요!', requestId: 'direct-http-moderated' }))
+  assert.equal(corrected.status, 200)
+  assert.equal((await corrected.json()).revision, 1)
 })
 
 test('HTTP rejects bad origins, auth, methods, JSON, content type and oversized streamed bodies', async () => {
