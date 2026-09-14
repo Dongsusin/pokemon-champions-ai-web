@@ -1,12 +1,14 @@
 import { ArrowLeft, ArrowLeftRight, Building2, ChevronRight, Swords, Trophy, UsersRound } from 'lucide-react'
 import './battleHub.css'
+import RankedQueueCounts from './RankedQueueCounts'
 
-export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms }) {
+export default function BattleHub({ user, onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms }) {
   return (
     <main className="battle-hub">
       <header className="battle-hub-heading">
         <button className="screen-back-button" onClick={onBack} type="button"><ArrowLeft size={19} /> 로비</button>
         <div><span>BATTLE ARENA</span><h1>어떤 배틀에 도전할까요?</h1><p>레이팅부터 친구들과의 대회까지, 원하는 방식으로 도전하세요.</p></div>
+        <RankedQueueCounts user={user} />
       </header>
       <section className="battle-hub-options" aria-label="배틀 종류">
         <button type="button" className="battle-hub-card ranked" onClick={onSelectRanked}>

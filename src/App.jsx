@@ -1194,7 +1194,7 @@ export function GameApp({
         </section>
       </main>
       ) : screen === 'battle-hub' ? (
-        <BattleHub onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
+        <BattleHub user={user} onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
           onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')} />
       ) : screen === 'rooms' ? (
         <BattleRoomsScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}

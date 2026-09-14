@@ -6,6 +6,7 @@ import { readTrainerNickname } from '../src/data/trainerNickname.js'
 import { readPokemonUsage, recordRankedPokemonUsage, reportAiPokemonUsage, validateAiPokemonUsage } from './pokemonUsageService.js'
 import { readFactoryLeaderboard, reportFactoryRun, validateFactoryRankingReport } from './battleFactoryRankingService.js'
 import { readRankedLeaderboard } from './rankedLeaderboardService.js'
+import { createRankedQueueCountsReader } from './rankedQueueCounts.js'
 import { createGuestIdentityRegistry } from './guestIdentity.js'
 import { createBattleRoomService, validateRoomPassword } from './battleRoomService.js'
 import { eraseGuestRankedData } from './guestAccountCleanup.js'
@@ -75,6 +76,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
   makeSeed = () => randomBytes(4).readUInt32LE(), resolveTeam = async (_identity, team) => team,
   fixtures = null, timeouts = {}, usageEnabled = false, guestRegistry = null }) {
   const guestIdentities = guestRegistry ?? createGuestIdentityRegistry({ store, now })
+  const readQueueCounts = createRankedQueueCountsReader({ store, now })
   const selectionTimeout = timeouts.selection ?? SELECT_TIMEOUT
   const turnTimeout = timeouts.turn ?? TURN_TIMEOUT
   const replacementTimeout = timeouts.replacement ?? REPLACEMENT_TIMEOUT
@@ -390,12 +392,13 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (!identity || !isId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
     identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32), isGuest: identity.isGuest === true, nickname: identity.isGuest === true ? '' : readTrainerNickname(identity.nickname) }
     const action = payload?.action ?? 'status'
-    if (!['guestProfile', 'status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'rankedLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit', 'rooms', 'roomCreate', 'roomJoin', 'roomStart', 'roomLeave', 'roomDismissResult'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
+    if (!['guestProfile', 'status', 'queueCounts', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'rankedLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit', 'rooms', 'roomCreate', 'roomJoin', 'roomStart', 'roomLeave', 'roomDismissResult'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
     if (action === 'guestProfile') return guestIdentities.create(identity)
     if (identity.isGuest) {
       const profile = await guestIdentities.read(identity)
       identity.name = profile.displayName
     }
+    if (action === 'queueCounts') return readQueueCounts()
     const transaction = work => store.transaction(async tx => {
       // Recheck within the write transaction. A request already in flight when
       // logout starts must not recreate data after the deletion transaction.

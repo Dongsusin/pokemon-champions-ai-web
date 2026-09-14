@@ -1,0 +1,31 @@
+.ranked-queue-counts { display: flex; flex: 0 1 auto; flex-direction: column; justify-content: center; gap: 5px; min-width: 0; margin-left: auto; padding: 10px 16px; border: 1px solid #83bcd64d; border-radius: 12px; color: #d6eafa; background: #0a2037e8; line-height: 1.45; }
+.ranked-queue-counts-heading { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 750; }
+.ranked-queue-counts-heading svg { flex-shrink: 0; color: #8de2e8; }
+.ranked-queue-counts-heading > span { word-break: keep-all; }
+.ranked-queue-counts-heading > b { margin-left: auto; color: #aaf2ef; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ranked-queue-counts-formats { display: flex; flex-wrap: wrap; justify-content: flex-end; column-gap: 16px; color: #a9bed4; font-size: 11px; }
+.ranked-queue-counts-formats > span { white-space: nowrap; }
+.ranked-queue-counts-formats b { margin-left: 4px; color: #eef8ff; font-variant-numeric: tabular-nums; }
+.battle-hub-heading:has(.ranked-queue-counts) > .battle-hub-position { margin-left: 0; }
+@media (max-width: 900px) {
+  .ranked-queue-counts { padding: 7px 10px; gap: 2px; }
+  .ranked-queue-counts-heading { gap: 5px; font-size: 10px; }
+  .ranked-queue-counts-heading > b { font-size: 12px; }
+  .ranked-queue-counts-formats { column-gap: 12px; font-size: 10px; }
+}
+@media (max-height: 620px) and (orientation: landscape) {
+  .ranked-queue-counts { flex-direction: row; align-items: center; gap: 10px; padding: 4px 9px; border-radius: 8px; }
+  .ranked-queue-counts-heading { font-size: 9px; }
+  .ranked-queue-counts-heading svg { width: 13px; height: 13px; }
+  .ranked-queue-counts-heading > b { font-size: 10px; }
+  .ranked-queue-counts-formats { flex-wrap: nowrap; gap: 8px; font-size: 9px; }
+  :root[data-game-text-scale="2"] .ranked-queue-counts { gap: 8px; padding: 3px 7px; }
+  :root[data-game-text-scale="2"] .ranked-queue-counts-heading,
+  :root[data-game-text-scale="2"] .ranked-queue-counts-formats { font-size: 7px; }
+  :root[data-game-text-scale="2"] .ranked-queue-counts-heading > b { font-size: 8px; }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .battle-hub-heading:has(.ranked-queue-counts) { flex-wrap: wrap; }
+  .ranked-queue-counts { flex-basis: 100%; flex-direction: row; justify-content: space-between; }
+  .battle-hub-heading:has(.ranked-queue-counts) > .battle-hub-position { display: none; }
+}
