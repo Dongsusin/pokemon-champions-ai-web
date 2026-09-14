@@ -63,6 +63,7 @@ import {
 } from './moveSupportData.js'
 import { canUseZMove, normalizeZCrystalId, resolveZMove } from './zMoveData.js'
 import { applyBattleHpLoss, previewBattleHpLoss, beginRaidDamageRoot, finishRaidDamageRoot, isRaidBoss, raidBlocksWeather, raidEvent, raidMoveImmunity } from './raidPolicy.js'
+import { stampRaidPresentationLog } from './raidPresentation.js'
 
 const TYPE_CHART = {
   노말: { 바위: 0.5, 고스트: 0, 강철: 0.5 },
@@ -891,11 +892,11 @@ function applyPendingDifficultyBoost(pokemon) {
 }
 
 function appendLog(state, message, tone = 'normal') {
-  state.log.push({
+  state.log.push(stampRaidPresentationLog(state, {
     id: `${state.turn}-${state.log.length}-${message}`,
     message,
     tone,
-  })
+  }))
   if (state.log.length > 80) state.log.splice(0, state.log.length - 80)
 }
 
@@ -1669,8 +1670,8 @@ function cloneBattle(state) {
   }
 }
 
-const RAID_CUE_PHASES = new Set(['announce', 'impact', 'mechanic', 'switch', 'faint', 'residual'])
-const RAID_CUE_FIELDS = ['sideId', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'gimmickId', 'mechanicId', 'mechanicLabel', 'result', 'damage']
+const RAID_CUE_PHASES = new Set(['announce', 'impact', 'gimmick', 'form', 'status', 'resolve', 'switch', 'switch-out', 'faint', 'residual'])
+const RAID_CUE_FIELDS = ['sideId', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'moveTarget', 'movePriority', 'moveMultihit', 'moveDrain', 'moveRecoil', 'moveStatus', 'moveSelfdestruct', 'moveFlags', 'moveDescription', 'moveGeneration', 'animationType', 'animationVariant', 'animationVariantKey', 'animationReferenceKey', 'gimmickId', 'mechanicId', 'mechanicLabel', 'mechanicType', 'mechanicMode', 'actorPreviousName', 'spriteBeforeFront', 'spriteBeforeBack', 'spriteBeforeFrontFallback', 'spriteBeforeBackFallback', 'spriteAfterFront', 'spriteAfterBack', 'spriteAfterFrontFallback', 'spriteAfterBackFallback', 'formSourceName', 'result', 'damage', 'critical', 'effectiveness', 'hitIndex', 'hitCount']
 
 function pushTimelineStep(timeline, state, step) {
   if (state.raid && RAID_CUE_PHASES.has(step.phase)) {
@@ -1679,7 +1680,8 @@ function pushTimelineStep(timeline, state, step) {
     const targetsActor = step.phase === 'faint' || step.phase === 'residual'
     const actor = getActivePokemon(state, (targetsActor ? step.targetSideId : null) ?? step.sideId ?? 'player', (targetsActor ? step.targetSlot : null) ?? step.actorSlot ?? 0)
     const details = Object.fromEntries(RAID_CUE_FIELDS.filter(key => step[key] !== undefined).map(key => [key, step[key]]))
-    raidEvent(state, 'battle-cue', step.message ?? '', { ...details, cuePhase: step.phase, actorId: actor?.battleId ?? null }, { log: false })
+    const target = step.targetSideId ? getActivePokemon(state, step.targetSideId, step.targetSlot ?? 0) : null
+    raidEvent(state, 'battle-cue', step.message ?? '', { ...details, cuePhase: step.phase, actorId: actor?.battleId ?? null, targetActorId: target?.battleId ?? null }, { log: false })
   }
   if (!timeline) return
   timeline.push({

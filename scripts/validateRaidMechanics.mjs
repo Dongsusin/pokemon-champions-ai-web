@@ -11,6 +11,7 @@ import { createBattle, playBattleTurnWithActions, getBattleMoveTargets, getBattl
   getBattleStruggleAction, getAvailableBattleMechanics, getEffectiveBattleWeatherId } from '../src/data/battleEngine.js'
 import { createRaidBattle, startRaidBossStage, resolveRaidTurn, getRaidBattleView,
   validateRaidCommand, getRaidOutcome, chooseRaidCommand } from '../server/raidBattle.js'
+import { sanitizeRaidPresentation } from '../src/data/raidPresentation.js'
 
 // Source of the raid-specific rules is the user's 2026-09-14 attachment,
 // pokemon_champions_coop_boss_raid_codex_prompt.txt, sections 05–10 and QA matrix.
@@ -689,12 +690,23 @@ test('U04: actual move and faint cues retain sound metadata, deterministic curso
   const allowed = new Set(['id', 'kind', 'message', 'turn', 'phase', 'hp', 'maxHp', 'form', 'cuePhase', 'actorId',
     'sideId', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId',
     'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower',
-    'gimmickId', 'mechanicId', 'mechanicLabel', 'result', 'damage'])
+    'gimmickId', 'mechanicId', 'mechanicLabel', 'result', 'damage', 'targetActorId', 'presentation',
+    'moveTarget', 'movePriority', 'moveMultihit', 'moveDrain', 'moveRecoil', 'moveStatus', 'moveSelfdestruct',
+    'moveFlags', 'moveDescription', 'moveGeneration', 'animationType', 'animationVariant', 'animationVariantKey',
+    'animationReferenceKey', 'mechanicType', 'mechanicMode', 'actorPreviousName', 'spriteBeforeFront',
+    'spriteBeforeBack', 'spriteBeforeFrontFallback', 'spriteBeforeBackFallback', 'spriteAfterFront',
+    'spriteAfterBack', 'spriteAfterFrontFallback', 'spriteAfterBackFallback', 'formSourceName',
+    'critical', 'effectiveness', 'hitIndex', 'hitCount'])
   const publicEvents = getRaidBattleView(next, 'private-human-0').raid.events
   for (const cue of publicEvents.filter(event => event.kind === 'battle-cue')) {
     for (const [key, value] of Object.entries(cue)) {
       assert(allowed.has(key), `Unexpected public cue field: ${key}`)
-      assert(value === null || ['string', 'number', 'boolean'].includes(typeof value), 'Cues cannot embed state, teams or move catalogs')
+      if (key === 'presentation') {
+        assert.deepEqual(value, sanitizeRaidPresentation(value), 'Only public presentation fields may cross the boundary')
+        assert(value.actors.length <= 6)
+      } else if (['moveFlags', 'moveMultihit', 'moveDrain', 'moveRecoil'].includes(key) && Array.isArray(value)) {
+        assert(value.every(entry => ['string', 'number'].includes(typeof entry)))
+      } else assert(value === null || ['string', 'number', 'boolean'].includes(typeof value), 'Cues cannot embed state, teams or move catalogs')
     }
     const serialized = JSON.stringify(cue)
     for (const secret of ['private-human-', 'raidOwnerId', 'pendingTurn', 'members', 'summonPool', 'reviveOrder']) assert(!serialized.includes(secret), secret)

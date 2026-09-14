@@ -1,0 +1,72 @@
+/* Use the normal battle header, arena, log and command deck. Only the online
+   status, three-player formation and boss information extend that layout. */
+.app-shell.raid-view.battle-view > .raid-standard-battle {
+  display: flex; flex-direction: column; width: 100%; height: 100dvh;
+  min-height: 0; padding: 0; overflow: hidden; color: #edf8ff; background: #0b1d30;
+}
+.raid-standard-battle .raid-online-bar {
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between;
+  min-height: 32px; padding: 4px 20px; gap: 12px; font-size: 12px;
+  color: #b4d7e5; background: #102c3e; border-bottom: 1px solid #7dbdce55;
+}
+.raid-standard-battle .raid-online-bar > span,
+.raid-standard-battle .raid-online-bar > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.raid-standard-battle .raid-online-bar > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.raid-standard-battle .raid-online-bar > div { flex-shrink: 0; }
+.raid-standard-battle .raid-online-bar b { font-variant-numeric: tabular-nums; }
+.raid-standard-battle .raid-online-bar button { border: 1px solid #7dbdce55; border-radius: 5px; padding: 3px 10px; color: inherit; background: #28445a; font: inherit; cursor: pointer; }
+.raid-standard-battle > .raid-notice { flex-shrink: 0; margin: 0; padding: 6px 15px; }
+.app-shell.battle-view .raid-standard-battle > .battle-command-deck {
+  display: grid; flex: 0 0 clamp(200px, 30dvh, 290px); height: auto; min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); padding: 8px 18px 10px;
+}
+.raid-standard-battle .battle-log-panel { display: flex; flex-direction: column; overflow: hidden; }
+.raid-standard-battle .battle-log-panel > header { flex-shrink: 0; }
+.raid-standard-battle .battle-log-body { display: flex; flex: 1; min-height: 0; }
+.raid-standard-battle .battle-log-scroll { width: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.raid-standard-battle .battle-log-current { flex-shrink: 0; }
+.raid-standard-battle .raid-standard-commands { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.raid-standard-battle .battle-command-menu,
+.raid-standard-battle .battle-command-buttons { height: 100%; min-height: 0; }
+.raid-standard-battle .battle-move-menu,
+.raid-standard-battle .battle-target-menu { flex: 1; min-height: 0; overflow-y: auto; }
+.raid-standard-battle .battle-move-menu > header { flex-wrap: wrap; gap: 4px 8px; }
+.raid-standard-battle .battle-move-grid { min-height: 0; }
+.raid-standard-battle .raid-command-wait,
+.raid-standard-battle .raid-command-confirm { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px; text-align: center; overflow-y: auto; }
+.raid-standard-battle .raid-command-wait strong,
+.raid-standard-battle .raid-command-confirm strong { font-size: 18px; color: #a8e4e6; }
+.raid-standard-battle .raid-command-wait p,
+.raid-standard-battle .raid-command-confirm p { margin: 0; font-size: 13px; color: #b5cadd; }
+.raid-standard-battle .raid-command-wait > div,
+.raid-standard-battle .raid-command-confirm > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center; font-size: 11px; }
+.raid-standard-battle .raid-command-wait button,
+.raid-standard-battle .raid-command-confirm button,
+.raid-standard-battle .raid-standard-overview > header button { border: 1px solid #78b7ca77; background: #25465e; padding: 7px 12px; border-radius: 6px; color: #e5f6ff; font: inherit; cursor: pointer; }
+.raid-standard-battle .raid-standard-overview { overflow-y: auto; min-height: 0; padding: 10px; }
+.raid-standard-battle .raid-standard-overview > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.raid-standard-battle .raid-standard-overview > header button { display: flex; align-items: center; gap: 4px; }
+.raid-standard-battle .raid-standard-overview > p { margin: 8px 0; font-size: 12px; color: #b5cadd; }
+.raid-standard-battle .raid-standard-roster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.raid-standard-battle .raid-standard-roster .raid-actor-card { min-width: 0; width: 100%; max-width: none; min-height: 135px; grid-template-columns: 42px minmax(0, 1fr); padding: 24px 7px 8px; }
+.raid-standard-battle .raid-standard-roster .raid-live-sprite-frame { width: 42px; height: 60px; }
+.raid-standard-battle .raid-standard-roster .raid-live-sprite { width: 42px; height: 60px; }
+.raid-standard-battle .raid-standard-roster .raid-actor-copy strong { font-size: 12px; }
+.raid-withdraw-dialog { text-align: center; }
+.raid-withdraw-dialog > svg { color: #efb279; }
+.raid-withdraw-dialog > div { display: flex; justify-content: center; gap: 12px; }
+@media (max-height: 620px) and (orientation: landscape) {
+  .raid-standard-battle .raid-online-bar { min-height: 22px; padding: 2px 10px; font-size: 10px; }
+  .app-shell.battle-view .raid-standard-battle > .battle-command-deck { flex-basis: 140px; padding: 4px 10px 5px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .raid-standard-battle .battle-log-scroll { font-size: 10px; line-height: 1.4; }
+  .raid-standard-battle .battle-log-current { padding: 5px 7px; }
+  .raid-standard-battle .battle-command-buttons button { min-height: 0; padding: 7px 12px; }
+  .raid-standard-battle .battle-move-menu > header { padding: 3px 5px; }
+  .raid-standard-battle .battle-move-button { min-height: 0; padding: 4px 6px; }
+  .raid-standard-battle .battle-move-name strong { font-size: 12px; }
+  .raid-standard-battle .battle-move-menu > header button { min-height: 22px; padding: 3px 5px; font-size: 10px; }
+  .raid-standard-battle .raid-command-wait { padding: 7px; gap: 5px; }
+  .raid-standard-battle .raid-command-wait strong { font-size: 14px; }
+  .raid-standard-battle .raid-command-wait p { font-size: 10px; }
+  .raid-standard-battle .raid-standard-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

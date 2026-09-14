@@ -1,3 +1,5 @@
+import { captureRaidPresentation, stampRaidPresentationLog } from './raidPresentation.js'
+
 // State is serializable. Policy is opt-in by raid.primaryBossId, never by species.
 export const RAID_GATES = [75, 50, 25, 0]
 export const RAID_SIDE_CLEAR_FIELDS = Object.freeze({
@@ -15,8 +17,9 @@ export function raidEvent(state, kind, message, details = {}, { log = true } = {
   state.raid.eventSequence = number
   const actor = details.actorId ? [...state.player.team, ...state.opponent.team].find((p) => p.battleId === details.actorId) : null
   const event = { id: `${state.raid.raidId}:${number}`, kind, message, turn: state.turn, phase: state.raid.phase, ...(actor ? { hp: actor.hp, maxHp: actor.maxHp, form: actor.raidForm ?? null } : {}), ...details }
+  if (log) state.log.push(stampRaidPresentationLog(state, { message, tone: kind === 'damage-protection' ? 'muted' : 'field' }))
+  event.presentation = captureRaidPresentation(state, { reset: kind === 'stage-transition' })
   state.raid.events = [...(state.raid.events ?? []), event].slice(-80)
-  if (log) state.log.push({ message, tone: kind === 'damage-protection' ? 'muted' : 'field' })
 }
 export function beginRaidDamageRoot(state, id, kind = 'action') {
   if (!state.raid) return

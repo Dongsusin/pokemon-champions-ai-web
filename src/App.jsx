@@ -1228,7 +1228,8 @@ export function GameApp({
       ) : screen === 'raid' ? (
         <RaidScreen user={user} boxPokemon={boxPokemon} onBack={() => setScreen('battle-hub')}
           onBeforeJoin={onSyncBeforeRanked} onBattleActiveChange={setRaidBattleActive}
-          soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio} onReceiveVpRewards={receiveRaidVpRewards} />
+          soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio} onReceiveVpRewards={receiveRaidVpRewards}
+          onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
       ) : screen === 'rooms' ? (
         <BattleRoomsScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRooms} onBack={() => setScreen('battle-hub')}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft, Check, ChevronRight, Clock3, Crown, Flag, HeartPulse, KeyRound,
   Info, LoaderCircle, LockKeyhole, Play, Plus, RefreshCw, Shield, Sparkles, Swords,
-  UsersRound, Wifi, WifiOff, X,
+  UsersRound, Wifi, WifiOff, X, ScrollText,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
 import SpriteImage from './SpriteImage'
@@ -15,6 +15,12 @@ import { getAbility, getMove, getSpeciesProfile, typeClassName } from './data/tr
 import { getBattleItem } from './data/shopData'
 import { createRaidClient, createRaidRequestId, isRaidEnabled, isRaidLocalTest } from './raidClient'
 import './raid.css'
+import './raidStandardBattle.css'
+import RaidBattleStage from './RaidBattleStage'
+import RaidBattleCommands from './RaidBattleCommands'
+import { turnStepDuration } from './BattleScreen'
+import { raidPlaybackVersion } from './raidBattlePlayback'
+import useRaidBattlePlayback from './useRaidBattlePlayback'
 
 const EMPTY = Object.freeze({ catalog: null, rooms: [], room: null, raid: null, result: null, rewards: null, conflicts: null })
 const LOCAL_IDENTITY_KEY = 'champions-raid-test-identity-v1'
@@ -31,13 +37,6 @@ const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value ?? {},
 const actorId = (actor, fallback) => String(actor?.actorId ?? actor?.battleId ?? actor?.id ?? actor?.slotId ?? fallback ?? '')
 const asArray = value => Array.isArray(value) ? value : []
 const clockText = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, '0')}`
-
-function animationDuration(mode) {
-  if (mode === 'very-fast') return 1_150
-  if (mode === 'fast') return 1_750
-  if (mode === 'skip') return 850
-  return 2_800
-}
 
 function hpTransitionDuration(speed) {
   if (speed === 'instant') return 0
@@ -176,61 +175,6 @@ function activeActors(battle, side) {
   return activeIndexes.length ? activeIndexes.map(index => team[index]).filter(Boolean) : team.filter(actor => actor?.active !== false).slice(0, 3)
 }
 
-function getCommandOptions(raid, battle) {
-  const ownId = String(raid?.ownActorId ?? '')
-  const source = battle?.legalCommands ?? battle?.commandOptions ?? raid?.legalCommands ?? raid?.commandOptions
-  if (Array.isArray(source)) {
-    const match = source.find(entry => String(entry?.actorId ?? entry?.id ?? '') === ownId)
-    return match ?? source.find(entry => entry?.moves || entry?.commands) ?? {}
-  }
-  if (source && typeof source === 'object') {
-    if (source[ownId]) return source[ownId]
-    if (source.actors?.[ownId]) return source.actors[ownId]
-    if (Array.isArray(source.actors)) return source.actors.find(entry => String(entry?.actorId ?? '') === ownId) ?? source
-    return source
-  }
-  return {}
-}
-
-function commandMoves(command, ownActor, battle) {
-  const raw = asArray(command?.moves ?? command?.commands ?? battle?.moves ?? ownActor?.moves ?? ownActor?.pokemon?.moves)
-  return raw.map((entry, index) => ({ ...entry, moveIndex: Number.isInteger(entry?.moveIndex) ? entry.moveIndex : index }))
-}
-
-function targetsFor(command, move, battle, ownActor, gimmickId = null) {
-  const key = move?.moveIndex
-  const gimmickDirect = gimmickId ? move?.gimmickTargets?.[gimmickId] : null
-  const direct = gimmickDirect ?? move?.targets ?? move?.legalTargets ?? move?.targetOptions
-  const mapped = command?.targets?.[key] ?? command?.legalTargets?.[key] ?? command?.targetOptions?.[key]
-  const ids = move?.targetActorIds ?? command?.targetActorIds?.[key]
-  const source = asArray(direct).length ? direct : asArray(mapped).length ? mapped : asArray(ids)
-  if (source.length) return source.map((target, index) => {
-    if (typeof target === 'string') return { actorId: target, label: findActorLabel(battle, target) }
-    return { ...target, actorId: actorId(target, index), label: target.label ?? target.name ?? findActorLabel(battle, actorId(target, index)) }
-  })
-  const targetId = move?.targetActorId ?? command?.targetActorId?.[key]
-  if (targetId) return [{ actorId: String(targetId), label: findActorLabel(battle, targetId) }]
-  // Self-targeting moves are accepted without a picker only when the
-  // projection explicitly marks them self-only.
-  if (move?.target === 'self' || move?.targeting === 'self' || move?.selfTarget) {
-    return [{ actorId: actorId(ownActor), label: actorName(ownActor, '나') }]
-  }
-  // Struggle remains a legal server action after every move reaches 0 PP.
-  // The safe projection exposes the flag separately, so derive its only
-  // possible targets from the active enemy actors instead of inventing a
-  // client-side move definition or target rule.
-  if (Number(move?.moveIndex) === -1) {
-    return activeActors(battle, 'enemy').filter(actor => !actor?.fainted && actorHp(actor).hp > 0)
-      .map((actor, index) => ({ actorId: actorId(actor, index), label: actorName(actor) }))
-  }
-  return []
-}
-
-function findActorLabel(battle, id) {
-  const actor = [...activeActors(battle, 'ally'), ...activeActors(battle, 'enemy')].find(entry => actorId(entry) === String(id))
-  return actorName(actor, '대상')
-}
-
 function moveName(move) { return move?.displayName ?? move?.name ?? move?.move?.name ?? '기술' }
 function moveType(move) { return move?.type ?? move?.move?.type ?? '노말' }
 function movePp(move) { return `${move?.pp ?? move?.currentPp ?? '—'} / ${move?.maxPp ?? move?.maxPP ?? '—'}` }
@@ -256,26 +200,6 @@ function StatStageBadges({ actor, className = '' }) {
   return <div className={`raid-stat-stages ${className}`.trim()} aria-label={`${actorName(actor)} 능력 변화`}>
     {stages.map(({ key, label, stage }) => <span className={stage > 0 ? 'raised' : 'lowered'} key={key}>{label}{stage > 0 ? '+' : ''}{stage}</span>)}
   </div>
-}
-
-function describeRaidEvent(event) {
-  const message = event?.message ?? event?.text ?? event?.label ?? '전투 상태가 갱신되었습니다.'
-  const requested = Number(event?.requested)
-  const applied = Number(event?.applied)
-  if (Number.isFinite(requested) && Number.isFinite(applied)) {
-    const blocked = Math.max(0, Math.round(requested - applied))
-    const appliedText = `피해 요청 ${Math.max(0, Math.round(requested)).toLocaleString()} · 적용 ${Math.max(0, Math.round(applied)).toLocaleString()}`
-    return blocked > 0
-      ? `${message} (${appliedText} · 구간 보호로 초과 ${blocked.toLocaleString()} 차단)`
-      : `${message} (${appliedText})`
-  }
-  // The engine emits a separate, allow-listed impact cue.  Its message can be
-  // intentionally narrative (for example Future Sight), so retain the exact
-  // server-applied damage in the log instead of relying on prose alone.
-  const impact = event?.kind === 'battle-cue' && event?.cuePhase === 'impact'
-  const damage = Number(event?.damage ?? event?.appliedDamage ?? event?.result?.damage)
-  if (impact && Number.isFinite(damage)) return `${message} (실제 피해 ${Math.max(0, Math.round(damage)).toLocaleString()})`
-  return message
 }
 
 function heldItemFor(actor) {
@@ -413,25 +337,6 @@ function RaidBossHp({ actor, raid, hpTransitionMs }) {
   </section>
 }
 
-function RaidEventLog({ events, battleLog }) {
-  const seen = new Set()
-  const eventEntries = asArray(events).filter(event => {
-    const id = String(event?.id ?? `${event?.turn}:${event?.message}`)
-    if (seen.has(id)) return false
-    seen.add(id)
-    return true
-  }).map(event => ({ ...event, source: 'event' }))
-  const battleEntries = asArray(battleLog).map((entry, index) => ({
-    id: `battle-log-${entry?.id ?? entry?.turn ?? ''}-${index}`,
-    turn: entry?.turn,
-    message: entry?.message ?? entry?.text ?? entry?.label,
-    tone: entry?.tone,
-    source: 'battle',
-  })).filter(entry => entry.message && !eventEntries.some(event => (event.message ?? event.text ?? event.label) === entry.message))
-  const list = [...eventEntries, ...battleEntries].slice(-16)
-  return <details className="raid-event-log" open><summary><Swords size={16} /> 전투 로그 <span>탭하여 접기</span></summary><div>{list.length ? list.map((event, index) => <p className={`raid-log-${event.source}${event.tone ? ` tone-${event.tone}` : ''}`} key={event.id ?? `${event.turn}-${index}`}><span>{event.turn ? `T${event.turn}` : event.source === 'battle' ? '전투' : '•'}</span>{describeRaidEvent(event)}</p>) : <p className="raid-event-empty">서버의 전투 기록을 기다리고 있습니다.</p>}</div></details>
-}
-
 function RoomCard({ room, onJoin, busy }) {
   const isPrivate = room.visibility === 'private' || room.locked
   const starting = !OWNED_ROOM_STATUSES.has(String(room.status ?? '').toLowerCase())
@@ -540,37 +445,29 @@ function RaidIntermission({ raid, battle, busy, connected, onAdvance, onWithdraw
   </main>
 }
 
-function RaidBattle({ raid, result, busy, connected, secondsLeft, onSubmit, onRevoke, onWithdraw, onAdvance, error, onRefresh, soundEnabled, audioSettings, gameSettings = {} }) {
-  const battle = raid?.battle ?? raid
+function RaidWithdrawDialog({ busy, connected, onClose, onWithdraw }) {
+  return <div className="raid-picker-backdrop"><section className="raid-room-dialog raid-withdraw-dialog" role="alertdialog" aria-modal="true" aria-labelledby="raid-withdraw-title"><Flag size={28} /><h2 id="raid-withdraw-title">이번 보스전에서 철수할까요?</h2><p>남은 참가자들은 전투를 계속할 수 있습니다.</p><div><button type="button" className="raid-secondary" onClick={onClose}>계속 대전</button><button type="button" className="raid-primary" disabled={busy || !connected} onClick={onWithdraw}>철수하기</button></div></section></div>
+}
+
+function RaidBattle({ raid, result, playback, replayPending, busy, connected, secondsLeft, onSubmit, onRevoke, onWithdraw, onAdvance, error, onRefresh, soundEnabled, audioSettings, gameSettings = {}, onToggleSound, onOpenSettings }) {
+  const battle = playback.raidId === raid.id ? playback.battle ?? raid.battle : raid.battle
   const allies = activeActors(battle, 'ally')
   const enemies = activeActors(battle, 'enemy')
-  const ownActor = allies.find(actor => actorId(actor) === String(raid?.ownActorId)) ?? allies.find(actor => actor?.isOwn)
-  const command = getCommandOptions(raid, battle)
-  const projectedMoves = commandMoves(command, ownActor, battle)
-  const moves = projectedMoves.length
-    ? projectedMoves
-    : battle?.canStruggle
-      ? [{ moveIndex: -1, name: '발버둥', type: '노말', currentPp: null, maxPp: null, description: '남은 기술 PP가 없어 발버둥을 사용합니다.' }]
-      : []
-  const [pending, setPending] = useState(null)
-  const [gimmickId, setGimmickId] = useState(null)
-  const ownActorKey = actorId(ownActor)
-  const boss = enemies.find(actor => isBossActor(actor, raid))
-  const bossPhase = String(raid?.stage ?? raid?.phase ?? battle?.raid?.phase ?? '')
-  const bossStage = Boolean(boss && (bossPhase.includes('2') || bossPhase.includes('boss') || boss?.isBoss))
-  const submitted = Boolean(raid?.submitted ?? raid?.actionSubmitted)
-  const participants = asArray(raid?.participants)
-  const eventFeed = asArray(raid?.events ?? battle?.raid?.events ?? battle?.events)
-  const [presentation, setPresentation] = useState(null)
+  const ownActor = allies.find(actor => actorId(actor) === String(raid.ownActorId ?? battle.ownActorId))
+  const playing = playback.playing || replayPending
+  const cue = playback.raidId === raid.id ? playback.cue : null
+  const displayRaid = { ...raid, phase: battle.raid?.phase ?? raid.phase, stage: battle.raid?.phase ?? raid.stage, battle }
+  const boss = enemies.find(actor => isBossActor(actor, displayRaid))
+  const submitted = Boolean(raid.submitted ?? raid.actionSubmitted)
   const battleAudioRef = useRef(null)
   const audioStartedRef = useRef(null)
-  const seenCueIdsRef = useRef(new Set())
-  const cueFeedReadyRef = useRef(false)
-  const presentationTimerRef = useRef(null)
-  const animationMode = gameSettings?.attackAnimation ?? 'normal'
-  const hpTransitionMs = hpTransitionDuration(gameSettings?.hpBarSpeed)
+  const playedCueRef = useRef(null)
+  const forcedAttemptRef = useRef(null)
+  const logRef = useRef(null)
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false)
+  const animationMode = gameSettings.attackAnimation ?? 'normal'
+  const hpTransitionMs = hpTransitionDuration(gameSettings.hpBarSpeed)
   const reducedMotion = useReducedMotion()
-  const presentationDuration = reducedMotion ? 850 : animationDuration(animationMode)
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
   useEffect(() => () => battleAudioRef.current?.destroy(), [])
   useEffect(() => { battleAudioRef.current?.setEnabled(soundEnabled) }, [soundEnabled])
@@ -582,120 +479,54 @@ function RaidBattle({ raid, result, busy, connected, secondsLeft, onSubmit, onRe
     return () => events.forEach(event => window.removeEventListener(event, unlock, true))
   }, [])
   useEffect(() => {
-    const key = `${raid?.id ?? ''}:${battle?.raid?.phase ?? raid?.phase ?? ''}`
-    if (!raid?.id || audioStartedRef.current === key) return
-    audioStartedRef.current = key
+    if (audioStartedRef.current === raid.id) return
+    audioStartedRef.current = raid.id
     battleAudioRef.current?.start({ playerPokemon: allies, opponentPokemon: enemies })
-  }, [raid?.id, battle?.raid?.phase, raid?.phase])
-  useEffect(() => () => window.clearTimeout(presentationTimerRef.current), [])
+  }, [raid.id])
   useEffect(() => {
-    const entries = eventFeed.filter(Boolean)
-    if (!cueFeedReadyRef.current) {
-      entries.forEach((event, index) => seenCueIdsRef.current.add(String(event?.id ?? `${event?.turn ?? ''}:${event?.kind ?? ''}:${index}`)))
-      cueFeedReadyRef.current = true
-      return
-    }
-    const fresh = entries.filter((event, index) => {
-      const id = String(event?.id ?? `${event?.turn ?? ''}:${event?.kind ?? ''}:${index}`)
-      if (seenCueIdsRef.current.has(id)) return false
-      seenCueIdsRef.current.add(id)
-      return true
-    })
-    if (seenCueIdsRef.current.size > 180) seenCueIdsRef.current = new Set([...seenCueIdsRef.current].slice(-100))
-    fresh.forEach(event => {
-      if (event?.kind === 'battle-cue') {
-        const phase = event.cuePhase === 'announce' ? 'attack'
-          : event.cuePhase === 'mechanic' ? (event.form ? 'form' : 'gimmick')
-            : event.cuePhase
-        // "애니메이션 생략"은 화면 연출만 짧게 처리한다. 전투 기록이
-        // battle-cue로만 전달되는 협동전에서도 실제 기술 음향은 남긴다.
-        battleAudioRef.current?.playCue({ ...event, phase, mechanicId: event.gimmickId ?? event.mechanicId ?? event.form }, {
-          animationMode: animationMode === 'skip' ? 'normal' : animationMode,
-          durationMs: presentationDuration,
-        })
-      }
-      const mechanicCue = event?.kind === 'battle-cue' && event?.cuePhase === 'mechanic'
-      if (event?.kind === 'boss-mechanic' || event?.kind === 'summon' || event?.kind === 'weather-blocked' || mechanicCue) {
-        // Form data is carried by ordinary announce/impact cues as actor
-        // state.  Only the explicit mechanic cue may introduce a form banner;
-        // otherwise every attack by an Armored/Dark boss would look like a
-        // repeated transformation.
-        const kind = event?.kind === 'summon' ? 'summon' : event?.kind === 'weather-blocked' ? 'weather' : mechanicCue && event?.form ? 'form' : 'mechanic'
-        setPresentation({ id: event?.id, kind, mode: animationMode, message: event?.message ?? event?.label ?? '보스의 패턴이 바뀌었습니다.' })
-        window.clearTimeout(presentationTimerRef.current)
-        presentationTimerRef.current = window.setTimeout(() => setPresentation(null), presentationDuration)
-      }
-    })
-  }, [animationMode, eventFeed, presentationDuration])
-  const canAct = Boolean(String(raid?.lifecycle ?? '').toLowerCase() === 'input' && connected && !busy && ownActor && !ownActor?.fainted && actorHp(ownActor).hp > 0 && !submitted
+    if (!cue?.id || playedCueRef.current === cue.id) return
+    playedCueRef.current = cue.id
+    battleAudioRef.current?.playCue(cue, { animationMode: animationMode === 'skip' ? 'normal' : animationMode, durationMs: turnStepDuration(cue, animationMode) })
+  }, [cue, animationMode])
+  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight }, [cue?.id, battle.log])
+  const canAct = Boolean(!playing && raid.lifecycle === 'input' && connected && !busy && ownActor && !ownActor.fainted && actorHp(ownActor).hp > 0 && !submitted
     && !isFinished(raid, result) && (secondsLeft === null || secondsLeft > 0))
-  const mechanics = asArray(pending?.gimmicks ?? pending?.gimmickOptions ?? command?.gimmicks ?? command?.mechanics ?? battle?.mechanics)
-  const targets = pending ? targetsFor(command, pending, battle, ownActor, gimmickId) : []
-  const usesTarget = pending && !(pending?.target === 'self' || pending?.targeting === 'self' || pending?.selfTarget)
-  const canHitAlly = Boolean(pending?.friendlyFire || targets.some(target => target?.friendly || String(target?.sideId) === 'player' || String(target?.sideId) === 'ally'))
-
-  useEffect(() => { setPending(null); setGimmickId(null) }, [raid?.turnNumber, raid?.decisionToken, ownActorKey])
-
-  const submit = targetActorId => {
-    if (!pending || !canAct) return
-    battleAudioRef.current?.playMenu('select')
-    onSubmit({ actorId: ownActorKey, type: 'move', moveIndex: pending.moveIndex, ...(targetActorId ? { targetActorId } : {}), ...(gimmickId ? { gimmickId } : {}) })
-    setPending(null)
-    setGimmickId(null)
-  }
-  const clickMove = move => {
-    if (!canAct || move?.disabled) return
-    battleAudioRef.current?.playMenu('select')
-    const candidates = targetsFor(command, move, battle, ownActor)
-    if (!candidates.length && !(move?.target === 'self' || move?.targeting === 'self' || move?.selfTarget)) {
-      setPending(move)
-      return
-    }
-    if (candidates.length === 1 && !asArray(move?.gimmicks ?? move?.gimmickOptions).length && !asArray(command?.gimmicks ?? command?.mechanics ?? battle?.mechanics).length) submitFrom(move, candidates[0]?.actorId)
-    else setPending(move)
-  }
-  const submitFrom = (move, targetActorId) => {
-    battleAudioRef.current?.playMenu('select')
-    onSubmit({ actorId: ownActorKey, type: 'move', moveIndex: move.moveIndex, ...(targetActorId ? { targetActorId } : {}) })
-  }
-  const waitText = !connected ? '연결 복구 중 · 서버의 보스전 상태를 확인하고 있습니다.'
-    : busy ? '명령을 서버로 전송하고 있습니다.'
-      : submitted ? '명령 전송 완료 · 다른 참가자와 NPC의 행동을 기다리고 있습니다.'
-        : secondsLeft === 0 ? '행동 시간이 종료되었습니다. 서버 판정을 확인합니다.'
-          : ownActor?.fainted ? '내 포켓몬은 기절했습니다. 다른 참가자의 전투를 지켜보세요.' : '이번 턴의 행동을 선택하세요.'
-
-  if (raid?.lifecycle === 'intermission') return <RaidIntermission raid={raid} battle={battle} busy={busy} connected={connected} onAdvance={onAdvance} onWithdraw={onWithdraw} error={error} onRefresh={onRefresh} />
-
-  const participantForActor = (actor, index) => participants.find(participant => Number(participant?.slotId) === Number(actor?.slot ?? actor?.slotId ?? index))
-  const rainSuppressed = Boolean((battle?.raid?.weatherLock ?? raid?.weatherLock)?.suppressed ?? (battle?.raid?.weatherLock ?? raid?.weatherLock)?.effectSuppressed)
-  return <main className={`raid-battle-screen animation-${animationMode}${reducedMotion ? ' reduce-motion' : ''}${(battle?.raid?.weatherLock?.id === 'rain' || battle?.raid?.weatherLock === 'rain') ? ' raid-weather-rain' : ''}${rainSuppressed ? ' raid-weather-suppressed' : ''}`} style={{ '--raid-hp-transition': `${hpTransitionMs}ms` }}>
-    <header className="raid-battle-header"><div><span><Crown size={15} /> CO-OP BOSS RAID</span><strong>{phaseLabel(raid)}</strong><small>TURN {raid?.turnNumber ?? '—'}</small></div>
-      <div className="raid-battle-connection"><span>{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{connected ? '실시간 동기화' : '연결 복구 중'}</span><b className={secondsLeft !== null && secondsLeft <= 10 ? 'urgent' : ''}><Clock3 size={14} />{secondsLeft === null ? '—' : clockText(secondsLeft)}</b><button type="button" disabled={busy} onClick={onWithdraw}><Flag size={14} /> 철수</button></div></header>
+  useEffect(() => {
+    if (!canAct || !battle.forcedAction) return
+    if (forcedAttemptRef.current?.token !== raid.decisionToken) forcedAttemptRef.current = { token: raid.decisionToken, attempts: 0 }
+    const attempt = forcedAttemptRef.current
+    if (attempt.pending || attempt.completed || attempt.attempts >= 2) return
+    attempt.pending = true
+    attempt.attempts += 1
+    Promise.resolve(onSubmit({ ...battle.forcedAction, actorId: actorId(ownActor) })).then(value => { attempt.completed = Boolean(value) })
+      .catch(() => { /* The request panel offers manual continuation after bounded retries. */ })
+      .finally(() => { attempt.pending = false })
+  }, [canAct, raid.decisionToken, battle.forcedAction])
+  const waitText = !connected ? '연결을 복구하고 있습니다.' : busy ? '행동을 전송하고 있습니다.'
+    : submitted ? '다른 참가자가 행동을 선택하고 있습니다.' : secondsLeft === 0 ? '행동 시간이 끝났습니다. 전투 진행을 기다려 주세요.'
+      : ownActor?.fainted ? '내 포켓몬이 쓰러졌습니다. 동료의 전투를 지켜보세요.' : '이번 턴의 행동을 선택하세요.'
+  const withdrawDialog = confirmWithdraw && <RaidWithdrawDialog busy={busy} connected={connected} onClose={() => setConfirmWithdraw(false)} onWithdraw={onWithdraw} />
+  if (raid.lifecycle === 'intermission' && !playing) return <><RaidIntermission raid={raid} battle={battle} busy={busy} connected={connected} onAdvance={onAdvance} onWithdraw={() => setConfirmWithdraw(true)} error={error} onRefresh={onRefresh} />{withdrawDialog}</>
+  const latestEvent = playback.events?.at(-1)
+  const currentMessage = cue?.message ?? battle.log?.at(-1)?.message ?? latestEvent?.message ?? waitText
+  const history = asArray(battle.log).slice(-14).filter((entry, index, list) => index !== list.length - 1 || entry.message !== currentMessage)
+  const turn = Math.max(1, cue?.turn ?? battle.turn ?? raid.turnNumber ?? 1)
+  return <main className={`battle-game-screen raid-battle-screen raid-standard-battle cue-${cue?.phase ?? 'command'}${reducedMotion ? ' reduce-motion' : ''}`} style={{ '--battle-hp-duration': `${hpTransitionMs}ms`, '--raid-hp-transition': `${hpTransitionMs}ms` }}>
+    <div className="raid-online-bar" role="status"><span>{connected ? <Wifi size={14} /> : <WifiOff size={14} />}{playing ? '배틀 진행 중' : waitText}</span><div><Clock3 size={14} /><b>{secondsLeft === null ? '—' : clockText(secondsLeft)}</b><button type="button" disabled={busy} onClick={() => setConfirmWithdraw(true)}><Flag size={14} /> 기권</button></div></div>
     {error && <div className="raid-notice error" role="alert">{error}<button type="button" onClick={onRefresh}><RefreshCw size={14} /> 다시 연결</button></div>}
-    <section className={`raid-stage${bossStage ? ' boss-stage' : ' stage-one'}`}>
-      {presentation && <div className={`raid-event-presentation ${presentation.kind} mode-${presentation.mode ?? 'normal'}`} role="status" key={presentation.id}><Sparkles size={18} /><span>{presentation.message}</span></div>}
-      {bossStage && <RaidBossHp actor={boss} raid={raid} hpTransitionMs={hpTransitionMs} />}
-      <div className={`raid-enemy-line${bossStage ? ` boss-stage boss-count-${Math.min(3, enemies.length)}` : ''}`}>{enemies.map((actor, index) => <RaidActor key={actorId(actor, index)} actor={actor} side="enemy" boss={isBossActor(actor, raid)} hpTransitionMs={hpTransitionMs} />)}</div>
-      <div className="raid-versus" aria-hidden="true"><Swords size={25} /></div>
-      <div className="raid-ally-line">{[0, 1, 2].map(index => {
-        const actor = allies[index]
-        const participant = participantForActor(actor, index)
-        const own = actorId(actor) === ownActorKey
-        const npc = Boolean(actor && !own && (actor?.isNpc ?? actor?.isAi ?? participant?.isAi ?? false))
-        return <RaidActor key={actorId(actor, `ally-${index}`)} actor={actor} side="ally" own={own} npc={npc} submitted={own ? submitted : Boolean(participant?.submitted)} waiting={Boolean(actor && !actor?.fainted && !participant?.submitted && !participant?.aiControlled && !npc)} aiControlled={Boolean(participant?.aiControlled)} hpTransitionMs={hpTransitionMs} />
-      })}</div>
+    <RaidBattleStage battle={{ ...battle, turn }} raid={displayRaid} cue={cue} animationMode={reducedMotion ? 'skip' : animationMode} hpTransitionMs={hpTransitionMs}
+      soundEnabled={soundEnabled} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} showDamageNumbers={gameSettings.showDamageNumbers !== false}
+      bossHud={boss && <RaidBossHp actor={boss} raid={displayRaid} hpTransitionMs={hpTransitionMs} />} />
+    <section className="battle-command-deck">
+      <aside className="battle-log-panel"><header><span><ScrollText size={15} /> 배틀 로그</span><strong>TURN {turn}</strong></header><div className="battle-log-body"><div className="battle-log-scroll" ref={logRef} aria-label="배틀 로그" aria-live="polite">
+        {history.map((entry, index) => <p className={`tone-${entry.tone ?? 'neutral'}`} key={`${index}-${entry.message}`}>{entry.message}</p>)}
+        <p className="battle-log-current" key={cue?.id ?? currentMessage}><span aria-hidden="true">▶</span><span className="battle-log-current-message">{currentMessage}</span></p>
+      </div></div></aside>
+      <RaidBattleCommands battle={battle} raid={raid} canAct={canAct} playing={playing} submitted={submitted} busy={busy} connected={connected} waitText={waitText}
+        onSubmit={onSubmit} onRevoke={onRevoke} onWithdraw={onWithdraw} onPreview={() => battleAudioRef.current?.playMenu('select')}
+        renderActor={(actor, index) => <RaidActor key={actorId(actor, index)} actor={actor} side={actor.sideId === 'opponent' ? 'enemy' : 'ally'} own={actorId(actor) === actorId(ownActor)} boss={isBossActor(actor, displayRaid)} npc={actor.isNpc} hpTransitionMs={hpTransitionMs} />} />
     </section>
-    <section className="raid-command-area"><RaidEventLog events={eventFeed} battleLog={battle?.log} />
-      <article className="raid-command-panel"><header><div><span>YOUR COMMAND</span><strong>{actorName(ownActor, '내 포켓몬')}의 행동</strong></div>{submitted && <button type="button" className="raid-revoke" disabled={busy} onClick={onRevoke}>선택 취소</button>}</header>
-        <p className="raid-waiting-message" role="status">{waitText}</p>
-        {!submitted && <div className="raid-move-grid">{moves.length ? moves.map(move => <div className="raid-move-entry" key={`${move.moveIndex}-${moveName(move)}`}><button type="button" disabled={!canAct || Boolean(move.disabled)} title={move.reason || undefined} aria-label={move.reason ? `${moveName(move)} · ${move.reason}` : moveName(move)} className={`raid-move type-${typeClassName(moveType(move))}${pending?.moveIndex === move.moveIndex ? ' selected' : ''}`} onClick={() => clickMove(move)}><span>{moveType(move)}</span><strong>{moveName(move)}</strong><small>PP {movePp(move)}{move.reason ? ` · ${move.reason}` : ''}</small></button><MoveDetails move={move} className="raid-move-detail" /></div>) : <div className="raid-no-moves">서버가 사용할 수 있는 기술을 준비하고 있습니다.</div>}</div>}
-        {pending && <div className="raid-target-picker" role="group" aria-label={`${moveName(pending)} 대상 선택`}><header><strong>{moveName(pending)} · 대상 선택</strong><button type="button" onClick={() => { setPending(null); setGimmickId(null) }}><X size={16} /> 취소</button></header>
-          {mechanics.length > 0 && <div className="raid-gimmick-options"><button type="button" className={!gimmickId ? 'selected' : ''} onClick={() => setGimmickId(null)}>일반 기술</button>{mechanics.map((mechanic, index) => { const id = mechanic?.id ?? mechanic?.gimmickId ?? String(mechanic); const label = mechanic?.label ?? mechanic?.name ?? mechanic?.displayName ?? String(mechanic); return <button type="button" key={id} className={gimmickId === id ? 'selected' : ''} onClick={() => setGimmickId(id)}><Sparkles size={13} /> {label}</button> })}</div>}
-          {canHitAlly && <p className="raid-friendly-warning"><UsersRound size={14} /> 아군도 대상에 포함됩니다. 공격하기 전에 대상 이름을 확인하세요.</p>}
-          <div className="raid-target-options">{targets.length ? targets.map((target, index) => <button type="button" key={target.actorId ?? index} disabled={!canAct} onClick={() => submit(target.actorId)}>{target.label ?? findActorLabel(battle, target.actorId)}</button>) : usesTarget ? <span>이 기술의 서버 대상 정보를 기다리고 있습니다.</span> : <button type="button" disabled={!canAct} onClick={() => submit(ownActorKey)}>기술 사용</button>}</div>
-        </div>}
-      </article>
-    </section>
+    {withdrawDialog}
   </main>
 }
 
@@ -728,10 +559,12 @@ function TrophyIcon() { return <Crown size={44} /> }
 export default function RaidScreen({
   user, boxPokemon = [], onBack, onBeforeJoin, onBattleActiveChange,
   soundEnabled = true, gameSettings = {}, audioSettings = {}, onVpRewards, onReceiveVpRewards,
-  client: providedClient, enabled = isRaidEnabled,
+  client: providedClient, enabled = isRaidEnabled, onToggleSound, onOpenSettings,
 }) {
   const [identity, setIdentity] = useState(initialIdentity)
   const [snapshot, setSnapshot] = useState(EMPTY)
+  const playback = useRaidBattlePlayback(snapshot.raid, gameSettings)
+  const replayPending = Boolean(snapshot.raid?.id && playback.raidId === snapshot.raid.id && playback.readyVersion !== raidPlaybackVersion(snapshot.raid))
   const snapshotRef = useRef(EMPTY)
   const [selectedBossId, setSelectedBossId] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -871,7 +704,8 @@ export default function RaidScreen({
   }, [])
 
   const liveRaid = isLive(snapshot.raid, snapshot.result)
-  useEffect(() => { onBattleActiveChange?.(liveRaid); return () => onBattleActiveChange?.(false) }, [liveRaid, onBattleActiveChange])
+  const battleVisible = liveRaid || replayPending
+  useEffect(() => { onBattleActiveChange?.(battleVisible); return () => onBattleActiveChange?.(false) }, [battleVisible, onBattleActiveChange])
 
   const receiveVpRewards = onReceiveVpRewards ?? onVpRewards
   useEffect(() => {
@@ -1080,13 +914,13 @@ export default function RaidScreen({
 
   if (!featureAvailable) return <main className="raid-disabled"><Crown size={44} /><h1>협동 보스전을 준비하고 있습니다</h1><p>현재 환경에서는 보스전 모드를 활성화하지 않았습니다.</p><button className="screen-back-button" type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 선택</button></main>
   if (!canAuthenticate) return <main className="raid-disabled"><UsersRound size={44} /><h1>온라인 계정으로 참가하세요</h1><p>게스트 또는 Google 로그인 후 협동 보스전 기록과 보상을 저장하며 참가할 수 있습니다.</p><button className="screen-back-button" type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 선택</button></main>
-  if (result) return <RaidResult raid={snapshot.raid} result={result} rewards={snapshot.rewards} busy={busy} onDismiss={dismissResult} />
-  if (liveRaid) return <RaidBattle raid={snapshot.raid} result={result} busy={busy} connected={connected} secondsLeft={secondsLeft} error={error || refreshError}
+  if (result && !replayPending) return <RaidResult raid={snapshot.raid} result={result} rewards={snapshot.rewards} busy={busy} onDismiss={dismissResult} />
+  if (battleVisible) return <RaidBattle playback={playback} replayPending={replayPending} raid={snapshot.raid} result={result} busy={busy} connected={connected} secondsLeft={secondsLeft} error={error || refreshError}
     onRefresh={() => refreshRef.current?.()} onRevoke={() => fire('raidRevoke', { raidId: snapshot.raid.id, revision: snapshot.raid.revision, decisionToken: snapshot.raid.decisionToken, commandVersion: snapshot.raid.ownCommandVersion })}
     onWithdraw={() => fire('raidWithdraw', { raidId: snapshot.raid.id })}
     onAdvance={() => fire('raidAdvance', { raidId: snapshot.raid.id, decisionToken: snapshot.raid.decisionToken })}
     onSubmit={command => fire('raidSubmit', { raidId: snapshot.raid.id, revision: snapshot.raid.revision, decisionToken: snapshot.raid.decisionToken, commandVersion: (snapshot.raid.ownCommandVersion ?? 0) + 1, command })}
-    soundEnabled={soundEnabled} gameSettings={gameSettings} audioSettings={audioSettings} />
+    soundEnabled={soundEnabled} gameSettings={gameSettings} audioSettings={audioSettings} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} />
   if (snapshot.room) return <>
     <RaidRoomLobby room={snapshot.room} boxPokemon={boxPokemon} selectedCaptureId={selectedCaptureId} onPick={() => setPickerOpen(true)} onReady={ready} onStart={() => fire('roomStart', { roomId: snapshot.room.id, roomRevision: snapshot.room.roomRevision })}
       onNpcRolesChange={setNpcRoles} onLeave={leaveRoom} busy={busy} error={error || refreshError} connected={connected} />

@@ -218,9 +218,25 @@ async function reopenRaid(player) {
 async function reloadIntoLatestRaid(player) {
   await reopenRaid(player)
   await player.page.locator('.raid-battle-screen, .raid-intermission-screen, .raid-result-screen').waitFor()
+  await waitForRaidPlayback(player)
+}
+
+// RaidScreen presents newly received public events before enabling commands.
+// Do not inspect a transient frame or click through the menu while that queue
+// is still applying a server turn.
+async function waitForRaidPlayback(player) {
+  await player.page.waitForFunction(() => {
+    const screen = document.querySelector('.raid-battle-screen')
+    if (!screen) return true
+    const commands = screen.querySelector('.raid-standard-commands')
+    return Boolean(commands)
+      && !commands.classList.contains('is-turn-locked')
+      && commands.getAttribute('aria-busy') !== 'true'
+  })
 }
 
 async function capture(player, label, selectors) {
+  await waitForRaidPlayback(player)
   await player.page.evaluate(() => document.fonts.ready)
   await player.page.waitForTimeout(200)
   const geometry = await player.page.evaluate(selectors => ({
@@ -312,12 +328,21 @@ async function roomEnter(player) {
 
 async function clickUiCommand(player, useGimmick = false) {
   const page = player.page
-  await page.locator('.raid-command-panel').waitFor()
+  await waitForRaidPlayback(player)
+  const commands = page.locator('.raid-standard-commands')
+  await commands.waitFor()
   const before = await page.evaluate(() => window.__raidEvents.requests.filter(entry => entry.action === 'raidSubmit').length)
-  await page.locator('.raid-move:not(:disabled)').first().click()
-  const gimmicks = page.locator('.raid-gimmick-options button')
-  if (useGimmick && await gimmicks.count() > 1) await gimmicks.nth(1).click()
-  const targets = page.locator('.raid-target-options button:not(:disabled)')
+  await commands.locator('.battle-command-buttons > button.fight').click()
+  const moves = commands.locator('.battle-move-button:not(:disabled)')
+  await moves.first().waitFor()
+  const gimmicks = commands.locator('.battle-gimmick-selector button:not(:disabled)')
+  if (useGimmick && await gimmicks.count()) await gimmicks.first().click()
+  await moves.first().click()
+  await page.waitForFunction(beforeCount => {
+    const submitted = window.__raidEvents.requests.filter(entry => entry.action === 'raidSubmit').length > beforeCount
+    return submitted || Boolean(document.querySelector('.raid-standard-commands .battle-target-card:not(:disabled)'))
+  }, before)
+  const targets = commands.locator('.battle-target-card:not(:disabled)')
   if (await targets.count()) await targets.first().click()
   await page.waitForFunction(beforeCount => window.__raidEvents.requests.filter(entry => entry.action === 'raidSubmit').length > beforeCount, before)
   await page.waitForFunction(beforeCount => {
@@ -449,18 +474,19 @@ async function reloadAndCompareBattleViews(label) {
   for (const view of serverViews.slice(1)) assert.deepEqual(publicBattleState(view), expected, `${label}: server projections disagree`)
 
   await Promise.all(players.map(player => reloadIntoLatestRaid(player)))
+  await Promise.all(players.map(waitForRaidPlayback))
   const rendered = []
   for (const player of players) {
     const value = await player.page.evaluate(() => {
-      const turnText = document.querySelector('.raid-battle-header small')?.textContent ?? ''
-      const hpText = document.querySelector('.raid-boss-hp footer span')?.textContent ?? ''
+      const turnText = document.querySelector('.battle-game-turn strong')?.textContent ?? ''
+      const hpText = document.querySelector('.raid-standard-boss-hud .raid-boss-hp footer span')?.textContent ?? ''
       const numbers = [...hpText.matchAll(/\d[\d,]*/g)].map(match => Number(match[0].replaceAll(',', '')))
       return {
         turn: Number((turnText.match(/\d+/) ?? [])[0] ?? NaN),
         hp: numbers[0] ?? null,
         maxHp: numbers[1] ?? null,
-        form: document.querySelector('.raid-actor-card.boss.aura-armored') ? 'armored'
-          : document.querySelector('.raid-actor-card.boss.aura-dark') ? 'dark' : null,
+        form: document.querySelector('.battle-pokemon-stage.opponent.raid-form-armored') ? 'armored'
+          : document.querySelector('.battle-pokemon-stage.opponent.raid-form-dark') ? 'dark' : null,
       }
     })
     assert.equal(value.turn, expected.turn, `${label}: ${player.identity} rendered stale turn`)
@@ -592,7 +618,7 @@ try {
     await host.page.getByRole('button', { name: '보스전 시작', exact: true }).click()
     for (const player of [bob, charlie]) await reloadIntoLatestRaid(player)
     await host.page.locator('.raid-battle-screen').waitFor()
-    await capture(bob, '1280x720-stage-one', ['.raid-battle-header', '.raid-stage', '.raid-command-panel'])
+    await capture(bob, '1280x720-stage-one', ['.battle-game-header', '.raid-standard-battle-arena', '.raid-standard-commands'])
 
     await host.page.evaluate(() => { window.__raidRace = { holdNextStatus: true, statusFetched: false } })
     let released = false
@@ -604,12 +630,12 @@ try {
       const staleRevision = await host.page.evaluate(() => window.__raidRace?.statusRevision)
       assert(Number.isInteger(staleRevision), 'The held status response must be a real raid projection')
       await clickUiCommand(host, true)
-      await host.page.locator('.raid-revoke').waitFor()
+      await host.page.getByRole('button', { name: '선택 취소', exact: true }).waitFor()
       await host.page.evaluate(() => window.__raidRace?.release?.())
       released = true
       await host.page.waitForTimeout(150)
-      assert.equal(await host.page.locator('.raid-revoke').count(), 1, 'Late status must not remove the locally submitted action')
-      assert.equal(await host.page.locator('.raid-move:not(:disabled)').count(), 0, 'Late status must not re-enable moves after submit')
+      assert.equal(await host.page.getByRole('button', { name: '선택 취소', exact: true }).count(), 1, 'Late status must not remove the locally submitted action')
+      assert.equal(await host.page.locator('.raid-standard-commands .battle-move-button:not(:disabled)').count(), 0, 'Late status must not re-enable moves after submit')
       const latest = await status(host)
       assert(latest.raid?.revision > staleRevision, 'The server command revision must remain newer than the held status response')
       assert.equal(latest.raid?.submitted, true)
@@ -648,9 +674,9 @@ try {
     assert.equal(armored.raid.battle.raid.phase, 2)
     const agreed = await reloadAndCompareBattleViews('armored-mewtwo-refresh')
     assert.equal(agreed.boss?.form, 'armored')
-    await capture(host, '844x390-armored-gate', ['.raid-battle-header', '.raid-stage', '.raid-command-panel'])
-    await charlie.page.locator('.raid-actor-card.aura-armored').waitFor()
-    await capture(charlie, '932x430-armored-gate', ['.raid-boss-hp', '.raid-actor-card.aura-armored', '.raid-command-area'])
+    await capture(host, '844x390-armored-gate', ['.battle-game-header', '.raid-standard-battle-arena', '.raid-standard-commands'])
+    await charlie.page.locator('.battle-pokemon-stage.opponent.raid-form-armored').waitFor()
+    await capture(charlie, '932x430-armored-gate', ['.raid-standard-boss-hud .raid-boss-hp', '.battle-pokemon-stage.opponent.raid-form-armored', '.raid-standard-commands'])
     assert.equal(await charlie.page.locator('.raid-boss-hp-track > b').count(), 3)
   })
 

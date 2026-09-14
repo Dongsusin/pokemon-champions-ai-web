@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto'
-import { createBattle, createBattlePreviewPokemon, playBattleTurnWithActions, getActivePokemonList, getBattleMoveSelectionState, getBattleMoveTargets, getAvailableBattleMechanics, getForcedBattleAction, getBattleStruggleAction, chooseRaidEngineAction, getEffectiveBattleWeatherId, getTypeEffectiveness } from '../src/data/battleEngine.js'
+import { createBattle, createBattlePreviewPokemon, playBattleTurnWithActions, getActivePokemonList, getBattleMoveSelectionState, getBattleMoveTargets, getBattleMovePreview, getAvailableBattleMechanics, getForcedBattleAction, getBattleStruggleAction, chooseRaidEngineAction, getEffectiveBattleWeatherId, getTypeEffectiveness } from '../src/data/battleEngine.js'
 import { normalizePokemon, getSpeciesProfile, getMoveById, getLearnableMoves } from '../src/data/trainingData.js'
 import { canonicalizeRankedTeam } from './rankedBattle.js'
 import { RAID_BOSSES, RAID_NPCS, RAID_DEFAULTS, RAID_SCHEMA_VERSION, RAID_ENGINE_VERSION, RAID_RULE_VERSION, getRaidBoss } from '../src/data/raidRules.js'
 import { raidEvent } from '../src/data/raidPolicy.js'
+import { RAID_PRESENTATION_ENVIRONMENT_FIELDS } from '../src/data/raidPresentation.js'
 
 export { RAID_BOSSES, RAID_DEFAULTS }
 export function raidRandom(seed) {
@@ -155,13 +156,27 @@ export function getRaidBattleView(battle, ownerId) {
     return { id, name: battle[id].name, team: actors.map((p, i) => publicActor(p, ownerId, i, id)), activeIndexes: actors.map((_, index) => index) }
   }
   const optionsFor = (moveIndex, gimmick) => getBattleMoveTargets(battle, 'player', moveIndex, ownActorSlot, gimmick).map((target) => ({ actorId: target.target.battleId, sideId: target.sideId, slot: target.slot, name: target.target.name, friendly: target.sideId === 'player' }))
-  const moves = actor?.moves.map((move, moveIndex) => ({ id: move.id, name: move.name, type: move.type, category: move.category, power: move.power, accuracy: move.accuracy, currentPp: move.currentPp, maxPp: move.maxPp, description: move.description, moveIndex, ...getBattleMoveSelectionState(battle, 'player', moveIndex, ownActorSlot), targets: optionsFor(moveIndex), friendlyFire: move.target === 'allAdjacent', gimmickTargets: Object.fromEntries(getAvailableBattleMechanics(battle, 'player', ownActorSlot).map((g) => [g.id, optionsFor(moveIndex, g.id)])) })) ?? []
+  const mechanics = actor && actor.hp > 0 ? getAvailableBattleMechanics(battle, 'player', ownActorSlot) : []
+  const previewFields = ['id', 'name', 'type', 'category', 'categoryId', 'power', 'accuracy', 'accuracyLabel', 'currentPp', 'maxPp', 'description', 'target', 'isMaxMove', 'isGmaxMove', 'isZMove', 'zMoveCompatible']
+  const variantFor = (moveIndex, gimmick = null) => {
+    const preview = getBattleMovePreview(battle, 'player', moveIndex, ownActorSlot, 0, gimmick)
+    return { ...getBattleMoveSelectionState(battle, 'player', moveIndex, ownActorSlot, gimmick), targets: optionsFor(moveIndex, gimmick),
+      preview: preview ? Object.fromEntries(previewFields.filter(key => preview[key] !== undefined).map(key => [key, structuredClone(preview[key])])) : null }
+  }
+  const moves = actor?.moves.map((move, moveIndex) => {
+    const variants = Object.fromEntries(mechanics.map(g => [g.id, variantFor(moveIndex, g.id)]))
+    return { id: move.id, name: move.name, type: move.type, category: move.category, power: move.power, accuracy: move.accuracy,
+      currentPp: move.currentPp, maxPp: move.maxPp, description: move.description, moveIndex, ...variantFor(moveIndex),
+      friendlyFire: move.target === 'allAdjacent', variants,
+      gimmickTargets: Object.fromEntries(Object.entries(variants).map(([id, variant]) => [id, variant.targets])) }
+  }) ?? []
   return {
     turn: battle.turn, phase: battle.raid.phase, outcome: getRaidOutcome(battle),
     player: side('player'), opponent: side('opponent'), ownActorId: actor?.battleId ?? null, ownActorSlot, moves,
-    mechanics: actor && actor.hp > 0 ? getAvailableBattleMechanics(battle, 'player', ownActorSlot) : [],
+    mechanics, forcedAction: actor ? getForcedBattleAction(battle, 'player', ownActorSlot) : null,
     canStruggle: Boolean(actor && getBattleStruggleAction(battle, 'player', ownActorSlot)),
-    rules: { weather: battle.rules.weather, terrain: battle.rules.terrain },
+    rules: { ...structuredClone(battle.rules), raid: true },
+    environment: Object.fromEntries(RAID_PRESENTATION_ENVIRONMENT_FIELDS.filter(key => battle.environment?.[key] !== undefined).map(key => [key, structuredClone(battle.environment[key])])),
     raid: {
       raidId: battle.raid.raidId, bossId: battle.raid.bossId, phase: battle.raid.phase, phaseEpoch: battle.raid.phaseEpoch,
       primaryBossId: battle.raid.primaryBossId, crossedGates: [...battle.raid.crossedGates], firedMechanics: [...battle.raid.firedMechanics],

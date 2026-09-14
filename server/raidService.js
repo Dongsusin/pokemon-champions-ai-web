@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import { createRankedProfile } from '../src/data/rankedRules.js'
 import { RAID_BOSSES, RAID_DEFAULTS, RAID_ENGINE_VERSION, RAID_RULE_VERSION, RAID_SCHEMA_VERSION } from '../src/data/raidRules.js'
+import { sanitizeRaidPresentation } from '../src/data/raidPresentation.js'
 import { maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
 import { readTrainerNickname } from '../src/data/trainerNickname.js'
 import { containsChatProfanity } from './chatModeration.js'
@@ -327,13 +328,14 @@ function publicEvents(view) {
   return events.slice(-MAX_PUBLIC_EVENTS).map(event => {
     if (!isPlain(event)) return null
     const result = {}
-    for (const key of ['id', 'kind', 'type', 'message', 'turn', 'phase', 'cuePhase', 'actorId', 'targetIds', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'gimmickId', 'mechanicId', 'mechanicLabel', 'result', 'damage', 'hp', 'maxHp', 'form', 'gate', 'outcome', 'requested', 'applied', 'rootId', 'sideId']) {
+    for (const key of ['id', 'kind', 'type', 'message', 'turn', 'phase', 'cuePhase', 'actorId', 'targetActorId', 'targetIds', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'moveTarget', 'movePriority', 'moveMultihit', 'moveDrain', 'moveRecoil', 'moveStatus', 'moveSelfdestruct', 'moveFlags', 'moveDescription', 'moveGeneration', 'animationType', 'animationVariant', 'animationVariantKey', 'animationReferenceKey', 'gimmickId', 'mechanicId', 'mechanicLabel', 'mechanicType', 'mechanicMode', 'actorPreviousName', 'spriteBeforeFront', 'spriteBeforeBack', 'spriteBeforeFrontFallback', 'spriteBeforeBackFallback', 'spriteAfterFront', 'spriteAfterBack', 'spriteAfterFrontFallback', 'spriteAfterBackFallback', 'formSourceName', 'result', 'damage', 'critical', 'effectiveness', 'hitIndex', 'hitCount', 'hp', 'maxHp', 'form', 'gate', 'outcome', 'requested', 'applied', 'rootId', 'sideId']) {
       if (event[key] !== undefined) result[key] = clone(event[key])
     }
     if (Array.isArray(event.changes)) result.changes = event.changes.slice(0, 12).map(change => {
       if (!isPlain(change)) return null
       return Object.fromEntries(['actorId', 'sideId', 'beforeHp', 'hp', 'maxHp', 'form'].filter(key => change[key] !== undefined).map(key => [key, clone(change[key])]))
     }).filter(Boolean)
+    if (event.presentation) result.presentation = sanitizeRaidPresentation(event.presentation)
     return result
   }).filter(Boolean)
 }
@@ -346,11 +348,13 @@ function clientBattleView(view) {
   const safe = clone(view)
   const allies = Array.isArray(safe.player?.team) ? safe.player.team : []
   const enemies = Array.isArray(safe.opponent?.team) ? safe.opponent.team : []
+  const events = publicEvents(safe)
+  if (safe.raid) safe.raid.events = events
   return {
     ...safe,
     allies,
     enemies,
-    events: publicEvents(safe),
+    events,
     legalCommands: {
       actorId: safe.ownActorId ?? null,
       moves: safe.moves ?? [],
@@ -461,6 +465,10 @@ export function createRaidService({
   if (!store?.transaction) throw new TypeError('Raid store is required')
   const guests = guestRegistry ?? createGuestIdentityRegistry({ store, now })
   const commandMs = Number.isSafeInteger(timeouts.command) && timeouts.command >= 5_000 ? timeouts.command : COMMAND_MS
+  // Match the existing ranked battle's bounded allowance for server-resolved
+  // animation. Clients cannot extend it by replaying or acknowledging frames.
+  const playbackGraceMs = Number.isSafeInteger(timeouts.playbackGrace) && timeouts.playbackGrace >= 0
+    ? Math.min(15_000, timeouts.playbackGrace) : 15_000
   const resolutionLeaseMs = Number.isSafeInteger(timeouts.resolutionLease) && timeouts.resolutionLease >= 1_000 ? timeouts.resolutionLease : RESOLUTION_LEASE_MS
   const heartbeatGraceMs = Number.isSafeInteger(timeouts.heartbeatGrace) && timeouts.heartbeatGrace >= 5_000 ? timeouts.heartbeatGrace : HEARTBEAT_GRACE_MS
   const suspendMs = Number.isSafeInteger(timeouts.suspend) && timeouts.suspend >= 5_000 ? timeouts.suspend : SUSPEND_MS
@@ -1242,7 +1250,8 @@ export function createRaidService({
         await settleRun(tx, run, outcome, timestamp)
       } else {
         run.lifecycle = 'input'
-        run.deadlineAt = timestamp + commandMs
+        const hasNewCues = nextBattle.raid?.events?.some(event => event.kind === 'battle-cue' && (eventNumber(event) ?? 0) > previousCursor)
+        run.deadlineAt = timestamp + commandMs + (hasNewCues ? playbackGraceMs : 0)
         run.decisionToken = typeof nextBattle?.raid?.decisionToken === 'string' ? nextBattle.raid.decisionToken : nextDecisionToken(run)
       }
       await persistEvents(tx, run, nextBattle, previousCursor)

@@ -1,0 +1,1037 @@
+/*
+ * The raid still uses the normal battle scene vocabulary: HP panels, a
+ * battlefield camera, terrain/weather layers and full-size front/back sprites.
+ * These rules only reshape those parts while a RaidScreen owns the
+ * .raid-standard-battle root, so other battles retain their existing layout.
+ */
+
+.app-shell.battle-view .raid-standard-battle .raid-standard-battle-header {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: 70;
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(170px, 0.82fr) auto minmax(0, 1.62fr);
+  column-gap: clamp(8px, 1.2vw, 18px);
+  align-items: center;
+  min-height: 58px;
+  padding: 7px clamp(14px, 2.2vw, 34px);
+  border-bottom: 1px solid rgba(163, 221, 234, 0.24);
+  pointer-events: auto;
+  background:
+    linear-gradient(90deg, rgba(8, 28, 47, 0.98), rgba(16, 53, 76, 0.9) 54%, rgba(7, 27, 47, 0.98)),
+    repeating-linear-gradient(90deg, rgba(134, 239, 231, 0.035) 0 1px, transparent 1px 6px);
+  box-shadow: 0 7px 18px rgba(1, 9, 20, 0.36);
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-title-lockup {
+  min-width: 0;
+  padding: 5px 10px 6px;
+  border: 1px solid rgba(156, 239, 229, 0.52);
+  border-radius: 5px 13px 5px 5px;
+  background: linear-gradient(135deg, rgba(17, 69, 85, 0.92), rgba(8, 30, 49, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(226, 255, 249, 0.12);
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-title-lockup > span {
+  color: #9cf1e8;
+  font-size: 8px;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-title-lockup > strong {
+  overflow: hidden;
+  color: #fbfff0;
+  font-size: clamp(12px, 1.05vw, 15px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-game-turn {
+  min-height: 36px;
+  padding: 3px 13px;
+  border: 1px solid rgba(238, 248, 222, 0.74);
+  border-radius: 4px 12px 4px 12px;
+  color: #143043;
+  background: linear-gradient(135deg, #f9f6d9, #d5e7d2);
+  box-shadow: 2px 3px 0 rgba(3, 20, 34, 0.52);
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-game-turn small {
+  color: #46707b;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-game-turn strong {
+  color: #172f4a;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-header-cluster {
+  min-width: 0;
+  align-items: center;
+  justify-self: end;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-rule-hud {
+  min-width: 0;
+  max-width: min(50vw, 610px);
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-header-actions {
+  align-items: center;
+  padding: 4px 5px 4px 9px;
+  border: 1px solid rgba(181, 236, 225, 0.56);
+  border-radius: 12px 5px 5px 5px;
+  color: #e9fff8;
+  background: rgba(9, 39, 57, 0.88);
+  box-shadow: 2px 3px 0 rgba(1, 17, 29, 0.48);
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-header-actions > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: #bdf2ed;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-header-actions > button {
+  width: 29px;
+  height: 29px;
+  border-color: rgba(171, 235, 225, 0.67);
+  color: #e8fff8;
+  background: #164c62;
+}
+
+.raid-standard-battle .raid-standard-battle-header .battle-header-actions > button:hover,
+.raid-standard-battle .raid-standard-battle-header .battle-header-actions > button:focus-visible {
+  border-color: #eafee9;
+  color: #102c42;
+  background: #c7fff2;
+}
+
+.raid-standard-battle .raid-standard-battle-arena {
+  position: relative;
+  z-index: 1;
+  display: block;
+  flex: 1 1 0;
+  min-height: 260px;
+  overflow: hidden;
+  isolation: isolate;
+  container-type: size;
+  background:
+    linear-gradient(180deg, rgba(7, 25, 39, 0.2), rgba(7, 20, 37, 0.56)),
+    #0b2336;
+}
+
+.raid-standard-battle .raid-standard-battle-arena::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 73% 65%, rgba(131, 233, 221, 0.22), transparent 28%),
+    radial-gradient(ellipse at 18% 94%, rgba(117, 130, 232, 0.24), transparent 31%),
+    linear-gradient(180deg, rgba(2, 10, 22, 0.1) 0 54%, rgba(2, 13, 25, 0.42) 100%);
+}
+
+.raid-standard-battle .raid-standard-battle-arena::after {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  content: "";
+  pointer-events: none;
+  opacity: 0.1;
+  background:
+    linear-gradient(90deg, transparent 49.85%, rgba(223, 255, 247, 0.22) 50%, transparent 50.15%),
+    repeating-linear-gradient(0deg, transparent 0 5px, rgba(201, 241, 233, 0.075) 6px);
+  mix-blend-mode: screen;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-field-camera {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  container-type: size;
+  transform-origin: 50% 58%;
+}
+
+.raid-standard-battle .battle-environment-backdrop,
+.raid-standard-battle .battle-field-effects,
+.raid-standard-battle .battle-terrain-aura,
+.raid-standard-battle .battle-weather-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.raid-standard-battle .battle-environment-backdrop {
+  background-color: #102b3c;
+}
+
+.raid-standard-battle .battle-field-horizon {
+  position: absolute;
+  right: -8%;
+  bottom: 13%;
+  left: -8%;
+  z-index: 2;
+  height: 34%;
+  pointer-events: none;
+  opacity: 0.56;
+  background: linear-gradient(180deg, transparent, rgba(102, 183, 177, 0.08) 35%, rgba(6, 40, 53, 0.34));
+  clip-path: polygon(0 62%, 100% 0, 100% 100%, 0 100%);
+}
+
+.raid-standard-battle .battle-field-light {
+  position: absolute;
+  z-index: 3;
+  width: 38%;
+  height: 20%;
+  border: 2px solid rgba(181, 237, 224, 0.18);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+.raid-standard-battle .battle-field-light-player {
+  bottom: -3%;
+  left: -2%;
+  background: radial-gradient(ellipse, rgba(131, 217, 203, 0.14), transparent 68%);
+}
+
+.raid-standard-battle .battle-field-light-opponent {
+  right: 5%;
+  bottom: 31%;
+  width: 28%;
+  height: 14%;
+  background: radial-gradient(ellipse, rgba(171, 223, 203, 0.14), transparent 68%);
+}
+
+.raid-standard-battle .battle-cinematic-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+  opacity: 0;
+  background: #fffce1;
+  mix-blend-mode: screen;
+}
+
+.raid-standard-battle .battle-arena-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+  opacity: 0.14;
+  background: repeating-linear-gradient(180deg, transparent 0 3px, rgba(186, 225, 255, 0.11) 4px);
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-platform {
+  z-index: 4;
+  height: clamp(70px, 7vw, 108px);
+  opacity: 0.87;
+  border: 0;
+  background: radial-gradient(ellipse, rgba(235, 243, 208, 0.38) 0 12%, rgba(89, 154, 137, 0.35) 31%, rgba(18, 68, 69, 0.24) 58%, transparent 72%);
+  box-shadow: none;
+  filter: drop-shadow(0 15px 8px rgba(0, 0, 0, 0.28));
+  transform: scaleY(0.48);
+}
+
+.app-shell.battle-view .raid-standard-battle .opponent-platform {
+  right: 5%;
+  bottom: 27%;
+  width: min(37%, 485px);
+}
+
+.app-shell.battle-view .raid-standard-battle .player-platform {
+  bottom: -5%;
+  left: -2%;
+  width: min(58%, 650px);
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage:is(.player, .opponent) {
+  top: auto;
+  right: auto;
+  left: calc(var(--battle-stage-center) - var(--battle-stage-size) * 0.5);
+  bottom: var(--battle-stage-floor);
+  z-index: 8;
+  display: grid;
+  width: var(--battle-stage-size);
+  height: var(--battle-stage-size);
+  place-items: end center;
+  cursor: help;
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player {
+  --battle-stage-floor: 3%;
+  --battle-stage-size: min(15cqw, 48cqh, 320px);
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player.slot-0 {
+  --battle-stage-center: 34%;
+  --battle-stage-floor: 2%;
+  z-index: 11;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player.slot-1 {
+  --battle-stage-center: 50%;
+  --battle-stage-floor: 3%;
+  z-index: 10;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player.slot-2 {
+  --battle-stage-center: 66%;
+  --battle-stage-floor: 4%;
+  z-index: 9;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent {
+  --battle-stage-floor: 50%;
+  --battle-stage-size: min(14cqw, 39cqh, 286px);
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-0 {
+  --battle-stage-center: 70%;
+  --battle-stage-floor: 50%;
+  z-index: 11;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-1 {
+  --battle-stage-center: 54%;
+  --battle-stage-floor: 52%;
+  z-index: 10;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-2 {
+  --battle-stage-center: 38%;
+  --battle-stage-floor: 54%;
+  z-index: 9;
+}
+
+.raid-standard-battle .battle-pokemon-stage:focus-visible {
+  z-index: 17;
+  outline: 2px solid #d5fff4;
+  outline-offset: 4px;
+}
+
+.raid-standard-battle .battle-pokemon-stage:hover .battle-live-sprite-frame,
+.raid-standard-battle .battle-pokemon-stage:focus-visible .battle-live-sprite-frame {
+  filter: brightness(1.12) saturate(1.1);
+}
+
+.raid-standard-battle .battle-pokemon-shadow {
+  position: absolute;
+  right: 10%;
+  bottom: 2%;
+  left: 10%;
+  z-index: 0;
+  height: 18%;
+  border-radius: 50%;
+  opacity: 0.58;
+  background: radial-gradient(ellipse, rgba(5, 15, 24, 0.8), rgba(5, 15, 24, 0) 70%);
+  filter: blur(2px);
+  transform: scaleY(0.48);
+}
+
+.raid-standard-battle .battle-live-sprite-frame {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.raid-standard-battle .battle-live-sprite-frame :is(img, svg:where(.sprite-image-viewport)).battle-live-sprite {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 20px 12px rgba(0, 0, 0, 0.38));
+  transform-origin: center bottom;
+}
+
+.raid-standard-battle .battle-pokemon-stage.raid-form-armored {
+  filter: drop-shadow(0 0 15px rgba(184, 141, 255, 0.82)) drop-shadow(0 0 34px rgba(86, 167, 255, 0.38));
+}
+
+.raid-standard-battle .battle-pokemon-stage.raid-form-armored::after,
+.raid-standard-battle .battle-pokemon-stage.raid-form-dark::after {
+  position: absolute;
+  inset: 13% 10% 7%;
+  z-index: 1;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  opacity: 0.64;
+  mix-blend-mode: screen;
+}
+
+.raid-standard-battle .battle-pokemon-stage.raid-form-armored::after {
+  background: radial-gradient(ellipse, rgba(190, 222, 255, 0.48), rgba(135, 90, 255, 0.2) 48%, transparent 72%);
+  box-shadow: 0 0 34px rgba(119, 169, 255, 0.5);
+}
+
+.raid-standard-battle .battle-pokemon-stage.raid-form-dark {
+  filter: drop-shadow(0 0 14px rgba(114, 85, 236, 0.85)) drop-shadow(0 0 35px rgba(20, 6, 65, 0.75));
+}
+
+.raid-standard-battle .battle-pokemon-stage.raid-form-dark::after {
+  background: radial-gradient(ellipse, rgba(137, 87, 255, 0.47), rgba(15, 5, 42, 0.44) 52%, transparent 73%);
+  box-shadow: 0 0 36px rgba(82, 45, 221, 0.72);
+}
+
+.raid-standard-battle .battle-pokemon-stage.is-fainted:not(.is-fainting) {
+  opacity: 0;
+}
+
+.app-shell.battle-view .raid-standard-battle .battle-status-anchor {
+  position: absolute;
+  z-index: 32;
+  width: clamp(178px, 20vw, 306px);
+  pointer-events: auto;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.app-shell.battle-view .raid-standard-battle .opponent-status-anchor {
+  left: 2%;
+}
+
+.app-shell.battle-view .raid-standard-battle .player-status-anchor {
+  right: 2%;
+}
+
+.app-shell.battle-view .raid-standard-battle .opponent-status-anchor.slot-0 {
+  top: 7%;
+}
+
+.app-shell.battle-view .raid-standard-battle .opponent-status-anchor.slot-1 {
+  top: 37%;
+}
+
+.app-shell.battle-view .raid-standard-battle .opponent-status-anchor.slot-2 {
+  top: 67%;
+}
+
+.app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-0 {
+  bottom: 3%;
+}
+
+.app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-1 {
+  bottom: 33%;
+}
+
+.app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-2 {
+  bottom: 63%;
+}
+
+.raid-standard-battle .battle-status-anchor.is-acting {
+  z-index: 34;
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+
+.raid-standard-battle .battle-status-anchor.is-targeted {
+  filter: saturate(1.17);
+}
+
+.raid-standard-battle .battle-status-anchor.is-taking-damage {
+  animation: raid-standard-databox-hit var(--impact-duration, 430ms) steps(2, end);
+}
+
+.raid-standard-battle .battle-status-anchor.is-fainted {
+  filter: grayscale(0.9) brightness(0.66);
+}
+
+.raid-standard-battle .battle-hp-panel,
+.raid-standard-battle .battle-hp-panel.side-player {
+  width: 100%;
+}
+
+.raid-standard-battle .battle-hp-meter i {
+  transition-duration: var(--battle-hp-duration, 350ms);
+}
+
+.raid-standard-battle .raid-standard-party-indicators {
+  display: flex;
+  gap: 4px;
+  padding: 3px 10px 0;
+  pointer-events: none;
+}
+
+.raid-standard-battle .player-status-anchor .raid-standard-party-indicators {
+  justify-content: flex-end;
+}
+
+.raid-standard-battle .raid-standard-party-indicators > span {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  overflow: hidden;
+  border: 1px solid #f8f4dc;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #d95151 0 44%, #23384b 45% 56%, #e8ead8 57% 100%);
+  box-shadow: 0 0 0 1px #172a40;
+}
+
+.raid-standard-battle .raid-standard-party-indicators > span > i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border: 1px solid #1c2e40;
+  border-radius: 50%;
+  background: #f5f0d9;
+  transform: translate(-50%, -50%);
+}
+
+.raid-standard-battle .raid-standard-party-indicators > span.fainted {
+  opacity: 0.45;
+  background: linear-gradient(180deg, #596575 0 44%, #263342 45% 56%, #7c8790 57% 100%);
+  filter: grayscale(1);
+}
+
+.raid-standard-battle .raid-standard-party-indicators > span.statused {
+  box-shadow: 0 0 0 1px #172a40, 0 0 0 2px #f4c74c;
+}
+
+.raid-standard-battle .raid-standard-boss-hud {
+  position: absolute;
+  top: 2.5%;
+  left: 50%;
+  z-index: 38;
+  width: min(720px, 53%);
+  min-width: min(390px, 48%);
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.raid-standard-battle .raid-standard-boss-hud .raid-boss-hp {
+  width: 100%;
+  margin: 0;
+}
+
+.raid-standard-battle .raid-standard-participant-strip {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin: 4px auto 0;
+  pointer-events: none;
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid rgba(166, 209, 225, 0.45);
+  border-radius: 999px;
+  color: #bdd6e5;
+  background: rgba(7, 27, 48, 0.78);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.25);
+  font-size: 8px;
+  line-height: 1;
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f1c96a;
+  box-shadow: 0 0 7px rgba(241, 201, 106, 0.62);
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span > b {
+  color: #ecfff8;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span > small {
+  overflow: hidden;
+  max-width: 60px;
+  color: inherit;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span.is-own {
+  border-color: rgba(125, 247, 221, 0.74);
+  color: #aaf7e8;
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span.is-own > i {
+  background: #70ead2;
+  box-shadow: 0 0 7px rgba(112, 234, 210, 0.72);
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span.is-ai > i {
+  background: #a68df7;
+  box-shadow: 0 0 7px rgba(166, 141, 247, 0.7);
+}
+
+.raid-standard-battle .raid-standard-participant-strip > span.is-submitted > i {
+  background: #8cdd84;
+  box-shadow: 0 0 7px rgba(140, 221, 132, 0.72);
+}
+
+.raid-standard-battle .battle-field-camera.phase-impact .battle-cinematic-flash {
+  animation: raid-standard-impact-flash var(--impact-duration, 430ms) steps(2, end) both;
+}
+
+@keyframes raid-standard-databox-hit {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+}
+
+@keyframes raid-standard-impact-flash {
+  0%, 100% { opacity: 0; }
+  12% { opacity: 0.56; }
+  34% { opacity: 0.08; }
+}
+
+@media (max-width: 1400px) and (min-height: 621px) {
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player {
+    --battle-stage-size: min(14cqw, 47cqh, 238px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent {
+    --battle-stage-size: min(13.5cqw, 38cqh, 210px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-status-anchor {
+    width: min(210px, 18vw);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel,
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel.side-player {
+    padding: 5px 9px 5px 12px;
+    outline-width: 2px;
+    box-shadow: 2px 3px 0 rgba(11, 27, 42, 0.55);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel.side-player {
+    padding-right: 12px;
+    padding-left: 9px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel header strong {
+    font-size: 12px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-type-row,
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel footer {
+    font-size: 8px;
+  }
+
+  .raid-standard-battle .raid-standard-party-indicators {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-hud {
+    max-width: 42vw;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-badge.rule-raid-format {
+    display: none;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-status-anchor {
+    width: clamp(162px, 20.5vw, 244px);
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud {
+    width: min(640px, 50%);
+  }
+}
+
+@media (max-width: 860px) {
+  .app-shell.battle-view .raid-standard-battle .raid-standard-battle-header {
+    grid-template-columns: minmax(130px, 1fr) auto minmax(0, 1.28fr);
+    min-height: 49px;
+    padding: 5px 9px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-title-lockup {
+    padding: 4px 7px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-title-lockup > span {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-game-turn {
+    min-height: 30px;
+    padding: 2px 9px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-game-turn strong {
+    font-size: 16px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-hud {
+    gap: 4px;
+    max-width: 38vw;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-badge {
+    min-width: 0;
+    padding: 4px 5px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-badge-category {
+    font-size: 6px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-badge > strong {
+    max-width: 72px;
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions > span {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions {
+    gap: 4px;
+    padding: 3px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions > button {
+    width: 25px;
+    height: 25px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-arena {
+    min-height: 220px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player {
+    --battle-stage-size: min(18cqw, 53cqh, 300px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent {
+    --battle-stage-size: min(16cqw, 41cqh, 240px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-status-anchor {
+    width: clamp(142px, 20vw, 200px);
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud {
+    width: min(520px, 49%);
+    min-width: min(330px, 45%);
+  }
+}
+
+@media (max-height: 620px) and (orientation: landscape) {
+  .app-shell.battle-view .raid-standard-battle .raid-standard-battle-header {
+    min-height: 35px;
+    padding: 3px 9px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-title-lockup {
+    padding: 2px 6px 3px;
+    border-width: 1px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-title-lockup > span {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-title-lockup > strong {
+    font-size: 10px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-game-turn {
+    min-height: 24px;
+    padding: 1px 7px;
+    box-shadow: 1px 1px 0 rgba(3, 20, 34, 0.48);
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-game-turn small {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-game-turn strong {
+    font-size: 13px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-rule-hud,
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions > span {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions {
+    padding: 2px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions > button {
+    width: 23px;
+    height: 23px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-header .battle-header-actions > button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .raid-standard-battle .raid-standard-battle-arena {
+    min-height: 150px;
+  }
+
+  .raid-standard-battle .battle-field-horizon {
+    bottom: 8%;
+    height: 28%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .opponent-platform {
+    bottom: 24%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player {
+    --battle-stage-size: min(18cqw, 49cqh, 190px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent {
+    --battle-stage-size: min(16cqw, 36cqh, 150px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player.slot-0 {
+    --battle-stage-center: 30%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player.slot-1 {
+    --battle-stage-center: 46%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.player.slot-2 {
+    --battle-stage-center: 62%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-0 {
+    --battle-stage-center: 72%;
+    --battle-stage-floor: 31%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-1 {
+    --battle-stage-center: 56%;
+    --battle-stage-floor: 37%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-pokemon-stage.opponent.slot-2 {
+    --battle-stage-center: 40%;
+    --battle-stage-floor: 43%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-status-anchor {
+    width: clamp(116px, 18vw, 154px);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .opponent-status-anchor.slot-0 {
+    top: 4%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .opponent-status-anchor.slot-1 {
+    top: 34%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .opponent-status-anchor.slot-2 {
+    top: 64%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-0 {
+    bottom: 2%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-1 {
+    bottom: 32%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .player-status-anchor.slot-2 {
+    bottom: 62%;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel,
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel.side-player {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: 10px 9px 8px;
+    gap: 1px;
+    height: 43px;
+    min-height: 43px;
+    padding: 2px 5px 2px 7px;
+    border-width: 1px;
+    outline-width: 1px;
+    border-radius: 3px 7px 3px 4px;
+    box-shadow: 1px 1px 0 rgba(11, 27, 42, 0.56);
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel.side-player {
+    padding-right: 7px;
+    padding-left: 5px;
+    border-radius: 7px 3px 4px 3px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel::before {
+    width: 4px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel header,
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel footer,
+  .app-shell.battle-view .raid-standard-battle .battle-hp-meter-row {
+    min-height: 0;
+    line-height: 1;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel header > div {
+    gap: 2px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel header strong {
+    font-size: 8px;
+    line-height: 10px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel header > span {
+    font-size: 6px;
+    line-height: 10px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel header div > span,
+  .app-shell.battle-view .raid-standard-battle .battle-hp-type-row,
+  .app-shell.battle-view .raid-standard-battle .battle-current-types,
+  .app-shell.battle-view .raid-standard-battle .battle-tera-badge {
+    display: none;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-meter-row {
+    gap: 2px;
+    height: 9px;
+    padding: 1px 3px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-meter-row > small {
+    font-size: 6px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-meter {
+    height: 5px;
+    border-width: 1px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel footer {
+    display: flex;
+    min-height: 8px;
+    font-size: 6px;
+    line-height: 8px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel footer b {
+    font-size: 6px;
+  }
+
+  .app-shell.battle-view .raid-standard-battle .battle-hp-panel footer em {
+    padding: 1px 3px;
+    font-size: 6px;
+    line-height: 1;
+  }
+
+  .raid-standard-battle .raid-standard-party-indicators {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud {
+    top: 2%;
+    width: min(465px, 47%);
+    min-width: min(245px, 42%);
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp {
+    padding: 3px 7px;
+    border-radius: 6px;
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp header {
+    gap: 4px;
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp header span,
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp header small,
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp footer {
+    font-size: 7px;
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp header strong {
+    font-size: 10px;
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-hp-track {
+    height: 7px;
+    margin: 3px 0 1px;
+  }
+
+  .raid-standard-battle .raid-standard-boss-hud .raid-boss-mechanics {
+    display: none;
+  }
+
+  .raid-standard-battle .raid-standard-participant-strip {
+    gap: 3px;
+    margin-top: 2px;
+  }
+
+  .raid-standard-battle .raid-standard-participant-strip > span {
+    gap: 3px;
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+
+  .raid-standard-battle .raid-standard-participant-strip > span > b,
+  .raid-standard-battle .raid-standard-participant-strip > span > small {
+    font-size: 7px;
+  }
+
+  .raid-standard-battle .raid-standard-participant-strip > span > small {
+    max-width: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .raid-standard-battle .battle-field-camera,
+  .raid-standard-battle .battle-pokemon-stage,
+  .raid-standard-battle .battle-status-anchor,
+  .raid-standard-battle .battle-environment-backdrop,
+  .raid-standard-battle .battle-terrain-aura,
+  .raid-standard-battle .battle-weather-layer,
+  .raid-standard-battle .battle-hp-meter i {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.raid-standard-battle.reduce-motion .battle-field-camera,
+.raid-standard-battle.reduce-motion .battle-pokemon-stage,
+.raid-standard-battle.reduce-motion .battle-status-anchor,
+.raid-standard-battle.reduce-motion .battle-environment-backdrop,
+.raid-standard-battle.reduce-motion .battle-terrain-aura,
+.raid-standard-battle.reduce-motion .battle-weather-layer,
+.raid-standard-battle.reduce-motion .battle-hp-meter i {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

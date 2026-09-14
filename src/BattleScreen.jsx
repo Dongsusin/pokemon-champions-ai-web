@@ -246,7 +246,7 @@ function attackAnimationRate(mode = 'normal') {
   return ATTACK_ANIMATION_RATES[mode] ?? 1
 }
 
-function turnStepDuration(step, animationMode = 'normal') {
+export function turnStepDuration(step, animationMode = 'normal') {
   const duration = baseTurnStepDuration(step)
   if (!ATTACK_ANIMATION_PHASES.has(step?.phase)) return duration
   if (animationMode === 'skip') return 70
@@ -801,7 +801,7 @@ const GIMMICK_SPARKS = Array.from({ length: 22 }, (_, index) => index)
 const GIMMICK_CRYSTALS = Array.from({ length: 18 }, (_, index) => index)
 const GIMMICK_SHARDS = Array.from({ length: 12 }, (_, index) => index)
 
-function TeraTypeJewel({ type, mode = 'stage' }) {
+export function TeraTypeJewel({ type, mode = 'stage' }) {
   const typeToken = typeClassName(type ?? '노말')
   const TypeIcon = TERA_TYPE_ICONS[typeToken] ?? Gem
 
@@ -1049,7 +1049,7 @@ function fieldParticleStyle(terrainId, index) {
   }
 }
 
-function BattleFieldEffects({ terrainId }) {
+export function BattleFieldEffects({ terrainId }) {
   const normalizedTerrainId = FIELD_PARTICLE_COUNTS[terrainId] ? terrainId : 'neutral'
   const particleCount = FIELD_PARTICLE_COUNTS[normalizedTerrainId]
 
@@ -1117,7 +1117,7 @@ function weatherParticleStyle(weatherId, layer, index) {
   }
 }
 
-function BattleWeatherEffects({ weatherId, layer }) {
+export function BattleWeatherEffects({ weatherId, layer }) {
   const particleCount = WEATHER_PARTICLE_COUNTS[weatherId]?.[layer] ?? 0
   const isBackLayer = layer === 'back'
 
@@ -1186,7 +1186,7 @@ function BattleFaintEffect({ cue }) {
   )
 }
 
-function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers = true }) {
+export function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers = true }) {
   if (!cue) return null
   const presentation = cue.effectiveness == null
     ? null
@@ -1232,7 +1232,7 @@ function BattleArenaEffects({ cue, animationMode = 'normal', showDamageNumbers =
   )
 }
 
-function battleStageClassName(sideId, pokemon, cue, activeSlot = 0) {
+export function battleStageClassName(sideId, pokemon, cue, activeSlot = 0) {
   const classes = ['battle-pokemon-stage', sideId, `slot-${activeSlot}`]
   if (pokemon.dynamaxActive) classes.push('is-dynamax')
   if (pokemon.teraActive) classes.push('is-terastal', `tera-${typeClassName(pokemon.teraType)}`)
@@ -1264,7 +1264,7 @@ function battleStageClassName(sideId, pokemon, cue, activeSlot = 0) {
   return classes.join(' ')
 }
 
-function battleCameraClassName(cue) {
+export function battleCameraClassName(cue) {
   const classes = ['battle-field-camera']
   if (!cue) return classes.join(' ')
   classes.push(`phase-${cue.phase}`)
@@ -1274,7 +1274,7 @@ function battleCameraClassName(cue) {
   return classes.join(' ')
 }
 
-function battleStageStyle(cue, animationMode = 'normal') {
+export function battleStageStyle(cue, animationMode = 'normal') {
   if (cue?.phase === 'attack') return { '--move-duration': `${turnStepDuration(cue, animationMode)}ms` }
   if (cue?.phase === 'impact' || cue?.phase === 'resolve') return { '--impact-duration': `${turnStepDuration(cue, animationMode)}ms` }
   if (cue?.phase === 'gimmick' || cue?.phase === 'form') {
@@ -1317,7 +1317,7 @@ function cueTone(cue) {
   return cue.sideId ?? 'neutral'
 }
 
-function BattleRuleBadge({ id, category, label, description }) {
+export function BattleRuleBadge({ id, category, label, description }) {
   const tooltipId = `battle-rule-${id}-tooltip`
   return (
     <span className={`battle-rule-badge rule-${id}`} tabIndex={0} aria-describedby={tooltipId}>
@@ -1347,7 +1347,7 @@ function BattleTeraBadge({ pokemon }) {
   )
 }
 
-function BattleStatusPanel({ pokemon, side, trainerName, publicView = false }) {
+export function BattleStatusPanel({ pokemon, side, trainerName, publicView = false }) {
   return (
     <section className={`battle-hp-panel side-${side}`}>
       <header>
@@ -1506,7 +1506,7 @@ function BattleMoveTooltip({ id, move, opponent, presentation, visible, blockedR
   )
 }
 
-function MoveMenu({
+export function MoveMenu({
   battle,
   activeSlot = 0,
   targetSlot = 0,
@@ -1536,9 +1536,9 @@ function MoveMenu({
     <section className="battle-move-menu">
       <header>
         <button type="button" onPointerEnter={onPreview} onClick={onBack}><ChevronLeft size={17} /> 행동 선택</button>
-        <button className="battle-slot-switch-button" type="button" onPointerEnter={onPreview} onClick={onOpenParty}>
+        {onOpenParty && <button className="battle-slot-switch-button" type="button" onPointerEnter={onPreview} onClick={onOpenParty}>
           <ArrowLeftRight size={14} /> 교대
-        </button>
+        </button>}
         {battle.rules?.format?.rotation && (
           <div className="battle-rotation-selector" aria-label="행동할 포켓몬">
             {playerActive.map((entry, slot) => (
@@ -1650,7 +1650,7 @@ function MoveMenu({
   )
 }
 
-function MoveTargetMenu({
+export function MoveTargetMenu({
   battle,
   activeSlot = 0,
   moveIndex = 0,

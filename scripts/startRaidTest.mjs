@@ -9,7 +9,10 @@ if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
 // an env file and do not enable the deployed boss-raid route.
 process.env.VITE_RAID_ENABLED = 'true'
 process.env.VITE_RAID_LOCAL_TEST = 'true'
-process.env.VITE_RAID_API_URL = 'http://127.0.0.1:8789/api/raid'
+const apiPort = Number(process.env.RAID_TEST_API_PORT || 8789)
+const uiPort = Number(process.env.RAID_TEST_PORT || 5187)
+if (![apiPort, uiPort].every(port => Number.isInteger(port) && port > 0 && port <= 65535)) throw new Error('Invalid local raid test port')
+process.env.VITE_RAID_API_URL = `http://127.0.0.1:${apiPort}/api/raid`
 
 let backend
 let frontend
@@ -41,7 +44,8 @@ createRoot(document.getElementById('root')).render(React.createElement(GameApp,{
 }
 
 try {
-  backend = await startRaidDevServer({ port: 8789 })
+  backend = await startRaidDevServer({ port: apiPort, timeouts: process.env.RAID_TEST_COMMAND_MS
+    ? { command: Number(process.env.RAID_TEST_COMMAND_MS) } : undefined })
   process.env.VITE_RAID_API_URL = backend.url
   frontend = await createServer({
     mode: 'raid-test',
@@ -69,11 +73,11 @@ export const acquireAccountSession=async()=>({release:async()=>{},pauseForGuestD
 export const ACCOUNT_SESSION_ERROR_CODES={};`
       },
     }],
-    server: { host: '127.0.0.1', port: 5187, strictPort: true },
+    server: { host: '127.0.0.1', port: uiPort, strictPort: true },
   })
   await frontend.listen()
   console.log('\n협동 보스전 로컬 테스트가 시작되었습니다.')
-  for (const identity of RAID_TEST_IDENTITIES) console.log(`  ${identity}: http://127.0.0.1:5187/raid-test.html?player=${identity}`)
+  for (const identity of RAID_TEST_IDENTITIES) console.log(`  ${identity}: http://127.0.0.1:${uiPort}/raid-test.html?player=${identity}`)
   console.log('각 창에서 시작하기 → 협동 보스전으로 들어가세요. 실제 로컬 HTTP 서비스·엔진·서버 소유 포켓몬만 사용하며, 종료하면 모든 테스트 기록이 지워집니다. 종료: Ctrl+C\n')
 } catch (error) {
   await close()

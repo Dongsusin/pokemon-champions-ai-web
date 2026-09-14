@@ -208,13 +208,33 @@ async function status(player) { return request(player, 'status') }
 async function reloadScreen(player, expected) {
   await player.page.reload()
   await player.page.locator(expected).waitFor()
+  await waitForRaidPlayback(player)
+}
+
+// A RaidScreen can show a public event queue after the HTTP projection has
+// changed. Keep browser inspection and physical command clicks behind the
+// same completion fence rather than interacting with an old turn.
+async function waitForRaidPlayback(player) {
+  await player.page.waitForFunction(() => {
+    const screen = document.querySelector('.raid-battle-screen')
+    if (!screen) return true
+    const commands = screen.querySelector('.raid-standard-commands')
+    return Boolean(commands)
+      && !commands.classList.contains('is-turn-locked')
+      && commands.getAttribute('aria-busy') !== 'true'
+  })
 }
 
 async function capture(player, label, selectors) {
+  await waitForRaidPlayback(player)
   await player.page.evaluate(() => document.fonts.ready)
   await player.page.waitForTimeout(150)
   if (await player.page.locator('.raid-battle-screen').count()) {
-    selectors = [...new Set([...selectors, '.raid-ally-line', '.raid-command-area', '.raid-actor-card'])]
+    selectors = [...new Set([...selectors,
+      '.battle-pokemon-stage.player',
+      '.battle-pokemon-stage.opponent',
+      '.raid-standard-commands',
+    ])]
   }
   const geometry = await player.page.evaluate(selectors => ({
     viewport: { width: innerWidth, height: innerHeight },
@@ -233,7 +253,7 @@ async function capture(player, label, selectors) {
     assert(box.left >= -1 && box.right <= geometry.viewport.width + 1, `${label}: horizontal clipping (${selector})`)
     assert(box.top >= -1 && box.bottom <= geometry.viewport.height + 1, `${label}: vertical clipping (${selector})`)
   }
-  const actors = geometry.elements.filter(entry => entry.selector === '.raid-actor-card')
+  const actors = geometry.elements.filter(entry => entry.selector === '.battle-pokemon-stage.player' || entry.selector === '.battle-pokemon-stage.opponent')
   for (let i = 0; i < actors.length; i += 1) for (let j = i + 1; j < actors.length; j += 1) {
     const a = actors[i].box, b = actors[j].box
     const overlaps = Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1
@@ -293,6 +313,7 @@ function sharedProjection(snapshot) {
 }
 
 async function sharedViews(label) {
+  await Promise.all(players.map(waitForRaidPlayback))
   const views = await Promise.all(players.map(status))
   const expected = sharedProjection(views[0])
   for (const [index, view] of views.entries()) {
@@ -318,18 +339,20 @@ function chooseNaturalCommand(run, view, ownerId, seed) {
 
 async function submitUiCommand(player) {
   const page = player.page
-  await page.locator('.raid-command-panel').waitFor()
+  await waitForRaidPlayback(player)
+  const commands = page.locator('.raid-standard-commands')
+  await commands.waitFor()
   const before = await page.evaluate(() => window.__raidEvents.requests.filter(entry => entry.action === 'raidSubmit').length)
-  const move = page.locator('.raid-move:not(:disabled)').first()
+  await commands.locator('.battle-command-buttons > button.fight').click()
+  const move = commands.locator('.battle-move-button:not(:disabled)').first()
   if (!await move.count()) return false
   await move.click()
-  const target = page.locator('.raid-target-options button:not(:disabled)').first()
+  await page.waitForFunction(beforeCount => {
+    const submitted = window.__raidEvents.requests.filter(entry => entry.action === 'raidSubmit').length > beforeCount
+    return submitted || Boolean(document.querySelector('.raid-standard-commands .battle-target-card:not(:disabled)'))
+  }, before)
+  const target = commands.locator('.battle-target-card:not(:disabled)').first()
   if (await target.count()) await target.click()
-  else {
-    const selfTarget = page.locator('.raid-target-options button:not(:disabled)').first()
-    if (!await selfTarget.count()) return false
-    await selfTarget.click()
-  }
   await page.waitForFunction(count => window.__raidEvents.requests.filter(entry => entry.action === 'raidSubmit').length > count, before)
   return true
 }
@@ -422,14 +445,14 @@ async function playScenario(scenario) {
       sawExpectedForm = true
       if (!captures.some(entry => entry.label === `${scenario.id}-${scenario.expectedForm}`)) {
         await Promise.all(players.map(player => reloadScreen(player, '.raid-battle-screen')))
-        await capture(players[2], `${scenario.id}-${scenario.expectedForm}`, ['.raid-battle-header', '.raid-boss-hp', '.raid-actor-card.boss'])
+        await capture(players[2], `${scenario.id}-${scenario.expectedForm}`, ['.battle-game-header', '.raid-standard-boss-hud .raid-boss-hp', `.battle-pokemon-stage.opponent.raid-form-${scenario.expectedForm}`])
       }
     }
     if (scenario.id === 'hooh' && latest.raid.phase === 2 && (latest.raid.battle?.opponent?.team?.length ?? 0) > 1) {
       sawHoohSummon = true
       if (!captures.some(entry => entry.label === 'hooh-summoned')) {
         await Promise.all(players.map(player => reloadScreen(player, '.raid-battle-screen')))
-        await capture(players[1], 'hooh-summoned', ['.raid-battle-header', '.raid-enemy-line', '.raid-actor-card.enemy'])
+        await capture(players[1], 'hooh-summoned', ['.battle-game-header', '.raid-standard-boss-hud .raid-boss-hp', '.battle-pokemon-stage.opponent', '.raid-standard-commands'])
       }
     }
     if (!uiSubmitted && scenario.id === 'mewtwo' && latest.raid.lifecycle === 'input') {

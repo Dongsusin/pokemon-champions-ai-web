@@ -66,6 +66,25 @@ function fixture({ users = identities(4), engine = raidEngine, timeouts = {}, gu
   return { store, service, users, owned, call, advance: milliseconds => { timestamp += milliseconds }, now: () => timestamp }
 }
 
+test('resolved battle cues add ranked-style playback grace once, without client-controlled deadline extensions', async () => {
+  const env = fixture()
+  const { view: started, raidId } = await startRaid(env, [0])
+  assert.equal(started.raid.deadlineAt - env.now(), 45_000, 'First input has no previous turn animation')
+  const run = await env.store.transaction(tx => tx.get('raidRuns', raidId))
+  const command = raidEngine.chooseRaidCommand(run.battle, env.users[0].uid, { seed: 'playback-grace-command' })
+  const resolved = await env.call(0, 'raidSubmit', { raidId, decisionToken: started.raid.decisionToken, commandVersion: 1, command })
+  assert.equal(resolved.raid.lifecycle, 'input')
+  assert.equal(resolved.raid.deadlineAt - env.now(), 60_000)
+  const deadline = resolved.raid.deadlineAt
+  env.advance(45_001)
+  const duringGrace = await env.call(0, 'raidHeartbeat', { raidId })
+  assert.equal(duringGrace.raid.turnNumber, resolved.raid.turnNumber, 'Animation allowance must prevent early automatic commands')
+  assert.equal(duringGrace.raid.deadlineAt, deadline, 'Heartbeats do not extend animation grace')
+  env.advance(deadline - env.now() + 1)
+  const timedOut = await env.call(0, 'raidHeartbeat', { raidId })
+  assert.equal(timedOut.raid.turnNumber, resolved.raid.turnNumber + 1, 'The bounded server deadline still resolves absent input')
+})
+
 async function createRoom(env, { owner = 0, bossId = 'mewtwo', visibility = 'public', title = '서비스 검증 레이드' } = {}) {
   const view = await env.call(owner, 'roomCreate', { bossId, visibility, title })
   return { roomId: view.room.id, inviteCode: view.inviteCode, view }

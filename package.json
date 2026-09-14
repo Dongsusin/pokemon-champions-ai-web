@@ -142,8 +142,10 @@
     "validate:raid-http": "node scripts/validateRaidHttp.mjs",
     "validate:raid-service": "node scripts/validateRaidService.mjs",
     "validate:raid-retention": "node scripts/validateRaidRetention.mjs",
+    "validate:raid-presentation": "node scripts/validateRaidPresentation.mjs",
+    "validate:raid-playback": "node scripts/validateRaidPlayback.mjs",
     "raid:test": "node scripts/startRaidTest.mjs",
-    "validate:raid": "npm run validate:raid-mechanics && npm run validate:raid-service && npm run validate:raid-replay && npm run validate:raid-polling && npm run validate:raid-http && npm run validate:raid-retention && npm run validate:raid-wallet && npm run validate:raid-journeys"
+    "validate:raid": "npm run validate:raid-mechanics && npm run validate:raid-presentation && npm run validate:raid-playback && npm run validate:raid-service && npm run validate:raid-replay && npm run validate:raid-polling && npm run validate:raid-http && npm run validate:raid-retention && npm run validate:raid-wallet && npm run validate:raid-journeys"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",
