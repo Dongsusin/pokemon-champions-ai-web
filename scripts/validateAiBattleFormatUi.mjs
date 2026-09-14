@@ -173,6 +173,7 @@ window.__fixtureAiVictory = () => {
       await page.goto(`${origin}/ai-format-ui.html`)
       await click(page.getByRole('button', { name: /시작하기/ }))
       await click(page.locator('.battle-hub-card.ai'))
+      await click(page.locator('.battle-hub-enter'))
       await check(`${id}: choose single/double before the competition and keep controls in view`, 'real-ui', async () => {
         await page.locator('.ai-battle-format-options').waitFor()
         assert.equal(await page.locator('.ai-battle-format-options button').count(), 2)

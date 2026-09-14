@@ -399,6 +399,7 @@ try {
     if (format === 'double') await alice.locator('.pokemon-usage-back').click()
     await alice.locator('.mode-start').click()
     await alice.locator('.battle-hub-card.ai').click()
+    await alice.locator('.battle-hub-enter').click()
     await alice.locator('.ai-battle-format-options').getByRole('button', { name: format === 'single' ? /싱글배틀/ : /더블배틀/ }).click()
     await alice.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }).click()
     await alice.getByRole('button', { name: '이 모드로 시작', exact: true }).click()
@@ -504,6 +505,7 @@ try {
   for (const page of [alice, bob]) {
     await page.locator('.mode-start').click()
     await page.locator('.battle-hub-card.ranked').click()
+    await page.locator('.battle-hub-enter').click()
     await page.getByRole('button', { name: '대전 상대 찾기', exact: true }).waitFor()
   }
   assert.equal(await alice.getByLabel('로컬 테스트 계정').inputValue(), 'alice')
@@ -554,6 +556,7 @@ try {
       await alice.locator('.pokemon-usage-back').click()
       await alice.locator('.mode-start').click()
       await alice.locator('.battle-hub-card.ranked').click()
+      await alice.locator('.battle-hub-enter').click()
     }
   }
 

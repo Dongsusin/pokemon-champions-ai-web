@@ -185,6 +185,7 @@ try {
       await click(page.locator('.mode-card.mode-start'))
       for (const mode of ['ranked', 'rooms', 'factory', 'ai']) {
         await click(page.locator(`.battle-hub-card.${mode}`))
+        await click(page.locator('.battle-hub-enter'))
         const back = mode === 'ai' ? page.getByRole('button', { name: '배틀 종류 선택으로 돌아가기', exact: true }) : page.getByRole('button', { name: '배틀 선택', exact: true })
         await back.waitFor()
         await assertPageHeader(mode, 1)
@@ -210,6 +211,7 @@ try {
           await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
           await click(page.locator('.mode-card.mode-start'))
           await click(page.locator(`.battle-hub-card.${mode}`))
+          await click(page.locator('.battle-hub-enter'))
           if (mode === 'ai') {
             await click(page.locator('.ai-battle-format-options button').filter({ hasText: '싱글배틀' }))
             await click(page.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }))

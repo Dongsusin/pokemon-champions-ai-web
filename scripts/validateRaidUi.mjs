@@ -211,6 +211,7 @@ async function reopenRaid(player) {
   await player.page.locator('.raid-lobby-screen, .raid-room-screen, .raid-battle-screen, .raid-intermission-screen, .raid-result-screen, .battle-hub').waitFor()
   if (await player.page.locator('.battle-hub-card.raid').count()) {
     await player.page.locator('.battle-hub-card.raid').click()
+    await player.page.locator('.battle-hub-enter').click()
     await player.page.locator('.raid-lobby-screen, .raid-room-screen, .raid-battle-screen, .raid-intermission-screen, .raid-result-screen').waitFor()
   }
 }
@@ -517,6 +518,7 @@ try {
     assert.equal(await host.page.locator('.battle-hub-card.raid').count(), 1)
     await capture(host, '1440x900-hub', ['.battle-hub-heading', '.battle-hub-card.raid'])
     await host.page.locator('.battle-hub-card.raid').click()
+    await host.page.locator('.battle-hub-enter').click()
     await host.page.locator('.raid-boss-grid').waitFor()
     assert.equal(await host.page.locator('.raid-boss-grid .raid-boss-card').count(), 3)
     await capture(host, '1440x900-bosses', ['.raid-page-header', '.raid-boss-grid'])

@@ -193,6 +193,7 @@ async function runScenario(browser, scenario) {
       await assertViewport(host, `${scenario.id}-hub`, ['.battle-hub-heading', '.battle-hub-card'])
       await host.page.screenshot({ path: path.join(output, `${scenario.id}-hub.png`) })
       await host.click(host.page.locator('.battle-hub-card.rooms'))
+      await host.click(host.page.locator('.battle-hub-enter'))
       for (const player of players) await waitSnapshot(player, () => Boolean(window.__lastRoomsSnapshot?.rooms))
       await host.page.locator('.rooms-list-panel').waitFor()
       await assertViewport(host, `${scenario.id}-list`, ['.rooms-screen', '.rooms-header', '.rooms-list-panel > .ranked-primary'])
