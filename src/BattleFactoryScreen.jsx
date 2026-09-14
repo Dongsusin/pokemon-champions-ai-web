@@ -15,7 +15,7 @@ import {
 
 export default function BattleFactoryScreen({
   run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
-  playerGender = 'male', audioSettings = {}, onToggleSound, onOpenSettings,
+  playerGender = 'male', playerName, audioSettings = {}, onToggleSound, onOpenSettings,
 }) {
   const currentRun = useRef(run)
   currentRun.current = run
@@ -63,6 +63,7 @@ export default function BattleFactoryScreen({
     key={run.battleId}
     competitionLabel={`배틀팩토리 · ${run.floor}층`}
     playerPokemon={run.party}
+    playerName={playerName}
     opponent={{ ...FACTORY_TRAINER, teamNumber: run.floor }}
     opponentTeam={run.opponentTeam}
     rules={run.rules}

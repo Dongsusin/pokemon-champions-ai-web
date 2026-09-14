@@ -2,6 +2,7 @@ import { createHash, randomUUID, randomBytes } from 'node:crypto'
 import { createRankedProfile, getRankedFormat, settleRankedRatings } from '../src/data/rankedRules.js'
 import { getRankedVpReward } from '../src/data/rankedRewards.js'
 import { maskRankedMatch, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
+import { readTrainerNickname } from '../src/data/trainerNickname.js'
 import { readPokemonUsage, recordRankedPokemonUsage, reportAiPokemonUsage, validateAiPokemonUsage } from './pokemonUsageService.js'
 import { readFactoryLeaderboard, reportFactoryRun, validateFactoryRankingReport } from './battleFactoryRankingService.js'
 import { readRankedLeaderboard } from './rankedLeaderboardService.js'
@@ -81,9 +82,12 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
 
   async function loadPlayer(tx, identity) {
     let player = await tx.get('players', identity.uid)
+    const nicknameChanged = player && readTrainerNickname(player.nickname) !== identity.nickname
     if (!player) player = profileRecord(identity.uid, identity.name)
     player.name = identity.name
     player.isGuest = identity.isGuest === true
+    player.nickname = identity.nickname
+    if (nicknameChanged) tx.set('players', identity.uid, player)
     return player
   }
   async function lobbyLock(tx) {
@@ -174,7 +178,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       id: match.id, roomId: match.roomId ?? null, format: match.format, phase: match.phase, revision: match.revision,
       timelineRevision: match.timelineRevision,
       createdAt: match.createdAt, deadlineAt: match.deadlineAt, finishedAt: match.finishedAt ?? null,
-      you: { name: you.name, rating: you.rating, isGuest: you.isGuest === true }, opponent: { name: opponent.name, rating: opponent.rating, isGuest: opponent.isGuest === true },
+      you: { name: you.name, nickname: you.nickname, rating: you.rating, isGuest: you.isGuest === true }, opponent: { name: opponent.name, nickname: opponent.nickname, rating: opponent.rating, isGuest: opponent.isGuest === true },
       teamPreview: { you: clone(you.team), opponent: opponent.team.map(previewPokemon) },
       selectionSubmitted: Boolean(match.selections[uid]), opponentSelectionSubmitted: Boolean(match.selections[opponent.uid]),
       selectedIndices: clone(match.selections[uid] ?? []),
@@ -213,7 +217,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     return {
       id: target.id, roomId: target.roomId, format: target.format, phase: target.phase,
       revision: target.revision, timelineRevision: target.timelineRevision, deadlineAt: target.deadlineAt,
-      players: target.players.map(player => ({ name: maskRankedTrainerName(player.name, player.isGuest), isGuest: player.isGuest === true })),
+      players: target.players.map(player => ({ name: maskRankedTrainerName(player.name, player.isGuest, player.nickname), nickname: player.nickname, isGuest: player.isGuest === true })),
       state: target.state ? engine.getRoomSpectatorBattleView(target.state, target.id) : null,
       timeline: timeline.length ? engine.getRoomSpectatorTimelineView(timeline, target.id) : [], result: null,
     }
@@ -275,7 +279,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       const match = {
         id: matchId, format: queue.format, phase: 'select', revision: 1, timelineRevision: 0,
         createdAt: timestamp, deadlineAt: timestamp + selectionTimeout,
-        players: [other, queue].map(entry => ({ uid: entry.uid, name: entry.name, isGuest: entry.isGuest === true, rating: entry.rating, team: entry.team })),
+        players: [other, queue].map(entry => ({ uid: entry.uid, name: entry.name, nickname: readTrainerNickname(entry.nickname), isGuest: entry.isGuest === true, rating: entry.rating, team: entry.team })),
         selections: {}, pendingActions: {}, state: null, timelineChunks: 0, requests: [],
       }
       for (const player of [first, second]) {
@@ -295,6 +299,10 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     const match = player.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
     if (match && await expireMatch(tx, match, timestamp)) player = await tx.get('players', identity.uid)
     let queue = await tx.get('queue', identity.uid)
+    if (queue && queue.expiresAt > timestamp && readTrainerNickname(queue.nickname) !== identity.nickname) {
+      Object.assign(queue, { name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest })
+      tx.set('queue', identity.uid, queue)
+    }
     if (queue) {
       if (queue.expiresAt <= timestamp) {
         await lobbyLock(tx)
@@ -359,12 +367,19 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       const match = {
         id: fixture.id, roomId: room.id, format: room.format, phase: 'select', revision: 1, timelineRevision: 0,
         createdAt: timestamp, deadlineAt: timestamp + selectionTimeout,
-        players: fixture.uids.map(uid => { const member = room.members.find(entry => entry.uid === uid); return { uid, name: member.name, isGuest: member.isGuest === true, rating: 0, team: clone(member.team) } }),
+        players: fixture.uids.map(uid => { const member = room.members.find(entry => entry.uid === uid); return { uid, name: member.name, nickname: readTrainerNickname(member.nickname), isGuest: member.isGuest === true, rating: 0, team: clone(member.team) } }),
         selections: {}, pendingActions: {}, state: null, timelineChunks: 0, requests: [],
       }
       for (const entrant of match.players) {
         const player = await tx.get('players', entrant.uid)
-        if (!room.members.find(member => member.uid === entrant.uid).withdrawn && player?.activeRoomId === room.id) { player.activeMatchId = match.id; tx.set('players', player.uid, player) }
+        const member = room.members.find(member => member.uid === entrant.uid)
+        if (!member.withdrawn && player?.activeRoomId === room.id) {
+          const publicIdentity = { name: player.name, nickname: readTrainerNickname(player.nickname), isGuest: player.isGuest === true }
+          Object.assign(entrant, publicIdentity)
+          Object.assign(member, publicIdentity)
+          player.activeMatchId = match.id
+          tx.set('players', player.uid, player)
+        }
       }
       tx.set('matches', match.id, match)
       return match
@@ -373,7 +388,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
 
   async function execute(identity, payload) {
     if (!identity || !isId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
-    identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32), isGuest: identity.isGuest === true }
+    identity = { uid: identity.uid, name: String(identity.name || '트레이너').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 32), isGuest: identity.isGuest === true, nickname: identity.isGuest === true ? '' : readTrainerNickname(identity.nickname) }
     const action = payload?.action ?? 'status'
     if (!['guestProfile', 'status', 'fixtures', 'usage', 'reportAiUsage', 'factoryLeaderboard', 'rankedLeaderboard', 'reportFactoryRun', 'join', 'cancel', 'select', 'submit', 'replace', 'forfeit', 'rooms', 'roomCreate', 'roomJoin', 'roomStart', 'roomLeave', 'roomDismissResult'].includes(action)) fail('UNKNOWN_ACTION', '지원하지 않는 요청입니다.')
     if (action === 'guestProfile') return guestIdentities.create(identity)
@@ -387,8 +402,8 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       if (identity.isGuest) await guestIdentities.read(identity, tx)
       return work(tx)
     })
-    if (action === 'factoryLeaderboard') return transaction(tx => readFactoryLeaderboard(tx, identity.uid))
-    if (action === 'rankedLeaderboard') return transaction(tx => readRankedLeaderboard(tx, identity.uid, now()))
+    if (action === 'factoryLeaderboard') return transaction(tx => readFactoryLeaderboard(tx, identity.uid, identity))
+    if (action === 'rankedLeaderboard') return transaction(tx => readRankedLeaderboard(tx, identity.uid, now(), identity))
     if (action === 'reportFactoryRun') {
       const report = validateFactoryRankingReport(payload.report)
       const recordedAt = now()
@@ -479,6 +494,10 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         const previous = await tx.get('queue', identity.uid)
         if (previous && previous.expiresAt > timestamp) {
           if (previous.format !== payload.format || digest(previous.team) !== digest(team)) fail('ALREADY_QUEUED', '다른 팀으로 검색하려면 현재 검색을 취소해주세요.', 409)
+          if (readTrainerNickname(previous.nickname) !== identity.nickname) {
+            Object.assign(previous, { name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest })
+            tx.set('queue', identity.uid, previous)
+          }
           remember(player, payload.requestId, requestHash)
           tx.set('players', player.uid, player)
           return snapshot(tx, player.uid)
@@ -486,7 +505,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         const queues = await tx.list('queue')
         for (const expired of queues.filter(entry => entry.expiresAt <= timestamp)) tx.delete('queue', expired.uid)
         if (queues.filter(entry => entry.expiresAt > timestamp).length >= MAX_QUEUE) fail('QUEUE_FULL', '매칭 서버가 혼잡합니다. 잠시 후 다시 시도해주세요.', 503)
-        const queue = { uid: identity.uid, name: identity.name, isGuest: identity.isGuest === true, ticket: id, format: payload.format, team, queuedAt: timestamp, expiresAt: timestamp + QUEUE_LEASE, rating: player.profiles[payload.format].rating }
+        const queue = { uid: identity.uid, name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest === true, ticket: id, format: payload.format, team, queuedAt: timestamp, expiresAt: timestamp + QUEUE_LEASE, rating: player.profiles[payload.format].rating }
         player.queueTicket = id
         player.activeMatchId = null
         remember(player, payload.requestId, requestHash)
@@ -531,7 +550,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (match.players.every(entry => match.selections[entry.uid])) {
           const selected = match.players.map(entry => match.selections[entry.uid].map(index => entry.team[index]))
           match.phase = 'battle'
-          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name, match.players[0].isGuest), opponentName: maskRankedTrainerName(match.players[1].name, match.players[1].isGuest), playerIsGuest: match.players[0].isGuest === true, opponentIsGuest: match.players[1].isGuest === true, random: seededRandom(seed) })
+          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name, match.players[0].isGuest, match.players[0].nickname), opponentName: maskRankedTrainerName(match.players[1].name, match.players[1].isGuest, match.players[1].nickname), playerNickname: match.players[0].nickname, opponentNickname: match.players[1].nickname, playerIsGuest: match.players[0].isGuest === true, opponentIsGuest: match.players[1].isGuest === true, random: seededRandom(seed) })
           if (usageEnabled === true && !match.roomId) await recordRankedPokemonUsage(tx, match, selected, timestamp)
           await afterEngine(tx, match, { state, timeline: [] }, timestamp)
         } else tx.set('matches', match.id, match)

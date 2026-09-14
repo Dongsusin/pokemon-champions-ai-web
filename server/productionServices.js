@@ -1,5 +1,39 @@
 import { createFirestoreRankedStore } from './rankedStore.js'
 import { createGuestIdentityRegistry, rankedIdentityFromVerifiedToken } from './guestIdentity.js'
+import { readTrainerNickname } from '../src/data/trainerNickname.js'
+import { containsChatProfanity } from './chatModeration.js'
+
+export const NICKNAME_CACHE_MS = 15_000
+const NICKNAME_CACHE_MAX_ENTRIES = 2000
+
+export function createVerifiedNicknameReader({ accountStore, now = Date.now }) {
+  const cache = new Map()
+  return async (uid, { fresh = false } = {}) => {
+    if (!accountStore) return ''
+    const previous = cache.get(uid)
+    if (!fresh && previous?.expiresAt > now()) return previous.nickname
+    if (!fresh && previous?.pending) return previous.pending
+    // Forced reads start a new transaction rather than joining an older lookup
+    // that may have started before the user's nickname update committed.
+    const entry = { expiresAt: 0, pending: null }
+    if (cache.size >= NICKNAME_CACHE_MAX_ENTRIES && !cache.has(uid)) {
+      for (const [key, value] of cache) if (!value.pending && value.expiresAt <= now()) cache.delete(key)
+      if (cache.size >= NICKNAME_CACHE_MAX_ENTRIES) cache.delete(cache.keys().next().value)
+    }
+    cache.set(uid, entry)
+    entry.pending = accountStore.transaction(tx => tx.get('profiles', uid)).then(profile => {
+      const normalized = readTrainerNickname(profile?.nickname)
+      const nickname = containsChatProfanity(normalized) ? '' : normalized
+      if (cache.get(uid) === entry) {
+        entry.nickname = nickname
+        entry.expiresAt = now() + NICKNAME_CACHE_MS
+        entry.pending = null
+      }
+      return nickname
+    }).catch(error => { if (cache.get(uid) === entry) cache.delete(uid); throw error })
+    return entry.pending
+  }
+}
 
 async function startupModule(step, promise) {
   try { return await promise } catch (error) { error.rankedStartupStep = step; throw error }
@@ -20,7 +54,7 @@ async function loadProductionModule(specifier) {
   return productionModules[specifier]()
 }
 
-export async function initializeProductionServices({ env = process.env, loadModule = loadProductionModule } = {}) {
+export async function initializeProductionServices({ env = process.env, loadModule = loadProductionModule, now = Date.now } = {}) {
   const provider = env.GAME_STORAGE_PROVIDER || 'firestore'
   if (!['firestore', 'supabase'].includes(provider) || !env.RANKED_FIREBASE_PROJECT_ID
     || (provider === 'firestore' && !env.RANKED_FIRESTORE_PREFIX)
@@ -51,13 +85,19 @@ export async function initializeProductionServices({ env = process.env, loadModu
     rankedStore = createFirestoreRankedStore(firestore, { prefix: env.RANKED_FIRESTORE_PREFIX })
   }
   const guestRegistry = createGuestIdentityRegistry({ store: rankedStore })
+  const readNickname = createVerifiedNicknameReader({ accountStore, now })
   return {
     provider, rankedStore, accountStore, firestore, guestRegistry,
-    async authenticate(_request, token) {
+    async authenticate(request, token, { freshNickname = false } = {}) {
       const verified = await auth.verifyIdToken(token, true)
       const identity = rankedIdentityFromVerifiedToken(verified)
       const providerId = verified.firebase?.sign_in_provider
-      return { ...identity, accountProfile: {
+      // Account actions already read the canonical profile when needed. In
+      // particular, lease heartbeats and autosaves must add no nickname query.
+      let accountRequest = false
+      try { accountRequest = new URL(request?.url).pathname === '/api/account' } catch { /* Direct service tests have no URL. */ }
+      const nickname = identity.isGuest || accountRequest ? '' : await readNickname(identity.uid, { fresh: freshNickname === true })
+      return { ...identity, nickname, accountProfile: {
         email: verified.email ?? null, displayName: verified.name ?? null, photoURL: verified.picture ?? null,
         providerIds: typeof providerId === 'string' ? [providerId] : [],
       } }

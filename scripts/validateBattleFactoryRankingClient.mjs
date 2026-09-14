@@ -313,7 +313,7 @@ test('malformed server data and storage failures preserve the pending record for
 test('actual React hook recovers failed initialization through refresh and retry without loops or cross-account records', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url))
   const entrySource = `import React,{StrictMode,useEffect,useState}from'react';import{createRoot}from'react-dom/client';import useBattleFactoryRankings from'/src/useBattleFactoryRankings.js';
-function Harness(){const[uid,setUid]=useState('hook-alice');window.__activeUid=uid;const ranking=useBattleFactoryRankings({uid,displayName:uid,isLocalGuest:window.__guest});
+function Harness(){const[uid,setUid]=useState('hook-alice');const[nickname,setNickname]=useState('');window.__setNickname=setNickname;window.__activeUid=uid;const ranking=useBattleFactoryRankings({uid,displayName:uid,nickname,isLocalGuest:window.__guest});
 window.__ranking=ranking;window.__changeUid=setUid;window.__callbackIdentities??=[];if(!window.__callbackIdentities.includes(ranking.recordRun))window.__callbackIdentities.push(ranking.recordRun);
 useEffect(()=>{if(window.__runFixture)ranking.recordRun(window.__runFixture)},[ranking.recordRun]);return React.createElement('output',null,JSON.stringify({uid,source:ranking.source,ownBest:ranking.ownBest,error:ranking.error,recordError:ranking.recordError}))}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(Harness)));`
@@ -340,6 +340,7 @@ createRoot(document.getElementById('root')).render(React.createElement(StrictMod
     for (const scenario of [{ guest: true, action: 'retry' }, { guest: true, action: 'refresh' }, { guest: false, action: 'refresh' }]) {
       const page = await browser.newPage()
       const errors = [], denied = [], requests = []
+      let publicNickname = ''
       page.on('pageerror', error => errors.push(error.message))
       await page.addInitScript(({ run, guest }) => {
         const realStorage = window.localStorage
@@ -359,7 +360,8 @@ createRoot(document.getElementById('root')).render(React.createElement(StrictMod
         if (url.hostname === '127.0.0.1' && url.pathname === '/api/ranked'
           && !scenario.guest && url.searchParams.get('action') === 'factoryLeaderboard') {
           requests.push(route.request().method())
-          return route.fulfill({ contentType: 'application/json', body: JSON.stringify(snapshot(entry(report('factory-hook-global', 7)))) })
+          return route.fulfill({ contentType: 'application/json', body: JSON.stringify(snapshot({ ...entry(report('factory-hook-global', 7)),
+            ...(publicNickname ? { trainerName: publicNickname } : {}) })) })
         }
         if (url.hostname !== '127.0.0.1' || url.pathname.startsWith('/api/')) {
           denied.push(url.href)
@@ -395,6 +397,15 @@ createRoot(document.getElementById('root')).render(React.createElement(StrictMod
       assert.equal(await page.evaluate(() => window.__ranking.source), scenario.guest ? 'local' : 'global')
       assert.equal(await page.evaluate(() => window.__ranking.recordError), '')
       assert.equal(await page.evaluate(() => window.__ranking.error), '')
+      if (!scenario.guest) {
+        const beforeRenameReads = requests.length
+        publicNickname = '팩토리새별명'
+        await page.evaluate(() => window.__setNickname('팩토리새별명'))
+        await page.waitForFunction(() => window.__ranking.ownBest?.trainerName === '팩토리새별명')
+        assert.equal(requests.length, beforeRenameReads + 1, 'Nickname changes refresh the existing ranking session once')
+        assert.equal(await page.evaluate(() => window.__callbackIdentities.length), 1, 'Renaming must not restart run recording')
+        assert.equal(await page.evaluate(() => window.__ranking.ownBest.floor), 7)
+      }
       if (scenario.guest) {
         await page.evaluate(() => window.__changeUid('hook-bob'))
         await page.waitForFunction(() => JSON.parse(document.querySelector('output').textContent).uid === 'hook-bob')
@@ -407,7 +418,7 @@ createRoot(document.getElementById('root')).render(React.createElement(StrictMod
         assert.deepEqual(saved.completed, ['factory-hook-recovery'])
       } else {
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-        assert.deepEqual(requests, ['GET'], 'Recovery must actually load the global board once, without background polling')
+        assert.deepEqual(requests, ['GET', 'GET'], 'Recovery and one confirmed rename each refresh once, without background polling')
       }
       assert.deepEqual(errors, [])
       assert.deepEqual(denied, [])

@@ -8,7 +8,7 @@ const RETRYABLE = new Set(['40001', '40P01'])
 const keyPattern = /^[a-zA-Z0-9_-]{1,128}$/
 const namespacePattern = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/
 const clone = value => value === undefined ? undefined : structuredClone(value)
-const rankedProfile = (id, value) => ({ id, uid: value.uid ?? id, name: value.name, isGuest: value.isGuest, profiles: clone(value.profiles) })
+const rankedProfile = (id, value) => ({ id, uid: value.uid ?? id, name: value.name, ...(typeof value.nickname === 'string' ? { nickname: value.nickname } : {}), isGuest: value.isGuest, profiles: clone(value.profiles) })
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 
 function checkAddress(collection, key) {
@@ -210,7 +210,7 @@ export function createPostgresStore({
           // snapshots and match histories in Postgres instead of transferring
           // every complete player document on each explicit leaderboard read.
           const result = await client.query(`SELECT key, jsonb_build_object(
-            'uid', payload->'uid', 'name', payload->'name', 'isGuest', payload->'isGuest',
+            'uid', payload->'uid', 'name', payload->'name', 'nickname', payload->'nickname', 'isGuest', payload->'isGuest',
             'profiles', payload->'profiles') AS profile
             FROM ${TABLE} WHERE namespace = $1 AND collection = $2 ORDER BY key`, [namespace, 'players'])
           const rows = new Map(result.rows.map(row => [row.key, rankedProfile(row.key, row.profile)]))

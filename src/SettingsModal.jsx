@@ -29,6 +29,9 @@ import {
 import { AchievementCatalog } from './AchievementsScreen'
 import PokemonUsagePanel from './PokemonUsagePanel'
 import { GAME_TEXT_SCALES } from './gameSettings'
+import { maskRankedTrainerName } from './data/rankedPrivacy'
+import { NICKNAME_MIN_LENGTH, NICKNAME_MAX_LENGTH, normalizeTrainerNickname, readTrainerNickname } from './data/trainerNickname'
+import './trainerNickname.css'
 
 const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'usage', 'account']
 const TEXT_SCALE_OPTIONS = GAME_TEXT_SCALES.map((value) => ({ value, label: `${value}배` }))
@@ -110,6 +113,72 @@ function AudioSlider({ channel, value, disabled, onChange }) {
   )
 }
 
+function TrainerNicknameEditor({ nickname, accountName, authBusy, saving, onSetNickname }) {
+  const [draft, setDraft] = useState(nickname)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const pendingRef = useRef(false)
+  const composingRef = useRef(false)
+  const inputRef = useRef(null)
+  const wasSavingRef = useRef(false)
+  const mountedRef = useRef(false)
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false } }, [])
+  useEffect(() => { setDraft(nickname) }, [nickname])
+  useEffect(() => {
+    if (wasSavingRef.current && !saving) inputRef.current?.focus({ preventScroll: true })
+    wasSavingRef.current = saving
+  }, [saving])
+  const unavailable = authBusy || saving || typeof onSetNickname !== 'function'
+
+  async function submit(value) {
+    if (unavailable || pendingRef.current || composingRef.current) return
+    setError('')
+    setNotice('')
+    let normalized
+    try { normalized = normalizeTrainerNickname(value) } catch (error) {
+      setError(error.message || '닉네임을 확인해 주세요.')
+      return
+    }
+    pendingRef.current = true
+    try {
+      await onSetNickname(normalized)
+      if (mountedRef.current) {
+        setDraft(normalized)
+        setNotice(normalized ? '닉네임을 저장했습니다.' : '닉네임을 해제했습니다. 기본 표시 이름을 사용합니다.')
+      }
+    } catch (error) {
+      if (mountedRef.current) setError(error?.message || '닉네임을 저장하지 못했습니다. 다시 시도해 주세요.')
+    } finally { pendingRef.current = false }
+  }
+
+  return <form className="settings-nickname" aria-label="트레이너 닉네임 설정" aria-busy={saving}
+    onSubmit={event => { event.preventDefault(); if (draft.trim()) void submit(draft) }}>
+    <div className="settings-nickname-heading"><UserRound size={19} aria-hidden="true" /><strong>트레이너 닉네임</strong></div>
+    <p className="settings-nickname-description">설정한 닉네임은 게임에서 그대로 표시됩니다. 해제하면 이름의 첫 글자와 **로 표시됩니다.</p>
+    <div className="settings-nickname-current"><span>현재 표시 이름</span><strong>{accountName}</strong></div>
+    <label className="settings-nickname-label" htmlFor="settings-trainer-nickname">닉네임</label>
+    <div className="settings-nickname-input-row">
+      <input ref={inputRef} id="settings-trainer-nickname" type="text" autoComplete="off" spellCheck={false}
+        value={draft} disabled={unavailable} placeholder="사용할 닉네임을 입력하세요"
+        aria-invalid={Boolean(error)} aria-describedby={`settings-nickname-rules${error ? ' settings-nickname-error' : ''}`}
+        onChange={event => { setDraft(event.target.value); setError(''); setNotice('') }}
+        onCompositionStart={() => { composingRef.current = true }}
+        onCompositionEnd={() => { composingRef.current = false }}
+        onKeyDown={event => {
+          if (event.key === 'Enter' && (composingRef.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault()
+        }} />
+      <button className="settings-nickname-save" type="submit" disabled={unavailable || !draft.trim() || draft === nickname}>
+        {saving ? '저장 중…' : '닉네임 저장'}
+      </button>
+    </div>
+    <div className="settings-nickname-rules"><span id="settings-nickname-rules">{NICKNAME_MIN_LENGTH}~{NICKNAME_MAX_LENGTH}자 · 한글, 영문, 숫자, 공백, _와 - 사용 가능</span><span className="settings-nickname-counter">{Array.from(draft).length} / {NICKNAME_MAX_LENGTH}</span></div>
+    {error && <p id="settings-nickname-error" className="settings-nickname-error" role="alert">{error}</p>}
+    {notice && <p className="settings-nickname-notice" role="status">{notice}</p>}
+    {nickname && <button className="settings-nickname-clear" type="button" disabled={unavailable} onClick={() => void submit('')}><RotateCcw size={15} aria-hidden="true" />닉네임 해제</button>}
+    {saving && <p className="settings-nickname-progress" role="status">저장 결과를 확인하고 있습니다. 잠시만 기다려 주세요.</p>}
+  </form>
+}
+
 function AccountPanel({
   user,
   accountError,
@@ -119,13 +188,18 @@ function AccountPanel({
   onConnectGoogle,
   onDeleteAccount,
   onSignOut,
+  onSetNickname,
+  nicknameSaving,
 }) {
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false)
   const isGuest = Boolean(user?.isAnonymous || user?.isLocalGuest)
   const localGuest = Boolean(user?.isLocalGuest)
-  const accountName = user?.displayName?.trim()
+  const accountActionsBusy = authBusy || nicknameSaving
+  const baseName = user?.displayName?.trim()
     || user?.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
+  const nickname = isGuest ? '' : readTrainerNickname(user?.nickname)
+  const accountName = isGuest ? baseName : nickname || maskRankedTrainerName(baseName, false)
   const accountInitial = Array.from(accountName)[0]?.toUpperCase() ?? 'T'
 
   return (
@@ -150,6 +224,10 @@ function AccountPanel({
         </span>
       </div>
 
+      {isGuest ? <p className="settings-nickname-guest">게스트는 현재 트레이너 이름을 사용합니다. Google 계정에 연결하면 닉네임을 설정할 수 있습니다.</p>
+        : <TrainerNicknameEditor key={user?.uid} nickname={nickname} accountName={accountName}
+          authBusy={authBusy} saving={nicknameSaving} onSetNickname={onSetNickname} />}
+
       <div className="settings-account-persistence">
         <span className="settings-option-label">
           <Clock3 size={19} />
@@ -163,7 +241,7 @@ function AccountPanel({
           type="button"
           role="switch"
           aria-checked={autoLogin}
-          disabled={authBusy}
+          disabled={accountActionsBusy}
           onClick={() => onAutoLoginChange(!autoLogin)}
         >
           <i aria-hidden="true" />
@@ -182,12 +260,12 @@ function AccountPanel({
 
       <div className="settings-account-actions">
         {isGuest && (
-          <button className="settings-connect-account-button" type="button" disabled={authBusy} onClick={onConnectGoogle}>
+          <button className="settings-connect-account-button" type="button" disabled={accountActionsBusy} onClick={onConnectGoogle}>
             <Link2 size={19} />
             {authBusy ? 'Google 연결 중' : 'Google 계정에 연결'}
           </button>
         )}
-        <button className="settings-sign-out-button" type="button" disabled={authBusy} onClick={onSignOut}>
+        <button className="settings-sign-out-button" type="button" disabled={accountActionsBusy} onClick={onSignOut}>
           <LogOut size={19} />
           {authBusy ? '계정 전환 중' : '로그아웃하고 계정 전환'}
         </button>
@@ -213,7 +291,7 @@ function AccountPanel({
               <button
                 className="settings-account-delete-cancel"
                 type="button"
-                disabled={authBusy}
+                disabled={accountActionsBusy}
                 onClick={() => setDeleteConfirmationOpen(false)}
               >
                 취소
@@ -221,7 +299,7 @@ function AccountPanel({
               <button
                 className="settings-account-delete-confirm"
                 type="button"
-                disabled={authBusy}
+                disabled={accountActionsBusy}
                 onClick={onDeleteAccount}
               >
                 <Trash2 size={17} />
@@ -233,7 +311,7 @@ function AccountPanel({
           <button
             className="settings-delete-account-button"
             type="button"
-            disabled={authBusy}
+            disabled={accountActionsBusy}
             onClick={() => setDeleteConfirmationOpen(true)}
           >
             계정 삭제
@@ -262,11 +340,24 @@ function SettingsModal({
   onClose,
   onReset,
   onSignOut,
+  onSetNickname,
 }) {
   const [activeTab, setActiveTab] = useState(() => SETTINGS_TAB_IDS.includes(initialTab) ? initialTab : 'game')
+  const [nicknameSaving, setNicknameSaving] = useState(false)
+  const nicknamePendingRef = useRef(false)
   const closeButtonRef = useRef(null)
   const panelRef = useRef(null)
   const onCloseRef = useRef(onClose)
+  const closeSettings = () => { if (!nicknamePendingRef.current) onCloseRef.current?.() }
+  const setNickname = typeof onSetNickname === 'function' ? async value => {
+    if (nicknamePendingRef.current) return
+    nicknamePendingRef.current = true
+    setNicknameSaving(true)
+    try { await onSetNickname(value) } finally {
+      nicknamePendingRef.current = false
+      setNicknameSaving(false)
+    }
+  } : undefined
 
   useEffect(() => {
     setActiveTab(SETTINGS_TAB_IDS.includes(initialTab) ? initialTab : 'game')
@@ -280,10 +371,11 @@ function SettingsModal({
     const previouslyFocusedElement = document.activeElement
     const previousBodyOverflow = document.body.style.overflow
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onCloseRef.current()
+      if (event.key === 'Escape' && !nicknamePendingRef.current) onCloseRef.current()
       if (event.key !== 'Tab') return
       const controls = [...panelRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]')]
-        .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0)
+        .filter((element) => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length > 0)
+      if (!controls.length) { event.preventDefault(); panelRef.current.focus({ preventScroll: true }); return }
       const first = controls[0]
       const last = controls[controls.length - 1]
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
@@ -305,17 +397,17 @@ function SettingsModal({
       className="settings-modal-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        if (event.target === event.currentTarget) closeSettings()
       }}
     >
-      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}${activeTab === 'usage' ? ' settings-usage-open' : ''}`} ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <section className={`settings-modal${activeTab === 'achievements' ? ' settings-achievements-open' : ''}${activeTab === 'usage' ? ' settings-usage-open' : ''}`} ref={panelRef} role="dialog" tabIndex={-1} aria-modal="true" aria-labelledby="settings-title" aria-busy={nicknameSaving}>
         <header className="settings-modal-header">
           <span className="settings-header-mark"><Sparkles size={22} /></span>
           <div>
             <small>CHAMPIONS OPTIONS</small>
             <h2 id="settings-title">환경 설정</h2>
           </div>
-          <button ref={closeButtonRef} className="settings-close-button" type="button" aria-label="설정 닫기" onClick={onClose}>
+          <button ref={closeButtonRef} className="settings-close-button" type="button" aria-label="설정 닫기" disabled={nicknameSaving} onClick={closeSettings}>
             <X size={22} />
           </button>
         </header>
@@ -323,6 +415,7 @@ function SettingsModal({
         <nav className="settings-tabs" role="tablist" aria-label="설정 분류" onKeyDown={(event) => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
           event.preventDefault()
+          if (nicknamePendingRef.current) return
           const current = SETTINGS_TAB_IDS.indexOf(activeTab)
           const next = event.key === 'Home' ? 0 : event.key === 'End' ? SETTINGS_TAB_IDS.length - 1
             : (current + (event.key === 'ArrowRight' ? 1 : -1) + SETTINGS_TAB_IDS.length) % SETTINGS_TAB_IDS.length
@@ -335,6 +428,7 @@ function SettingsModal({
             type="button"
             role="tab"
             id="settings-game-tab"
+            disabled={nicknameSaving}
             aria-controls="settings-game-panel"
             aria-selected={activeTab === 'game'}
             tabIndex={activeTab === 'game' ? 0 : -1}
@@ -347,6 +441,7 @@ function SettingsModal({
             type="button"
             role="tab"
             id="settings-audio-tab"
+            disabled={nicknameSaving}
             aria-controls="settings-audio-panel"
             aria-selected={activeTab === 'audio'}
             tabIndex={activeTab === 'audio' ? 0 : -1}
@@ -359,6 +454,7 @@ function SettingsModal({
             type="button"
             role="tab"
             id="settings-achievements-tab"
+            disabled={nicknameSaving}
             aria-controls="settings-achievements-panel"
             aria-selected={activeTab === 'achievements'}
             tabIndex={activeTab === 'achievements' ? 0 : -1}
@@ -367,7 +463,7 @@ function SettingsModal({
             <Trophy size={20} /> 업적
           </button>
           <button className={activeTab === 'usage' ? 'selected' : ''} type="button" role="tab"
-            id="settings-usage-tab" aria-controls="settings-usage-panel" aria-selected={activeTab === 'usage'}
+            id="settings-usage-tab" disabled={nicknameSaving} aria-controls="settings-usage-panel" aria-selected={activeTab === 'usage'}
             tabIndex={activeTab === 'usage' ? 0 : -1} onClick={() => setActiveTab('usage')}>
             <ChartNoAxesCombined size={20} /> 사용률
           </button>
@@ -376,6 +472,7 @@ function SettingsModal({
             type="button"
             role="tab"
             id="settings-account-tab"
+            disabled={nicknameSaving}
             aria-controls="settings-account-panel"
             aria-selected={activeTab === 'account'}
             tabIndex={activeTab === 'account' ? 0 : -1}
@@ -483,6 +580,8 @@ function SettingsModal({
               onConnectGoogle={onConnectGoogle}
               onDeleteAccount={onDeleteAccount}
               onSignOut={onSignOut}
+              onSetNickname={setNickname}
+              nicknameSaving={nicknameSaving}
             />
           )}
         </div>
@@ -493,7 +592,7 @@ function SettingsModal({
               <RotateCcw size={17} /> 기본값 복원
             </button>
           )}
-          <button className="settings-confirm-button" type="button" onClick={onClose}>완료</button>
+          <button className="settings-confirm-button" type="button" disabled={nicknameSaving} onClick={closeSettings}>완료</button>
         </footer>
       </section>
     </div>

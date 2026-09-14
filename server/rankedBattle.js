@@ -12,6 +12,7 @@ import {
 } from '../src/data/trainingData.js'
 import { getBattleItem } from '../src/data/shopData.js'
 import { maskRankedBattleState, maskRankedTimelineStep, maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
+import { readTrainerNickname } from '../src/data/trainerNickname.js'
 
 function invalid(message) {
   const error = new Error(message)
@@ -85,15 +86,17 @@ export function canonicalizeRankedTeam(entries, { format = 'single', requireRegi
   })
 }
 
-export function createRankedBattle({ playerTeam, opponentTeam, format = 'single', playerName = '트레이너 1', opponentName = '트레이너 2', playerIsGuest = false, opponentIsGuest = false, random = Math.random }) {
+export function createRankedBattle({ playerTeam, opponentTeam, format = 'single', playerName = '트레이너 1', opponentName = '트레이너 2', playerIsGuest = false, opponentIsGuest = false, playerNickname = '', opponentNickname = '', random = Math.random }) {
+  playerNickname = playerIsGuest ? '' : readTrainerNickname(playerNickname)
+  opponentNickname = opponentIsGuest ? '' : readTrainerNickname(opponentNickname)
   const double = formatId(format) === 'double'
   const canonical = (team, sideId) => canonicalizeRankedTeam(team, { format, requireRegisteredTeam: false })
     .map((pokemon, index) => ({ ...pokemon, captureId: `ranked-${sideId}-${index}` }))
   const state = createBattle({
     random,
     playerPokemon: canonical(playerTeam, 'player'),
-    playerName: maskRankedTrainerName(playerName, playerIsGuest),
-    opponent: { id: 'ranked-human', name: maskRankedTrainerName(opponentName, opponentIsGuest), isGuest: opponentIsGuest === true, tier: '레이팅' },
+    playerName: maskRankedTrainerName(playerName, playerIsGuest, playerNickname),
+    opponent: { id: 'ranked-human', name: maskRankedTrainerName(opponentName, opponentIsGuest, opponentNickname), nickname: opponentNickname, isGuest: opponentIsGuest === true, tier: '레이팅' },
     opponentTeam: { pokemon: canonical(opponentTeam, 'opponent'), battleGimmicks: [], strategy: {} },
     rules: {
       pvp: true,
@@ -106,6 +109,8 @@ export function createRankedBattle({ playerTeam, opponentTeam, format = 'single'
   })
   state.player.isGuest = playerIsGuest === true
   state.opponent.isGuest = opponentIsGuest === true
+  state.player.nickname = playerNickname
+  state.opponent.nickname = opponentNickname
   return state
 }
 
@@ -173,7 +178,7 @@ const PUBLIC_POKEMON = [
   'leechSeedSourceSideId', 'leechSeedSourceSlot', 'tauntTurns', 'trappedTurns', 'trapSourceName',
   'ingrainActive', 'aquaRingActive', 'magnetRiseTurns', 'telekinesisTurns',
 ]
-const PUBLIC_SIDE = ['name', 'isGuest', 'activeIndex', 'activeIndexes', 'rotationSlot', 'usedMechanics',
+const PUBLIC_SIDE = ['name', 'nickname', 'isGuest', 'activeIndex', 'activeIndexes', 'rotationSlot', 'usedMechanics',
   'hazards', 'auroraVeilTurns', 'lightScreenTurns', 'reflectTurns', 'safeguardTurns',
   'mistTurns', 'tailwindTurns', 'luckyChantTurns', 'wideGuardTurns', 'quickGuardTurns',
   'craftyShieldTurns', 'matBlockTurns', 'firePledgeTurns', 'grassPledgeTurns', 'waterPledgeTurns', 'gmaxResidual']
@@ -254,7 +259,7 @@ export function getRankedBattleView(state, sideId, { includeCommandOptions = tru
   const rawView = {
     turn: state.turn, phase: state.phase, rules: structuredClone(state.rules),
     environment: structuredClone(state.environment), player, opponent,
-    opponentMeta: { id: 'ranked-human', name: enemy.name, isGuest: enemy.isGuest === true, tier: '레이팅' },
+    opponentMeta: { id: 'ranked-human', name: enemy.name, nickname: enemy.nickname, isGuest: enemy.isGuest === true, tier: '레이팅' },
     opponentStrategy: {}, winner: state.winner,
     log: structuredClone(state.log), eventNonce: state.eventNonce,
     lastEvent: null, lastConsumedItem: null, lastUsedMove: null,
@@ -366,7 +371,7 @@ export function getRoomSpectatorBattleView(state, scope = 'room-spectator') {
       disabledGimmickId: state.rules.disabledGimmickId ?? null, gimmickRestriction: rule('gimmickRestriction'), aiDifficulty: rule('aiDifficulty') },
     environment: pick(state.environment ?? {}, PUBLIC_ENVIRONMENT),
     player: sideView('player'), opponent: sideView('opponent'),
-    opponentMeta: { id: 'room-spectated-human', name: state.opponent.name, isGuest: state.opponent.isGuest === true, tier: '관전' },
+    opponentMeta: { id: 'room-spectated-human', name: state.opponent.name, nickname: state.opponent.nickname, isGuest: state.opponent.isGuest === true, tier: '관전' },
     opponentStrategy: {}, winner: state.winner, eventNonce: state.eventNonce,
     log: (state.log ?? []).map(entry => ({ id: spectatorId(scope, entry.id), message: spectatorMessage(entry.message), tone: entry.tone })),
     lastEvent: null, lastConsumedItem: null, lastUsedMove: null,

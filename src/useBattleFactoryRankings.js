@@ -21,6 +21,7 @@ export default function useBattleFactoryRankings(user) {
   const session = useRef(null)
   const unsavedRun = useRef(null)
   const refreshRequested = useRef(null)
+  const lastNickname = useRef({ identity, value: user?.nickname })
   const [snapshot, setSnapshot] = useState(() => ({ identity, value: empty() }))
   const [restart, setRestart] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -37,7 +38,8 @@ export default function useBattleFactoryRankings(user) {
     try {
       const storage = window.localStorage
       const client = localGuest
-        ? createLocalFactoryRankingClient({ uid, trainerName: user.displayName ?? '트레이너', storage })
+        ? createLocalFactoryRankingClient({ uid, trainerName: user.displayName ?? '트레이너', nickname: user.nickname,
+          isGuest: Boolean(user.isAnonymous || user.isLocalGuest), storage })
         : createFactoryRankingClient({ uid, getIdToken: async () => {
           if (!isRankedEnabled) throw new Error('온라인 순위 서버가 아직 준비되지 않았습니다.')
           const active = firebaseAuth?.currentUser
@@ -69,6 +71,14 @@ export default function useBattleFactoryRankings(user) {
       window.removeEventListener('online', retryPending)
     }
   }, [identity, uid, localGuest, scope, user?.displayName, restart])
+
+  useEffect(() => {
+    const previous = lastNickname.current
+    lastNickname.current = { identity, value: user?.nickname }
+    if (previous.identity === identity && previous.value !== user?.nickname && session.current?.identity === identity) {
+      void session.current.current.refresh()
+    }
+  }, [identity, user?.nickname])
 
   const refresh = useCallback(async () => {
     const active = session.current

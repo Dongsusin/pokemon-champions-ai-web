@@ -1924,6 +1924,7 @@ function TrainerDialogueScene({ trainer, dialogue, onContinue }) {
 function BattleScreen({
   competitionLabel,
   playerPokemon,
+  playerName,
   opponent,
   opponentTeam,
   rules,
@@ -1939,7 +1940,7 @@ function BattleScreen({
   online = null,
 }) {
   const spectating = online?.spectator === true
-  const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, opponent, opponentTeam, rules }))
+  const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
   const [introVisible, setIntroVisible] = useState(!online)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
@@ -2588,7 +2589,7 @@ function BattleScreen({
         ))}
         {playerActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('player', pokemon, visualTurnCue, slot)} key={`player-status-${pokemon.battleId}`}>
-            <BattleStatusPanel pokemon={pokemon} side="player" trainerName={online?.playerName ?? 'PLAYER_01'} publicView={spectating} />
+            <BattleStatusPanel pokemon={pokemon} side="player" trainerName={online?.playerName ?? battle.player.name} publicView={spectating} />
             {slot === 0 && <PartyIndicators side={battle.player} />}
           </div>
         ))}
@@ -2610,7 +2611,7 @@ function BattleScreen({
             key={`player-tooltip-${pokemon.battleId}`}
             pokemon={pokemon}
             side="player"
-            trainerName={online?.playerName ?? 'PLAYER_01'}
+            trainerName={online?.playerName ?? battle.player.name}
             publicView={spectating}
             visible={!introVisible && inspectedPokemonSide === `player-${slot}`}
           />

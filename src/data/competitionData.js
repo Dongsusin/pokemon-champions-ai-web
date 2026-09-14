@@ -37,10 +37,10 @@ function createTrainerParticipant(trainer, playerTeam, random) {
   }
 }
 
-function createPlayerParticipant(teamName) {
+function createPlayerParticipant(teamName, playerName = 'PLAYER_01') {
   return {
     id: PLAYER_PARTICIPANT_ID,
-    name: 'PLAYER_01',
+    name: playerName,
     tier: 'PLAYER',
     region: 'player',
     teamName,
@@ -76,6 +76,7 @@ export function createCompetition(
   difficultyOrRandom = 'normal',
   fallbackRandom = Math.random,
   battleFormat = 'single',
+  playerName = 'PLAYER_01',
 ) {
   const random = typeof difficultyOrRandom === 'function' ? difficultyOrRandom : fallbackRandom
   const aiDifficulty = normalizeAiBattleDifficulty(
@@ -85,7 +86,7 @@ export function createCompetition(
   const trainers = shuffle(TRAINERS, random)
     .slice(0, rules.entrantCount - 1)
     .map((trainer) => createTrainerParticipant(trainer, playerTeam, random))
-  const player = createPlayerParticipant(teamName)
+  const player = createPlayerParticipant(teamName, playerName)
   const participants = shuffle([player, ...trainers], random)
   const competitionId = `${mode}-${Date.now()}-${Math.floor(random() * 1_000_000)}`
   const currentMatchRules = createBattleMatchRules(random, aiDifficulty, battleFormat)

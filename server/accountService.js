@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
+import { normalizeTrainerNickname, readTrainerNickname } from '../src/data/trainerNickname.js'
+import { containsChatProfanity } from './chatModeration.js'
 
 export const ACCOUNT_LEASE_MS = 90_000
 export const ACCOUNT_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024
@@ -69,7 +71,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
       if (!identity || !validId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
       if (!plain(command) || !validOwner(command.ownerId)) fail('INVALID_SESSION_OWNER', '이 창의 세션 식별자가 올바르지 않습니다.')
       const { action, ownerId } = command
-      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
+      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'setNickname', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
         fail('UNKNOWN_ACTION', '지원하지 않는 계정 요청입니다.')
       }
       if (action === 'sessionHeartbeat' || action === 'sessionRelease') {
@@ -104,8 +106,18 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         return { deleted: true, uid: identity.uid }
       }
       const payload = action === 'save' ? validateAccountPayload(command.payload) : null
+      let nickname
+      if (action === 'setNickname') {
+        if (identity.isGuest === true || identity.isLocalGuest === true
+          || !identity.accountProfile?.providerIds?.includes('google.com')) {
+          fail('NICKNAME_GOOGLE_ONLY', '닉네임은 Google 계정으로 로그인한 트레이너만 설정할 수 있습니다.', 403)
+        }
+        try { nickname = normalizeTrainerNickname(command.nickname) }
+        catch (error) { fail('INVALID_NICKNAME', error.message) }
+        if (containsChatProfanity(nickname)) fail('NICKNAME_PROFANITY', '욕설이나 비속어가 포함된 닉네임은 사용할 수 없습니다.', 422)
+      }
       let metadata
-      if (action === 'ensureProfile') {
+      if (action === 'ensureProfile' || action === 'setNickname') {
         const guest = identity.isGuest === true ? await guestRegistry.read(identity) : null
         const source = identity.accountProfile ?? {}
         const photoURL = text(source.photoURL, 2048)
@@ -172,9 +184,13 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           tx.set('gameData', uid, { schemaVersion: 1, revision: command.revision, updatedAtMs: now(), payload })
           return { revision: command.revision }
         }
-        if (action === 'ensureProfile') {
+        if (action === 'ensureProfile' || action === 'setNickname') {
           const previous = await tx.get('profiles', uid)
-          const profile = { ...metadata, createdAtMs: Number.isSafeInteger(previous?.createdAtMs) ? previous.createdAtMs : now(), lastSeenAtMs: now() }
+          const previousNickname = readTrainerNickname(previous?.nickname)
+          const profile = { ...metadata,
+            ...(!identity.isGuest ? { nickname: action === 'setNickname' ? nickname : containsChatProfanity(previousNickname) ? '' : previousNickname } : {}),
+            createdAtMs: Number.isSafeInteger(previous?.createdAtMs) ? previous.createdAtMs : now(), lastSeenAtMs: now(),
+          }
           if (!isDeepStrictEqual(previous, profile)) tx.set('profiles', uid, profile)
           return { profile }
         }

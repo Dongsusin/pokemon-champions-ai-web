@@ -12,8 +12,8 @@ const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.t
 const plain = value => value && typeof value === 'object' && !Array.isArray(value)
 const ownerKey = uid => createHash('sha256').update(`global-chat-owner:${uid}`).digest('hex')
 const contentHash = text => createHash('sha256').update(text).digest('hex')
-const publicName = (name, isGuest) => {
-  const masked = maskRankedTrainerName(name, isGuest)
+const publicName = (name, isGuest, nickname) => {
+  const masked = maskRankedTrainerName(name, isGuest, nickname)
   const points = [...masked]
   const bounded = points.length <= 64 ? masked : `${points.slice(0, 62).join('')}**`
   return containsChatProfanity(bounded) ? '트**' : bounded
@@ -109,7 +109,7 @@ export function createGlobalChatService({ store, guestRegistry, now = Date.now, 
         // and are bounded independently of message retention.
         if (receipt) return snapshot(metadata, owner, feed?.messages ?? [])
         const message = {
-          id, owner, name: publicName(guest?.displayName ?? identity.name, identity.isGuest === true),
+          id, owner, name: publicName(guest?.displayName ?? identity.name, identity.isGuest === true, identity.nickname),
           text, createdAt: Math.max(timestamp, metadata?.latest?.createdAt ?? 0),
         }
         const messages = [...(feed?.messages ?? []), message].slice(-GLOBAL_CHAT_MAX_MESSAGES)

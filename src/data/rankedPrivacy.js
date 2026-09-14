@@ -1,13 +1,17 @@
+import { readTrainerNickname } from './trainerNickname.js'
+
 const graphemes = new Intl.Segmenter('ko', { granularity: 'grapheme' })
 const cleanName = name => typeof name === 'string' ? name.normalize('NFC')
   .replace(/[\p{Cc}\p{Cs}\p{Bidi_Control}\u00ad\u180e\u200b\u2060-\u2064\ufeff]/gu, '').trim() : ''
 
 const isGuestName = name => typeof name === 'string' && /^guest-\d{6}$/.test(name)
 
-// Only a guest identity verified by the server may keep its public identifier.
-// A Google display name that happens to use this format still gets masked.
-export function maskRankedTrainerName(name, isGuest = false) {
+// Explicit account nicknames and verified guest identifiers are public. A
+// Google display name alone never grants permission to show its full text.
+export function maskRankedTrainerName(name, isGuest = false, nickname = '') {
   if (isGuest === true && isGuestName(name)) return name
+  const publicNickname = isGuest === true ? '' : readTrainerNickname(nickname)
+  if (publicNickname) return publicNickname
   const first = [...graphemes.segment(cleanName(name))]
     .find(({ segment }) => /[^\p{M}\p{Cf}\s]/u.test(segment))?.segment
   return `${first || '트'}**`
@@ -22,12 +26,26 @@ const trustedGuestNames = (value, extra = []) => [...new Set([
     .filter(trainer => trainer?.isGuest === true).map(trainer => trainer.name),
 ].filter(isGuestName))]
 
+function trustedNicknameEntries(value, extra = []) {
+  const names = new Map(extra), local = new Map()
+  for (const trainer of [value?.you, value?.player, value?.opponent, value?.opponentMeta]) {
+    if (!trainer || typeof trainer.name !== 'string') continue
+    const nickname = trainer.isGuest === true ? '' : readTrainerNickname(trainer.nickname)
+    // A legacy string shared by different trainers is ambiguous. Keep it
+    // masked rather than letting one account's approval unmask the other.
+    local.set(trainer.name, local.has(trainer.name) && local.get(trainer.name) !== nickname ? '' : nickname)
+  }
+  for (const [name, nickname] of local) names.set(name, nickname)
+  return [...names]
+}
+
 // Legacy battle messages have a handful of explicit trainer positions. Never
 // replace a nickname globally: a trainer can also be named after a Pokemon.
-export function maskRankedTrainerText(message, names = [], guestNames = []) {
+export function maskRankedTrainerText(message, names = [], guestNames = [], nicknameEntries = []) {
   if (typeof message !== 'string') return message
   const candidates = trainerNames(null, names)
-  const publicName = name => maskRankedTrainerName(name, guestNames.includes(name))
+  const nicknames = new Map(nicknameEntries)
+  const publicName = name => maskRankedTrainerName(name, guestNames.includes(name), nicknames.get(name))
   for (const first of candidates) for (const second of candidates) {
     if (message === `${first} vs ${second}, 레이팅 배틀 시작!`) {
       return `${publicName(first)} vs ${publicName(second)}, 레이팅 배틀 시작!`
@@ -67,11 +85,11 @@ function opaqueLogId(value) {
   return `${(first >>> 0).toString(16).padStart(8, '0')}${(second >>> 0).toString(16).padStart(8, '0')}`
 }
 
-function maskLog(log, names, guestNames) {
+function maskLog(log, names, guestNames, nicknameEntries) {
   if (!Array.isArray(log)) return log
   return log.map((entry, index) => {
     if (!entry || typeof entry !== 'object') return entry
-    const message = maskRankedTrainerText(entry.message, names, guestNames)
+    const message = maskRankedTrainerText(entry.message, names, guestNames, nicknameEntries)
     // appendLog embeds its original message in the ID. Preserve only an opaque
     // key and the public text, including when client and server both mask it.
     const existingKey = typeof entry.id === 'string' ? entry.id.match(/^ranked-log-v1-([a-f0-9]{16})-/)?.[1] : null
@@ -83,31 +101,35 @@ function maskLog(log, names, guestNames) {
 function maskNamedTrainer(value, guestNames) {
   if (!value || typeof value !== 'object') return value
   const isGuest = value.isGuest === true || (value.isGuest !== false && guestNames.includes(value.name))
-  return { ...value, name: maskRankedTrainerName(value.name, isGuest),
+  const nickname = isGuest ? '' : readTrainerNickname(value.nickname)
+  return { ...value, name: maskRankedTrainerName(value.name, isGuest, nickname),
+    ...(nickname || Object.hasOwn(value, 'nickname') ? { nickname } : {}),
     ...(isGuest && isGuestName(value.name) ? { isGuest: true } : {}) }
 }
 
-export function maskRankedBattleState(state, names = [], guestNames = []) {
+export function maskRankedBattleState(state, names = [], guestNames = [], nicknameEntries = []) {
   if (!state || typeof state !== 'object') return state
   const known = trainerNames(state, names)
   const guests = trustedGuestNames(state, guestNames)
+  const nicknames = trustedNicknameEntries(state, nicknameEntries)
   return {
     ...state,
     ...(state.player ? { player: maskNamedTrainer(state.player, guests) } : {}),
     ...(state.opponent ? { opponent: maskNamedTrainer(state.opponent, guests) } : {}),
     ...(state.opponentMeta ? { opponentMeta: maskNamedTrainer(state.opponentMeta, guests) } : {}),
-    ...(state.log ? { log: maskLog(state.log, known, guests) } : {}),
+    ...(state.log ? { log: maskLog(state.log, known, guests, nicknames) } : {}),
   }
 }
 
-export function maskRankedTimelineStep(step, names = [], guestNames = []) {
+export function maskRankedTimelineStep(step, names = [], guestNames = [], nicknameEntries = []) {
   if (!step || typeof step !== 'object') return step
   const known = trainerNames(step.state, names)
   const guests = trustedGuestNames(step.state, guestNames)
+  const nicknames = trustedNicknameEntries(step.state, nicknameEntries)
   return {
     ...step,
-    ...(typeof step.message === 'string' ? { message: maskRankedTrainerText(step.message, known, guests) } : {}),
-    ...(step.state ? { state: maskRankedBattleState(step.state, known, guests) } : {}),
+    ...(typeof step.message === 'string' ? { message: maskRankedTrainerText(step.message, known, guests, nicknames) } : {}),
+    ...(step.state ? { state: maskRankedBattleState(step.state, known, guests, nicknames) } : {}),
   }
 }
 
@@ -115,17 +137,20 @@ export function maskRankedMatch(match) {
   if (!match || typeof match !== 'object') return match
   let names = trainerNames(match)
   let guests = trustedGuestNames(match)
+  let nicknames = trustedNicknameEntries(match)
   names = trainerNames(match.state, names)
   guests = trustedGuestNames(match.state, guests)
+  nicknames = trustedNicknameEntries(match.state, nicknames)
   for (const step of match.timeline ?? []) {
     names = trainerNames(step?.state, names)
     guests = trustedGuestNames(step?.state, guests)
+    nicknames = trustedNicknameEntries(step?.state, nicknames)
   }
   return {
     ...match,
     ...(match.you ? { you: maskNamedTrainer(match.you, guests) } : {}),
     ...(match.opponent ? { opponent: maskNamedTrainer(match.opponent, guests) } : {}),
-    ...(match.state ? { state: maskRankedBattleState(match.state, names, guests) } : {}),
-    ...(Array.isArray(match.timeline) ? { timeline: match.timeline.map(step => maskRankedTimelineStep(step, names, guests)) } : {}),
+    ...(match.state ? { state: maskRankedBattleState(match.state, names, guests, nicknames) } : {}),
+    ...(Array.isArray(match.timeline) ? { timeline: match.timeline.map(step => maskRankedTimelineStep(step, names, guests, nicknames)) } : {}),
   }
 }

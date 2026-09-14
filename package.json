@@ -126,6 +126,8 @@
     "validate:postgres-store": "node scripts/validatePostgresStore.mjs",
     "validate:storage-migration": "node scripts/validateStorageMigration.mjs",
     "validate:account-api": "node scripts/validateAccountApiClient.mjs && node scripts/validateAccountServer.mjs",
+    "validate:trainer-nicknames": "node scripts/validateAccountNicknameServer.mjs && node scripts/validateNicknameProductionAuth.mjs && node scripts/validatePublicTrainerNicknames.mjs",
+    "validate:trainer-nicknames-ui": "node scripts/validateTrainerNicknameAuth.mjs && node scripts/validateTrainerNicknameUi.mjs",
     "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
     "validate:battle-retention": "node scripts/validateBattleRetention.mjs"
   },

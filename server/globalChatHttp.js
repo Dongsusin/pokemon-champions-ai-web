@@ -57,7 +57,7 @@ export function createGlobalChatHttpHandler({ service, authenticate, allowLocalO
       const payload = await readPayload(request)
       if (!service || !authenticate) return unavailable(headers)
       let identity
-      try { identity = await authenticate(request, token) } catch (error) {
+      try { identity = await authenticate(request, token, { freshNickname: payload.action === 'send' }) } catch (error) {
         if (authRejected.has(error?.code) || (error?.status === 401 && error?.code === 'UNAUTHENTICATED')) throw new GlobalChatError('UNAUTHENTICATED', '로그인이 만료됐습니다. 다시 로그인해주세요.', 401)
         return unavailable(headers)
       }

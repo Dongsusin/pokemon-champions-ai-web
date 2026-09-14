@@ -372,7 +372,7 @@ export default function RankedBattleScreen({
             onClick={() => fire('select', { matchId: match.id, revision: match.revision, selection })}>{match.selectionSubmitted ? <><Check size={17} /> 선출 완료</> : '선출 확정'}</button>
           <button className="ranked-quiet" type="button" disabled={busy} onClick={() => fire('forfeit', { matchId: match.id })}>선출 포기</button></div>
       </section>
-      : showLeaderboard ? <RankedLeaderboard key={isRankedLocalTest ? identity : user?.uid} client={client} initialFormat={format} queued={Boolean(snapshot.queue)} />
+      : showLeaderboard ? <RankedLeaderboard key={isRankedLocalTest ? identity : `${user?.uid}:${user?.nickname ?? ''}`} client={client} initialFormat={format} queued={Boolean(snapshot.queue)} />
       : <div className="ranked-lobby-grid"><section className="ranked-ladder-panel">
         <div className="ranked-format-tabs" role="group" aria-label="레이팅 형식">{RANKED_FORMATS.map(entry => <button type="button" key={entry.id} aria-pressed={format === entry.id} disabled={busy || Boolean(snapshot.queue)} onClick={() => setFormat(entry.id)}><Swords size={17} />{entry.label}</button>)}</div>
         <RankBadge record={record} />

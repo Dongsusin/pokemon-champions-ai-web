@@ -284,6 +284,7 @@ export function GameApp({
   onAutoLoginChange,
   onConnectGoogle,
   onDeleteAccount,
+  onSetNickname,
   onPlayerDataChanged,
   onSyncBeforeRanked,
   onSignOut,
@@ -350,12 +351,13 @@ export function GameApp({
   const factoryBattleVisible = screen === 'factory' && factoryRun?.phase === 'battle'
   const battleMusicActive = screen === 'battle' || rankedBattleActive || factoryBattleVisible
   const isGuest = Boolean(user.isAnonymous || user.isLocalGuest)
-  const trainerName = user.displayName?.trim()
+  const accountTrainerName = user.displayName?.trim()
     || user.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
+  const trainerName = isGuest ? accountTrainerName : maskRankedTrainerName(accountTrainerName, false, user.nickname)
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
   const onlineScreen = screen === 'ranked' || screen === 'rooms'
-  const displayedTrainerName = onlineScreen ? maskRankedTrainerName(trainerName, user.isAnonymous === true) : trainerName
+  const displayedTrainerName = trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
     if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {
@@ -717,6 +719,7 @@ export function GameApp({
       aiDifficulty,
       Math.random,
       battleFormat,
+      trainerName,
     )
     const battleModeName = battleMode === 'league' ? '8인 리그전' : '128강 토너먼트'
 
@@ -1107,7 +1110,7 @@ export function GameApp({
 
           <div
             className={`player-account${accountError ? ' sync-error' : ''}`}
-            title={accountError || (onlineScreen ? displayedTrainerName : user.email || trainerName)}
+            title={accountError || displayedTrainerName}
           >
             <span className="player-account-avatar">
               {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : trainerInitial}
@@ -1208,6 +1211,7 @@ export function GameApp({
           onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards} />
       ) : screen === 'factory' ? (
         <BattleFactoryScreen user={user} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
+          playerName={trainerName}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
       ) : screen === 'battle-select' ? (
@@ -1231,6 +1235,7 @@ export function GameApp({
         <BattleScreen
           competitionLabel={battleMatch.competitionLabel}
           playerPokemon={battleMatch.playerTeam}
+          playerName={trainerName}
           opponent={battleMatch.opponent}
           opponentTeam={battleMatch.opponentTeam}
           rules={battleMatch.rules}
@@ -1324,6 +1329,7 @@ export function GameApp({
           onAutoLoginChange={onAutoLoginChange}
           onConnectGoogle={onConnectGoogle}
           onDeleteAccount={onDeleteAccount}
+          onSetNickname={onSetNickname}
           onChange={updateSetting}
           onClose={() => setSettingsOpen(false)}
           onReset={resetSettings}
@@ -1379,6 +1385,7 @@ function App() {
     signInAsGuest,
     signOut,
     deleteAccount,
+    setNickname,
   } = useAuth()
 
   if (!ready) {
@@ -1420,6 +1427,7 @@ function App() {
         onAutoLoginChange={setAutoLogin}
         onConnectGoogle={connectGuestToGoogle}
         onDeleteAccount={deleteAccount}
+        onSetNickname={setNickname}
         onSignOut={signOut}
       />
     </>

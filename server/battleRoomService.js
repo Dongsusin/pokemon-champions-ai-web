@@ -1,11 +1,12 @@
 import { createHash, scryptSync, timingSafeEqual } from 'node:crypto'
 import { maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
+import { readTrainerNickname } from '../src/data/trainerNickname.js'
 
 const ROOM_LIMIT = 10
 const WAIT_TIMEOUT = 10 * 60_000
 const FULL_TIMEOUT = 60_000
 const copy = value => structuredClone(value)
-const publicMember = member => ({ uid: member.uid, name: maskRankedTrainerName(member.name, member.isGuest), isGuest: member.isGuest === true, joinedAt: member.joinedAt, withdrawn: member.withdrawn === true })
+const publicMember = member => ({ uid: member.uid, name: maskRankedTrainerName(member.name, member.isGuest, member.nickname), isGuest: member.isGuest === true, joinedAt: member.joinedAt, withdrawn: member.withdrawn === true })
 const roomDeadline = room => Math.min(room.createdAt + WAIT_TIMEOUT, room.firstFullAt === null ? Infinity : room.firstFullAt + FULL_TIMEOUT)
 const passwordKey = (password, salt) => scryptSync(password, salt, 32).toString('hex')
 const hashId = value => createHash('sha256').update(value).digest('hex').slice(0, 40)
@@ -174,6 +175,11 @@ export function createBattleRoomService({ fail, loadPlayer, expireMatch, settleM
     const all = await tx.list('battleRooms')
     const player = await tx.get('players', uid)
     const room = all.find(entry => entry.id === player?.activeRoomId)
+    const member = room?.members.find(entry => entry.uid === uid && !entry.withdrawn)
+    if (member && readTrainerNickname(member.nickname) !== readTrainerNickname(player.nickname)) {
+      Object.assign(member, { name: player.name, nickname: readTrainerNickname(player.nickname), isGuest: player.isGuest === true })
+      tx.set('battleRooms', room.id, room)
+    }
     const ownMatch = player?.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
     const waitingMember = room?.phase === 'active' && room.members.some(member => member.uid === uid && !member.withdrawn) && (!ownMatch || ownMatch.phase === 'finished')
     return {
@@ -208,7 +214,7 @@ export function createBattleRoomService({ fail, loadPlayer, expireMatch, settleM
       player = await tx.get('players', identity.uid) ?? player
       if ((await tx.list('battleRooms')).length >= ROOM_LIMIT) fail('ROOM_LIMIT', '방은 전체 10개까지 열 수 있습니다. 빈자리가 생기면 다시 시도해주세요.', 409)
       const password = validateRoomPassword(payload.password, fail)
-      const room = { id, title: payload.title, mode: payload.mode, format: payload.format, phase: 'waiting', hostUid: player.uid, members: [{ uid: player.uid, name: identity.name, isGuest: identity.isGuest, team, joinedAt: timestamp, withdrawn: false }], createdAt: timestamp, firstFullAt: null, fixtures: [], passwordHash: password ? passwordKey(password, salt) : null, passwordSalt: password ? salt : null }
+      const room = { id, title: payload.title, mode: payload.mode, format: payload.format, phase: 'waiting', hostUid: player.uid, members: [{ uid: player.uid, name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest, team, joinedAt: timestamp, withdrawn: false }], createdAt: timestamp, firstFullAt: null, fixtures: [], passwordHash: password ? passwordKey(password, salt) : null, passwordSalt: password ? salt : null }
       player.activeRoomId = room.id
       player.lastRoomId = room.id
       player.activeMatchId = null
@@ -240,7 +246,7 @@ export function createBattleRoomService({ fail, loadPlayer, expireMatch, settleM
           return { roomError: { code: 'WRONG_ROOM_PASSWORD', message: '방 비밀번호가 일치하지 않습니다.', status: 403 } }
         }
       }
-      room.members.push({ uid: identity.uid, name: identity.name, isGuest: identity.isGuest, team, joinedAt: timestamp, withdrawn: false })
+      room.members.push({ uid: identity.uid, name: identity.name, nickname: identity.nickname, isGuest: identity.isGuest, team, joinedAt: timestamp, withdrawn: false })
       if (room.members.length === 4 && room.firstFullAt === null) room.firstFullAt = timestamp
       player.activeRoomId = room.id
       player.lastRoomId = room.id

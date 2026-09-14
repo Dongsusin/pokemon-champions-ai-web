@@ -107,14 +107,6 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
       const authorization = request.headers.get('authorization') ?? ''
       const match = /^Bearer ([^\s]{8,4096})$/.exec(authorization)
       if (!match) throw new RankedError('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
-      let identity
-      try { identity = await authenticate(request, match[1]) } catch (error) {
-        if (error instanceof RankedError) throw error
-        if (AUTH_REJECTION_CODES.has(error?.code)) throw new RankedError('UNAUTHENTICATED', '로그인이 만료됐습니다. 다시 로그인해주세요.', 401)
-        logFailure('authentication', error)
-        throw new RankedError('RANKED_UNAVAILABLE', '로그인 확인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.', 503)
-      }
-      limit(identity.uid, request.method === 'POST')
       const payload = request.method === 'GET'
         ? { action: url.searchParams.get('action') || 'status', ...(url.searchParams.has('matchId') ? { matchId: url.searchParams.get('matchId') } : {}), ...(url.searchParams.has('timelineRevision') ? { timelineRevision: url.searchParams.get('timelineRevision') } : {}),
           ...(url.searchParams.has('spectateMatchId') ? { spectateMatchId: url.searchParams.get('spectateMatchId') } : {}),
@@ -122,6 +114,16 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
         }
         : await readPayload(request)
       if (request.method === 'GET' && !['status', 'rooms', 'fixtures', 'usage', 'factoryLeaderboard', 'rankedLeaderboard'].includes(payload.action)) throw new RankedError('METHOD_NOT_ALLOWED', '상태 변경은 POST 요청만 허용됩니다.', 405)
+      let identity
+      try { identity = await authenticate(request, match[1], { freshNickname: [
+        'join', 'roomCreate', 'roomJoin', 'reportFactoryRun', 'factoryLeaderboard', 'rankedLeaderboard',
+      ].includes(payload.action) }) } catch (error) {
+        if (error instanceof RankedError) throw error
+        if (AUTH_REJECTION_CODES.has(error?.code)) throw new RankedError('UNAUTHENTICATED', '로그인이 만료됐습니다. 다시 로그인해주세요.', 401)
+        logFailure('authentication', error)
+        throw new RankedError('RANKED_UNAVAILABLE', '로그인 확인 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.', 503)
+      }
+      limit(identity.uid, request.method === 'POST')
       return response(await service.execute(identity, payload), 200, headers)
     } catch (error) {
       if (error instanceof RankedError || (Number.isInteger(error?.status) && error.status >= 400 && error.status < 500)) {

@@ -103,7 +103,7 @@ export function createFactoryRankingOutbox({ uid, storage, send, onSnapshot = ()
 // Guest rankings stay on this browser and are explicitly labelled local. Keep
 // every local user's personal best so their own record survives falling outside
 // the displayed top ten. The same comparison rules are used by the server.
-export function createLocalFactoryRankingClient({ uid, trainerName, storage, now = Date.now }) {
+export function createLocalFactoryRankingClient({ uid, trainerName, nickname, isGuest = false, storage, now = Date.now }) {
   uidKey(uid)
   const id = `local:${uidKey(uid)}`
   const readEntries = () => {
@@ -119,7 +119,7 @@ export function createLocalFactoryRankingClient({ uid, trainerName, storage, now
       const validated = validateFactoryRankingSubmission(report)
       const entries = readEntries()
       const previous = entries.find(entry => entry.id === id) ?? null
-      const candidate = { id, runId: validated.runId, trainerName: maskRankedTrainerName(trainerName),
+      const candidate = { id, runId: validated.runId, trainerName: maskRankedTrainerName(trainerName, isGuest, nickname),
         floor: validated.floor, wins: validated.wins, party: clone(validated.party), recordedAt: now() }
       const best = chooseFactoryPersonalBest(previous, candidate)
       if (best === previous) return normalizeFactoryRankingSnapshot(snapshot(entries))

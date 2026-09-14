@@ -39,7 +39,7 @@ import {
   clearCompletedGuestDeletions,
 } from './accountStorage'
 import { resolveGuestIdentity, deleteGuestAccount } from './guestIdentityClient'
-import { deletePlayerProfile, ensurePlayerProfile } from './playerProfile'
+import { deletePlayerProfile, ensurePlayerProfile, setPlayerNickname, withPlayerNickname } from './playerProfile'
 import { acquireAccountSession, ACCOUNT_SESSION_ERROR_CODES } from './accountSession'
 
 const AuthContext = createContext(null)
@@ -179,6 +179,7 @@ export function AuthProvider({ children }) {
   const manualAuthRef = useRef(false)
   const logoutPendingRef = useRef(false)
   const deletedGuestAuthRef = useRef(null)
+  const nicknamePendingRef = useRef(false)
 
   const setCurrentUser = useCallback((nextUser) => {
     userRef.current = nextUser
@@ -243,7 +244,16 @@ export function AuthProvider({ children }) {
       if (userRef.current.isAnonymous && !nextUser.isAnonymous) {
         candidateRef.current = nextUser
         setCurrentUser(nextUser)
-        void ensurePlayerProfile(nextUser).catch(() => setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.'))
+        const generation = generationRef.current
+        return ensurePlayerProfile(nextUser).then(result => {
+          if (mountedRef.current && generationRef.current === generation && userRef.current?.uid === nextUser.uid) {
+            setCurrentUser(withPlayerNickname(nextUser, result?.profile))
+          }
+          return true
+        }).catch(() => {
+          if (mountedRef.current && generationRef.current === generation) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
+          return true
+        })
       }
       return Promise.resolve(true)
     }
@@ -322,13 +332,18 @@ export function AuthProvider({ children }) {
           clearLocalGuest()
         }
         setProfileSyncError('')
+        if (!nextUser.isLocalGuest) {
+          try {
+            const result = await ensurePlayerProfile(admittedUser)
+            if (!isCurrent()) { await handle.release(); return false }
+            admittedUser = withPlayerNickname(admittedUser, result?.profile)
+          } catch {
+            if (isCurrent()) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
+          }
+        }
+        if (!isCurrent()) { await handle.release(); return false }
         candidateRef.current = admittedUser
         setCurrentUser(admittedUser)
-        if (!nextUser.isLocalGuest) {
-          void ensurePlayerProfile(admittedUser).catch(() => {
-            if (isCurrent()) setProfileSyncError('계정 프로필을 서버와 동기화하지 못했습니다.')
-          })
-        }
         return true
       } catch (sessionError) {
         await handle?.release()
@@ -643,6 +658,26 @@ export function AuthProvider({ children }) {
     }
   }, [releaseSession, setCurrentUser, signOut])
 
+  const setNickname = useCallback(async value => {
+    const currentUser = userRef.current
+    const generation = generationRef.current
+    if (!currentUser || currentUser.isAnonymous || currentUser.isLocalGuest) throw new Error('게스트는 현재 이름을 그대로 사용합니다.')
+    if (nicknamePendingRef.current || logoutPendingRef.current || manualAuthRef.current || !sessionRef.current?.handle.isActive()) {
+      throw new Error('계정 처리가 진행 중입니다. 잠시 후 다시 시도해주세요.')
+    }
+    nicknamePendingRef.current = true
+    try {
+      const result = await setPlayerNickname(currentUser, value)
+      if (!mountedRef.current || generationRef.current !== generation || userRef.current?.uid !== currentUser.uid
+        || !sessionRef.current?.handle.isActive() || logoutPendingRef.current) {
+        throw new Error('로그인 계정이 변경되었습니다. 현재 계정에서 다시 확인해주세요.')
+      }
+      setCurrentUser(withPlayerNickname(currentUser, result.profile))
+      setProfileSyncError('')
+      return result.profile.nickname
+    } finally { nicknamePendingRef.current = false }
+  }, [setCurrentUser])
+
   const value = useMemo(() => ({
     user,
     ready,
@@ -658,11 +693,13 @@ export function AuthProvider({ children }) {
     signInAsGuest,
     signOut,
     deleteAccount,
+    setNickname,
   }), [
     autoLogin,
     busy,
     connectGuestToGoogle,
     deleteAccount,
+    setNickname,
     error,
     profileSyncError,
     ready,

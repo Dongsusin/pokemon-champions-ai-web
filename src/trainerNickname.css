@@ -1,0 +1,45 @@
+.settings-nickname {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(113, 224, 226, .26);
+  border-radius: 13px;
+  color: #dbedf6;
+  background: linear-gradient(120deg, rgba(31, 81, 91, .26), rgba(17, 29, 58, .45));
+}
+.settings-nickname-heading { display: flex; align-items: center; gap: 8px; color: #a4eee6; font-size: 15px; line-height: 1.45; }
+.settings-nickname-heading svg { flex-shrink: 0; }
+.settings-account-panel:has(.settings-nickname) .settings-account-copy > strong { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.settings-nickname-description { margin: 8px 0 12px; color: #bdc9db; font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+.settings-nickname-current { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 12px; margin-bottom: 14px; padding: 10px 12px; border-radius: 9px; background: rgba(5, 17, 33, .4); }
+.settings-nickname-current > span { color: #95b8c9; font-size: 11px; line-height: 1.5; }
+.settings-nickname-current > strong { min-width: 0; color: #f2fcff; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.settings-nickname-label { display: block; margin-bottom: 6px; color: #d6e9f2; font-size: 12px; line-height: 1.45; font-weight: 700; }
+.settings-nickname-input-row { display: flex; align-items: stretch; gap: 9px; min-width: 0; }
+.settings-nickname-input-row input { flex: 1 1 0; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid rgba(135, 196, 217, .4); border-radius: 9px; outline: none; color: #f0fbff; background: #111d33; font-size: 14px; line-height: 1.45; }
+.settings-nickname-input-row input::placeholder { color: #859eb7; }
+.settings-nickname-input-row input:focus { border-color: #88e4df; box-shadow: 0 0 0 2px rgba(130, 234, 225, .13); }
+.settings-nickname-input-row input[aria-invalid="true"] { border-color: #f19b96; }
+.settings-nickname-save, .settings-nickname-clear { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 10px 14px; border: 1px solid #7ce0d8; border-radius: 9px; font-size: 13px; font-weight: 800; line-height: 1.4; cursor: pointer; }
+.settings-nickname-save { flex-shrink: 0; color: #092334; background: linear-gradient(130deg, #9beda8, #74d9dc); }
+.settings-nickname-clear { margin-top: 12px; color: #bbdbe6; border-color: rgba(139, 196, 218, .35); background: rgba(14, 32, 54, .5); }
+.settings-nickname-clear svg { flex-shrink: 0; }
+.settings-nickname-rules { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; color: #9fb5c9; font-size: 11px; line-height: 1.55; }
+.settings-nickname-rules > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.settings-nickname-counter { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.settings-nickname-error, .settings-nickname-notice, .settings-nickname-progress, .settings-nickname-guest { margin: 10px 0 0; font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+.settings-nickname-error { color: #ffb8af; }
+.settings-nickname-notice { color: #a5ead0; }
+.settings-nickname-progress { color: #bbdbe6; }
+.settings-nickname-guest { padding: 12px 15px; border: 1px solid rgba(125, 185, 213, .2); border-radius: 10px; color: #afc9dc; background: rgba(21, 40, 61, .25); }
+.settings-nickname button:disabled, .settings-nickname input:disabled, .settings-modal[aria-busy="true"] :is(.settings-close-button, .settings-tabs button, .settings-confirm-button):disabled { opacity: .5; cursor: default; }
+@media (max-width: 600px) {
+  .settings-nickname-input-row { flex-wrap: wrap; }
+  .settings-nickname-input-row input { flex-basis: 100%; }
+  .settings-nickname-save { flex: 1; }
+}
+@media (max-height: 480px) {
+  .settings-nickname { padding: 12px; }
+  .settings-nickname-current { margin-bottom: 10px; padding-block: 6px; }
+}
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-nickname-input-row { flex-wrap: wrap; }
+html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-nickname-input-row input { flex-basis: 100%; }

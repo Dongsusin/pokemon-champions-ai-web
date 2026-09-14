@@ -680,7 +680,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
             pokemon={pokemon}
             side="player"
             showBattleState={false}
-            trainerName="PLAYER_01"
+            trainerName={player.name}
             visible={visible}
           />
         )
