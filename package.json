@@ -129,7 +129,19 @@
     "validate:trainer-nicknames": "node scripts/validateAccountNicknameServer.mjs && node scripts/validateNicknameProductionAuth.mjs && node scripts/validatePublicTrainerNicknames.mjs",
     "validate:trainer-nicknames-ui": "node scripts/validateTrainerNicknameAuth.mjs && node scripts/validateTrainerNicknameUi.mjs",
     "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
-    "validate:battle-retention": "node scripts/validateBattleRetention.mjs"
+    "validate:battle-retention": "node scripts/validateBattleRetention.mjs",
+    "validate:raid-mechanics": "node scripts/validateRaidMechanics.mjs",
+    "validate:raid-journeys": "node scripts/validateRaidJourneys.mjs",
+    "validate:raid-wallet": "node scripts/validateRaidWallet.mjs",
+    "validate:raid-replay": "node scripts/validateRaidReplaySafety.mjs",
+    "validate:raid-polling": "node scripts/validateRaidPolling.mjs",
+    "validate:raid-ui": "node scripts/validateRaidUi.mjs",
+    "validate:raid-three-clients": "node scripts/validateRaidThreeClients.mjs",
+    "validate:raid-http": "node scripts/validateRaidHttp.mjs",
+    "validate:raid-service": "node scripts/validateRaidService.mjs",
+    "validate:raid-retention": "node scripts/validateRaidRetention.mjs",
+    "raid:test": "node scripts/startRaidTest.mjs",
+    "validate:raid": "npm run validate:raid-mechanics && npm run validate:raid-service && npm run validate:raid-replay && npm run validate:raid-polling && npm run validate:raid-http && npm run validate:raid-retention && npm run validate:raid-wallet && npm run validate:raid-journeys"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",

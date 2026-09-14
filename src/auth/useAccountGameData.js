@@ -17,6 +17,7 @@ import {
 } from './accountStorage'
 import { loadPlayerGameData, savePlayerGameData } from './playerGameData'
 import { getActiveAccountSessionOwnerId, hasActiveAccountSession } from './accountSession'
+import { migrateOnlineWalletReceipts } from './raidWalletMigration.js'
 
 const CLOUD_SAVE_DEBOUNCE_MS = 700
 
@@ -165,8 +166,10 @@ export function useAccountGameData(user) {
           )
 
           if (keepLocalData) {
-            const result = await savePlayerGameData(userId, localPayload)
+            const transferred = migrateOnlineWalletReceipts(localPayload, { sourceUid: migration?.sourceUid, targetUid: userId, targetPayload: cloudData.payload })
+            const result = await savePlayerGameData(userId, transferred)
             if (!isCurrent()) return
+            if (transferred !== localPayload) replaceLocalPlayerData(transferred)
             markLocalPlayerDataSynced(userId, result.revision)
           } else {
             replaceLocalPlayerData(cloudData.payload)
@@ -174,9 +177,10 @@ export function useAccountGameData(user) {
           }
         } else {
           const localTransferAllowed = canTransferLocalData(syncState, migration, userId)
-          const result = await savePlayerGameData(userId, localTransferAllowed ? localPayload : {})
+          const transferred = localTransferAllowed ? migrateOnlineWalletReceipts(localPayload, { sourceUid: migration?.sourceUid, targetUid: userId }) : {}
+          const result = await savePlayerGameData(userId, transferred)
           if (!isCurrent()) return
-          if (!localTransferAllowed) replaceLocalPlayerData({})
+          if (transferred !== localPayload) replaceLocalPlayerData(transferred)
           markLocalPlayerDataSynced(userId, result.revision)
         }
 

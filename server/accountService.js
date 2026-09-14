@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
 import { normalizeTrainerNickname, readTrainerNickname } from '../src/data/trainerNickname.js'
 import { containsChatProfanity } from './chatModeration.js'
+import { reconcileRaidWallet, createResetRaidWalletPayload } from './raidWallet.js'
 
 export const ACCOUNT_LEASE_MS = 90_000
 export const ACCOUNT_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024
@@ -32,7 +33,7 @@ export function validateAccountPayload(payload) {
   return clone(payload)
 }
 
-export function createAccountService({ store, guestRegistry, deleteGuestData, now = Date.now, newVersion = randomUUID }) {
+export function createAccountService({ store, guestRegistry, deleteGuestData, resolveRaidRewardTotal, now = Date.now, newVersion = randomUUID }) {
   let onlineSample = null, pendingCount = null, lastCountAttemptAt = null
   const usableSample = timestamp => Number.isSafeInteger(timestamp) && onlineSample && timestamp >= onlineSample.sampledAt
     && timestamp - onlineSample.sampledAt < ONLINE_PLAYERS_STALE_MS
@@ -99,13 +100,16 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           await deleteGuestData(identity)
           await store.transaction(async tx => {
             await tx.get('guestDeletions', key)
-            for (const collection of ['gameData', 'profiles', 'sessions']) tx.delete(collection, identity.uid)
+            for (const collection of ['gameData', 'profiles', 'sessions', 'raidWallets']) tx.delete(collection, identity.uid)
             tx.set('guestDeletions', key, { status: 'deleted', deletedAt: now() })
           })
         }
         return { deleted: true, uid: identity.uid }
       }
-      const payload = action === 'save' ? validateAccountPayload(command.payload) : null
+      let payload = action === 'save' ? validateAccountPayload(command.payload) : null
+      const raidTotal = typeof resolveRaidRewardTotal === 'function' && ['load', 'save', 'deleteGameData'].includes(action)
+        ? await resolveRaidRewardTotal(identity.uid) : null
+      const rewardLoadVersion = action === 'load' && raidTotal !== null ? newVersion() : null
       let nickname
       if (action === 'setNickname') {
         if (identity.isGuest === true || identity.isLocalGuest === true
@@ -163,10 +167,36 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           return sessionView(next)
         }
         if (action === 'load') {
-          const saved = await tx.get('gameData', uid)
+          let saved = await tx.get('gameData', uid)
+          if (raidTotal !== null) {
+            const wallet = await tx.get('raidWallets', uid)
+            // If authentication deletion failed after a user deleted game
+            // data, the same UID may return. Start fresh while retaining only
+            // the paid watermark; never restore the old collection or re-pay
+            // historical raid rewards into a newly empty wallet.
+            if (!saved && wallet?.resetPending) {
+              saved = { schemaVersion: 1, revision: rewardLoadVersion, updatedAtMs: now(), payload: createResetRaidWalletPayload(uid, wallet.appliedTotal) }
+              tx.set('gameData', uid, saved)
+              tx.set('raidWallets', uid, { appliedTotal: wallet.appliedTotal })
+            }
+            if (!saved) return { gameData: null }
+            const reconciled = reconcileRaidWallet(saved.payload, uid, raidTotal, wallet?.appliedTotal)
+            if (reconciled.changed) {
+              saved = { ...saved, payload: reconciled.payload, revision: rewardLoadVersion, updatedAtMs: now() }
+              tx.set('gameData', uid, saved)
+            }
+            if (reconciled.appliedTotal > (wallet?.appliedTotal ?? 0)) tx.set('raidWallets', uid, { appliedTotal: reconciled.appliedTotal })
+          }
           return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null }
         }
         if (action === 'save') {
+          if (raidTotal !== null) {
+            const wallet = await tx.get('raidWallets', uid)
+            if (wallet?.resetPending) fail('STALE_RAID_REWARD_SAVE', '삭제된 계정의 이전 저장입니다. 새 게임 데이터를 먼저 불러와주세요.', 409)
+            const reconciled = reconcileRaidWallet(payload, uid, raidTotal, wallet?.appliedTotal, { rejectStale: true, creditMissing: false })
+            payload = reconciled.payload
+            if (reconciled.appliedTotal > (wallet?.appliedTotal ?? 0)) tx.set('raidWallets', uid, { appliedTotal: reconciled.appliedTotal })
+          }
           const previous = typeof tx.compareGameData === 'function'
             ? await tx.compareGameData(uid, payload)
             : await tx.get('gameData', uid).then(saved => saved ? { revision: saved.revision, payloadMatches: isDeepStrictEqual(saved.payload, payload) } : null)
@@ -193,6 +223,11 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           }
           if (!isDeepStrictEqual(previous, profile)) tx.set('profiles', uid, profile)
           return { profile }
+        }
+        if (action === 'deleteGameData' && raidTotal !== null) {
+          const wallet = await tx.get('raidWallets', uid)
+          const appliedTotal = Math.max(wallet?.appliedTotal ?? 0, raidTotal)
+          if (appliedTotal > 0) tx.set('raidWallets', uid, { appliedTotal, resetPending: true })
         }
         tx.delete(action === 'deleteGameData' ? 'gameData' : 'profiles', uid)
         return { deleted: true }
@@ -223,5 +258,27 @@ export function createAccountRankedTeamResolver(accountStore) {
       if (pokemon.heldItemId && !(Number(inventory[pokemon.heldItemId]) > 0)) fail('ITEM_NOT_OWNED', '보유 도구 정보를 동기화한 뒤 다시 시도해주세요.', 409)
       return clone(pokemon)
     })
+  }
+}
+
+// A raid participant chooses exactly one owned Pokemon.  Keep this resolver
+// separate from the six-member ranked resolver so a client cannot smuggle a
+// complete forged loadout through the cooperative-room API.
+export function createAccountRaidPokemonResolver(accountStore) {
+  return async (identity, entry) => {
+    const captureId = entry?.captureId
+    if (typeof captureId !== 'string' || !/^[A-Za-z0-9_.:-]{1,96}$/.test(captureId)) fail('INVALID_POKEMON', '보유 포켓몬 한 마리를 선택해주세요.')
+    const saved = await accountStore.transaction(tx => tx.get('gameData', identity.uid))
+    let owned, inventory
+    try {
+      if (!saved?.revision || !plain(saved.payload)) throw new Error('Missing account save')
+      owned = JSON.parse(saved.payload['champions-dex-v2'] ?? saved.payload['champions-box-v1'] ?? '[]')
+      inventory = JSON.parse(saved.payload['champions-battle-items-v1'] ?? '{}')
+    } catch { fail('ACCOUNT_SYNC_REQUIRED', '보유 포켓몬 정보를 서버에 동기화한 뒤 다시 시도해주세요.', 409) }
+    if (!Array.isArray(owned) || !plain(inventory)) fail('ACCOUNT_SYNC_REQUIRED', '보유 포켓몬 정보를 먼저 동기화해주세요.', 409)
+    const pokemon = owned.find(candidate => plain(candidate) && candidate.captureId === captureId)
+    if (!pokemon) fail('POKEMON_NOT_OWNED', '서버에 저장된 보유 포켓몬만 보스전에 참가할 수 있습니다.', 403)
+    if (pokemon.heldItemId && !(Number(inventory[pokemon.heldItemId]) > 0)) fail('ITEM_NOT_OWNED', '보유 도구 정보를 동기화한 뒤 다시 시도해주세요.', 409)
+    return clone(pokemon)
   }
 }

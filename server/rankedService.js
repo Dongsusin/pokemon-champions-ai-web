@@ -485,6 +485,26 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       }
       if (action === 'join') {
         await lobbyLock(tx)
+        const raid = await tx.get('raidPlayers', player.uid)
+        // A raid writes both a dedicated player pointer and a compatibility
+        // reservation on the ranked player.  Verify the pointed documents so
+        // an old terminal room cannot permanently block ranked matchmaking,
+        // while a live room/run cannot be bypassed by a stale profile.
+        const raidRoomId = raid?.activeRoomId ?? (typeof player.activeRaidId === 'string' ? player.activeRaidId : null)
+        const raidRoom = raidRoomId ? await tx.get('raidRooms', raidRoomId) : null
+        const raidRunId = raid?.activeRaidId ?? raidRoom?.activeRaidId ?? (typeof player.activeRaidId === 'string' ? player.activeRaidId : null)
+        const raidRun = raidRunId ? await tx.get('raidRuns', raidRunId) : null
+        const activeRaidRun = Boolean(raidRun && !['finished', 'abandoned'].includes(raidRun.lifecycle))
+        const activeRaidRoom = Boolean(raidRoom && (raidRoom.status === 'waiting' || (raidRoom.status === 'active' && activeRaidRun)))
+        if (activeRaidRoom || activeRaidRun) {
+          fail('ALREADY_IN_RAID', '참가 중인 보스전을 먼저 나가거나 끝내주세요.', 409)
+        }
+        if (raid?.activeRoomId || raid?.activeRaidId) {
+          raid.activeRoomId = null
+          raid.activeRaidId = null
+          tx.set('raidPlayers', player.uid, raid)
+        }
+        if (player.activeRaidId) player.activeRaidId = null
         if (player.activeRoomId && await tx.get('battleRooms', player.activeRoomId)) fail('ALREADY_IN_ROOM', '참가 중인 방을 먼저 나가주세요.', 409)
         const current = player.activeMatchId ? await tx.get('matches', player.activeMatchId) : null
         if (current) await expireMatch(tx, current, timestamp)

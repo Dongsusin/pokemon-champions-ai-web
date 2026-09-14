@@ -1,7 +1,7 @@
-import { ArrowLeft, ArrowLeftRight, Building2, ChevronRight, Swords, Trophy, UsersRound } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Building2, ChevronRight, Crown, Swords, Trophy, UsersRound } from 'lucide-react'
 import './battleHub.css'
 
-export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms }) {
+export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelectFactory, onSelectRooms, onSelectRaid }) {
   return (
     <main className="battle-hub">
       <header className="battle-hub-heading">
@@ -37,6 +37,13 @@ export default function BattleHub({ onBack, onSelectAi, onSelectRanked, onSelect
           <span className="battle-hub-tags"><span>2~4인 대회</span><span>비밀번호 설정</span></span>
           <strong>방 찾기 · 만들기 <ChevronRight size={20} /></strong>
         </button>
+        {onSelectRaid && <button type="button" className="battle-hub-card raid" onClick={onSelectRaid}>
+          <span className="battle-hub-emblem"><Crown size={48} /></span>
+          <small>CO-OP BOSS RAID</small><h2>협동 보스전</h2>
+          <p>최대 3명의 트레이너가 한 마리씩 출전해{' '}<br />전설의 보스와 두 단계 전투를 펼치세요.</p>
+          <span className="battle-hub-tags"><span>1~3인 협동</span><span>전설 보스 3종</span></span>
+          <strong>보스전에 도전 <ChevronRight size={20} /></strong>
+        </button>}
       </section>
     </main>
   )

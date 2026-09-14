@@ -30,8 +30,8 @@ const formatId = (format) => {
 
 // Only configuration fields are accepted. Sprites, stats, moves and item
 // descriptions are reconstructed from the server's versioned game catalog.
-export function canonicalizeRankedTeam(entries, { format = 'single', requireRegisteredTeam = true } = {}) {
-  const size = requireRegisteredTeam ? 6 : formatId(format) === 'double' ? 4 : 3
+export function canonicalizeRankedTeam(entries, { format = 'single', requireRegisteredTeam = true, registeredSize = null } = {}) {
+  const size = registeredSize === 1 ? 1 : requireRegisteredTeam ? 6 : formatId(format) === 'double' ? 4 : 3
   formatId(format)
   if (!Array.isArray(entries) || entries.length !== size) invalid(`${size}마리의 포켓몬을 선택해 주세요.`)
   const species = new Set()

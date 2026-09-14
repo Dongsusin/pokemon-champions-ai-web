@@ -1,5 +1,6 @@
 import { AccountError, ACCOUNT_PAYLOAD_MAX_BYTES, createAccountService } from './accountService.js'
 import { getProductionServices } from './productionServices.js'
+import { createRaidRewardTotalResolver } from './raidWallet.js'
 import { createRankedService } from './rankedService.js'
 
 export const ACCOUNT_HTTP_MAX_BYTES = ACCOUNT_PAYLOAD_MAX_BYTES + 8192
@@ -84,7 +85,7 @@ export async function handleProductionAccountRequest(request) {
   if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, rankedStore, guestRegistry, authenticate }) => {
     if (!accountStore) throw new Error('Account storage is unavailable')
     const ranked = createRankedService({ store: rankedStore, guestRegistry })
-    return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry, deleteGuestData: ranked.deleteGuestAccount }), authenticate })
+    return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry, deleteGuestData: ranked.deleteGuestAccount, resolveRaidRewardTotal: createRaidRewardTotalResolver(rankedStore) }), authenticate })
   }).catch(error => {
     // Restrict diagnostics to known labels; never log SDK messages or secrets.
     console.error('Account server initialization failed', {

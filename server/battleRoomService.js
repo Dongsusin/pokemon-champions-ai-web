@@ -192,6 +192,28 @@ export function createBattleRoomService({ fail, loadPlayer, expireMatch, settleM
   }
 
   async function assertAvailable(tx, player, timestamp) {
+    // Raid rooms reserve the same player record plus a dedicated pointer.  Read
+    // the dedicated pointer here so an older ranked profile cannot bypass the
+    // mutual-exclusion rule during a room-create/join race.
+    const raid = await tx.get('raidPlayers', player.uid)
+    const roomReference = raid?.activeRoomId ?? (typeof player.activeRaidId === 'string' ? player.activeRaidId : null)
+    const raidRoom = roomReference ? await tx.get('raidRooms', roomReference) : null
+    const runReference = raid?.activeRaidId ?? raidRoom?.activeRaidId ?? (typeof player.activeRaidId === 'string' ? player.activeRaidId : null)
+    const raidRun = runReference ? await tx.get('raidRuns', runReference) : null
+    const activeRun = Boolean(raidRun && !['finished', 'abandoned'].includes(raidRun.lifecycle))
+    const activeRoom = Boolean(raidRoom && (raidRoom.status === 'waiting' || (raidRoom.status === 'active' && activeRun)))
+    if (activeRoom || activeRun) {
+      fail('ALREADY_IN_RAID', '참가 중인 보스전을 먼저 나가거나 끝내주세요.', 409)
+    }
+    // A terminal run/expired-room cleanup may have completed while an old
+    // player document was still cached.  Clear only this stale reservation;
+    // never touch an active pointer discovered above.
+    if (raid?.activeRoomId || raid?.activeRaidId) {
+      raid.activeRoomId = null
+      raid.activeRaidId = null
+      tx.set('raidPlayers', player.uid, raid)
+    }
+    if (player.activeRaidId) player.activeRaidId = null
     if (player.activeRoomId && await tx.get('battleRooms', player.activeRoomId)) fail('ALREADY_IN_ROOM', '이미 참가 중인 방을 먼저 나가주세요.', 409)
     const queue = await tx.get('queue', player.uid)
     if (queue?.expiresAt > timestamp) fail('ALREADY_QUEUED', '레이팅 상대 검색을 먼저 취소해주세요.', 409)
