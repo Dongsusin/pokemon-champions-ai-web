@@ -5,6 +5,7 @@ import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
 import FactoryInfoTooltip from './FactoryInfoTooltip'
 import { createBattlePreviewPokemon } from './data/battleEngine'
+import { getBattleFactoryVpReward } from './data/battleFactoryRewards'
 import { getBattleItem } from './data/shopData'
 import { getAbility, getSpeciesProfile, NATURE_OPTIONS, STAT_META, typeClassName } from './data/trainingData'
 import './battleFactory.css'
@@ -121,6 +122,7 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
       <div><span>BUILD YOUR TEAM. CLIMB HIGHER.</span><h1><Factory size={26} />배틀팩토리</h1></div>
       <nav className="factory-header-actions" aria-label="팩토리 메뉴">
         <span className="factory-format"><Swords size={16} />3 vs 3 · Lv.50</span>
+        <span className="factory-format">승리 보상 {getBattleFactoryVpReward(run.floor).toLocaleString()} VP</span>
         {onOpenRankings && <button type="button" className="factory-ranking-button" onClick={onOpenRankings}><Trophy size={17} /><span>TOP 10 랭킹</span></button>}
       </nav>
     </header>

@@ -15,7 +15,7 @@ import {
 
 export default function BattleFactoryScreen({
   run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
-  playerGender = 'male', playerName, audioSettings = {}, onToggleSound, onOpenSettings,
+  playerGender = 'male', playerName, audioSettings = {}, onToggleSound, onOpenSettings, onVpReward,
 }) {
   const currentRun = useRef(run)
   currentRun.current = run
@@ -73,7 +73,14 @@ export default function BattleFactoryScreen({
     audioSettings={audioSettings}
     onToggleSound={onToggleSound}
     onOpenSettings={onOpenSettings}
-    onComplete={summary => transition(current => resolveFactoryBattle(current, { ...summary, battleId: run.battleId }))}
+    onComplete={summary => transition(current => {
+      const next = resolveFactoryBattle(current, { ...summary, battleId: run.battleId })
+      if (next !== current && next.lastResult?.won) onVpReward?.({
+        runId: next.id, battleId: next.battleId, floor: next.floor,
+        winner: next.lastResult.winner, forfeited: next.lastResult.forfeited,
+      })
+      return next
+    })}
   />
 
   if (showRankings) return <BattleFactoryRankings ranking={ranking} onBack={() => setShowRankings(false)} />

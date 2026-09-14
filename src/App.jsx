@@ -28,7 +28,7 @@ import AchievementsScreen from './AchievementsScreen'
 import AchievementToast from './AchievementToast'
 import PokemonUsagePanel from './PokemonUsagePanel'
 import usePokemonUsage from './usePokemonUsage'
-import { creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
+import { creditBattleFactoryVpReward, creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
 import { getAiBattleVpReward } from './data/aiBattleRewards'
 import { getUnlockedPokemonSkins } from './data/rareRewards'
@@ -378,6 +378,25 @@ export function GameApp({
     }
     return result
   }, [user.uid, user.isLocalGuest, onPlayerDataChanged, onSyncBeforeRanked])
+
+  const receiveFactoryVpReward = result => {
+    let credited
+    try {
+      credited = creditBattleFactoryVpReward(achievementProgressRef.current, vpBalance.current,
+        { ...result, uid: user.uid }, user.uid)
+    } catch (error) {
+      showNotice('팩토리 VP를 저장하지 못했습니다. 저장 공간을 확인한 뒤 배틀 마치기를 다시 눌러주세요.')
+      throw error
+    }
+    if (credited.granted > 0) {
+      vpBalance.current = credited.balance
+      setVp(credited.balance)
+      onPlayerDataChanged?.()
+      showNotice(`배틀팩토리 ${result.floor}층 승리 보상 ${credited.granted.toLocaleString()} VP 지급 완료`)
+      gameAudioRef.current?.playEvent('reward')
+    }
+    return credited
+  }
 
   function enqueueAchievementToasts(unlocked) {
     const fresh = unlocked.filter((definition) => {
@@ -1211,6 +1230,7 @@ export function GameApp({
           onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards} />
       ) : screen === 'factory' ? (
         <BattleFactoryScreen user={user} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
+          onVpReward={receiveFactoryVpReward}
           playerName={trainerName}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
