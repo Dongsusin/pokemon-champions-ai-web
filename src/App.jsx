@@ -37,6 +37,7 @@ import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
 import LobbyPokemonDetail from './LobbyPokemonDetail'
+import { useIsCompactLayout } from './useMobileLayout'
 import LobbyTeamPanel from './LobbyTeamPanel'
 import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
@@ -377,8 +378,10 @@ export function GameApp({
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
   const onlineScreen = screen === 'ranked' || screen === 'rooms'
   // The draw tutorial and every in-battle surface own the full canvas, so the
-  // mobile tab bar stays out of them.
-  const mobileTabsVisible = !battleMusicActive && !drawTutorialStep
+  // mobile tab bar stays out of them. Desktop renders no bar at all rather
+  // than relying on a stylesheet to hide it.
+  const compactLayout = useIsCompactLayout()
+  const mobileTabsVisible = compactLayout && !battleMusicActive && !drawTutorialStep
     && !['battle', 'competition', 'hatch'].includes(screen)
   const displayedTrainerName = trainerName
 

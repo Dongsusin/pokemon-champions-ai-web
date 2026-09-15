@@ -1,4 +1,5 @@
 import SpriteImage from './SpriteImage'
+import { useIsCompactLayout } from './useMobileLayout'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft, ArrowRight, Check, CheckCheck, ChevronLeft, ChevronRight,
@@ -17,6 +18,7 @@ import {
 import './achievements.css'
 
 const PAGE_SIZE = 12
+const COMPACT_PAGE_SIZE = 6
 const TRAINER_BY_ID = new Map(TRAINERS.map((trainer) => [trainer.id, trainer]))
 const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((entry) => [entry.id, entry]))
 const CATEGORY_ICONS = {
@@ -166,9 +168,13 @@ export function AchievementCatalog({ progress, onBack, balance = 0, embedded = f
       return Number(a.record.completed) - Number(b.record.completed) || ratio(b) - ratio(a)
     })
   }, [entries, category, status, query, sort])
-  const pageCount = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE))
+  // Six cards on a 3x2 board is what a phone frame holds once each card
+  // keeps a readable title and progress bar.
+  const compactLayout = useIsCompactLayout()
+  const pageSize = compactLayout ? COMPACT_PAGE_SIZE : PAGE_SIZE
+  const pageCount = Math.max(1, Math.ceil(filteredEntries.length / pageSize))
   const currentPage = Math.min(page, pageCount)
-  const visibleEntries = filteredEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const visibleEntries = filteredEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   function resetFilters() {
     setCategory('all')
@@ -237,7 +243,7 @@ export function AchievementCatalog({ progress, onBack, balance = 0, embedded = f
           )}
         </div>
         <footer className="achievement-pagination">
-          <span role="status">총 <strong>{filteredEntries.length}</strong>개{filteredEntries.length > 0 && <> · {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredEntries.length)}개 표시</>}</span>
+          <span role="status">총 <strong>{filteredEntries.length}</strong>개{filteredEntries.length > 0 && <> · {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredEntries.length)}개 표시</>}</span>
           <div><button type="button" disabled={currentPage === 1} aria-label="이전 업적 페이지" onClick={() => changePage(currentPage - 1)}><ChevronLeft size={17} /></button><span><strong>{currentPage}</strong> / {pageCount}</span><button type="button" disabled={currentPage === pageCount} aria-label="다음 업적 페이지" onClick={() => changePage(currentPage + 1)}><ChevronRight size={17} /></button></div>
         </footer>
       </section>

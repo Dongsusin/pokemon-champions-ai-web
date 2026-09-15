@@ -18,7 +18,7 @@ const { chromium } = require(process.env.ACHIEVEMENT_PLAYWRIGHT_MODULE || 'playw
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'scripts/.cache/achievement-ui')
 await fs.mkdir(output, { recursive: true })
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'mobileTouch', 'mobileUiV2', 'mobileReferenceLayout']
 const qaEntry = `
 import '/src/mobileViewport.js';
 import React from 'react';

@@ -17,6 +17,7 @@ import {
   Zap,
 } from 'lucide-react'
 import BattleItemSprite from './BattleItemSprite'
+import { useIsCompactLayout } from './useMobileLayout'
 import { getUnlockedRareItems } from './data/rareRewards.js'
 import {
   BATTLE_ITEMS,
@@ -24,6 +25,7 @@ import {
 } from './data/shopData'
 
 const ITEMS_PER_PAGE = 12
+const COMPACT_ITEMS_PER_PAGE = 8
 
 const CATEGORY_ICONS = {
   berry: Leaf,
@@ -82,15 +84,19 @@ function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
     })
   }, [category, query, catalogItems, rareItemIds])
 
-  const pageCount = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE))
-  const visibleItems = filteredItems.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  // A phone cannot hold the bag and the catalog side by side, so compact
+  // layouts show one at a time, give it the whole frame, and page it smaller.
+  const compactLayout = useIsCompactLayout()
+  const itemsPerPage = compactLayout ? COMPACT_ITEMS_PER_PAGE : ITEMS_PER_PAGE
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage))
+  const visibleItems = filteredItems.slice((page - 1) * itemsPerPage, page * itemsPerPage)
   const ownedItems = useMemo(
     () => catalogItems.filter((item) => rareItemIds.has(item.id) || (inventory[item.id] ?? 0) > 0),
     [inventory, catalogItems, rareItemIds],
   )
   const unownedItemCount = catalogItems.length - ownedItems.length
-  const firstVisibleItem = filteredItems.length === 0 ? 0 : ((page - 1) * ITEMS_PER_PAGE) + 1
-  const lastVisibleItem = Math.min(page * ITEMS_PER_PAGE, filteredItems.length)
+  const firstVisibleItem = filteredItems.length === 0 ? 0 : ((page - 1) * itemsPerPage) + 1
+  const lastVisibleItem = Math.min(page * itemsPerPage, filteredItems.length)
 
   useEffect(() => {
     setPage(1)
@@ -99,6 +105,10 @@ function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
   useEffect(() => {
     if (page > pageCount) setPage(pageCount)
   }, [page, pageCount])
+
+  const [shopView, setShopView] = useState('catalog')
+  const showBag = !compactLayout || shopView === 'bag'
+  const showCatalog = !compactLayout || shopView === 'catalog'
 
   return (
     <main className={`shop-screen${rareItems.length > 0 ? ' shop-has-rewards' : ''}`}>
@@ -114,6 +124,27 @@ function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
           <p>나무열매, 지닌 도구, 메가진화와 Z기술 등 실제 배틀에 장착하는 아이템만 준비했습니다.</p>
         </div>
 
+        {compactLayout && (
+          <div className="shop-view-switch" role="group" aria-label="상점 화면 선택">
+            <button
+              className={shopView === 'catalog' ? 'active' : ''}
+              type="button"
+              aria-pressed={shopView === 'catalog'}
+              onClick={() => setShopView('catalog')}
+            >
+              구매
+            </button>
+            <button
+              className={shopView === 'bag' ? 'active' : ''}
+              type="button"
+              aria-pressed={shopView === 'bag'}
+              onClick={() => setShopView('bag')}
+            >
+              보유 {ownedItems.length}
+            </button>
+          </div>
+        )}
+
         <div className="shop-wallet" aria-label={`보유 배틀 포인트 ${balance} VP`}>
           <span><Zap size={18} fill="currentColor" /></span>
           <small>보유 VP</small>
@@ -121,8 +152,8 @@ function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
         </div>
       </header>
 
-      <section className="shop-workspace">
-        <aside className="shop-bag-panel">
+      <section className={compactLayout ? `shop-workspace shop-workspace-${shopView}` : 'shop-workspace'}>
+        {showBag && <aside className="shop-bag-panel">
           <div className="shop-panel-heading">
             <span><Boxes size={18} /></span>
             <div>
@@ -163,9 +194,9 @@ function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
               <p>한글명, 영문명 또는 도구 ID로 검색하고 분류별로 빠르게 찾아보세요.</p>
             </div>
           </div>
-        </aside>
+        </aside>}
 
-        <section className="shop-catalog-panel" aria-labelledby="shop-catalog-title">
+        {showCatalog && <section className="shop-catalog-panel" aria-labelledby="shop-catalog-title">
           <div className="shop-catalog-toolbar">
             <div className="shop-catalog-title-block">
               <small>ITEM CATALOG</small>
@@ -255,7 +286,7 @@ function ShopScreen({ balance, inventory, progress, onBack, onPurchase }) {
               <button type="button" aria-label="마지막 페이지" disabled={page === pageCount} onClick={() => setPage(pageCount)}><ChevronsRight size={15} /></button>
             </div>
           </footer>
-        </section>
+        </section>}
       </section>
     </main>
   )
