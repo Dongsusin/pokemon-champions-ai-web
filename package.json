@@ -21,6 +21,7 @@
     "validate:game-audio": "node scripts/validateGameAudio.mjs",
     "validate:game-text-scale": "node scripts/validateGameTextSettings.mjs && node scripts/validateGameTextScale.mjs",
     "validate:game-text-scale-ui": "node scripts/validateGameTextScaleUi.mjs",
+    "validate:mobile-touch-ui": "node scripts/validateMobileTouchUi.mjs",
     "validate:scaled-pokemon-cards-ui": "node scripts/validateScaledPokemonCardsUi.mjs && node scripts/validateScaledBattleCardsUi.mjs && node scripts/validateScaledTrainingEditorUi.mjs",
     "validate:battle-audio": "node scripts/validateMoveSoundCoverage.mjs && node scripts/validateBattleAudio.mjs",
     "validate:battle-ai": "node scripts/validateBattleAi.mjs",
