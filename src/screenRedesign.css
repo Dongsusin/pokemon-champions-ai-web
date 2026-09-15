@@ -7387,6 +7387,82 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
+.battle-forfeit-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 180;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(3, 12, 23, 0.74);
+  backdrop-filter: blur(3px);
+}
+
+.battle-forfeit-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(380px, 100%);
+  padding: 24px;
+  border: 2px solid #9edddd;
+  border-radius: 12px;
+  color: #f9f6e1;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(31, 63, 83, 0.98), rgba(19, 42, 62, 0.98));
+  box-shadow: 0 24px 60px rgba(3, 12, 23, 0.56), inset 0 0 0 2px rgba(69, 109, 131, 0.72);
+  animation: battle-forfeit-enter 160ms ease-out both;
+}
+
+.battle-forfeit-dialog > svg {
+  justify-self: center;
+  color: #eac18d;
+}
+
+.battle-forfeit-dialog h2 {
+  margin: 0;
+  font-size: clamp(18px, 2vw, 24px);
+}
+
+.battle-forfeit-dialog p {
+  margin: 0;
+  color: #c2d4d3;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.battle-forfeit-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.battle-forfeit-actions > button {
+  min-height: 40px;
+  border: 2px solid #8fb5bd;
+  border-radius: 7px;
+  color: #eff9f4;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  background: #315d76;
+  cursor: pointer;
+}
+
+.battle-forfeit-actions > button:last-child {
+  border-color: #edb7a6;
+  color: #fff4e9;
+  background: linear-gradient(180deg, #9b5d61, #70434d);
+}
+
+.battle-forfeit-actions > button:focus-visible {
+  outline: 3px solid #eaff71;
+  outline-offset: 2px;
+}
+
+@keyframes battle-forfeit-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .battle-result-overlay {
   grid-template-columns: 62px minmax(0, 1fr) auto;
   width: min(700px, calc(100% - 32px));

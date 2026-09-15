@@ -306,6 +306,18 @@ export default function RankedBattleScreen({
   const resultVp = Number.isSafeInteger(match?.result?.rewardVp) ? match.result.rewardVp : null
   const rewardTotal = vpLatestRef.current
   const rewardConfirmed = rewardTotal && vpSync.uid === rewardTotal.uid && vpSync.appliedTotal >= rewardTotal.total
+  const forfeitDialog = confirmForfeit && match && (
+    <div className="ranked-confirm-backdrop">
+      <section className="ranked-confirm" role="dialog" aria-modal="true" aria-label="레이팅 대전 기권">
+        <Flag size={28} /><h2>이번 대전을 기권할까요?</h2>
+        <p>{match.phase === 'select' ? '선출 전에 기권하면 이번 대전은 패배로 기록합니다.' : '서버가 패배로 기록합니다.'}</p>
+        <div>
+          <button type="button" disabled={busy} onClick={() => setConfirmForfeit(false)}>계속 대전</button>
+          <button type="button" disabled={busy} onClick={async () => { await fire('forfeit', { matchId: match.id }); setConfirmForfeit(false) }}>기권하기</button>
+        </div>
+      </section>
+    </div>
+  )
 
   if (roomConflict) return <main className="ranked-screen">
     <header className="ranked-header"><button className="screen-back-button" type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 선택</button>
@@ -331,11 +343,7 @@ export default function RankedBattleScreen({
         onSubmit: actions => mutate('submit', { matchId: match.id, revision: match.revision, actions }),
         onReplace: targetIndex => mutate('replace', { matchId: match.id, revision: match.revision, targetIndex }),
         onForfeit: () => setConfirmForfeit(true), onPlaybackComplete: setPlayedRevision }} />
-    {confirmForfeit && <div className="ranked-confirm-backdrop"><section className="ranked-confirm" role="dialog" aria-modal="true" aria-label="레이팅 대전 기권">
-      <Flag size={28} /><h2>이번 대전을 기권할까요?</h2><p>서버가 패배로 기록합니다.</p><div>
-        <button type="button" disabled={busy} onClick={() => setConfirmForfeit(false)}>계속 대전</button>
-        <button type="button" disabled={busy} onClick={async () => { await fire('forfeit', { matchId: match.id }); setConfirmForfeit(false) }}>기권하기</button>
-      </div></section></div>}
+    {forfeitDialog}
   </div>
 
   return <main className="ranked-screen">
@@ -358,7 +366,8 @@ export default function RankedBattleScreen({
           <small>{!onVpRewards ? '테스트 보상' : rewardConfirmed ? '지급 완료' : '지급 확인 중'}</small></div>}
         <button className="ranked-primary" type="button" onClick={closeResult}>레이팅 로비로</button>
       </section>
-      : match?.phase === 'select' ? <section className="ranked-selection">
+      : match?.phase === 'select' ? <>
+        <section className="ranked-selection">
         <div className="ranked-selection-heading"><div><span>TEAM PREVIEW</span><h2>{currentFormat.battleSize}마리를 출전 순서대로 선택하세요</h2><p>앞의 {currentFormat.activeSlots}마리가 선봉입니다. 상대의 선출은 배틀 시작 후 공개됩니다.</p></div>
           <strong className={secondsLeft !== null && secondsLeft <= 15 ? 'is-urgent' : ''}><Clock3 size={19} />{secondsLeft === null ? '—' : clockText(secondsLeft)}</strong></div>
         <div className="ranked-team-preview"><header><strong>{match.opponent?.name ?? '상대 트레이너'}</strong><span>{match.opponentSelectionSubmitted ? '상대 선출 완료' : '상대 선출 중'}</span></header>
@@ -370,8 +379,10 @@ export default function RankedBattleScreen({
         <div className="ranked-selection-actions"><p role="status">{match.selectionSubmitted ? '상대가 준비되면 배틀이 시작됩니다.' : '선택한 포켓몬을 다시 누르면 선출에서 제외합니다.'}</p>
           <button className="ranked-primary" type="button" disabled={busy || !connected || match.selectionSubmitted || selection.length !== currentFormat.battleSize || secondsLeft === 0}
             onClick={() => fire('select', { matchId: match.id, revision: match.revision, selection })}>{match.selectionSubmitted ? <><Check size={17} /> 선출 완료</> : '선출 확정'}</button>
-          <button className="ranked-quiet" type="button" disabled={busy} onClick={() => fire('forfeit', { matchId: match.id })}>선출 포기</button></div>
-      </section>
+          <button className="ranked-quiet" type="button" disabled={busy} onClick={() => setConfirmForfeit(true)}>선출 포기</button></div>
+        </section>
+        {forfeitDialog}
+      </>
       : showLeaderboard ? <RankedLeaderboard key={isRankedLocalTest ? identity : `${user?.uid}:${user?.nickname ?? ''}`} client={client} initialFormat={format} queued={Boolean(snapshot.queue)} />
       : <div className="ranked-lobby-grid"><section className="ranked-ladder-panel">
         <div className="ranked-format-tabs" role="group" aria-label="레이팅 형식">{RANKED_FORMATS.map(entry => <button type="button" key={entry.id} aria-pressed={format === entry.id} disabled={busy || Boolean(snapshot.queue)} onClick={() => setFormat(entry.id)}><Swords size={17} />{entry.label}</button>)}</div>

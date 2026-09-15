@@ -115,6 +115,10 @@ createRoot(document.getElementById('root')).render(<App/>);`
   assert.equal(opponent.match.opponent.name, profile.displayName)
   assert.equal(opponent.match.opponent.isGuest, true)
   await page.getByRole('button', { name: '선출 포기', exact: true }).click()
+  const selectionForfeitDialog = page.getByRole('dialog', { name: '레이팅 대전 기권', exact: true })
+  await selectionForfeitDialog.waitFor()
+  assert.equal(await page.getByRole('button', { name: '레이팅 로비로', exact: true }).count(), 0, 'Selection forfeit waits for explicit confirmation')
+  await selectionForfeitDialog.getByRole('button', { name: '기권하기', exact: true }).click()
   await page.getByRole('button', { name: '레이팅 로비로', exact: true }).waitFor()
   pass('anonymous player matches a Google player with canonical guest display and masked Google name')
 

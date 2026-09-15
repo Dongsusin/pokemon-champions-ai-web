@@ -1955,6 +1955,7 @@ function BattleScreen({
   const [hoveredPokemonSide, setHoveredPokemonSide] = useState(null)
   const [focusedPokemonSide, setFocusedPokemonSide] = useState(null)
   const [pinnedPokemonSide, setPinnedPokemonSide] = useState(null)
+  const [confirmForfeit, setConfirmForfeit] = useState(false)
   const logRef = useRef(null)
   const playbackTimerRef = useRef(null)
   const playbackTokenRef = useRef(0)
@@ -2401,6 +2402,22 @@ function BattleScreen({
     })
   }
 
+  const requestForfeit = () => {
+    if (commandLocked) return
+    // Ranked battles own their confirmation dialog so the server request is
+    // only sent after the player explicitly confirms there.
+    if (online) {
+      online.onForfeit?.()
+      return
+    }
+    setConfirmForfeit(true)
+  }
+
+  const confirmBattleForfeit = () => {
+    setConfirmForfeit(false)
+    completeBattle('opponent')
+  }
+
   const dismissTrainerDialogue = useCallback(() => {
     battleAudioRef.current?.playMenu('select')
     setTrainerDialogue(null)
@@ -2773,7 +2790,7 @@ function BattleScreen({
                   <Activity size={21} />
                   <span><small>STATUS</small><strong>전황</strong></span>
                 </button>
-                <button className="surrender" type="button" disabled={commandLocked} onPointerEnter={previewBattleMenu} onClick={() => completeBattle('opponent')}>
+                <button className="surrender" type="button" disabled={commandLocked} onPointerEnter={previewBattleMenu} onClick={requestForfeit}>
                   <Flag size={21} />
                   <span><small>GIVE UP</small><strong>기권</strong></span>
                 </button>
@@ -2789,6 +2806,20 @@ function BattleScreen({
           dialogue={activeTrainerDialogue}
           onContinue={dismissTrainerDialogue}
         />
+      )}
+
+      {!online && confirmForfeit && !battle.winner && !introVisible && !activeTrainerDialogue && (
+        <div className="battle-forfeit-backdrop">
+          <section className="battle-forfeit-dialog" role="dialog" aria-modal="true" aria-label="대전 기권 확인">
+            <Flag size={30} aria-hidden="true" />
+            <h2>이번 대전을 기권할까요?</h2>
+            <p>기권하면 이번 대전은 패배로 기록됩니다.</p>
+            <div className="battle-forfeit-actions">
+              <button type="button" autoFocus onClick={() => setConfirmForfeit(false)}>계속 대전</button>
+              <button type="button" onClick={confirmBattleForfeit}>기권하기</button>
+            </div>
+          </section>
+        </div>
       )}
 
       {introVisible && (

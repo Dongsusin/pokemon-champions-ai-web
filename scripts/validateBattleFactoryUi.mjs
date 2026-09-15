@@ -312,6 +312,10 @@ window.__fixtureFactoryVictory = () => {
         await waitCommands()
         const oldId = (await readRun()).id
         await click(page.locator('.battle-command-buttons .surrender'))
+        const forfeitDialog = page.getByRole('dialog', { name: '대전 기권 확인', exact: true })
+        await forfeitDialog.waitFor()
+        assert.equal((await readRun()).phase, 'battle', 'Forfeit must wait for explicit confirmation')
+        await click(forfeitDialog.getByRole('button', { name: '기권하기', exact: true }))
         await page.locator('.battle-factory.phase-finished').waitFor()
         const finished = await readRun()
         assert.equal(finished.wins, 0)
