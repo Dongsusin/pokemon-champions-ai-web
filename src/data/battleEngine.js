@@ -641,6 +641,7 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     yawnTurns: 0,
     perishCount: null,
     destinyBondActive: false,
+    destinyBondLastTurn: null,
     trappedTurns: 0,
     trapSourceName: null,
     trapSourceBattleId: null,
@@ -6208,6 +6209,9 @@ export function getBattleMoveSelectionState(state, sideId = 'player', moveIndex 
   if (pokemon.tauntTurns > 0 && isStatusMove(preview)) return blocked('도발 때문에 변화 기술을 사용할 수 없습니다.')
   if (pokemon.healBlockTurns > 0 && isHealingMove(preview)) return blocked('회복봉인 때문에 회복 기술을 사용할 수 없습니다.')
   if (move.flags?.includes('cantusetwice') && pokemon.lastMoveId === preview.id) return blocked('이 기술은 연속해서 사용할 수 없습니다.')
+  if (move.id === 'destinybond' && pokemon.destinyBondLastTurn === state.turn - 1) {
+    return blocked('길동무는 연속해서 사용할 수 없습니다.')
+  }
   if (state.environment?.gravityTurns > 0 && preview.flags?.includes('gravity')) return blocked('중력이 강해 사용할 수 없는 기술입니다.')
   if (getActivePokemonList(state, getOtherSide(state, sideId).id).some(foe => isAvailableFieldPokemon(foe) && foe.imprisonActive && foe.moves.some(known => known.id === preview.id))) return blocked('상대의 봉인 때문에 사용할 수 없습니다.')
   return { disabled: false, reason: null }
@@ -7746,6 +7750,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     attacker.moveFailedThisTurn = true
     return
   }
+  if (moveSlot.id === 'destinybond' && attacker.destinyBondLastTurn === state.turn - 1) {
+    appendLog(state, `${attacker.name}은(는) 길동무를 연속해서 사용할 수 없다!`, 'status')
+    attacker.moveFailedThisTurn = true
+    return
+  }
   if (
     !action.dancerCopy
     && !isStruggle && !bypassMoveLock
@@ -7967,6 +7976,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   appendLog(state, `${attacker.name}의 ${move.name}!`, sideId === 'player' ? 'player' : 'opponent')
   if (move.magnitudeLevel) appendLog(state, `매그니튜드 ${move.magnitudeLevel}!`, 'status')
   attacker.lastMoveId = move.id
+  if (move.id === 'destinybond') attacker.destinyBondLastTurn = state.turn
   state.lastUsedMove = {
     moveId: move.id,
     userBattleId: attacker.battleId,
@@ -9024,7 +9034,9 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     if (!spreading) applyMindBlownRecoil(state, attacker, move)
 
     if (defender.hp <= 0 && defender.destinyBondActive && attacker.hp > 0 && directDamage > 0) {
-      if (spreading) spreadSummary.destinyBondSource = defender.name
+      if (attacker.dynamaxActive) {
+        appendLog(state, `${attacker.name}은(는) 다이맥스 상태라 길동무를 무시했다!`, 'status')
+      } else if (spreading) spreadSummary.destinyBondSource = defender.name
       else {
         attacker.hp = 0
         appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
@@ -9478,6 +9490,7 @@ function clearSwitchVolatiles(pokemon) {
   pokemon.yawnTurns = 0
   pokemon.perishCount = null
   pokemon.destinyBondActive = false
+  pokemon.destinyBondLastTurn = null
   pokemon.trappedTurns = 0
   pokemon.trapSourceName = null
   pokemon.trapSourceBattleId = null

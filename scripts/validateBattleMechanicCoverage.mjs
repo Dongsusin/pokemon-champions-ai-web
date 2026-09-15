@@ -9,9 +9,11 @@ import {
   forcePlayerSwitch,
   getForcedBattleAction,
   getBattleMovePreview,
+  getBattleMoveSelectionState,
   getBattleSwitchIndexes,
   getEffectiveBattleStat,
   playBattleTurnWithActions,
+  chooseAiAction,
 } from '../src/data/battleEngine.js'
 import {
   isBattleMoveSupported,
@@ -163,6 +165,63 @@ function preventOpponent(state, slot = 0) {
     [pokemon('snorlax', ['splash'])],
   )
   assert.equal(getBattleMovePreview(state, 'player', 0).type, '악')
+}
+
+{
+  // A Quick Attack based Max Strike is an ordinary-priority move. Psychic
+  // Terrain protects grounded targets only from true priority moves.
+  const state = battle(
+    [pokemon('pikachu', ['quickattack'])],
+    [pokemon('snorlax', ['splash'])],
+  )
+  state.rules.terrain = { id: 'psychic', label: '사이코필드' }
+  const preview = getBattleMovePreview(state, 'player', 0, 0, 0, 'dynamax')
+  assert.equal(preview.id, 'maxstrike')
+  assert.equal(preview.priority, 0)
+  const targetHp = state.opponent.team[0].hp
+  const result = createBattleTurnTimeline(
+    state,
+    move(0, 0, 0, { gimmick: 'dynamax' }),
+    fixedRandom,
+    [move(0)],
+  )
+  assert(result.state.opponent.team[0].hp < targetHp)
+  assert(!result.state.log.some((entry) => entry.message.includes('사이코필드가')))
+}
+
+{
+  // Dynamaxed attackers are immune to Destiny Bond's forced faint.
+  const state = battle(
+    [pokemon('gengar', ['destinybond'])],
+    [pokemon('snorlax', ['darkpulse'])],
+  )
+  state.player.team[0].hp = 1
+  state.opponent.team[0].dynamaxActive = true
+  state.opponent.team[0].destinyBondActive = false
+  state.player.team[0].destinyBondActive = true
+  const result = createBattleTurnTimeline(
+    state,
+    move(0),
+    fixedRandom,
+    move(0),
+  )
+  assert.equal(result.state.player.team[0].fainted, true)
+  assert.equal(result.state.opponent.team[0].fainted, false)
+  assert(result.state.log.some((entry) => entry.message.includes('다이맥스 상태라 길동무를 무시했다')))
+}
+
+{
+  // Destiny Bond cannot be selected by the AI on the immediately following
+  // turn, preventing Froslass from chaining the move indefinitely.
+  let state = battle(
+    [pokemon('snorlax', ['splash'])],
+    [pokemon('froslass', ['destinybond', 'shadowball'])],
+  )
+  state = turn(state, [move()], [move(0)])
+  assert.equal(state.opponent.team[0].destinyBondLastTurn, 1)
+  assert.equal(getBattleMoveSelectionState(state, 'opponent', 0).disabled, true)
+  assert.match(getBattleMoveSelectionState(state, 'opponent', 0).reason, /길동무/)
+  assert.notEqual(chooseAiAction(state, fixedRandom, 0, 0).moveIndex, 0)
 }
 
 {

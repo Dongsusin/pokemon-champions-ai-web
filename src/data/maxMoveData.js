@@ -356,7 +356,10 @@ function maxMoveBase(move, definition, options) {
     moveTarget: 'adjacentFoe',
     generation: 8,
     flags: ['protect'],
-    priority: Number(move.priority) || 0,
+    // Max Moves do not inherit the source move's priority.  In particular,
+    // a Quick Attack based Max Strike is an ordinary-priority move and must
+    // not be stopped by Psychic Terrain's priority protection.
+    priority: 0,
     secondary: null,
     secondaries: null,
     status: null,
