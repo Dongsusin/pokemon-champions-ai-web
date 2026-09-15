@@ -3472,7 +3472,11 @@ function applyVolatileEffect(
   }
 
   if (volatileStatus === 'flinch') {
-    if (target.flinched || !ignoreAbility && target.ability === '정신력') return false
+    // Dynamax Pokémon are immune to flinching in the same way as they are
+    // immune to weight-based moves.  Keep this guard at the shared volatile
+    // effect boundary so Fake Out, move secondary effects, and flinch items
+    // all follow the same rule.
+    if (target.dynamaxActive || target.flinched || !ignoreAbility && target.ability === '정신력') return false
     target.flinched = true
     appendLog(state, `${target.name}은(는) 풀죽었다!`, 'status')
     if (!ignoreAbility && target.ability === '불굴의마음') {

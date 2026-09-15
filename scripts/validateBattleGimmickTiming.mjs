@@ -103,6 +103,13 @@ check('Tera happens before Fake Out, even if the user then flinches', () => {
   assert(after.player.team[0].teraActive)
   assert.equal(after.player.team[0].moves[0].currentPp, state.player.team[0].moves[0].currentPp)
 })
+check('Dynamax Pokémon are immune to Fake Out flinch', () => {
+  const state = battle([pokemon('snorlax', ['tackle'])], [pokemon('persian', ['fakeout'])])
+  const after = turn(state, [action('dynamax')])
+  assert(after.player.team[0].dynamaxActive)
+  assert.equal(after.player.team[0].flinched, false)
+  assert(!after.log.slice(state.log.length).some(entry => entry.message.includes('풀죽었다')))
+})
 check('Priority Protect still occurs after the transformation animation', () => {
   const state = battle([pokemon('snorlax', ['protect'])], [pokemon('jolteon', ['thunderbolt'])])
   assertBeforeMoves(engine.createBattleTurnTimeline(state, action('tera'), rng))
