@@ -2465,3 +2465,117 @@ html[data-mobile-layout="landscape"] .achievement-card-title{
   white-space:nowrap;
   text-overflow:ellipsis;
 }
+
+/* ===================================================================
+   Lobby detail card: artwork centred in the card, not in a column.
+
+   The body was a two-column grid (art | facts), so the sprite could
+   only ever sit in the left half however it was aligned inside its
+   own cell. Stack instead: the artwork spans the card and is centred,
+   with the facts as a two-column row underneath it.
+   =================================================================== */
+
+html[data-mobile-layout="landscape"] .lobby-detail-body{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-auto-rows:min-content;
+  gap:3px;
+  align-content:center;
+  justify-items:center;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-art{
+  width:100%;
+  height:clamp(58px,11vh,92px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-facts{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px 8px;
+  width:100%;
+}
+
+/* ===================================================================
+   Box roster cards: membership as an outline, not a badge.
+
+   The +/check chip crowded a 100x68 card and duplicated the detail
+   column's own 팀에 추가 / 팀에서 빼기 button, which handles both
+   directions. The card keeps selection only, and team membership
+   reads from its border and tint instead.
+   =================================================================== */
+
+html[data-mobile-layout="landscape"] .team-box-card-toggle{
+  display:none!important;
+}
+
+html[data-mobile-layout="landscape"] .team-box-card.in-team{
+  border-color:rgba(122,230,164,.85);
+  box-shadow:inset 0 0 0 1px rgba(122,230,164,.45);
+  background:linear-gradient(180deg,rgba(122,230,164,.16),rgba(122,230,164,.05));
+}
+
+html[data-mobile-layout="landscape"] .team-box-card.selected{
+  border-color:rgba(255,197,84,.9);
+  box-shadow:inset 0 0 0 1px rgba(255,197,84,.55),0 3px 12px rgba(255,180,60,.22);
+}
+
+html[data-mobile-layout="landscape"] .team-box-card.in-team.selected{
+  border-color:rgba(255,197,84,.9);
+  box-shadow:inset 0 0 0 1px rgba(255,197,84,.55),inset 0 0 0 3px rgba(122,230,164,.4);
+}
+
+html[data-mobile-layout="landscape"] .team-box-card.unavailable{
+  opacity:1;
+}
+
+/* The select button is the whole card, so its sprite centres in it. */
+html[data-mobile-layout="landscape"] .team-box-card-select{
+  place-items:center;
+  width:100%;
+  height:100%;
+  padding:3px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-card-sprite{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-card-sprite>*{
+  width:100%;
+  height:100%;
+  min-height:0;
+  object-fit:contain;
+  object-position:center;
+}
+
+html[data-mobile-layout="landscape"] .team-box-card-select>strong{
+  width:100%;
+  overflow:hidden;
+  font-size:9px;
+  text-align:center;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* The select grid kept a 32px column sized to the sprite, so its content
+   sat off to one side of a 99px card. Give the column the card's width. */
+html[data-mobile-layout="landscape"] .team-box-card-select{
+  grid-template-columns:minmax(0,1fr)!important;
+  justify-content:center;
+}
+
+/* Each fact reads as one "label value" pair rather than a label and a
+   value pushed to opposite edges of its half. */
+html[data-mobile-layout="landscape"] .lobby-detail-facts>div{
+  grid-template-columns:auto minmax(0,1fr);
+  gap:5px;
+  justify-content:start;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-facts dd{
+  text-align:left;
+}
