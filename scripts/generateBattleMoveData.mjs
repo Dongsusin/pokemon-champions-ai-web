@@ -54,6 +54,12 @@ const GENERATION_NUMBERS = {
 const UNAVAILABLE_DESCRIPTION_PREFIX = '사용할 수 없는 기술입니다.'
 const CURRENT_HP_FRACTION_MOVE_IDS = new Set(['superfang', 'naturesmadness', 'ruination'])
 const FIRST_TURN_ONLY_MOVE_IDS = new Set(['fakeout', 'firstimpression', 'matblock'])
+// Pokémon Champions updates Meteor Assault's base power from the historical
+// 150 to 170. Keep this explicit so regenerating the Showdown-backed catalog
+// does not silently restore the older value.
+const CHAMPIONS_MOVE_OVERRIDES = {
+  meteorassault: { power: 170 },
+}
 
 const cleanText = (value = '') => value.replace(/[\n\f\r]+/g, ' ').replace(/\s+/g, ' ').trim()
 const toId = (value = '') => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
@@ -267,6 +273,7 @@ const moves = Object.entries(showdownMoves).flatMap(([showdownId, showdownMove])
     priority: Number(showdownMove.priority ?? localized.priority) || 0,
     target: showdownMove.target ?? localized.target,
     generation: generationForMoveNumber(showdownMove.num) ?? localized.generation,
+    ...CHAMPIONS_MOVE_OVERRIDES[showdownId],
     description: resolvedDescription(showdownId, showdownMove, localized),
     flags: Object.keys(showdownMove.flags ?? {}),
     ...battleMechanics(showdownMove),

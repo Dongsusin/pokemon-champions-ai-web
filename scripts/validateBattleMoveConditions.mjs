@@ -49,6 +49,7 @@ const splashAction = { type: 'move', actorSlot: 0, targetSlot: 0, moveIndex: 0, 
 for (const moveId of ['fakeout', 'firstimpression', 'matblock']) {
   assert.equal(getMoveById(moveId)?.firstTurnOnly, true, `${moveId} should be marked first-turn-only`)
 }
+assert.equal(getMoveById('meteorassault')?.power, 170, 'Meteor Assault should use the Pokémon Champions base power')
 
 let state = createFakeOutBattle()
 const initialTargetHp = state.opponent.team[0].hp
