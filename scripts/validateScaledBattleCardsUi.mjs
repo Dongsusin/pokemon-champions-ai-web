@@ -79,7 +79,10 @@ try {
     page.on('pageerror', error => { errors.push({ device: device.id, error: error.message }); console.error(`BROWSER ${error.message}`) })
     await page.goto(`http://127.0.0.1:${server.config.server.port}/scaled-cards.html`)
     await page.waitForFunction(() => window.__cards)
-    for (const scale of [1.5, 2].filter(scale => !process.env.SCALED_CARDS_UI_SCALE || scale === Number(process.env.SCALED_CARDS_UI_SCALE))) {
+    // Mobile is pinned to the 1x ramp, so only desktop-class frames sweep the
+    // enlarged presets.
+    const deviceScales = device.isMobile ? [1] : [1.5, 2]
+    for (const scale of deviceScales.filter(scale => !process.env.SCALED_CARDS_UI_SCALE || scale === Number(process.env.SCALED_CARDS_UI_SCALE))) {
       await page.evaluate(scale => window.__cards.scale(scale), scale)
       for (const view of ['ranked', 'rooms']) {
         await test(`${device.id} ${scale}x ${view}: all six registered names/types fit their cards`, async () => {

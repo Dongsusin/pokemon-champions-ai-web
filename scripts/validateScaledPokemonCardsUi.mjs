@@ -28,7 +28,7 @@ const settings = createDefaultGameSettings()
 settings.audio.enabled = false
 const storage = { [SETTINGS_STORAGE_KEY]: settings, 'champions-dex-v2': collection,
   'champions-teams-v1': { teams, activeTeamId: 'team-1' }, 'champions-battle-items-v1': { [heldItem.id]: 6 } }
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor', 'mobileTouch', 'mobileUiV2']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor', 'mobileTouch', 'mobileUiV2', 'mobileReferenceLayout']
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
 ${styles.map(name => `import'/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{user:{uid:'cards-ui',displayName:'guest-123456',isAnonymous:true,isLocalGuest:false},autoLogin:false,onPlayerDataChanged:()=>{},onSignOut:()=>{}})));`
@@ -139,6 +139,11 @@ try {
     await page.goto(`http://127.0.0.1:${port}/scaled-cards.html`)
     await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
     async function chooseScale(scale) {
+      // Mobile is pinned to the 1x ramp and does not offer the preset control.
+      if (device.isMobile) {
+        assert.equal(await page.locator('html').getAttribute('data-game-text-scale'), '1')
+        return
+      }
       await click(page.getByRole('button', { name: '설정', exact: true }))
       await click(page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: `${scale}배`, exact: true }))
       await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
@@ -153,7 +158,7 @@ try {
       await page.waitForFunction(selector => [...document.querySelectorAll(selector)].every(card => { const image = card.querySelector('.pokemon-box-icon'); return image && (image.tagName !== 'IMG' || image.complete && image.naturalWidth > 0) }), selector)
       const atOne = await inspectCards(page, selector)
       assert(atOne.length >= 30)
-      const scales = device.id === 'desktop' ? [.5, 1, 1.5, 2] : [1.5, 2]
+      const scales = device.id === 'desktop' ? [.5, 1, 1.5, 2] : device.isMobile ? [1] : [1.5, 2]
       for (const scale of scales) await test(`${device.id}: ${view} ${scale}x full names/types fit their cards without glyph clipping`, async () => {
         await chooseScale(scale)
         await cards.first().scrollIntoViewIfNeeded()

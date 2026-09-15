@@ -4,6 +4,7 @@ import {
   ChartNoAxesCombined,
   ChevronRight,
   Dumbbell,
+  Home,
   PawPrint,
   RotateCw,
   Settings,
@@ -35,6 +36,7 @@ import { getUnlockedPokemonSkins } from './data/rareRewards'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
+import LobbyPokemonDetail from './LobbyPokemonDetail'
 import LobbyTeamPanel from './LobbyTeamPanel'
 import SettingsModal from './SettingsModal'
 import ShopScreen from './ShopScreen'
@@ -224,6 +226,16 @@ function saveDrawTutorialCompletion() {
   } catch {}
 }
 
+// Mobile-only bottom navigation. Desktop keeps the existing mode grid and
+// per-screen back buttons; the bar is hidden outside the compact layouts.
+const MOBILE_TABS = [
+  { id: 'lobby', screen: 'lobby', label: '메인', icon: Home },
+  { id: 'box', screen: 'box', label: '박스', icon: Boxes },
+  { id: 'training', screen: 'training', label: '트레이닝', icon: Dumbbell },
+  { id: 'shop', screen: 'shop', label: '상점', icon: ShoppingBag },
+  { id: 'achievements', screen: 'achievements', label: '업적', icon: Trophy },
+]
+
 const modes = [
   {
     id: 'start',
@@ -318,6 +330,7 @@ export function GameApp({
   const [achievementReturnScreen, setAchievementReturnScreen] = useState('lobby')
   const [drawResults, setDrawResults] = useState([])
   const [drawTutorialStep, setDrawTutorialStep] = useState(initialDrawTutorialStep.current)
+  const [lobbyCaptureId, setLobbyCaptureId] = useState(null)
   const [boxPokemon, setBoxPokemon] = useState(initialCollection.current)
   const [teams, setTeams] = useState(initialTeamState.current.teams)
   const [activeTeamId, setActiveTeamId] = useState(initialTeamState.current.activeTeamId)
@@ -347,6 +360,12 @@ export function GameApp({
   if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(settings.audio.enabled, settings.audio)
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
+  // The lobby detail column follows the party: an explicit pick wins, and the
+  // first filled slot covers the initial render and any team switch.
+  const lobbyParty = teamIds
+    .map((captureId) => boxPokemon.find((entry) => entry.captureId === captureId))
+    .filter(Boolean)
+  const lobbyPokemon = lobbyParty.find((entry) => entry.captureId === lobbyCaptureId) ?? lobbyParty[0] ?? null
   const soundEnabled = settings.audio.enabled
   const factoryBattleVisible = screen === 'factory' && factoryRun?.phase === 'battle'
   const battleMusicActive = screen === 'battle' || rankedBattleActive || factoryBattleVisible
@@ -357,6 +376,10 @@ export function GameApp({
   const trainerName = isGuest ? accountTrainerName : maskRankedTrainerName(accountTrainerName, false, user.nickname)
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
   const onlineScreen = screen === 'ranked' || screen === 'rooms'
+  // The draw tutorial and every in-battle surface own the full canvas, so the
+  // mobile tab bar stays out of them.
+  const mobileTabsVisible = !battleMusicActive && !drawTutorialStep
+    && !['battle', 'competition', 'hatch'].includes(screen)
   const displayedTrainerName = trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
@@ -662,6 +685,14 @@ export function GameApp({
 
   const returnToLobby = () => {
     setScreen('lobby')
+  }
+
+  const openMobileTab = (tab) => {
+    if (screen === tab.screen) return
+    if (tab.screen === 'box') setBoxReturnScreen('lobby')
+    if (tab.screen === 'achievements') setAchievementReturnScreen('lobby')
+    if (tab.screen !== 'lobby') setSelectedMode(tab.id === 'box' ? 'collection' : tab.id)
+    setScreen(tab.screen)
   }
 
   const returnFromHatch = () => {
@@ -1171,9 +1202,13 @@ export function GameApp({
           pokemon={boxPokemon}
           teams={teams}
           activeTeamId={activeTeam?.id}
+          selectedCaptureId={lobbyPokemon?.captureId ?? null}
+          onSelectPokemon={setLobbyCaptureId}
           onSelectTeam={selectSavedTeam}
           onOpenBox={openBox}
         />
+
+        <LobbyPokemonDetail pokemon={lobbyPokemon} onOpenTraining={() => setScreen('training')} />
 
         <section className="mode-panel glass-panel" aria-labelledby="mode-title">
           <div className="mode-heading">
@@ -1322,6 +1357,28 @@ export function GameApp({
           onOpenHatch={enterHatchScreen}
           onOpenShop={openShop}
         />
+      )}
+
+      {mobileTabsVisible && (
+        <nav className="mobile-tabbar" aria-label="주요 화면 바로가기">
+          {MOBILE_TABS.map((tab) => {
+            const Icon = tab.icon
+            const isActive = screen === tab.screen
+
+            return (
+              <button
+                className={`mobile-tabbar-item${isActive ? ' active' : ''}`}
+                key={tab.id}
+                type="button"
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => openMobileTab(tab)}
+              >
+                <Icon size={19} aria-hidden="true" />
+                <small>{tab.label}</small>
+              </button>
+            )
+          })}
+        </nav>
       )}
 
       {achievementToasts[0] && (

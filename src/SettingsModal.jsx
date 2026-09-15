@@ -29,6 +29,7 @@ import {
 import { AchievementCatalog } from './AchievementsScreen'
 import PokemonUsagePanel from './PokemonUsagePanel'
 import { GAME_TEXT_SCALES } from './gameSettings'
+import { isGameTextScaleLocked } from './gameTextScale'
 import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { NICKNAME_MIN_LENGTH, NICKNAME_MAX_LENGTH, normalizeTrainerNickname, readTrainerNickname } from './data/trainerNickname'
 import './trainerNickname.css'
@@ -343,6 +344,7 @@ function SettingsModal({
   onSetNickname,
 }) {
   const [activeTab, setActiveTab] = useState(() => SETTINGS_TAB_IDS.includes(initialTab) ? initialTab : 'game')
+  const textScaleLocked = isGameTextScaleLocked()
   const [nicknameSaving, setNicknameSaving] = useState(false)
   const nicknamePendingRef = useRef(false)
   const closeButtonRef = useRef(null)
@@ -491,16 +493,18 @@ function SettingsModal({
               aria-labelledby="settings-game-tab"
               key="game-settings"
             >
-              <SegmentedSetting
-                label="글자 크기"
-                icon={Type}
-                value={settings.game.textScale}
-                options={TEXT_SCALE_OPTIONS}
-                onChange={(value) => onChange('game', 'textScale', value)}
-              />
-              <p className="settings-text-scale-preview" aria-live="polite">
-                현재 글자 크기 {settings.game.textScale}배 · 기본 크기는 1배입니다.
-              </p>
+              {!textScaleLocked && <>
+                <SegmentedSetting
+                  label="글자 크기"
+                  icon={Type}
+                  value={settings.game.textScale}
+                  options={TEXT_SCALE_OPTIONS}
+                  onChange={(value) => onChange('game', 'textScale', value)}
+                />
+                <p className="settings-text-scale-preview" aria-live="polite">
+                  현재 글자 크기 {settings.game.textScale}배 · 기본 크기는 1배입니다.
+                </p>
+              </>}
               <SegmentedSetting
                 label="플레이어 캐릭터"
                 icon={UserRound}

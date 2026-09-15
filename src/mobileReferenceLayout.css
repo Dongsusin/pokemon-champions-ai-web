@@ -1,0 +1,1200 @@
+/* Reference-driven mobile landscape layout.
+   Loaded after mobileUiV2.css so it refines the existing compact frame:
+   a persistent bottom tab bar plus denser, three-column screen bodies that
+   follow the design references. Desktop and raid views are untouched. */
+
+/* ---------------------------------------------------------------- tab bar */
+
+.mobile-tabbar{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view){
+  --mobile-tabbar-height:44px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mobile-tabbar{
+  /* A flex item rather than an overlay: the shell is a column flexbox, so the
+     screen body above resolves its own height without any viewport math. */
+  position:relative;
+  z-index:120;
+  display:grid;
+  flex:0 0 auto;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(0,1fr);
+  align-items:stretch;
+  height:calc(var(--mobile-tabbar-height) + env(safe-area-inset-bottom));
+  padding:0 max(4px,env(safe-area-inset-left)) env(safe-area-inset-bottom) max(4px,env(safe-area-inset-right));
+  border-top:1px solid rgba(120,150,235,.22);
+  background:linear-gradient(180deg,rgba(9,15,40,.92),rgba(6,10,30,.98));
+  backdrop-filter:blur(14px);
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mobile-tabbar-item{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  padding:0 2px;
+  border:0;
+  color:rgba(190,205,245,.62);
+  background:none;
+  cursor:pointer;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mobile-tabbar-item small{
+  overflow:hidden;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:-.02em;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mobile-tabbar-item.active{
+  color:#ffd36e;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mobile-tabbar-item.active svg{
+  filter:drop-shadow(0 0 7px rgba(255,197,84,.55));
+}
+
+/* With the bar in flow the screen body just takes the remaining row. */
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view):has(>.mobile-tabbar)>:is(.lobby-layout,.battle-hub,.battle-select-screen,.ranked-screen,.rooms-screen,.battle-factory,.factory-rankings,.competition-screen,.pokemon-usage-screen,.achievement-screen,.pc-screen,.training-screen,.shop-screen,.draw-screen,.hatch-screen){
+  flex:1 1 0!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+}
+
+/* ------------------------------------------------------- lobby (main menu) */
+
+/* Desktop keeps the original two-panel lobby. */
+.lobby-detail-panel{
+  display:none;
+}
+
+/* The reference's three-column menu needs room for all of it; narrower
+   landscape phones keep the existing party + menu pair. */
+@media (min-width:820px){
+  html[data-mobile-layout="landscape"] .lobby-layout{
+    /* Roughly the reference's 26 / 29 / 45 split across the three columns. */
+    grid-template-columns:minmax(150px,.26fr) minmax(186px,.29fr) minmax(0,.45fr);
+  }
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-panel{
+  display:none;
+  flex-direction:column;
+  gap:clamp(3px,.6vw,6px);
+  min-width:0;
+  min-height:0;
+  padding:clamp(6px,.9vw,12px);
+  border-radius:clamp(14px,1.5vw,24px);
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-panel.is-empty{
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  color:rgba(190,205,245,.6);
+  text-align:center;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-panel.is-empty strong{font-size:12px}
+html[data-mobile-layout="landscape"] .lobby-detail-panel.is-empty small{font-size:9px}
+
+html[data-mobile-layout="landscape"] .lobby-detail-heading{
+  display:flex;
+  flex-wrap:wrap;
+  gap:3px 5px;
+  align-items:baseline;
+  justify-content:space-between;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-name{
+  display:flex;
+  gap:4px;
+  align-items:baseline;
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-name strong{
+  overflow:hidden;
+  font-size:clamp(12px,1.5vw,17px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-name em{
+  flex:0 0 auto;
+  font-size:9px;
+  font-style:normal;
+  opacity:.72;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-types{
+  display:flex;
+  flex:0 0 auto;
+  gap:3px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-types b{
+  padding:1px 6px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:700;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-body{
+  display:grid;
+  grid-template-columns:minmax(0,.85fr) minmax(0,1fr);
+  gap:clamp(3px,.6vw,7px);
+  align-items:center;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-sprite-frame{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:clamp(52px,9vh,84px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-sprite-frame img,
+html[data-mobile-layout="landscape"] .lobby-detail-sprite-frame svg{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-facts{
+  display:grid;
+  gap:2px;
+  min-width:0;
+  margin:0;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-facts>div{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:4px;
+  align-items:center;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-facts dt{
+  display:flex;
+  gap:2px;
+  align-items:center;
+  flex:0 0 auto;
+  font-size:8px;
+  opacity:.6;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-facts dd{
+  margin:0;
+  overflow:hidden;
+  font-size:9px;
+  font-weight:600;
+  text-align:right;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-stats{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:2px;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-stats li{
+  display:grid;
+  gap:0;
+  padding:2px 1px;
+  border-radius:5px;
+  background:rgba(120,150,235,.1);
+  text-align:center;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-stats small{
+  font-size:7px;
+  opacity:.6;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-stats strong{
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-stats .trend-up strong{color:#7ae6a4}
+html[data-mobile-layout="landscape"] .lobby-detail-stats .trend-down strong{color:#ff9aa8}
+
+html[data-mobile-layout="landscape"] .lobby-detail-moves{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:2px;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-moves li{
+  overflow:hidden;
+  padding:2px 5px;
+  border:1px solid rgba(120,150,235,.22);
+  border-radius:5px;
+  font-size:8px;
+  font-weight:600;
+  text-align:center;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .lobby-detail-moves li.empty{opacity:.35}
+
+html[data-mobile-layout="landscape"] .lobby-detail-edit{
+  min-height:26px;
+  padding:0 6px;
+  border:1px solid rgba(120,150,235,.3);
+  border-radius:7px;
+  color:inherit;
+  font-size:9px;
+  font-weight:700;
+  background:rgba(120,150,235,.14);
+  cursor:pointer;
+}
+
+/* Party rail: two portrait columns, matching the reference's 2x3 board. */
+html[data-mobile-layout="landscape"] .lobby-team-list{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-rows:repeat(3,minmax(0,1fr));
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-card{
+  cursor:pointer;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-card.selected{
+  border-color:rgba(255,197,84,.75);
+  box-shadow:0 0 0 1px rgba(255,197,84,.5),0 4px 14px rgba(255,180,60,.22);
+}
+
+/* Play menu: one hero action over a two-row board of secondary entries. */
+html[data-mobile-layout="landscape"] .mode-grid{
+  grid-template-rows:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1fr);
+}
+
+html[data-mobile-layout="landscape"] .mode-card.mode-start{
+  grid-column:1 / -1!important;
+}
+
+html[data-mobile-layout="landscape"] .mode-card.mode-start .mode-copy strong{
+  font-size:clamp(13px,1.8vw,22px);
+}
+
+html[data-mobile-layout="landscape"] .mode-card.mode-start .mode-copy>span{
+  display:block;
+  overflow:hidden;
+  font-size:9px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  opacity:.8;
+}
+
+@media (min-width:820px){
+  html[data-mobile-layout="landscape"] .lobby-detail-panel{
+    display:flex;
+  }
+}
+
+/* The party rail footer carries both the slot pager and the edit shortcut. */
+html[data-mobile-layout="landscape"] .lobby-team-footer{
+  flex-wrap:wrap;
+  gap:3px;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-pages{
+  flex:1 1 auto;
+  gap:2px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-pages button{
+  min-width:0;
+  width:auto;
+  flex:1 1 0;
+  min-height:22px;
+  padding:0;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-footer .lobby-team-edit{
+  flex:0 0 auto;
+  min-height:22px;
+  padding:0 6px;
+  font-size:9px;
+}
+
+/* Secondary mode tiles stack their icon over the label so the narrower
+   column still shows the full Korean title instead of an ellipsis. */
+html[data-mobile-layout="landscape"] .mode-card:not(.mode-start){
+  display:flex!important;
+  flex-direction:column;
+  gap:3px;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+html[data-mobile-layout="landscape"] .mode-card:not(.mode-start) :is(.mode-copy small,.mode-arrow){
+  display:none!important;
+}
+
+html[data-mobile-layout="landscape"] .mode-card:not(.mode-start) .mode-copy{
+  display:grid;
+  width:100%;
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .mode-card:not(.mode-start) .mode-copy strong{
+  overflow:hidden;
+  font-size:clamp(9px,1.15vw,13px);
+  text-align:center;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .mode-card:not(.mode-start) .mode-icon{
+  width:clamp(22px,2.9vw,34px);
+  height:clamp(22px,2.9vw,34px);
+}
+
+/* Tera row shows a coloured label, not a filled type bar. */
+html[data-mobile-layout="landscape"] .lobby-detail-facts dd[class*="type-"]{
+  background:none!important;
+  -webkit-text-fill-color:currentColor;
+}
+
+/* ------------------------------------------------------------------- box */
+
+/* The ambient glows overflow the shell, so `hidden` still leaves it a scroll
+   container that focus handling can nudge out of place. `clip` removes the
+   scroll port entirely and pins the top bar. */
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view){
+  overflow:clip;
+}
+
+/* Slim the screen header down to one row so the roster gets the height. */
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header{
+  display:flex;
+  flex:0 0 auto;
+  gap:6px;
+  align-items:center;
+  min-height:0;
+  padding:0;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header .pc-title{
+  display:flex;
+  gap:5px;
+  align-items:baseline;
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header .pc-title>span{display:none}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header .pc-title h1{
+  margin:0;
+  font-size:clamp(12px,1.6vw,18px);
+  line-height:1.2;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header .pc-summary{
+  gap:4px;
+  margin-left:auto;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header .pc-summary span{
+  min-height:22px;
+  padding:0 6px;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .pc-header .screen-back-button{
+  min-height:26px;
+  padding:0 8px;
+  font-size:10px;
+}
+
+/* Roster board on the left, persistent detail column on the right. */
+html[data-mobile-layout="landscape"] .team-box-panel{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(186px,.27fr);
+  grid-template-rows:auto auto minmax(0,1fr) auto;
+  grid-template-areas:
+    "toolbar detail"
+    "result  detail"
+    "grid    detail"
+    "tools   detail";
+  gap:5px;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-toolbar{grid-area:toolbar}
+html[data-mobile-layout="landscape"] .team-box-result-bar{grid-area:result}
+html[data-mobile-layout="landscape"] .team-box-grid-wrap{grid-area:grid}
+html[data-mobile-layout="landscape"] .team-box-mobile-tools{grid-area:tools}
+html[data-mobile-layout="landscape"] .team-box-selection{grid-area:detail}
+
+/* The grid badges already show party membership, so the duplicated strip goes. */
+html[data-mobile-layout="landscape"] .team-box-mobile-party{display:none!important}
+
+html[data-mobile-layout="landscape"] .team-box-toolbar{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:4px;
+  align-items:center;
+  min-height:0;
+  padding:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-toolbar .team-box-heading{display:none}
+
+html[data-mobile-layout="landscape"] .team-box-search{
+  min-height:28px;
+  padding-block:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-search input{
+  height:24px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-type-filter{
+  min-height:28px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-type-filter select{
+  min-height:24px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-team-filter{
+  gap:2px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-team-filter button{
+  min-width:0;
+  min-height:26px;
+  padding:0 7px;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-result-bar{
+  min-height:0;
+  padding:0;
+  gap:5px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-result-note{display:none}
+
+html[data-mobile-layout="landscape"] .team-box-sort-control button{
+  min-height:22px;
+  padding:0 6px;
+  font-size:9px;
+}
+
+/* Six dense columns, matching the reference roster board. */
+html[data-mobile-layout="landscape"] .team-box-grid-wrap{
+  min-height:0;
+  overflow:hidden!important;
+}
+
+html[data-mobile-layout="landscape"] .team-box-grid{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  grid-auto-rows:max-content;
+  gap:4px;
+  align-content:start;
+  min-height:0;
+  padding:1px;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .team-box-grid::-webkit-scrollbar{display:none}
+
+html[data-mobile-layout="landscape"] :is(.team-box-card,.team-box-card-select){
+  min-height:0!important;
+  height:auto;
+  padding:2px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-card-sprite{
+  width:100%;
+  height:clamp(34px,6.4vh,52px);
+}
+
+html[data-mobile-layout="landscape"] .team-box-card .training-card-types{display:none}
+
+html[data-mobile-layout="landscape"] .team-box-card .training-card-level{
+  font-size:7px;
+}
+
+/* Detail column: the selection dock becomes a vertical panel. */
+html[data-mobile-layout="landscape"] .team-box-selection{
+  position:relative!important;
+  bottom:auto!important;
+  display:flex!important;
+  flex:initial!important;
+  flex-direction:column;
+  gap:4px;
+  align-items:stretch;
+  min-height:0!important;
+  max-height:none!important;
+  padding:6px;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection::-webkit-scrollbar{display:none}
+
+html[data-mobile-layout="landscape"] .team-box-selection .pokedex-selected-art{
+  width:100%;
+  height:clamp(52px,10vh,88px);
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection .pokedex-selected-sprite-frame{
+  width:100%;
+  height:100%;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection .pc-selection-name{
+  align-items:center;
+  text-align:center;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection .type-chip-list{
+  justify-content:center;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection>button{
+  width:100%;
+  min-height:30px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-tools{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:4px;
+  align-items:center;
+  min-height:0;
+  padding:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(0,1fr);
+  gap:2px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button{
+  min-width:0;
+  min-height:26px;
+  padding:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button strong{font-size:10px}
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button small{font-size:7px}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-command{
+  min-height:26px;
+  padding:0 8px;
+  font-size:9px;
+}
+
+/* The control rows are single-line flex strips: intrinsic widths for the
+   filters, and only the search field absorbs the slack. */
+html[data-mobile-layout="landscape"] .team-box-toolbar,
+html[data-mobile-layout="landscape"] .team-box-result-bar,
+html[data-mobile-layout="landscape"] .team-box-mobile-tools{
+  display:flex!important;
+  flex-wrap:nowrap;
+  gap:4px;
+  align-items:center;
+  min-height:0;
+  padding:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-search{flex:1 1 auto;min-width:0}
+html[data-mobile-layout="landscape"] .team-box-type-filter{flex:0 0 auto}
+
+html[data-mobile-layout="landscape"] .team-box-team-filter{
+  flex:0 0 auto;
+  display:flex;
+}
+
+html[data-mobile-layout="landscape"] .team-box-result-bar .team-box-sort-control{
+  flex:0 0 auto;
+  display:flex;
+  gap:3px;
+  align-items:center;
+  width:auto;
+  margin-left:auto;
+}
+
+html[data-mobile-layout="landscape"] .team-box-result-bar .team-box-sort-control button{
+  flex:0 0 auto;
+  width:auto;
+}
+
+html[data-mobile-layout="landscape"] .team-box-result-bar>strong{
+  flex:0 0 auto;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-tools .team-box-mobile-presets{
+  flex:0 1 auto;
+  max-width:320px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-tools .team-box-mobile-command{
+  flex:0 0 auto;
+  margin-left:auto;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-tools .team-box-mobile-command+.team-box-mobile-command{
+  margin-left:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-tools .team-box-mobile-presets{
+  flex:0 0 auto;
+  max-width:none;
+  gap:3px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button{
+  min-width:34px;
+  padding:0 4px;
+}
+
+/* Keep the whole detail column reachable without an inner scroll. */
+html[data-mobile-layout="landscape"] .team-box-selection .pokedex-selected-art{
+  height:clamp(44px,7.5vh,68px);
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection>button{
+  min-height:27px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection :is(.pokedex-held-item-button,.pokedex-tera-button,.pokedex-dynamax-button) small{
+  font-size:7px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection :is(.pokedex-held-item-button,.pokedex-tera-button,.pokedex-dynamax-button) strong{
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection .pc-selection-name strong{
+  font-size:clamp(11px,1.4vw,15px);
+}
+
+/* -------------------------------------------------------------- training */
+
+html[data-mobile-layout="landscape"] .training-header{
+  min-height:0!important;
+  max-height:none;
+  gap:6px;
+  align-items:center;
+}
+
+html[data-mobile-layout="landscape"] .training-header .screen-back-button{
+  min-height:26px;
+  padding:0 8px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .training-title h1{
+  margin:0;
+  font-size:clamp(12px,1.6vw,18px)!important;
+  line-height:1.2;
+}
+
+html[data-mobile-layout="landscape"] .training-header .training-level-badge{
+  min-height:26px!important;
+  padding:0 8px!important;
+}
+
+html[data-mobile-layout="landscape"] .training-header .training-level-badge strong{
+  font-size:clamp(12px,1.5vw,16px)!important;
+}
+
+/* Editor chrome shrinks so the active page owns the remaining canvas. */
+html[data-mobile-layout="landscape"] .training-editor-heading{
+  min-height:0;
+  gap:5px;
+  align-items:center;
+  padding:4px 6px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-name h2{
+  margin:0;
+  font-size:clamp(11px,1.45vw,16px)!important;
+  line-height:1.2;
+}
+
+html[data-mobile-layout="landscape"] .training-mobile-pages{
+  gap:3px;
+  padding:3px 4px;
+}
+
+html[data-mobile-layout="landscape"] .training-mobile-pages button{
+  min-height:26px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions{
+  gap:5px;
+  min-height:0;
+  padding:4px 6px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions button{
+  min-height:28px;
+  padding:0 8px;
+  font-size:10px;
+}
+
+/* Only one editor column is mounted at a time, so it takes the whole width
+   instead of sitting in its original desktop track. */
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page] .training-editor-body{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-auto-rows:min-content;
+  align-content:start;
+  gap:5px;
+  min-height:0;
+  padding:5px 6px;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-body::-webkit-scrollbar{display:none}
+
+/* Profile page mirrors the reference: artwork beside the selector stack.
+   Scoped to its own page so the stat and move pages still hide this column. */
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-profile-column{
+  display:grid;
+  grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
+  gap:6px;
+  align-items:start;
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .training-art-card{
+  min-height:0;
+  padding:4px;
+}
+
+html[data-mobile-layout="landscape"] .training-select-stack{
+  gap:4px;
+  min-width:0;
+}
+
+/* Stat page: all six rows on one canvas, like the reference's investment board. */
+html[data-mobile-layout="landscape"] .training-stat-column{
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-column .training-section-title{
+  min-height:0;
+  padding-block:0;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-column .training-section-title h3,
+html[data-mobile-layout="landscape"] .training-stat-column .training-section-title strong{
+  font-size:11px;
+}
+
+html[data-mobile-layout="landscape"] .training-point-summary{
+  min-height:0;
+  padding-block:0;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-list{
+  gap:2px;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-row{
+  min-height:0;
+  padding:1px 5px;
+  row-gap:0;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-name{
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-value{
+  font-size:11px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-controls button{
+  width:20px;
+  height:20px;
+  min-width:20px;
+  min-height:20px;
+}
+
+/* Move page: the four slots stay visible without an inner scroll. */
+html[data-mobile-layout="landscape"] .training-move-column{
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .training-move-column .training-section-title{
+  min-height:0;
+  padding-block:0;
+}
+
+/* The tab bar already names the screen, so the training header keeps only
+   its back button and battle-level badge and hands the rest to the editor. */
+html[data-mobile-layout="landscape"] .training-header{
+  min-height:26px!important;
+  max-height:30px!important;
+}
+
+html[data-mobile-layout="landscape"] .training-title h1{
+  font-size:clamp(11px,1.3vw,14px)!important;
+}
+
+html[data-mobile-layout="landscape"] .training-header .training-level-badge{
+  min-height:22px!important;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-heading{
+  min-height:0!important;
+  max-height:34px;
+  padding:3px 6px;
+}
+
+html[data-mobile-layout="landscape"] .training-mobile-pages button{
+  min-height:24px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions{
+  padding:3px 6px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions button{
+  min-height:26px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-row{
+  grid-template-rows:18px!important;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-controls button{
+  width:18px;
+  height:18px;
+  min-width:18px;
+  min-height:18px;
+}
+
+/* Reclaim the last rows of the investment board: tighter screen padding and
+   a stat column that spends its height on the rows themselves. */
+html[data-mobile-layout="landscape"] .training-screen{
+  gap:4px;
+  padding:4px max(6px,env(safe-area-inset-left)) 2px max(6px,env(safe-area-inset-right));
+}
+
+html[data-mobile-layout="landscape"] .training-workspace{
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-column{
+  padding:4px;
+  gap:3px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-column .training-section-title{
+  margin-bottom:1px;
+}
+
+html[data-mobile-layout="landscape"] .training-budget-track{
+  margin-block:0 1px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-footer{
+  margin-top:2px;
+  min-height:0;
+  padding:2px 5px;
+  font-size:8px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-row{
+  grid-template-rows:15px!important;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-controls button{
+  width:16px;
+  height:16px;
+  min-width:16px;
+  min-height:16px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-list{
+  gap:1px;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-column{
+  gap:2px;
+}
+
+/* The allocation rule is static reference copy; the nature modifier is not. */
+html[data-mobile-layout="landscape"] .training-stat-rule{display:none}
+
+html[data-mobile-layout="landscape"] .training-stat-footer{
+  margin-top:1px;
+  min-height:0;
+  padding:1px 5px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions button{
+  min-height:24px;
+}
+
+/* Move page: one row per slot, as in the reference's move-setting list, so
+   all four loadout slots stay on screen with their metrics. */
+html[data-mobile-layout="landscape"] .training-move-card{
+  grid-template-columns:18px 32px minmax(0,1fr) auto 20px;
+  grid-template-areas:"slot type select metrics info";
+  grid-template-rows:minmax(0,1fr);
+  gap:4px;
+  min-height:0;
+  padding:3px;
+}
+
+html[data-mobile-layout="landscape"] .training-move-list{
+  grid-template-rows:repeat(4,auto)!important;
+  gap:4px;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .training-move-type{
+  height:auto;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .training-move-select{
+  height:auto;
+  min-height:26px;
+}
+
+html[data-mobile-layout="landscape"] .training-move-metrics{
+  gap:4px;
+  min-height:0;
+  padding:0;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .training-move-metrics small{font-size:7px}
+html[data-mobile-layout="landscape"] .training-move-metrics strong{font-size:9px}
+
+html[data-mobile-layout="landscape"] .training-ability-preview{
+  min-height:0;
+  padding:3px 5px;
+}
+
+/* The four slots own the move page; the ability blurb is already shown on the
+   profile page, so it does not compete for the short landscape canvas. */
+html[data-mobile-layout="landscape"] .training-move-column .training-ability-preview{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .training-move-card{
+  min-height:32px;
+}
+
+html[data-mobile-layout="landscape"] .training-move-select{
+  min-height:28px;
+}
+
+html[data-mobile-layout="landscape"] .training-move-column .training-section-title{
+  margin-bottom:0;
+}
+
+/* The slot number already labels each row, so the repeated "MOVE n" caption
+   inside the picker is dropped and the row collapses to one control line. */
+html[data-mobile-layout="landscape"] .training-move-select-heading{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .training-move-select-button{
+  min-height:28px;
+  padding-block:0;
+}
+
+/* The "3 기술" page tab already titles this page. */
+html[data-mobile-layout="landscape"] .training-move-column>.training-section-title{
+  display:none;
+}
+
+/* ---------------------------------------------------------------- usage */
+
+/* The ranking list is the point of the screen, so its chrome gives way to
+   the rows themselves. */
+html[data-mobile-layout="landscape"] .pokemon-usage-header{
+  min-height:0!important;
+  gap:6px;
+  align-items:center;
+  padding:0;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-header h1{
+  margin:0;
+  font-size:clamp(12px,1.6vw,18px);
+  line-height:1.2;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-header .screen-back-button{
+  min-height:26px;
+  padding:0 8px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-controls{
+  min-height:0!important;
+  gap:4px;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-controls button{
+  min-height:26px;
+  padding:0 8px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-toolbar{
+  min-height:0!important;
+  gap:4px;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-toolbar input{
+  min-height:26px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-pagination{
+  min-height:0!important;
+  gap:3px;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-pagination button{
+  min-height:24px;
+  padding:0 7px;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-error{
+  min-height:0;
+  padding:4px 6px;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-error button{
+  min-height:24px;
+  padding:0 8px;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-panel,
+html[data-mobile-layout="landscape"] .pokemon-usage-catalog{
+  min-height:0;
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-list-scroll{
+  flex:1 1 0;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-row{
+  min-height:40px!important;
+  padding-block:2px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-screen{
+  gap:4px;
+  padding:4px max(6px,env(safe-area-inset-left)) 2px max(6px,env(safe-area-inset-right));
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-toolbar{
+  padding:0 8px!important;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-pagination{
+  padding:0 8px!important;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-row{
+  min-height:36px!important;
+  padding-block:1px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-row .pokemon-usage-rank{
+  font-size:11px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-row .pokemon-usage-name strong{
+  font-size:11px;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-row .game-type-chip{
+  padding:0 5px;
+  font-size:8px;
+  line-height:1.5;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-row .pokemon-usage-sprite,
+html[data-mobile-layout="landscape"] .pokemon-usage-row .pokemon-icon-frame{
+  width:28px;
+  height:28px;
+}
+
+/* The shell itself must not scroll, so each screen body owns the overflow.
+   At the 1.5x/2x text presets the menu grows past the frame and has to stay
+   reachable by scrolling inside the screen rather than drifting the shell. */
+html[data-mobile-layout="landscape"] .lobby-layout{
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .lobby-layout::-webkit-scrollbar{display:none}
+
+/* Mobile is pinned to the 1x type ramp (see gameTextScale.js), so the older
+   1.5x/2x mobile overrides elsewhere can no longer be reached from a phone. */
+
+/* The desktop footer uses fixed 260/150/200 tracks, which overflow the
+   narrower landscape editor and push the save summary outside its own box. */
+html[data-mobile-layout="landscape"] .training-editor-actions{
+  grid-template-columns:minmax(0,1fr) auto auto;
+}
+
+html[data-mobile-layout="landscape"] .training-save-summary{
+  min-width:0;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions>button{
+  min-width:0;
+  width:auto;
+  white-space:nowrap;
+}

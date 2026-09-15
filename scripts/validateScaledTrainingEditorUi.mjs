@@ -28,7 +28,7 @@ const settings = createDefaultGameSettings()
 settings.audio.enabled = false
 const storage = { [SETTINGS_STORAGE_KEY]: settings, 'champions-dex-v2': collection,
   'champions-teams-v1': { teams, activeTeamId: 'team-1' }, 'champions-battle-items-v1': { [heldItem.id]: 6 } }
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor', 'mobileTouch', 'mobileUiV2', 'mobileReferenceLayout']
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
 ${styles.map(name => `import'/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{user:{uid:'cards-ui',displayName:'guest-123456',isAnonymous:true,isLocalGuest:false},autoLogin:false,onPlayerDataChanged:()=>{},onSignOut:()=>{}})));`
@@ -97,7 +97,7 @@ let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const html = await server.transformIndexHtml('/scaled-cards.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/scaled-cards-entry.js"></script></body></html>')
-  const devices = [{ id: 'desktop', viewport: { width: 1920, height: 900 }, scales: [1.5, 2] }, { id: 'laptop', viewport: { width: 1366, height: 768 }, scales: [1.5, 2] }, { id: 'mobile', viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, scales: [2] }]
+  const devices = [{ id: 'desktop', viewport: { width: 1920, height: 900 }, scales: [1.5, 2] }, { id: 'laptop', viewport: { width: 1366, height: 768 }, scales: [1.5, 2] }, { id: 'mobile', viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, scales: [1] }]
   for (const { scales, ...device } of devices) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     await context.addInitScript(storage => { for (const [key, value] of Object.entries(storage)) localStorage.setItem(key, JSON.stringify(value)); localStorage.setItem('champions-draw-tutorial-v1', 'complete') }, storage)
@@ -113,9 +113,23 @@ try {
     await click(page.locator('.training-roster-card').first())
     const base = await page.locator('.training-stat-value').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize))
     for (const scale of scales) {
-      await click(page.getByRole('button', { name: '설정', exact: true }))
-      await click(page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: `${scale}배`, exact: true }))
-      await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
+      // Mobile is pinned to the 1x ramp, so it has no preset control to drive.
+      if (device.isMobile) {
+        assert.equal(await page.locator('html').getAttribute('data-game-text-scale'), '1')
+      } else {
+        await click(page.getByRole('button', { name: '설정', exact: true }))
+        await click(page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: `${scale}배`, exact: true }))
+        await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
+      }
+      // The compact landscape editor pages its sections, so each assertion has
+      // to open the page it is about before measuring it.
+      const openEditorPage = async index => {
+        const tabs = page.locator('.training-mobile-pages button')
+        if (!await tabs.count() || !await tabs.nth(index).isVisible()) return
+        await click(tabs.nth(index))
+        await page.waitForTimeout(160)
+      }
+      await openEditorPage(1)
       await test(`${device.id} ${scale}x: all six stat rows retain glyphs and separate controls`, async () => {
         assert(Math.abs(await page.locator('.training-stat-value').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize)) - base * scale) < .1)
         const rows = page.locator('.training-stat-row')
@@ -130,6 +144,7 @@ try {
         }
         await page.screenshot({ path: path.join(output, `${device.id}-${scale}x-stats.png`) })
       })
+      await openEditorPage(2)
       await test(`${device.id} ${scale}x: four full move names and PP/type/category fit and picker opens`, async () => {
         const cards = page.locator('.training-move-card')
         assert.equal(await cards.count(), 4)
@@ -148,6 +163,7 @@ try {
         await page.keyboard.press('Escape')
         await page.locator('.move-picker-panel').waitFor({ state: 'hidden' })
       })
+      await openEditorPage(1)
       await test(`${device.id} ${scale}x: stat edit, reset and save remain usable`, async () => {
         // Generated battle-ready partners may already spend all 66 points;
         // choose an allocated stat so the actual decrement is enabled.

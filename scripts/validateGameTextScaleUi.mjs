@@ -142,6 +142,27 @@ try {
       assert.equal(await page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: `${scale}배`, exact: true }).getAttribute('aria-pressed'), 'true')
       if (!keepOpen) await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
     }
+    // Phones and tablets are pinned to the 1x ramp, so the presets are not
+    // offered there and a stored desktop choice must not follow the player in.
+    if (device.isMobile) {
+      await test(`${device.id}: text size stays at 1x and the preset control is hidden`, async () => {
+        assert.equal(await page.locator('html').getAttribute('data-mobile-layout'), 'landscape')
+        await click(page.getByRole('button', { name: '환경 설정', exact: true }))
+        await page.getByRole('dialog', { name: '환경 설정' }).waitFor()
+        assert.equal(await page.getByRole('group', { name: '글자 크기', exact: true }).count(), 0)
+        assert.equal(await page.locator('.settings-text-scale-preview').count(), 0)
+        await click(page.getByRole('button', { name: '설정 닫기', exact: true }))
+        await page.evaluate(key => {
+          const stored = JSON.parse(localStorage.getItem(key))
+          localStorage.setItem(key, JSON.stringify({ ...stored, game: { ...stored.game, textScale: 2 } }))
+        }, SETTINGS_STORAGE_KEY)
+        await page.reload()
+        await page.locator('.battle-command-buttons .fight').waitFor()
+        assert.equal(await page.locator('html').getAttribute('data-game-text-scale'), '1')
+      })
+      await context.close()
+      continue
+    }
     await test(`${device.id}: default is 1x and settings expose all four readable sizes`, async () => {
       assert.equal(await page.locator('html').getAttribute('data-game-text-scale'), '1')
       await chooseScale(1, true)

@@ -295,7 +295,8 @@ try {
     await displayed(page, '김**')
   })
   for (const device of [{ id: 'desktop', viewport: { width: 1440, height: 900 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true }]) {
-    for (const scale of [1, 2]) await check(`${device.id}-${scale}x-nickname-controls-remain-reachable`, { nickname: '가나다라마바사아자차카타', scale }, async page => {
+    // Mobile is pinned to the 1x ramp; only desktop frames reach the 2x preset.
+    for (const scale of device.isMobile ? [1] : [1, 2]) await check(`${device.id}-${scale}x-nickname-controls-remain-reachable`, { nickname: '가나다라마바사아자차카타', scale }, async page => {
       await displayed(page, '가나다라마바사아자차카타')
       assert(await name(page).evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'The full 12-character nickname must remain readable')
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
@@ -319,6 +320,6 @@ try {
 }
 assert.deepEqual(errors, [])
 assert.deepEqual(unexpectedRequests, [])
-assert.equal(results.length, 14)
+assert.equal(results.length, 13)
 assert(results.every(result => result.passed), `Nickname UI regression failed; see ${output}`)
-console.log(`14/14 nickname UI checks passed; browser/server errors ${errors.length}; unexpected external requests ${unexpectedRequests.length}`)
+console.log(`13/13 nickname UI checks passed; browser/server errors ${errors.length}; unexpected external requests ${unexpectedRequests.length}`)

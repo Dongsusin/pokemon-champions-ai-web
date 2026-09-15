@@ -24,7 +24,7 @@ const teamState = {
   teams: [{ id: 'team-1', name: '팀 1', pokemonIds: [pokemon.captureId] }],
 }
 assert.equal(pokemon.moves.length, 4)
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor', 'mobileTouch', 'mobileUiV2', 'mobileReferenceLayout']
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
 ${styles.map(name => `import'/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{user:{uid:'empty-moves-ui',displayName:'기술 비우기 검증',isAnonymous:true,isLocalGuest:false},autoLogin:false,onPlayerDataChanged:()=>{},onSignOut:()=>{}})));`
@@ -101,6 +101,13 @@ try {
     const openTraining = async () => {
       await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
       await activate(page.locator('.mode-card.mode-training'))
+      // The compact landscape editor pages its sections; the move slots live
+      // on the third page, so open it before waiting on the cards.
+      const movePage = page.locator('.training-mobile-pages button').nth(2)
+      if (await movePage.count() && await movePage.isVisible()) {
+        await activate(movePage)
+        await page.waitForTimeout(160)
+      }
       await cards.first().waitFor()
       assert.equal(await page.locator('.training-editor-name h2').innerText(), pokemon.name)
       assert.equal(await cards.count(), 4)

@@ -19,7 +19,7 @@ function moveName(move) {
   return typeof move === 'string' ? move : move?.name
 }
 
-function LobbyTeamPanel({ pokemon, teams, activeTeamId, onSelectTeam, onOpenBox }) {
+function LobbyTeamPanel({ pokemon, teams, activeTeamId, selectedCaptureId, onSelectPokemon, onSelectTeam, onOpenBox }) {
   const requestedTeamIndex = teams.findIndex((team) => team.id === activeTeamId)
   const activeTeamIndex = requestedTeamIndex >= 0 ? requestedTeamIndex : 0
   const activeTeam = teams[activeTeamIndex]
@@ -82,9 +82,18 @@ function LobbyTeamPanel({ pokemon, teams, activeTeamId, onSelectTeam, onOpenBox 
 
           return (
             <article
-              className={`lobby-team-card${entry.isShiny ? ' is-shiny' : ''}`}
+              className={`lobby-team-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedCaptureId ? ' selected' : ''}`}
               key={entry.captureId}
+              role={onSelectPokemon ? 'button' : undefined}
+              tabIndex={onSelectPokemon ? 0 : undefined}
+              aria-pressed={onSelectPokemon ? entry.captureId === selectedCaptureId : undefined}
               aria-label={`${entry.name} 세팅`}
+              onClick={() => onSelectPokemon?.(entry.captureId)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                onSelectPokemon?.(entry.captureId)
+              }}
             >
               <span className="lobby-team-slot-number">{String(index + 1).padStart(2, '0')}</span>
               {entry.isShiny && <span className="lobby-team-shiny" aria-label="이로치">★</span>}

@@ -1,3 +1,6 @@
+import { loadGameSettings } from './gameSettings.js'
+import { applyGameTextScale } from './gameTextScale.js'
+
 const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1.0, viewport-fit=cover'
 
 const viewportMeta = document.querySelector('meta[name="viewport"]')
@@ -34,7 +37,11 @@ export function syncMobileViewport() {
   // roughly 20px wide on common landscape phones and difficult to tap.
   const viewport = DEFAULT_VIEWPORT
 
+  const layoutChanged = document.documentElement.dataset.mobileLayout !== layout
   document.documentElement.dataset.mobileLayout = layout
+  // The text-scale presets are desktop-only, so crossing the mobile boundary
+  // has to re-resolve the stored setting against the new layout.
+  if (layoutChanged) applyGameTextScale(loadGameSettings().game.textScale)
 
   if (viewportMeta && viewportMeta.getAttribute('content') !== viewport) {
     viewportMeta.setAttribute('content', viewport)
