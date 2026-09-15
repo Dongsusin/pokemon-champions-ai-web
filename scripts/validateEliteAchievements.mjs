@@ -148,11 +148,11 @@ check('winning a final alone or a shortened fake run never awards the full-run c
 const completeCollection = createCompletePokemonCollection()
 const shinyDrawCollection = mergePokemonDraws([], POKEMON_POOL.map((entry) => ({ ...entry, isShiny: true }))).collection
 
-check('obtainable national dex is reachable through actual draw evolution unlocks', () => {
+check('obtainable national dex is reachable through actual draws and evolution unlocks', () => {
   assert.equal(ACHIEVABLE_SPECIES_IDS.length, NATIONAL_DEX.length)
   assert.equal(ACHIEVABLE_SPECIES_IDS.length, 1025)
   assert.equal(ACHIEVABLE_SHINY_SPECIES_IDS.length, 1025)
-  assert(POKEMON_POOL.length < NATIONAL_DEX.length, 'Direct draws exclude unevolved Pokemon')
+  assert.equal(POKEMON_POOL.length, NATIONAL_DEX.length)
   const input = createAchievementState()
   const before = structuredClone(completeCollection)
   const completed = applyCollectionAchievements(input, completeCollection, 3000)
@@ -167,7 +167,7 @@ check('obtainable national dex is reachable through actual draw evolution unlock
   assert.equal(replay.rewardVp, 0)
 })
 
-check('actual final-evolution shiny draws cover reachable baby and branching shiny forms', () => {
+check('actual National Dex shiny draws cover baby and branching shiny forms', () => {
   const completed = applyCollectionAchievements(createAchievementState(), shinyDrawCollection, 3000)
   assert(has(completed, 'collection-all'))
   assert(has(completed, 'collection-shiny-all'))

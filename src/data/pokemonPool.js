@@ -88,9 +88,11 @@ export function isFinalEvolutionSpecies(speciesId) {
     && !EVOLUTION_PARENT_IDS.has(normalizedSpeciesId)
 }
 
-export const POKEMON_POOL = NATIONAL_DEX.filter((profile) => (
-  isFinalEvolutionSpecies(profile.id)
-)).map((profile) => {
+// Every National Dex species is a draw candidate.  Evolution families are
+// still materialized in the collection for the box/training views, but a
+// family member unlocked as a route placeholder must not hide that species
+// from the ordinary draw pool.
+export const POKEMON_POOL = NATIONAL_DEX.map((profile) => {
   const classification = classificationFor(profile)
   return {
     ...profile,
@@ -182,6 +184,14 @@ function rollPokemonForBanner(bannerId, random, now) {
   return randomPoolEntry(pool, random)
 }
 
+function isDrawOwnedPokemon(pokemon) {
+  // A zero-count entry with an unlock source is an automatically materialized
+  // evolution-route placeholder. Other zero-count entries (for example a
+  // reward entitlement) are real ownership and must still be treated as a
+  // duplicate by the draw UI.
+  return Number(pokemon?.directDrawCount ?? 0) > 0 || !pokemon?.unlockSourceSpeciesId
+}
+
 function rollUnownedPokemon(unowned, random) {
   const pools = DRAW_RARITY_ORDER.map((rarity) => ({
     rarity,
@@ -211,10 +221,14 @@ export function createPokemonDraw(count = 10, collection = [], random = Math.ran
   const drawCounts = collectionDrawCounts(collection)
   const banner = getDrawBanner(options.bannerId, options.now)
   const drawTimestamp = normalizedTimestamp(options.now)
-  // Match the collection/NEW badge rules, including unlocked evolutions,
-  // alternate forms and shiny-only ownership. Direct draw count is not ownership.
+  // Route placeholders created for an unlocked evolution are visible in the
+  // collection, but they are not direct draw ownership.  Keep them eligible
+  // so an account that previously collected only final forms can still draw
+  // the missing pre-evolutions individually.
   const owned = banner.id === 'standard'
-    ? new Set(migratePokemonCollection(collection).map((pokemon) => pokemon.dexSpeciesId))
+    ? new Set(migratePokemonCollection(collection)
+      .filter(isDrawOwnedPokemon)
+      .map((pokemon) => pokemon.dexSpeciesId))
     : null
   const unowned = owned ? new Set(POKEMON_POOL.filter((pokemon) => !owned.has(pokemon.id)).map((pokemon) => pokemon.id)) : null
   let newlyDrawnInBatch = []
@@ -235,12 +249,6 @@ export function createPokemonDraw(count = 10, collection = [], random = Math.ran
       pokemon = rollUnownedPokemon(unowned, random)
     }
     if (unowned?.delete(pokemon.id)) newlyDrawnInBatch.push(pokemon.id)
-    if (unowned && batchIndex === STANDARD_DRAW_BATCH_SIZE - 1) {
-      // A later batch sees the evolutions unlocked by the completed purchase.
-      for (const speciesId of newlyDrawnInBatch) {
-        for (const relatedId of getEvolutionSpeciesIds(speciesId)) unowned.delete(relatedId)
-      }
-    }
     const previousDrawCount = drawCounts.get(pokemon.id) ?? 0
     const shinyChance = banner.shinyOnly ? 1 : getShinyChance()
     const isShiny = banner.shinyOnly || rollShiny(random)
@@ -437,7 +445,9 @@ export function createCompletePokemonCollection(collection = []) {
 export function mergePokemonDraws(collection, results) {
   const currentCollection = migratePokemonCollection(collection)
   const collectionMap = new Map(currentCollection.map((pokemon) => [pokemon.dexSpeciesId, pokemon]))
-  const previouslyUnlocked = new Set(collectionMap.keys())
+  const previouslyUnlocked = new Set(
+    currentCollection.filter(isDrawOwnedPokemon).map((pokemon) => pokemon.dexSpeciesId),
+  )
   const directlySeenThisDraw = new Set(previouslyUnlocked)
   const resolvedResults = []
   let duplicateCount = 0
@@ -470,10 +480,9 @@ export function mergePokemonDraws(collection, results) {
 
   const nextCollection = [...collectionMap.values()]
     .sort((left, right) => left.dexSpeciesId - right.dexSpeciesId)
-  const newlyUnlockedCount = nextCollection.reduce(
-    (count, pokemon) => count + (previouslyUnlocked.has(pokemon.dexSpeciesId) ? 0 : 1),
-    0,
-  )
+  const newlyUnlockedCount = [...directlySeenThisDraw]
+    .filter((speciesId) => !previouslyUnlocked.has(speciesId))
+    .length
 
   return {
     collection: nextCollection,

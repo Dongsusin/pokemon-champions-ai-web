@@ -25,16 +25,7 @@ import {
 
 const failures = []
 const poolIds = new Set(POKEMON_POOL.map((pokemon) => pokemon.id))
-const evolutionParentIds = new Set(
-  NATIONAL_DEX
-    .map((pokemon) => pokemon.evolvesFrom)
-    .filter((speciesId) => Number.isInteger(speciesId) && speciesId > 0),
-)
-const expectedFinalIds = new Set(
-  NATIONAL_DEX
-    .filter((pokemon) => !evolutionParentIds.has(pokemon.id))
-    .map((pokemon) => pokemon.id),
-)
+const expectedSpeciesIds = new Set(NATIONAL_DEX.map((pokemon) => pokemon.id))
 
 if (poolIds.size !== POKEMON_POOL.length) {
   failures.push('뽑기 후보에 중복된 포켓몬이 있음')
@@ -81,12 +72,17 @@ for (const rarity of DRAW_RARITY_ORDER) {
   }
 }
 
-for (const pokemon of NATIONAL_DEX) {
-  const shouldAppear = expectedFinalIds.has(pokemon.id)
-  const appears = poolIds.has(pokemon.id)
+if (POKEMON_POOL.length !== NATIONAL_DEX.length || poolIds.size !== expectedSpeciesIds.size) {
+  failures.push(`전국도감 전체가 뽑기 후보에 포함되지 않음: ${POKEMON_POOL.length}/${NATIONAL_DEX.length}`)
+}
 
-  if (shouldAppear !== appears || appears !== isFinalEvolutionSpecies(pokemon.id)) {
-    failures.push(`${pokemon.name}(${pokemon.id}): 최종 진화형 판정 불일치`)
+if (!LEGENDARY_MYTHICAL_POOL.some((pokemon) => pokemon.id === 792)) {
+  failures.push('루나아라(도감 792번)가 전설·환상 EX 뽑기 풀에서 누락됨')
+}
+
+for (const pokemon of NATIONAL_DEX) {
+  if (expectedSpeciesIds.has(pokemon.id) !== poolIds.has(pokemon.id)) {
+    failures.push(`${pokemon.name}(${pokemon.id}): 전국도감 뽑기 후보 누락`)
   }
 }
 
@@ -99,13 +95,9 @@ const branchingRoutes = [
 ]
 
 for (const route of branchingRoutes) {
-  const actualFinalIds = getEvolutionSpeciesIds(route.rootId)
-    .filter((speciesId) => poolIds.has(speciesId))
-    .sort((left, right) => left - right)
-  const expectedIds = route.expectedFinalIds.slice().sort((left, right) => left - right)
-
-  if (actualFinalIds.join(',') !== expectedIds.join(',')) {
-    failures.push(`${route.rootId}번 진화 계통: 분기 최종 진화형 누락`)
+  const missingIds = route.expectedFinalIds.filter((speciesId) => !poolIds.has(speciesId))
+  if (missingIds.length > 0) {
+    failures.push(`${route.rootId}번 진화 계통: 분기 진화형 누락 (${missingIds.join(',')})`)
   }
 }
 
@@ -124,8 +116,8 @@ function sequenceRandom(sequence) {
 
 const sampledDraws = createPokemonDraw(1000, [], createSeededRandom(20260820))
 
-if (sampledDraws.some((pokemon) => !poolIds.has(pokemon.id) || !isFinalEvolutionSpecies(pokemon.id))) {
-  failures.push('실제 뽑기 결과에 최종 진화형이 아닌 포켓몬이 포함됨')
+if (sampledDraws.some((pokemon) => !poolIds.has(pokemon.id))) {
+  failures.push('실제 뽑기 결과에 전국도감에 없는 포켓몬이 포함됨')
 }
 
 const rarityBoundaryCases = [
@@ -194,10 +186,14 @@ function checkGuarantee(name, run) {
   try { run(); guaranteeChecks += 1 }
   catch (error) { failures.push(`${name}: ${error.message}`) }
 }
-const collectionOf = ids => ids.map(id => ({ speciesId: id, dexSpeciesId: id, directDrawCount: 0 }))
+const collectionOf = ids => ids.map(id => ({ speciesId: id, dexSpeciesId: id, directDrawCount: 1 }))
 const draw = (collection, random = () => 0.5, options = {}) => createPokemonDraw(10, collection, random, { now: 0, ...options })
 function assertMinimumNew(collection, results, expected = 3) {
-  const before = new Set(migratePokemonCollection(collection).map(pokemon => pokemon.dexSpeciesId))
+  const before = new Set(
+    migratePokemonCollection(collection)
+      .filter(pokemon => Number(pokemon.directDrawCount ?? 0) > 0 || !pokemon.unlockSourceSpeciesId)
+      .map(pokemon => pokemon.dexSpeciesId),
+  )
   const missing = POKEMON_POOL.filter(pokemon => !before.has(pokemon.id)).length
   const newIds = new Set(results.filter(pokemon => !before.has(pokemon.id)).map(pokemon => pokemon.id))
   assert(newIds.size >= Math.min(expected, missing), `${newIds.size} new species; expected ${Math.min(expected, missing)}`)
@@ -227,14 +223,16 @@ checkGuarantee('partial collections retain ten draws, original ownership and cor
   }
   assert.equal(JSON.stringify(collection), original)
 })
-checkGuarantee('already unlocked branches and shiny/form ownership are not new candidates', () => {
-  const excludedFamilies = new Set([...getEvolutionSpeciesIds(133), 6])
-  const collection = collectionOf(POKEMON_POOL.filter(pokemon => !excludedFamilies.has(pokemon.id) && ![150, 151, 384].includes(pokemon.id)).map(pokemon => pokemon.id))
-  // An old-format Eevee unlocks every branch; a stored Charizard Mega-X form
-  // belongs to the base species and owning only its shiny still counts as owned.
-  collection.push({ speciesId: 133 }, { speciesId: 10034, isShiny: true, directDrawCount: 1 })
+checkGuarantee('evolution-route placeholders do not hide pre-evolution candidates', () => {
+  const finalEvolutionIds = NATIONAL_DEX
+    .filter(pokemon => isFinalEvolutionSpecies(pokemon.id))
+    .map(pokemon => pokemon.id)
+  const collection = collectionOf(finalEvolutionIds)
+  // Legacy accounts commonly contain only final forms. Migration adds the
+  // family route placeholders, but those placeholders must remain eligible
+  // for a direct draw from the now-complete National Dex pool.
   const merged = assertMinimumNew(collection, draw(collection, () => 0))
-  assert.deepEqual(merged.results.filter(result => !result.isDuplicate).map(result => result.id).sort((a, b) => a - b), [150, 151, 384])
+  assert(merged.results.some(result => !result.isDuplicate && !isFinalEvolutionSpecies(result.id)))
 })
 for (const remaining of [0, 1, 2, 3]) {
   checkGuarantee(`${remaining} unowned species left: award all possible new species without rerolling forever`, () => {
@@ -292,6 +290,6 @@ if (failures.length > 0) {
   process.exitCode = 1
 } else {
   process.stdout.write(
-    `Validated ${POKEMON_POOL.length} final-evolution candidates, ${LEGENDARY_MYTHICAL_POOL.length} EX pickups, 3 draw banners and ${guaranteeChecks} guarantee checks.\n`,
+    `Validated ${POKEMON_POOL.length} National Dex candidates, ${LEGENDARY_MYTHICAL_POOL.length} EX pickups, 3 draw banners and ${guaranteeChecks} guarantee checks.\n`,
   )
 }
