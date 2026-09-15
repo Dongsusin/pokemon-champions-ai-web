@@ -115,10 +115,19 @@ try {
     await page.goto(`http://127.0.0.1:${port}/empty-training-moves.html`)
     await openTraining()
 
-    await check(`${device.id}: current-team filter shows only the active team's Pokemon`, async () => {
+    await check(`${device.id}: ${device.isMobile ? 'the roster is the active team, with no filter controls' : "current-team filter shows only the active team's Pokemon"}`, async () => {
       const rosterCards = page.locator('.training-roster-card')
-      assert.equal(await rosterCards.count(), 2)
       const teamFilter = page.getByRole('button', { name: '팀 1에 편성된 포켓몬만 보기', exact: true })
+      if (device.isMobile) {
+        // Compact layouts train the battle party, so the roster is already
+        // filtered and the sort/search row is not rendered at all.
+        assert.equal(await rosterCards.count(), 1)
+        assert.match(await rosterCards.first().getAttribute('aria-label'), /리자몽/)
+        assert.equal(await teamFilter.count(), 0)
+        assert.equal(await page.locator('.training-filter-row').count(), 0)
+        return
+      }
+      assert.equal(await rosterCards.count(), 2)
       await activate(teamFilter)
       assert.equal(await rosterCards.count(), 1)
       assert.match(await rosterCards.first().getAttribute('aria-label'), /리자몽/)

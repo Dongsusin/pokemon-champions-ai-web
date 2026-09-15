@@ -157,7 +157,10 @@ try {
       await cards.first().waitFor()
       await page.waitForFunction(selector => [...document.querySelectorAll(selector)].every(card => { const image = card.querySelector('.pokemon-box-icon'); return image && (image.tagName !== 'IMG' || image.complete && image.naturalWidth > 0) }), selector)
       const atOne = await inspectCards(page, selector)
-      assert(atOne.length >= 30)
+      // Compact layouts deliberately show a subset: training lists the battle
+      // party and the box pages its roster, so the whole board fits one screen.
+      const expectedCards = !device.isMobile ? 30 : view === 'training' ? 6 : 12
+      assert(atOne.length >= expectedCards, `${device.id} ${view}: ${atOne.length} cards`)
       const scales = device.id === 'desktop' ? [.5, 1, 1.5, 2] : device.isMobile ? [1] : [1.5, 2]
       for (const scale of scales) await test(`${device.id}: ${view} ${scale}x full names/types fit their cards without glyph clipping`, async () => {
         await chooseScale(scale)
@@ -177,7 +180,32 @@ try {
           assert(Math.abs(card.sprite.width - atOne[index].sprite.width) < 1 && Math.abs(card.sprite.height - atOne[index].sprite.height) < 1, `Sprite changed for ${card.name}`)
         }
       })
-      await test(`${device.id}: ${view} at 2x retains search, sorting, selection and final-card access`, async () => {
+      const compactTraining = Boolean(device.isMobile) && view === 'training'
+      await test(`${device.id}: ${view} at 2x ${compactTraining ? 'lists the battle party and keeps selection reachable' : 'retains search, sorting, selection and final-card access'}`, async () => {
+        if (compactTraining) {
+          // The compact training roster is the battle party: no search, no
+          // sort, and every card on one screen.
+          assert.equal(await page.getByRole('searchbox', { name: '포켓몬 이름 검색', exact: true }).count(), 0)
+          assert.equal(await page.locator('.training-filter-row').count(), 0)
+          const partyCount = await cards.count()
+          assert(partyCount >= 1 && partyCount <= 6, `party cards: ${partyCount}`)
+          for (const card of await cards.all()) {
+            const control = await controlWithinViewport(card)
+            assert(control.left >= -1 && control.right <= control.width + 1
+              && control.top >= -1 && control.bottom <= control.height + 1, JSON.stringify(control))
+          }
+          const last = cards.last()
+          await click(last)
+          assert.equal(await last.getAttribute('aria-pressed'), 'true')
+          assert.equal(await page.locator('.training-editor-name h2').innerText(),
+            await last.locator(':scope > strong').innerText())
+          const back = await controlWithinViewport(page.getByRole('button', { name: '로비로 돌아가기', exact: true }))
+          assert(back.left >= -1 && back.right <= back.width + 1
+            && back.top >= -1 && back.bottom <= back.height + 1, JSON.stringify(back))
+          const width = await page.evaluate(() => ({ actual: document.documentElement.scrollWidth, viewport: innerWidth }))
+          assert(width.actual <= width.viewport + 1, JSON.stringify(width))
+          return
+        }
         const search = page.getByRole('searchbox', { name: view === 'training' ? '포켓몬 이름 검색' : '보유 포켓몬 검색', exact: true })
         const searchControl = await controlWithinViewport(search)
         if (device.id === 'mobile' && view === 'training') {

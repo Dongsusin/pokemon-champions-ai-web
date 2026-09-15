@@ -3,6 +3,14 @@ import { applyGameTextScale } from './gameTextScale.js'
 
 const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1.0, viewport-fit=cover'
 
+export const MOBILE_LAYOUT_EVENT = 'champions:mobile-layout'
+
+/** 'landscape' | 'portrait' | 'desktop' */
+export function getMobileLayout() {
+  if (typeof document === 'undefined') return 'desktop'
+  return document.documentElement.dataset.mobileLayout ?? 'desktop'
+}
+
 const viewportMeta = document.querySelector('meta[name="viewport"]')
 const touchPointerQuery = window.matchMedia('(hover: none) and (pointer: coarse)')
 const landscapeQuery = window.matchMedia('(orientation: landscape)')
@@ -39,9 +47,13 @@ export function syncMobileViewport() {
 
   const layoutChanged = document.documentElement.dataset.mobileLayout !== layout
   document.documentElement.dataset.mobileLayout = layout
-  // The text-scale presets are desktop-only, so crossing the mobile boundary
-  // has to re-resolve the stored setting against the new layout.
-  if (layoutChanged) applyGameTextScale(loadGameSettings().game.textScale)
+  if (layoutChanged) {
+    // The text-scale presets are desktop-only, so crossing the mobile boundary
+    // has to re-resolve the stored setting against the new layout.
+    applyGameTextScale(loadGameSettings().game.textScale)
+    // Screens that render a different composition per layout subscribe here.
+    window.dispatchEvent(new CustomEvent(MOBILE_LAYOUT_EVENT, { detail: layout }))
+  }
 
   if (viewportMeta && viewportMeta.getAttribute('content') !== viewport) {
     viewportMeta.setAttribute('content', viewport)

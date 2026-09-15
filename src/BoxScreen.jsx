@@ -5,6 +5,8 @@ import {
   ArrowLeft,
   Backpack,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleOff,
   Crown,
   Dna,
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react'
 import BattleItemSprite from './BattleItemSprite'
 import PokemonSprite from './PokemonSprite'
+import { useIsCompactLayout } from './useMobileLayout'
 import {
   getPokemonEvolutionFamilyKey,
   getTrainingRosterPokemon,
@@ -140,6 +143,7 @@ function BoxScreen({
   const [selectedCaptureId, setSelectedCaptureId] = useState(trainingPokemon[0]?.captureId ?? null)
   const [search, setSearch] = useState('')
   const [rosterSort, setRosterSort] = useState('obtained')
+  const [rosterPage, setRosterPage] = useState(0)
   const [typeFilter, setTypeFilter] = useState('all')
   const [teamFilter, setTeamFilter] = useState('all')
   const [showShiny, setShowShiny] = useState(false)
@@ -194,6 +198,22 @@ function BoxScreen({
       return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
     })
   }, [rosterSort, search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
+
+  // Compact layouts show one screenful at a time instead of scrolling the
+  // whole box: six columns by two rows, paged.
+  const compactLayout = useIsCompactLayout()
+  const rosterPageSize = 12
+  const rosterPageCount = compactLayout
+    ? Math.max(1, Math.ceil(filteredRoster.length / rosterPageSize))
+    : 1
+  const safeRosterPage = Math.min(rosterPage, rosterPageCount - 1)
+  const visibleRoster = compactLayout
+    ? filteredRoster.slice(safeRosterPage * rosterPageSize, (safeRosterPage + 1) * rosterPageSize)
+    : filteredRoster
+
+  useEffect(() => {
+    if (rosterPage !== safeRosterPage) setRosterPage(safeRosterPage)
+  }, [rosterPage, safeRosterPage])
 
   const selectedSourcePokemon = trainingPokemon.find((entry) => entry.captureId === selectedCaptureId)
     ?? pokemon.find((entry) => entry.captureId === selectedCaptureId)
@@ -545,6 +565,27 @@ function BoxScreen({
           </div>
 
           <div className="team-box-mobile-tools">
+            {compactLayout && rosterPageCount > 1 && (
+              <div className="team-box-roster-pager" role="group" aria-label="보유 포켓몬 페이지">
+                <button
+                  type="button"
+                  aria-label="이전 포켓몬 페이지"
+                  disabled={safeRosterPage === 0}
+                  onClick={() => setRosterPage((page) => Math.max(0, page - 1))}
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <span aria-live="polite">{safeRosterPage + 1}<em> / {rosterPageCount}</em></span>
+                <button
+                  type="button"
+                  aria-label="다음 포켓몬 페이지"
+                  disabled={safeRosterPage >= rosterPageCount - 1}
+                  onClick={() => setRosterPage((page) => Math.min(rosterPageCount - 1, page + 1))}
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            )}
             <div className="team-box-mobile-presets" aria-label="모바일 저장 팀 선택">
               {teams.map((team, index) => (
                 <button
@@ -627,7 +668,7 @@ function BoxScreen({
 
           <div className="pc-box-grid-wrap team-box-grid-wrap">
             <div className="team-box-grid" aria-label={`보유 포켓몬 ${filteredRoster.length}마리`}>
-              {filteredRoster.map((entry) => {
+              {visibleRoster.map((entry) => {
                 const profile = getSpeciesProfile(entry.speciesId)
                 const teamMember = teamPokemonByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? null
                 const teamIndex = teamMember ? teamIds.indexOf(teamMember.captureId) : -1

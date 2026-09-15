@@ -49,6 +49,7 @@ import {
 import { getTrainingCostBreakdown, TRAINING_COSTS } from './data/trainingCosts'
 import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
 import { getUnlockedPokemonSkins } from './data/rareRewards.js'
+import { useIsCompactLayout } from './useMobileLayout'
 import './trainingEmptyMoves.css'
 
 const MOVE_CATEGORY_FILTERS = ['전체', '물리', '특수', '변화']
@@ -140,6 +141,11 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   const [pokemonSearch, setPokemonSearch] = useState('')
   const [pokemonSort, setPokemonSort] = useState('obtained')
   const [teamOnly, setTeamOnly] = useState(false)
+  // Phones train the battle party, not the whole box: the roster drops its
+  // search and sort controls and always shows the active team.
+  const compactLayout = useIsCompactLayout()
+  const rosterTeamOnly = compactLayout || teamOnly
+  const rosterSearch = compactLayout ? '' : pokemonSearch
   const [draftPokemonById, setDraftPokemonById] = useState({})
   const [spriteSide, setSpriteSide] = useState('front')
   const [movePickerSlot, setMovePickerSlot] = useState(null)
@@ -169,11 +175,11 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   }, [pokemon, teams])
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0] ?? null
   const filteredTrainingPokemon = useMemo(() => {
-    const query = pokemonSearch.trim().toLocaleLowerCase('ko-KR')
+    const query = rosterSearch.trim().toLocaleLowerCase('ko-KR')
     const matchingPokemon = trainingPokemon.filter((entry) => {
       const matchesSearch = !query || entry.name.toLocaleLowerCase('ko-KR').includes(query)
       const memberships = teamMembershipByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? []
-      const matchesTeam = !teamOnly || memberships.some((membership) => membership.id === activeTeam?.id)
+      const matchesTeam = !rosterTeamOnly || memberships.some((membership) => membership.id === activeTeam?.id)
       return matchesSearch && matchesTeam
     })
 
@@ -183,7 +189,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
       const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
       return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
     })
-  }, [activeTeam?.id, pokemonSearch, pokemonSort, teamMembershipByFamily, teamOnly, trainingPokemon])
+  }, [activeTeam?.id, rosterSearch, pokemonSort, teamMembershipByFamily, rosterTeamOnly, trainingPokemon])
 
   useEffect(() => {
     if (!trainingPokemon.some((entry) => entry.captureId === selectedId)) {
@@ -192,9 +198,9 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   }, [trainingPokemon, selectedId])
 
   useEffect(() => {
-    if (!teamOnly || filteredTrainingPokemon.some((entry) => entry.captureId === selectedId)) return
+    if (!rosterTeamOnly || filteredTrainingPokemon.some((entry) => entry.captureId === selectedId)) return
     setSelectedId(filteredTrainingPokemon[0]?.captureId ?? null)
-  }, [filteredTrainingPokemon, selectedId, teamOnly])
+  }, [filteredTrainingPokemon, selectedId, rosterTeamOnly])
 
   useEffect(() => {
     if (movePickerSlot === null && profilePicker === null) return undefined
@@ -586,16 +592,16 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
         <section className="training-roster-panel" aria-label="트레이닝 포켓몬 선택">
           <div className="training-roster-heading">
             <div>
-              <span>BOX POKÉMON</span>
-              <h2>포켓몬 선택</h2>
+              <span>{compactLayout ? 'BATTLE PARTY' : 'BOX POKÉMON'}</span>
+              <h2>{compactLayout ? (activeTeam?.name ?? '내 팀') : '포켓몬 선택'}</h2>
             </div>
             <strong aria-live="polite">
               {filteredTrainingPokemon.length}
-              <em>{pokemonSearch.trim() || teamOnly ? ` / ${trainingPokemon.length}계열` : '계열'}</em>
+              <em>{compactLayout ? '마리' : rosterSearch.trim() || teamOnly ? ` / ${trainingPokemon.length}계열` : '계열'}</em>
             </strong>
           </div>
 
-          <div className="training-filter-row">
+          {!compactLayout && <div className="training-filter-row">
             <div className="training-sort-control" role="group" aria-label="포켓몬 목록 보기 및 정렬 기준">
               <ArrowDownAZ size={14} aria-hidden="true" />
               <button
@@ -640,7 +646,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                 </button>
               )}
             </label>
-          </div>
+          </div>}
 
           <div className="training-roster-grid">
             {filteredTrainingPokemon.map((entry) => {
