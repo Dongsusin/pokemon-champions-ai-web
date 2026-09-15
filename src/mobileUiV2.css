@@ -56,10 +56,1058 @@ html[data-mobile-layout="landscape"] .team-box-grid-wrap{flex:1 1 0;min-height:0
 html[data-mobile-layout="landscape"] .team-box-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content;overflow-y:auto}
 html[data-mobile-layout="landscape"] :is(.team-box-card,.team-box-card-select){min-height:96px}
 html[data-mobile-layout="landscape"] .team-box-selection{position:relative;bottom:auto;min-height:88px;max-height:88px;overflow:hidden;flex:0 0 88px}
-html[data-mobile-layout="landscape"] .achievement-card-description,html[data-mobile-layout="landscape"] .achievement-card-progress-detail,html[data-mobile-layout="landscape"] .pokemon-usage-leaders-collapse,html[data-mobile-layout="landscape"] .pokemon-usage-column-head,html[data-mobile-layout="landscape"] .pokemon-usage-item-column,html[data-mobile-layout="landscape"] .pokemon-usage-count,html[data-mobile-layout="landscape"] .pokemon-usage-change{display:none!important}
+html[data-mobile-layout="landscape"] .achievement-card-description,html[data-mobile-layout="landscape"] .achievement-card-progress-detail,html[data-mobile-layout="landscape"] .pokemon-usage-column-head,html[data-mobile-layout="landscape"] .pokemon-usage-item-column,html[data-mobile-layout="landscape"] .pokemon-usage-count,html[data-mobile-layout="landscape"] .pokemon-usage-change{display:none!important}
 html[data-mobile-layout="landscape"] .pokemon-usage-row{grid-template-columns:32px minmax(0,1fr) minmax(72px,auto);min-height:54px}
 html[data-mobile-layout="landscape"] .pokemon-usage-rate-track,html[data-mobile-layout="landscape"] .pokemon-usage-method{display:none}
 html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:4px}
 html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons>button{grid-template-columns:1fr;justify-items:center;gap:2px;padding:3px 4px;text-align:center}
 html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons>button>span{min-width:0}
 .training-mobile-pages{display:none}
+
+/* Tablet landscape reference layout.
+   The examples use an information-priority frame: a compact branded header,
+   a small left context rail, and a larger working panel. Keep this block
+   scoped to the touch landscape data attribute so desktop remains unchanged.
+   Raid screens intentionally stay on their own layout. */
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view){
+  --mobile-topbar-height:clamp(56px,8.5dvh,72px);
+  display:flex;
+  flex-direction:column;
+  min-height:100dvh;
+  height:100dvh;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>.topbar{
+  display:grid;
+  grid-template-columns:minmax(0,auto) minmax(120px,1fr) auto;
+  flex:0 0 var(--mobile-topbar-height)!important;
+  width:100%;
+  height:var(--mobile-topbar-height)!important;
+  min-height:var(--mobile-topbar-height)!important;
+  max-height:var(--mobile-topbar-height)!important;
+  gap:clamp(6px,1vw,14px);
+  padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .topbar-brand-group{
+  display:flex;
+  align-items:center;
+  min-width:0;
+  gap:7px;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-mark{
+  width:clamp(38px,5.4vw,52px);
+  height:clamp(38px,5.4vw,52px);
+  flex:0 0 clamp(38px,5.4vw,52px);
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-title{
+  display:grid;
+  min-width:0;
+  max-width:clamp(142px,21vw,268px);
+  gap:1px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-title small{
+  font-size:clamp(6px,.72vw,9px);
+  letter-spacing:.2em;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-title strong{
+  overflow:hidden;
+  font-size:clamp(11px,1.35vw,18px);
+  letter-spacing:.055em;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-badge{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat{
+  display:flex;
+  width:100%;
+  min-width:0;
+  max-width:none;
+  margin:0;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-trigger{
+  width:100%;
+  min-width:0;
+  min-height:40px;
+  padding:5px 9px;
+  gap:7px;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-label,
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-preview-meta time,
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-chevron{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-preview-text{
+  min-width:0;
+  overflow:hidden;
+  font-size:clamp(9px,1.05vw,12px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .top-status{
+  display:flex;
+  min-width:0;
+  gap:clamp(4px,.65vw,8px);
+  margin:0;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.currency-card,.player-account){
+  min-width:0;
+  height:clamp(40px,6dvh,48px);
+  min-height:40px;
+  padding:4px 7px;
+  border-radius:12px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card{
+  width:clamp(78px,10vw,142px);
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card small{
+  overflow:hidden;
+  font-size:clamp(6px,.55vw,8px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card strong{
+  font-size:clamp(10px,1vw,14px);
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account{
+  width:clamp(38px,11vw,154px);
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-avatar{
+  width:30px;
+  height:30px;
+  flex-basis:30px;
+  border-radius:9px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-copy{
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-copy small{
+  overflow:hidden;
+  font-size:6px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-copy strong{
+  max-width:84px;
+  overflow:hidden;
+  font-size:clamp(8px,.8vw,11px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .icon-button{
+  width:clamp(38px,4.5vw,46px);
+  height:clamp(38px,4.5vw,46px);
+  flex:0 0 clamp(38px,4.5vw,46px);
+  border-radius:12px;
+}
+
+/* Battles already have their own turn bar and command HUD. Hide the global
+   header so the field and action buttons keep the full landscape viewport;
+   raid screens remain excluded by the existing .raid-view guard. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view)>.topbar{
+  display:none!important;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>:is(.lobby-layout,.battle-hub,.battle-select-screen,.ranked-screen,.rooms-screen,.battle-factory,.factory-rankings,.competition-screen,.pokemon-usage-screen,.achievement-screen,.pc-screen,.training-screen,.shop-screen,.draw-screen,.hatch-screen){
+  flex:1 1 auto;
+  width:100%;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:hidden!important;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>:is(.lobby-layout,.battle-hub,.battle-select-screen,.ranked-screen,.rooms-screen,.battle-factory,.factory-rankings,.competition-screen,.pokemon-usage-screen,.achievement-screen,.pc-screen,.training-screen,.shop-screen,.draw-screen,.hatch-screen)::-webkit-scrollbar{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>.pc-screen{
+  overflow:auto!important;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>.pc-screen::-webkit-scrollbar{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .team-box-workspace{
+  flex:1 1 0!important;
+  height:auto!important;
+  min-height:0!important;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .team-box-panel{
+  flex:1 1 auto;
+  height:100%!important;
+  min-height:0!important;
+}
+
+/* Main menu: mirror the examples with a compact team rail and a 3-column mode board. */
+html[data-mobile-layout="landscape"] .lobby-layout{
+  display:grid;
+  grid-template-columns:minmax(204px,.36fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);
+  align-items:stretch;
+  gap:clamp(7px,1.1vw,14px);
+  width:100%;
+  max-width:none;
+  padding:clamp(7px,1.2vw,16px) max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right));
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-panel,
+html[data-mobile-layout="landscape"] .mode-panel{
+  width:100%;
+  min-height:0;
+  padding:clamp(7px,1vw,14px);
+  border-radius:clamp(14px,1.5vw,24px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-panel{
+  display:flex;
+  flex-direction:column;
+  gap:clamp(5px,.8vw,9px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-heading{
+  min-height:32px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-heading strong{
+  font-size:clamp(12px,1.4vw,18px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-heading>b{
+  font-size:clamp(13px,1.5vw,18px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-navigation{
+  min-height:42px;
+  padding:3px;
+  border-radius:10px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-navigation>button{
+  width:34px;
+  height:34px;
+  border-radius:9px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-navigation strong{
+  max-width:150px;
+  font-size:clamp(11px,1.1vw,15px);
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-list{
+  flex:1 1 auto;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-rows:repeat(3,minmax(0,1fr));
+  min-height:0;
+  gap:clamp(4px,.55vw,7px);
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-card{
+  min-height:0;
+  padding:clamp(4px,.7vw,8px);
+  grid-template-columns:clamp(34px,4vw,48px) minmax(0,1fr);
+  grid-template-rows:minmax(30px,1fr) auto;
+  gap:3px 5px;
+  border-radius:10px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-icon-frame{
+  width:clamp(40px,4.5vw,58px);
+  height:clamp(34px,4.1vw,48px);
+  margin:auto;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-card-copy,
+html[data-mobile-layout="landscape"] .lobby-team-moves{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-name-row strong{
+  overflow:hidden;
+  font-size:clamp(9px,1vw,13px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-footer{
+  min-height:30px;
+  padding-top:3px;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-footer button{
+  min-height:32px;
+  padding-block:4px;
+  font-size:clamp(9px,1vw,12px);
+}
+
+html[data-mobile-layout="landscape"] .mode-panel{
+  display:flex;
+  flex-direction:column;
+  gap:clamp(5px,.8vw,10px);
+}
+
+html[data-mobile-layout="landscape"] .mode-heading{
+  flex:0 0 auto;
+  min-height:32px;
+  margin:0;
+}
+
+html[data-mobile-layout="landscape"] .mode-heading h2{
+  margin-top:2px;
+  font-size:clamp(13px,1.5vw,20px);
+}
+
+html[data-mobile-layout="landscape"] .mode-grid{
+  flex:1 1 auto;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-rows:repeat(3,minmax(0,1fr));
+  grid-auto-rows:auto;
+  min-height:0;
+  gap:clamp(5px,.8vw,10px);
+}
+
+html[data-mobile-layout="landscape"] .mode-card,
+html[data-mobile-layout="landscape"] .mode-card.mode-start,
+html[data-mobile-layout="landscape"] .mode-card.mode-achievements,
+html[data-mobile-layout="landscape"] .mode-card.mode-usage{
+  grid-column:auto!important;
+  grid-row:auto!important;
+  min-height:0;
+  padding:clamp(6px,.85vw,12px);
+  border-radius:clamp(11px,1.2vw,17px);
+}
+
+html[data-mobile-layout="landscape"] .mode-card .mode-icon{
+  width:clamp(32px,4.1vw,50px);
+  height:clamp(32px,4.1vw,50px);
+  border-radius:clamp(9px,1vw,13px);
+}
+
+html[data-mobile-layout="landscape"] .mode-card .mode-copy{
+  gap:2px;
+}
+
+html[data-mobile-layout="landscape"] .mode-card .mode-copy small{
+  font-size:clamp(6px,.62vw,8px);
+}
+
+html[data-mobile-layout="landscape"] .mode-card .mode-copy strong{
+  overflow:hidden;
+  font-size:clamp(11px,1.22vw,17px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .mode-card .mode-copy>span,
+html[data-mobile-layout="landscape"] .mode-card .mode-badge{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .mode-card .mode-arrow{
+  right:7px;
+  bottom:7px;
+  width:15px;
+  height:15px;
+}
+
+/* Short landscape phones/tablets must keep every mode affordance inside the
+   first viewport. The desktop mode grid gives the start card a two-row span;
+   on touch screens each mode gets one equal, compact cell instead. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:520px){
+  html[data-mobile-layout="landscape"] .lobby-layout,
+  html[data-mobile-layout="landscape"] .lobby-team-panel,
+  html[data-mobile-layout="landscape"] .mode-panel{
+    height:100%!important;
+    min-height:0!important;
+  }
+
+  html[data-mobile-layout="landscape"] .mode-panel{
+    overflow:hidden!important;
+  }
+
+  html[data-mobile-layout="landscape"] .mode-grid{
+    min-height:0!important;
+    grid-template-rows:repeat(3,minmax(0,1fr));
+    overflow:hidden;
+  }
+
+  html[data-mobile-layout="landscape"] .mode-card,
+  html[data-mobile-layout="landscape"] .mode-card.mode-start,
+  html[data-mobile-layout="landscape"] .mode-card.mode-achievements,
+  html[data-mobile-layout="landscape"] .mode-card.mode-usage{
+    min-height:0!important;
+    align-items:center!important;
+    overflow:hidden;
+  }
+
+  html[data-mobile-layout="landscape"] .mode-card .mode-icon{
+    width:clamp(28px,4vw,44px);
+    height:clamp(28px,4vw,44px);
+  }
+
+  html[data-mobile-layout="landscape"] .mode-card .mode-copy strong,
+  html[data-mobile-layout="landscape"] .mode-start .mode-copy strong{
+    font-size:clamp(10px,1.1vw,15px);
+  }
+}
+
+/* Training: two-column party rail and a single active editor page. */
+html[data-mobile-layout="landscape"] .training-screen{
+  display:flex;
+  flex-direction:column;
+  gap:clamp(5px,.8vw,10px);
+  padding:clamp(7px,1.2vw,16px) max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right));
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .training-header{
+  flex:0 0 auto;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  min-height:clamp(38px,6.5dvh,58px);
+  gap:clamp(6px,1vw,12px);
+}
+
+html[data-mobile-layout="landscape"] .training-title h1{
+  overflow:hidden;
+  margin:1px 0 0;
+  font-size:clamp(18px,2.4vw,28px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .training-title p,
+html[data-mobile-layout="landscape"] .training-roster-heading small{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .training-workspace{
+  display:grid;
+  grid-template-columns:minmax(174px,.38fr) minmax(0,1fr);
+  flex:1 1 auto;
+  min-height:0;
+  gap:clamp(6px,1vw,12px);
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-panel{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  padding:clamp(5px,.8vw,10px);
+  overflow:hidden;
+  border-radius:clamp(13px,1.4vw,20px);
+}
+
+html[data-mobile-layout="landscape"] .training-roster-heading{
+  flex:0 0 auto;
+  min-height:30px;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-heading h2{
+  font-size:clamp(12px,1.35vw,18px);
+}
+
+html[data-mobile-layout="landscape"] .training-filter-row{
+  position:relative;
+  display:block;
+  flex:0 0 auto;
+  height:clamp(52px,8dvh,66px);
+  margin-bottom:clamp(3px,.5vw,6px);
+}
+
+html[data-mobile-layout="landscape"] .training-sort-control{
+  position:absolute;
+  inset:0 0 auto;
+  z-index:2;
+  height:clamp(24px,3.4dvh,30px);
+}
+
+html[data-mobile-layout="landscape"] .training-roster-search{
+  position:absolute;
+  inset:auto 0 0;
+  min-height:clamp(24px,3.4dvh,30px);
+  height:clamp(24px,3.4dvh,30px);
+  padding-block:0;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-search input{
+  height:20px;
+  font-size:clamp(9px,1vw,12px);
+  line-height:1.2;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-auto-rows:minmax(52px,max-content);
+  flex:1 1 auto;
+  min-height:0;
+  gap:clamp(3px,.5vw,6px);
+  overflow:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-grid::-webkit-scrollbar,
+html[data-mobile-layout="landscape"] .training-editor-body::-webkit-scrollbar{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-card{
+  min-height:52px;
+  padding:3px;
+  border-radius:9px;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-sprite-frame{
+  width:clamp(42px,5vw,66px);
+  height:clamp(36px,4.7vw,58px);
+  max-width:none;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-card>strong{
+  overflow:hidden;
+  font-size:clamp(8px,.85vw,11px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-card :is(.training-card-types,.training-card-level){
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-panel{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+  border-radius:clamp(13px,1.4vw,20px);
+}
+
+html[data-mobile-layout="landscape"] .training-editor-heading{
+  flex:0 0 auto;
+  min-height:clamp(38px,6dvh,56px);
+  padding:clamp(5px,.8vw,10px);
+}
+
+html[data-mobile-layout="landscape"] .training-editor-name h2{
+  overflow:hidden;
+  font-size:clamp(14px,1.8vw,23px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .training-mobile-pages{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:4px;
+  padding:4px;
+  border-bottom:1px solid rgba(87,76,158,.2);
+}
+
+html[data-mobile-layout="landscape"] .training-mobile-pages button{
+  min-height:32px;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-actions{
+  flex:0 0 auto;
+  min-height:42px;
+  padding:5px 7px;
+}
+
+/* Box and usage pages retain touch scrolling inside the content while hiding browser chrome. */
+html[data-mobile-layout="landscape"] .pc-header,
+html[data-mobile-layout="landscape"] .shop-header,
+html[data-mobile-layout="landscape"] .draw-header{
+  flex:0 0 auto;
+  min-height:clamp(44px,7dvh,64px);
+  gap:clamp(6px,1vw,12px);
+}
+
+html[data-mobile-layout="landscape"] :is(.pc-title h1,.shop-title h1,.draw-title h1){
+  overflow:hidden;
+  font-size:clamp(18px,2.4vw,30px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] :is(.pc-title p,.shop-title p,.draw-title p){display:none}
+
+html[data-mobile-layout="landscape"] .team-box-workspace{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .team-box-grid-wrap,
+html[data-mobile-layout="landscape"] .team-box-grid{
+  min-height:0;
+  overflow:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .team-box-grid-wrap::-webkit-scrollbar,
+html[data-mobile-layout="landscape"] .team-box-grid::-webkit-scrollbar,
+html[data-mobile-layout="landscape"] .pokemon-usage-list-scroll::-webkit-scrollbar,
+html[data-mobile-layout="landscape"] .achievement-catalog-scroll::-webkit-scrollbar{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-screen,
+html[data-mobile-layout="landscape"] .achievement-screen{
+  gap:clamp(5px,.8vw,10px);
+  padding:clamp(7px,1.2vw,16px) max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right));
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-header,
+html[data-mobile-layout="landscape"] .achievement-header{
+  flex:0 0 auto;
+  min-height:clamp(42px,7dvh,62px);
+}
+
+html[data-mobile-layout="landscape"] .pokemon-usage-list-scroll,
+html[data-mobile-layout="landscape"] .achievement-catalog-scroll{
+  min-height:0;
+  overflow:auto;
+  scrollbar-width:none;
+}
+
+/* Secondary battle pages use the same compact header rhythm as the examples. */
+html[data-mobile-layout="landscape"] :is(.battle-hub,.battle-select-screen,.ranked-screen,.rooms-screen,.battle-factory,.factory-rankings,.competition-screen){
+  padding:clamp(7px,1.2vw,16px) max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right));
+}
+
+html[data-mobile-layout="landscape"] :is(.battle-hub h1,.battle-select-title h1,.ranked-title h1,.rooms-title h1,.factory-title h1){
+  overflow:hidden;
+  font-size:clamp(18px,2.5vw,30px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] :is(.battle-hub p,.battle-select-title p,.ranked-title p,.rooms-title p,.factory-title p,.battle-hub-feature-copy p){
+  display:none;
+}
+
+/* AI format selection keeps the party preview beside the two competition
+   choices on touch landscape screens. The desktop breakpoint stacks these
+   panels and gives each a large minimum height, which would push the confirm
+   action beyond a phone or tablet viewport. */
+html[data-mobile-layout="landscape"] .battle-select-screen{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden!important;
+}
+
+html[data-mobile-layout="landscape"] .battle-select-workspace{
+  display:grid;
+  grid-template-columns:minmax(168px,.72fr) minmax(0,1.28fr)!important;
+  gap:clamp(5px,.8vw,10px);
+  flex:1 1 0!important;
+  min-height:0!important;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] :is(.battle-party-preview-panel,.battle-mode-select-panel){
+  min-height:0!important;
+  padding:clamp(6px,.9vw,11px);
+  border-radius:clamp(11px,1.2vw,17px);
+}
+
+html[data-mobile-layout="landscape"] .battle-party-preview-panel{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .battle-party-preview-list{
+  grid-template-rows:repeat(3,minmax(0,1fr));
+  gap:4px;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .battle-party-preview-card{
+  grid-template-columns:clamp(34px,4vw,52px) minmax(0,1fr);
+  min-height:0!important;
+  padding:3px;
+}
+
+html[data-mobile-layout="landscape"] .battle-party-icon-frame{
+  width:clamp(34px,4.5vw,50px);
+  height:clamp(34px,4.5vw,50px);
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-select-panel{
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr) auto auto;
+  gap:clamp(4px,.7vw,8px);
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-select-heading{
+  min-height:34px;
+  padding-bottom:4px;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-select-heading h2{
+  overflow:hidden;
+  font-size:clamp(12px,1.5vw,18px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-count,
+html[data-mobile-layout="landscape"] .battle-mode-select-heading p{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .ai-battle-format-selector,
+html[data-mobile-layout="landscape"] .ai-battle-format-options{
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .ai-battle-format-options{
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .ai-battle-format-options>button{
+  min-height:34px;
+  padding:4px 6px;
+  border-radius:7px;
+}
+
+html[data-mobile-layout="landscape"] .ai-battle-format-options strong{
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] .ai-battle-format-rules{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .ai-battle-format-options span{
+  display:block;
+  overflow:hidden;
+  font-size:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-option-list{
+  grid-template-rows:repeat(2,minmax(0,1fr));
+  min-height:0;
+  gap:5px;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-option-card{
+  grid-template-columns:clamp(36px,6vw,70px) minmax(0,1fr) auto;
+  gap:6px;
+  min-height:0!important;
+  padding:5px;
+  border-radius:10px;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-option-art{
+  width:clamp(34px,5.4vw,58px);
+  height:clamp(34px,5.4vw,58px);
+  border-radius:12px;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-option-copy>strong{
+  overflow:hidden;
+  font-size:clamp(11px,1.35vw,17px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-option-copy>em,
+html[data-mobile-layout="landscape"] .battle-mode-meta-row,
+html[data-mobile-layout="landscape"] .battle-mode-selection-state{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty{
+  grid-template-columns:1fr;
+  min-height:38px;
+  padding:4px 6px;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty>header em,
+html[data-mobile-layout="landscape"] .battle-hard-boost-selector{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty-controls{
+  grid-template-columns:1fr;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button{
+  min-height:27px;
+  padding:2px 4px;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-confirm-bar{
+  min-height:38px;
+  grid-template-columns:30px minmax(0,1fr) auto;
+  gap:5px;
+  padding:4px 5px;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-confirm-icon{
+  width:28px;
+  height:28px;
+}
+
+html[data-mobile-layout="landscape"] .battle-mode-confirm-bar>button{
+  min-width:110px;
+  min-height:30px;
+  padding-inline:6px;
+  font-size:10px;
+}
+
+html[data-mobile-layout="landscape"] :is(.battle-hub-overview,.rooms-list,.rooms-progress-panel,.rooms-selection,.factory-panel-scroll,.ranked-leaderboard-scroll){
+  min-height:0;
+  overflow:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] :is(.battle-hub-overview,.rooms-list,.rooms-progress-panel,.rooms-selection,.factory-panel-scroll,.ranked-leaderboard-scroll)::-webkit-scrollbar{
+  display:none;
+}
+
+/* Narrow landscape phones keep the same composition but remove secondary copy. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-width:760px){
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>.topbar{
+    grid-template-columns:minmax(0,auto) minmax(80px,1fr) auto;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-title{
+    max-width:110px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-title strong{
+    font-size:11px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-preview-text{
+    font-size:9px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card{
+    width:78px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card small,
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-copy{
+    display:none;
+  }
+
+  html[data-mobile-layout="landscape"] .lobby-layout{
+    grid-template-columns:minmax(170px,.36fr) minmax(0,1fr);
+  }
+
+  html[data-mobile-layout="landscape"] .mode-grid{
+    gap:4px;
+  }
+
+  html[data-mobile-layout="landscape"] .mode-card .mode-copy strong{
+    font-size:10px;
+  }
+
+  html[data-mobile-layout="landscape"] .training-workspace{
+    grid-template-columns:minmax(148px,.36fr) minmax(0,1fr);
+  }
+}
+
+@media (min-width:960px) and (hover:none) and (pointer:coarse) and (orientation:landscape){
+  /* Tablet width has room for the example's contextual party strip. */
+  html[data-mobile-layout="landscape"] .pokedex-workspace{
+    display:grid;
+    grid-template-columns:minmax(180px,.28fr) minmax(0,1fr);
+    gap:clamp(7px,1vw,12px);
+  }
+
+  html[data-mobile-layout="landscape"] .pokedex-workspace>.pc-party-panel{
+    display:flex;
+    min-width:0;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  html[data-mobile-layout="landscape"] .pokedex-workspace .team-box-panel{
+    min-width:0;
+  }
+}
+
+/* Large text settings must still fit the tablet frame. The editor keeps its
+   selected page scrollable, while the roster uses content-sized rows so
+   enlarged glyphs never collide with the next card. */
+html[data-mobile-layout="landscape"] .training-header .training-level-badge{
+  grid-column:auto!important;
+  min-height:32px;
+  padding:0 8px;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-grid{
+  grid-auto-rows:max-content!important;
+  align-content:start!important;
+}
+
+html[data-mobile-layout="landscape"] .training-roster-card{
+  height:max-content;
+  align-self:start;
+}
+
+html[data-mobile-layout="landscape"] :is(.training-title,.training-roster-heading,.training-editor-name) :is(h1,h2,strong){
+  line-height:1.25;
+}
+
+/* The settings usage preview shares the modal's shorter canvas. Keep its
+   controls and one detailed row visible when TOP 3 is expanded. */
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded{
+  gap:3px!important;
+  padding:0!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-header{
+  min-height:24px!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-controls{
+  min-height:28px!important;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-leader,
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-leaders-collapse .pokemon-usage-leader{
+  min-height:30px!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-toolbar{
+  min-height:27px!important;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-column-head{
+  min-height:20px!important;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-row{
+  min-height:42px!important;
+  padding-block:2px!important;
+}
+
+html[data-mobile-layout="landscape"] .settings-usage-open .pokemon-usage-embedded .pokemon-usage-pagination{
+  min-height:30px!important;
+  padding-block:2px!important;
+}
+
+/* Equipment and detail pickers are modal surfaces. On short landscape
+   screens they must cover the compact header as well, otherwise the header
+   can sit above the close button and steal touch input. */
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .item-equip-backdrop{
+  inset:0!important;
+  z-index:240!important;
+  padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .item-equip-panel.has-item-recommendations{
+  width:min(1100px,100%);
+  height:100%;
+  max-height:100%;
+}
+
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>.pc-screen:has(.item-equip-backdrop){
+  z-index:20!important;
+}
+
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:460px){
+  html[data-mobile-layout="landscape"] .training-header .training-title>span,
+  html[data-mobile-layout="landscape"] .training-header .training-level-badge>span{
+    display:none;
+  }
+
+  html[data-mobile-layout="landscape"] .training-header{
+    min-height:34px!important;
+    max-height:42px;
+  }
+
+  html[data-mobile-layout="landscape"] .training-title h1{
+    font-size:clamp(16px,2.4vw,24px)!important;
+  }
+
+  html[data-mobile-layout="landscape"] .training-level-badge strong{
+    font-size:clamp(14px,1.9vw,20px)!important;
+  }
+
+  html[data-mobile-layout="landscape"] .training-filter-row{
+    height:50px!important;
+  }
+}
+
+/* On phone-width landscape the box keeps its original stacked viewport. The
+   grid wrapper must clip its own background so it cannot sit above the
+   selection dock when the text scale is enlarged. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-width:959px){
+  html[data-mobile-layout="landscape"] .team-box-grid-wrap{
+    overflow:hidden!important;
+  }
+
+  html[data-mobile-layout="landscape"] .team-box-grid{
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+}
+
+/* The 1.5x/2x text presets intentionally keep the content readable. Give
+   the box page a little extra internal canvas at those presets so its search,
+   scrollable roster and selected-Pokémon dock never overlap. */
+html[data-mobile-layout="landscape"][data-game-text-scale="1.5"] .app-shell:not(.raid-view)>.pc-screen,
+html[data-mobile-layout="landscape"][data-game-text-scale="2"] .app-shell:not(.raid-view)>.pc-screen{
+  min-height:calc(100dvh + 170px)!important;
+}

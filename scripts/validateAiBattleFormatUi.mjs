@@ -20,7 +20,7 @@ const origin = `http://127.0.0.1:${port}`
 const owned = [6, 9, 3, 25, 94, 149].map(speciesId => normalizePokemon({ speciesId, captureId: `dex-${speciesId}`, directDrawCount: 1 }))
 const ids = owned.map(pokemon => pokemon.captureId)
 const teams = createSavedTeams(ids, ids)
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'mobileTouch', 'mobileUiV2']
 const entry = `import React,{StrictMode} from 'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';import '/src/mobileViewport.js';
 ${styles.map(name => `import '/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{

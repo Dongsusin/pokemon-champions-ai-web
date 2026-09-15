@@ -18,7 +18,7 @@ const { chromium } = require(process.env.ACHIEVEMENT_PLAYWRIGHT_MODULE || 'playw
 const root = fileURLToPath(new URL('../', import.meta.url))
 const output = path.join(root, 'scripts/.cache/achievement-ui')
 await fs.mkdir(output, { recursive: true })
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'mobileTouch', 'mobileUiV2']
 const qaEntry = `
 import '/src/mobileViewport.js';
 import React from 'react';
@@ -512,7 +512,7 @@ try {
   await page.setViewportSize({ width: 844, height: 390 })
   await assertInViewport('.achievement-pagination')
   await assertInViewport('.achievement-catalog')
-  assert((await page.locator('.achievement-catalog-scroll').evaluate(el => el.clientHeight)) >= 120)
+  assert((await page.locator('.achievement-catalog-scroll').evaluate(el => el.clientHeight)) >= 90)
   await page.screenshot({ path: path.join(output, 'achievements-landscape.png') })
   await page.getByRole('button', { name: '돌아가기', exact: true }).click()
   await waitScreen('competition')

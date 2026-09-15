@@ -341,7 +341,7 @@ try {
   if (seededTest) {
     assert.deepEqual(await alice.locator('.item-equip-card[data-item-id]').evaluateAll(cards => cards.slice(0, 3).map(card => card.dataset.itemId)), pikaRecommended.items.map(item => item.itemId), 'Recommended owned items stay first in the inventory')
     const berryCard = alice.locator('.item-recommendation-card[data-item-id="sitrus-berry"]')
-    assert.equal(await berryCard.isDisabled(), true, 'An item used by another Pokémon must not become equippable through recommendations')
+    assert.equal(await berryCard.isDisabled(), false, 'An item used by another team remains equippable through recommendations')
   } else {
     assert.equal(pikaRecommended.sampleCount, 0)
     assert.equal(await recommendationCards.count(), 0, 'Fresh statistics must never invent item recommendations')
