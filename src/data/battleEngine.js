@@ -314,6 +314,22 @@ const IVY_CUDGEL_VARIANTS = {
   'wellspring-mask': { key: 'WELLSPRING_MASK', type: '물' },
   'cornerstone-mask': { key: 'CORNERSTONE_MASK', type: '바위' },
 }
+const IVY_CUDGEL_FORM_VARIANTS = {
+  ogerpon: { key: 'TEAL_MASK', type: '풀' },
+  'ogerpon-teal-tera': { key: 'TEAL_MASK', type: '풀' },
+  'ogerpon-hearthflame-mask': { key: 'HEARTHFLAME_MASK', type: '불꽃' },
+  'ogerpon-hearthflame-tera': { key: 'HEARTHFLAME_MASK', type: '불꽃' },
+  'ogerpon-wellspring-mask': { key: 'WELLSPRING_MASK', type: '물' },
+  'ogerpon-wellspring-tera': { key: 'WELLSPRING_MASK', type: '물' },
+  'ogerpon-cornerstone-mask': { key: 'CORNERSTONE_MASK', type: '바위' },
+  'ogerpon-cornerstone-tera': { key: 'CORNERSTONE_MASK', type: '바위' },
+}
+
+function resolveIvyCudgelVariant(attacker) {
+  return IVY_CUDGEL_VARIANTS[attacker?.heldItemId]
+    ?? IVY_CUDGEL_FORM_VARIANTS[attacker?.slug]
+    ?? { key: 'TEAL_MASK', type: '풀' }
+}
 
 const HELD_ITEM_FORM_RULES = Object.freeze({
   'adamant-crystal': { species: 'dialga', form: 'dialga-origin' },
@@ -519,10 +535,10 @@ function moveAnimationMetadata(attacker, move, action, moveCategory) {
     animationType = attacker.teraActive ? attacker.teraType : move.type
     animationVariantKey = animationType
   } else if (move.id === 'ivycudgel') {
-    const maskVariant = IVY_CUDGEL_VARIANTS[attacker.heldItemId]
+    const maskVariant = resolveIvyCudgelVariant(attacker)
     animationVariant = 'FORM_TYPE_VARIANTS'
-    animationVariantKey = maskVariant?.key ?? 'TEAL_MASK'
-    animationType = maskVariant?.type ?? move.type
+    animationVariantKey = maskVariant.key
+    animationType = maskVariant.type
   }
 
   return {
@@ -2236,6 +2252,13 @@ function resolveEnvironmentMove(state, attacker, defender, move) {
   if (attacker.ability === '균사의힘' && isStatusMove(move)) resolvedMove.ignoreAbility = true
   if (attacker.electrifyActive) resolvedMove.type = '전기'
   if (state.environment?.ionDelugeTurns > 0 && resolvedMove.type === '노말') resolvedMove.type = '전기'
+  if (move.id === 'ivycudgel' && !attacker.electrifyActive) {
+    // Ivy Cudgel's type follows Ogerpon's mask, including its Tera form.
+    // Keep Electrify's explicit one-turn override above intact.
+    const variant = resolveIvyCudgelVariant(attacker)
+    resolvedMove.type = variant.type
+    resolvedMove.typeId = typeClassName(variant.type)
+  }
   if (move.id === 'naturalgift' && heldItemEffectsActive(attacker)) {
     resolvedMove.type = getBattleItem(attacker.heldItemId)?.naturalGiftType ?? resolvedMove.type
   }

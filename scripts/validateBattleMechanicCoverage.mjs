@@ -5,6 +5,7 @@ import generatedBattleMoves from '../src/data/generatedBattleMoves.json' with { 
 import battleItems from '../src/data/generatedBattleItems.js'
 import {
   createBattle,
+  createBattleTurnTimeline,
   forcePlayerSwitch,
   getForcedBattleAction,
   getBattleMovePreview,
@@ -162,6 +163,35 @@ function preventOpponent(state, slot = 0) {
     [pokemon('snorlax', ['splash'])],
   )
   assert.equal(getBattleMovePreview(state, 'player', 0).type, '악')
+}
+
+{
+  const maskTypes = [
+    ['teal-mask', '풀'],
+    ['wellspring-mask', '물'],
+    ['hearthflame-mask', '불꽃'],
+    ['cornerstone-mask', '바위'],
+  ]
+  maskTypes.forEach(([heldItemId, expectedType]) => {
+    const state = battle(
+      [pokemon('ogerpon', ['ivycudgel'], { heldItemId })],
+      [pokemon('blissey', ['splash'])],
+    )
+    assert.equal(
+      getBattleMovePreview(state, 'player', 0).type,
+      expectedType,
+      `Ivy Cudgel should follow ${heldItemId} type`,
+    )
+    const { timeline } = createBattleTurnTimeline(
+      state,
+      move(),
+      fixedRandom,
+      [move()],
+    )
+    const announce = timeline.find((step) => step.phase === 'announce' && step.sideId === 'player')
+    assert.equal(announce?.moveId, 'ivycudgel')
+    assert.equal(announce?.moveType, expectedType)
+  })
 }
 
 {
