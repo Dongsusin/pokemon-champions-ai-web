@@ -2668,3 +2668,79 @@ html[data-mobile-layout="landscape"] .shop-item-card>:last-child button{
 html[data-mobile-layout="landscape"] .lobby-team-pages button{
   min-width:26px;
 }
+
+/* Tablet-width touch devices (>=960px CSS px, e.g. a 961px landscape phone)
+   hit mobileUiV2's tablet branch, which re-shows the pokedex party strip and
+   splits the workspace into two columns. That predates this sheet's own box
+   layout and fights it: the roster track collapsed to 0px, the loadout
+   controls were squeezed into a sliver and the roster pager was pushed to
+   x=-271, off the left edge. The box already carries its party state in the
+   grid badges and the detail column, so keep the single-column workspace at
+   every landscape width. */
+@media (min-width:960px){
+  html[data-mobile-layout="landscape"] .pokedex-workspace{
+    display:block;
+    grid-template-columns:none;
+  }
+
+  html[data-mobile-layout="landscape"] .pokedex-workspace>.pc-party-panel{
+    display:none;
+  }
+}
+
+/* The roster pager inherited the dark-panel ink (#f7fbff) but sits on the
+   box's light tool strip, so "1 / 24" and its arrows were white on white.
+   Give it the dark ink and light chip the controls beside it use. */
+html[data-mobile-layout="landscape"] .team-box-roster-pager{
+  color:#1b2550;
+}
+
+html[data-mobile-layout="landscape"] .team-box-roster-pager>span{
+  color:#1b2550;
+  font-size:11px;
+  font-weight:800;
+}
+
+html[data-mobile-layout="landscape"] .team-box-roster-pager button{
+  color:#1b2550;
+  border-color:rgba(27,37,80,.32);
+  background:rgba(255,255,255,.94);
+}
+
+html[data-mobile-layout="landscape"] .team-box-roster-pager button:disabled{
+  opacity:.42;
+}
+
+/* The saved-team chips carried no landscape styling at all, so they rendered
+   as the browser's default grey buttons on the light tool strip and the
+   selected slot was indistinguishable from the rest. Match the pager and
+   mark the active slot. */
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button{
+  display:grid;
+  place-items:center;
+  gap:0;
+  border:1px solid rgba(27,37,80,.3);
+  border-radius:8px;
+  color:#1b2550;
+  line-height:1.05;
+  background:rgba(255,255,255,.94);
+  cursor:pointer;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button strong{
+  font-weight:800;
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button small{
+  color:rgba(27,37,80,.66);
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button.selected{
+  border-color:rgba(98,86,214,.9);
+  color:#f7fbff;
+  background:linear-gradient(180deg,#6f5ce0,#5a49c8);
+}
+
+html[data-mobile-layout="landscape"] .team-box-mobile-presets button.selected small{
+  color:rgba(247,251,255,.8);
+}
