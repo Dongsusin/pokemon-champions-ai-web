@@ -385,7 +385,11 @@ function maxMoveBase(move, definition, options) {
     isGmaxMove: Boolean(options.isGmax),
     maxMoveEffect: definition.effect,
     bypassesMaxGuard: Boolean(definition.bypassProtect),
-    ignoreAbility: Boolean(definition.ignoreAbility),
+    // The source move may have been marked to bypass the defender's ability
+    // by the attacker's Mold Breaker family ability.  Max Move conversion
+    // must preserve that flag while still honoring G-Max moves that bypass
+    // abilities by definition.
+    ignoreAbility: Boolean(move.ignoreAbility || definition.ignoreAbility),
     baseMoveId: move.id,
     baseMoveName: move.name,
     animationReferenceKey: definition.id,

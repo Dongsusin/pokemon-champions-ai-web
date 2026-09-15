@@ -211,6 +211,29 @@ function preventOpponent(state, slot = 0) {
 }
 
 {
+  // Mold Breaker must continue bypassing Levitate after a Ground move is
+  // converted to Max Quake.  Max conversion used to overwrite the source
+  // move's ignoreAbility flag, making the Dynamaxed attacker miss entirely.
+  const state = battle(
+    [pokemon('excadrill', ['earthquake'], { ability: '틀깨기' })],
+    [pokemon('bronzong', ['protect'], { ability: '부유' })],
+  )
+  const preview = getBattleMovePreview(state, 'player', 0, 0, 0, 'dynamax')
+  assert.equal(preview.id, 'maxquake')
+  assert.equal(preview.ignoreAbility, true)
+  preventOpponent(state)
+  const targetHp = state.opponent.team[0].hp
+  const result = createBattleTurnTimeline(
+    state,
+    move(0, 0, 0, { gimmick: 'dynamax' }),
+    fixedRandom,
+    [],
+  )
+  assert(result.state.opponent.team[0].hp < targetHp)
+  assert(!result.state.log.some((entry) => entry.message.includes('부유! 공격을 무효화했다')))
+}
+
+{
   // Destiny Bond cannot be selected by the AI on the immediately following
   // turn, preventing Froslass from chaining the move indefinitely.
   let state = battle(
