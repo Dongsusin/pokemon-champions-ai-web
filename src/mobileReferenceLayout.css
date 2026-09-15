@@ -2596,3 +2596,75 @@ html[data-mobile-layout="landscape"] .lobby-team-icon-frame{
   margin:0!important;
   justify-self:center;
 }
+
+/* Box detail column. screenRedesign.css gives the loadout buttons explicit
+   min-widths (132 / 104 / 108 / 116px) for the desktop selection bar. In the
+   landscape detail column those are wider than the two 80px tracks, and a
+   grid item never shrinks below its min-width, so each button overran its
+   track: 지닌 도구 overlapped 테라 by 48px, 다이맥스 overlapped 이로치 by 24px,
+   and the right pair spilled past the panel edge. Let them shrink to their
+   track and widen the column enough that the labels stay readable. */
+html[data-mobile-layout="landscape"] .team-box-panel{
+  grid-template-columns:auto minmax(0,1fr) minmax(206px,.26fr);
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection>*{
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection>button{
+  min-width:0;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection>button :is(small,strong){
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* With the buttons able to shrink there is height to spare in the column
+   (art 40 + name 28 + four 35px rows + action 34 + gaps fits 277px), so give
+   each control the column's full width instead of half of it. At 95px the
+   labels ellipsised to "지닌 도구…" / "MAX BAT…"; at 194px they read in full. */
+html[data-mobile-layout="landscape"] .team-box-selection{
+  grid-template-columns:minmax(0,1fr);
+}
+
+html[data-mobile-layout="landscape"] .team-box-selection>button{
+  grid-column:1 / -1;
+}
+
+/* Real phones match (hover:none) and (pointer:coarse), which switches on
+   mobileTouch.css's landscape block. Its
+   `html[…] .app-shell:not(.raid-view) .lobby-layout` beats the plainer
+   `html[…] .lobby-layout` above on specificity, so on an actual device the
+   lobby fell back to two columns and the detail panel — the third child —
+   was auto-placed into an implicit track outside the frame. Restate the
+   three-column template at the same specificity so it wins on load order.
+   A desktop browser window never matches that media query, which is why this
+   only ever showed up on the phone. */
+@media (min-width:820px){
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .lobby-layout{
+    grid-template-columns:minmax(150px,.26fr) minmax(186px,.29fr) minmax(0,.45fr);
+  }
+}
+
+/* The catalog's category chips had no landscape rule and shrank to 24px in
+   the compacted toolbar, under the 26px floor the rest of this sheet keeps. */
+html[data-mobile-layout="landscape"] .shop-category-tabs button{
+  min-height:28px;
+}
+
+/* The buy button was left at 24px while compressing the 4x2 catalog, under
+   this sheet's own 26px floor. The card row has the height to spare. */
+html[data-mobile-layout="landscape"] .shop-item-card>:last-child button{
+  min-height:28px;
+}
+
+/* At 844px the team pager shared the footer with 팀 편집 and each page button
+   fell to 23px wide. Keep them on the 26px floor. */
+html[data-mobile-layout="landscape"] .lobby-team-pages button{
+  min-width:26px;
+}
