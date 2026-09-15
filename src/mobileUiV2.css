@@ -1,0 +1,65 @@
+/* Mobile information-priority layout. Raid screens deliberately opt out. */
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view){--mobile-topbar-height:54px}
+html[data-mobile-layout="landscape"] .landscape-orientation-gate{display:none!important}
+html[data-mobile-layout="landscape"] body{overflow:hidden}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view){width:100%;height:100dvh;min-height:0;overflow:hidden}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>.topbar{display:flex;flex:0 0 var(--mobile-topbar-height)!important;align-items:center;gap:6px;height:var(--mobile-topbar-height)!important;min-height:var(--mobile-topbar-height)!important;max-height:var(--mobile-topbar-height)!important;padding:5px 8px;overflow:hidden}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.brand-title,.online-players-badge,.global-chat){display:none}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-mark{width:38px;height:38px;flex-basis:38px}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .top-status{gap:4px;margin-left:auto}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.currency-card,.player-account){min-width:0;height:40px;min-height:40px;padding:4px 6px}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.currency-card small,.player-account-copy){display:none}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account{width:38px;flex-basis:38px}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .icon-button{width:38px;height:38px;flex:0 0 38px}
+html[data-mobile-layout="landscape"] .app-shell:not(.raid-view)>:is(.lobby-layout,.battle-hub,.battle-select-screen,.ranked-screen,.rooms-screen,.battle-factory,.factory-rankings,.competition-screen,.pokemon-usage-screen,.achievement-screen,.pc-screen,.training-screen,.shop-screen,.draw-screen,.hatch-screen){height:calc(100dvh - var(--mobile-topbar-height))!important;min-height:0!important;max-height:calc(100dvh - var(--mobile-topbar-height))!important;overflow:auto!important;overscroll-behavior:contain}
+html[data-mobile-layout="landscape"] .lobby-layout{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:7px;padding:7px}
+html[data-mobile-layout="landscape"] .lobby-team-panel{min-height:0;padding:7px}
+html[data-mobile-layout="landscape"] .lobby-team-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;min-height:0}
+html[data-mobile-layout="landscape"] .lobby-team-card{min-height:60px;padding:4px}
+html[data-mobile-layout="landscape"] .lobby-team-card-copy,html[data-mobile-layout="landscape"] .lobby-team-moves{display:none}
+html[data-mobile-layout="landscape"] .lobby-team-icon-frame{width:58px;height:46px;margin:auto}
+html[data-mobile-layout="landscape"] .lobby-team-footer{min-height:30px;padding-top:4px}
+html[data-mobile-layout="landscape"] .mode-panel{min-height:0;padding:7px}
+html[data-mobile-layout="landscape"] .mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(64px,1fr);gap:5px;min-height:0}
+html[data-mobile-layout="landscape"] .mode-card{min-height:64px;padding:7px}
+html[data-mobile-layout="landscape"] .mode-card .mode-copy>span,html[data-mobile-layout="landscape"] .mode-card .mode-badge{display:none}
+html[data-mobile-layout="landscape"] .training-screen{padding:6px;gap:5px}
+html[data-mobile-layout="landscape"] .training-header{min-height:42px}
+html[data-mobile-layout="landscape"] .training-title p,html[data-mobile-layout="landscape"] .training-roster-heading small{display:none}
+html[data-mobile-layout="landscape"] .training-workspace{grid-template-columns:94px minmax(0,1fr);gap:5px;min-height:0}
+html[data-mobile-layout="landscape"] .training-roster-panel{padding:4px}
+html[data-mobile-layout="landscape"] .training-filter-row{position:relative;display:block;height:60px;margin-bottom:4px}
+html[data-mobile-layout="landscape"] .training-sort-control{position:absolute;inset:0 0 auto;z-index:2;height:28px}
+html[data-mobile-layout="landscape"] .training-roster-search{position:absolute;inset:32px 0 auto;min-height:28px;height:28px;padding-block:0}
+html[data-mobile-layout="landscape"] .training-roster-search input{height:20px;line-height:1.2}
+html[data-mobile-layout="landscape"] .training-roster-grid{grid-template-columns:1fr;gap:3px;overflow-y:auto}
+html[data-mobile-layout="landscape"] .training-roster-card{min-height:52px;padding:2px}
+html[data-mobile-layout="landscape"] .training-roster-sprite-frame{width:66px;height:54px;max-width:none}
+html[data-mobile-layout="landscape"] .training-roster-card>strong{font-size:8px}
+html[data-mobile-layout="landscape"] .training-roster-card :is(.training-card-types,.training-card-level){display:none}
+html[data-mobile-layout="landscape"] .training-editor-panel{min-height:0;overflow:hidden}
+html[data-mobile-layout="landscape"] .training-mobile-pages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-bottom:1px solid rgba(87,76,158,.2)}
+html[data-mobile-layout="landscape"] .training-mobile-pages button{display:flex;align-items:center;justify-content:center;gap:4px;min-height:34px;padding:2px;border:1px solid rgba(85,75,160,.2);border-radius:7px;color:#667394;background:rgba(255,255,255,.65)}
+html[data-mobile-layout="landscape"] .training-mobile-pages button.active{color:#fff;background:#5d5ebb}
+html[data-mobile-layout="landscape"] .training-mobile-pages button strong{font-size:11px}
+html[data-mobile-layout="landscape"] .training-mobile-pages button span{display:grid;min-width:0;text-align:left}
+html[data-mobile-layout="landscape"] .training-mobile-pages b{font-size:8px}
+html[data-mobile-layout="landscape"] .training-mobile-pages small{display:none}
+html[data-mobile-layout="landscape"] .training-editor-body{min-height:0;overflow:hidden}
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-stat-column,html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-move-column,html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="1"] .training-profile-column,html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="1"] .training-move-column,html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="2"] .training-profile-column,html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="2"] .training-stat-column{display:none}
+html[data-mobile-layout="landscape"] :is(.pc-screen,.achievement-screen,.pokemon-usage-screen){padding:6px;gap:5px}
+html[data-mobile-layout="landscape"] .pokedex-workspace{display:block;min-height:0}
+html[data-mobile-layout="landscape"] .pokedex-workspace>.pc-party-panel{display:none}
+html[data-mobile-layout="landscape"] .team-box-workspace{display:flex;min-height:0;height:100%}
+html[data-mobile-layout="landscape"] .team-box-panel{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden}
+html[data-mobile-layout="landscape"] .team-box-grid-wrap{flex:1 1 0;min-height:0;height:auto}
+html[data-mobile-layout="landscape"] .team-box-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content;overflow-y:auto}
+html[data-mobile-layout="landscape"] :is(.team-box-card,.team-box-card-select){min-height:96px}
+html[data-mobile-layout="landscape"] .team-box-selection{position:relative;bottom:auto;min-height:88px;max-height:88px;overflow:hidden;flex:0 0 88px}
+html[data-mobile-layout="landscape"] .achievement-card-description,html[data-mobile-layout="landscape"] .achievement-card-progress-detail,html[data-mobile-layout="landscape"] .pokemon-usage-leaders-collapse,html[data-mobile-layout="landscape"] .pokemon-usage-column-head,html[data-mobile-layout="landscape"] .pokemon-usage-item-column,html[data-mobile-layout="landscape"] .pokemon-usage-count,html[data-mobile-layout="landscape"] .pokemon-usage-change{display:none!important}
+html[data-mobile-layout="landscape"] .pokemon-usage-row{grid-template-columns:32px minmax(0,1fr) minmax(72px,auto);min-height:54px}
+html[data-mobile-layout="landscape"] .pokemon-usage-rate-track,html[data-mobile-layout="landscape"] .pokemon-usage-method{display:none}
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:4px}
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons>button{grid-template-columns:1fr;justify-items:center;gap:2px;padding:3px 4px;text-align:center}
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons>button>span{min-width:0}
+.training-mobile-pages{display:none}

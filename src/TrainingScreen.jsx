@@ -136,6 +136,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
     [pokemon],
   )
   const [selectedId, setSelectedId] = useState(trainingPokemon[0]?.captureId ?? null)
+  const [mobileEditorPage, setMobileEditorPage] = useState(0)
   const [pokemonSearch, setPokemonSearch] = useState('')
   const [pokemonSort, setPokemonSort] = useState('obtained')
   const [teamOnly, setTeamOnly] = useState(false)
@@ -704,7 +705,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
           )}
         </section>
 
-        <section className={`training-editor-panel${selectedPokemon ? ' active' : ''}`} aria-label="포켓몬 설정 편집">
+        <section className={`training-editor-panel${selectedPokemon ? ' active' : ''}`} aria-label="포켓몬 설정 편집" data-mobile-training-page={mobileEditorPage}>
           {selectedPokemon && species ? (
             <>
               <div className="training-editor-heading">
@@ -746,6 +747,21 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                 </div>
                 <strong className="training-fixed-level">Lv.{BATTLE_LEVEL}</strong>
               </div>
+
+              <nav className="training-mobile-pages" aria-label="모바일 포켓몬 설정 페이지">
+                {[['프로필', '포켓몬 이미지·진화·성격·특성'], ['능력치', '능력 포인트'], ['기술', '배틀 기술']].map(([label, description], index) => (
+                  <button
+                    className={mobileEditorPage === index ? 'active' : ''}
+                    type="button"
+                    aria-current={mobileEditorPage === index ? 'page' : undefined}
+                    key={label}
+                    onClick={() => setMobileEditorPage(index)}
+                  >
+                    <strong>{index + 1}</strong>
+                    <span><b>{label}</b><small>{description}</small></span>
+                  </button>
+                ))}
+              </nav>
 
               <div className="training-editor-body">
                 <div className="training-profile-column">

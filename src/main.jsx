@@ -21,6 +21,7 @@ import './scaledBoxCards.css'
 import './scaledBattleCards.css'
 import './scaledTrainingEditor.css'
 import './mobileTouch.css'
+import './mobileUiV2.css'
 import { loadGameSettings } from './gameSettings'
 import { applyGameTextScale } from './gameTextScale'
 
