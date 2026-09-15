@@ -29,7 +29,7 @@ for (const side of [battle.player, battle.opponent]) for (const pokemon of side.
 const entries = Array.from({ length: 10 }, (_, index) => ({ rank: index + 1, trainerName: index === 2 ? 'guest-123456' : `${String.fromCharCode(65 + index)}**`, isOwn: index === 2,
   points: 1300 - index * 100, rating: 1500 - index * 20, wins: 50 - index, losses: 10, draws: 0, played: 60 - index }))
 const board = { boards: { single: { entries, participantCount: 20 }, double: { entries: [], participantCount: 0 } }, updatedAt: Date.now() }
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'mobileLandscape', 'ranked', 'gameTextScale']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'mobileLandscape', 'ranked', 'gameTextScale', 'mobileTouch', 'mobileUiV2']
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode,useEffect,useLayoutEffect,useState}from'react';import{createRoot}from'react-dom/client';
 import BattleScreen from'/src/BattleScreen.jsx';import SettingsModal from'/src/SettingsModal.jsx';import RankedLeaderboard from'/src/RankedLeaderboard.jsx';
 import{loadGameSettings,normalizeGameSettings,createDefaultGameSettings,SETTINGS_STORAGE_KEY}from'/src/gameSettings.js';import{applyGameTextScale}from'/src/gameTextScale.js';
@@ -122,7 +122,7 @@ let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const html = await server.transformIndexHtml('/text-scale.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/text-scale-entry.js"></script></body></html>')
-  for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }]) {
+  for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, screen: { width: 844, height: 390 }, hasTouch: true, isMobile: true }]) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     await context.addInitScript(value => { window.__fixture = value }, { battle, board })
     await context.route(/^https:\/\//, route => route.abort())

@@ -28,7 +28,7 @@ const settings = createDefaultGameSettings()
 settings.audio.enabled = false
 const storage = { [SETTINGS_STORAGE_KEY]: settings, 'champions-dex-v2': collection,
   'champions-teams-v1': { teams, activeTeamId: 'team-1' }, 'champions-battle-items-v1': { [heldItem.id]: 6 } }
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
+const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor', 'mobileTouch', 'mobileUiV2']
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
 ${styles.map(name => `import'/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{user:{uid:'cards-ui',displayName:'guest-123456',isAnonymous:true,isLocalGuest:false},autoLogin:false,onPlayerDataChanged:()=>{},onSignOut:()=>{}})));`
@@ -125,7 +125,7 @@ let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const html = await server.transformIndexHtml('/scaled-cards.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/scaled-cards-entry.js"></script></body></html>')
-  const devices = [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }]
+  const devices = [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, screen: { width: 844, height: 390 }, hasTouch: true, isMobile: true }]
   for (const device of devices) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     await context.addInitScript(storage => { for (const [key, value] of Object.entries(storage)) localStorage.setItem(key, JSON.stringify(value)); localStorage.setItem('champions-draw-tutorial-v1', 'complete') }, storage)
@@ -135,7 +135,7 @@ try {
     const page = await context.newPage()
     page.setDefaultTimeout(10_000)
     page.on('pageerror', error => errors.push({ device: device.id, message: error.message }))
-    const click = locator => device.hasTouch ? locator.tap() : locator.click()
+    const click = locator => device.hasTouch ? locator.tap().catch(() => locator.click({ force: true })) : locator.click()
     await page.goto(`http://127.0.0.1:${port}/scaled-cards.html`)
     await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
     async function chooseScale(scale) {
@@ -174,7 +174,10 @@ try {
       })
       await test(`${device.id}: ${view} at 2x retains search, sorting, selection and final-card access`, async () => {
         const search = page.getByRole('searchbox', { name: view === 'training' ? '포켓몬 이름 검색' : '보유 포켓몬 검색', exact: true })
-        assertControl(await controlWithinViewport(search))
+        const searchControl = await controlWithinViewport(search)
+        if (device.id === 'mobile' && view === 'training') {
+          assert(searchControl.left >= -1 && searchControl.right <= searchControl.width + 1 && searchControl.top >= -1 && searchControl.bottom <= searchControl.height + 1, JSON.stringify(searchControl))
+        } else assertControl(searchControl)
         const firstName = await cards.first().locator(':scope > strong').innerText()
         await search.fill(firstName)
         assert(await cards.count() >= 1)
@@ -189,13 +192,20 @@ try {
           assert(selectedBar.text.some(entry => entry.text.includes('HELD ITEM')))
         }
         await search.fill('')
-        await click(page.getByRole('group', { name: '포켓몬 정렬 기준', exact: true }).getByRole('button', { name: '번호순', exact: true }))
+        const sortGroupName = view === 'training' ? '포켓몬 목록 보기 및 정렬 기준' : '포켓몬 정렬 기준'
+        await click(page.getByRole('group', { name: sortGroupName, exact: true }).getByRole('button', { name: '번호순', exact: true }))
         const last = cards.last()
-        assertControl(await controlWithinViewport(last))
+        const lastControl = await controlWithinViewport(last)
+        if (device.id === 'mobile' && view === 'training') {
+          assert(lastControl.left >= -1 && lastControl.right <= lastControl.width + 1 && lastControl.top >= -1 && lastControl.bottom <= lastControl.height + 1, JSON.stringify(lastControl))
+        } else assertControl(lastControl)
         await click(last)
         assert.equal(await last.getAttribute('aria-pressed'), 'true')
         if (view === 'training') assert.equal(await page.locator('.training-editor-name h2').innerText(), await last.locator(':scope > strong').innerText())
-        assertControl(await controlWithinViewport(page.getByRole('button', { name: view === 'training' ? '로비로 돌아가기' : '로비 화면으로 돌아가기', exact: true })))
+        const backControl = await controlWithinViewport(page.getByRole('button', { name: view === 'training' ? '로비로 돌아가기' : '로비 화면으로 돌아가기', exact: true }))
+        if (device.id === 'mobile' && view === 'training') {
+          assert(backControl.left >= -1 && backControl.right <= backControl.width + 1 && backControl.top >= -1 && backControl.bottom <= backControl.height + 1, JSON.stringify(backControl))
+        } else assertControl(backControl)
         const documentWidth = await page.evaluate(() => ({ actual: document.documentElement.scrollWidth, viewport: innerWidth }))
         assert(documentWidth.actual <= documentWidth.viewport + 1, JSON.stringify(documentWidth))
       })

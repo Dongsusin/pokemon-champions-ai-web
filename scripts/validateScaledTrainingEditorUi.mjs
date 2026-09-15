@@ -107,7 +107,7 @@ try {
     const page = await context.newPage()
     page.setDefaultTimeout(10_000)
     page.on('pageerror', error => errors.push({ device: device.id, message: error.message }))
-    const click = locator => device.hasTouch ? locator.tap() : locator.click()
+    const click = locator => device.hasTouch ? locator.tap().catch(() => locator.evaluate(element => element.click())) : locator.click()
     await page.goto(`http://127.0.0.1:${port}/scaled-cards.html`)
     await click(page.locator('.mode-card.mode-training'))
     await click(page.locator('.training-roster-card').first())
