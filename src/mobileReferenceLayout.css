@@ -2579,3 +2579,20 @@ html[data-mobile-layout="landscape"] .lobby-detail-facts>div{
 html[data-mobile-layout="landscape"] .lobby-detail-facts dd{
   text-align:left;
 }
+
+/* Party rail cards were still the desktop two-column card: a sprite column
+   plus a 1fr column for the name/loadout copy. Landscape hides that copy but
+   the empty column kept its share of the width, so the sprite sat pinned to
+   the left third of the card instead of its centre. Same fault as the box
+   card select grid above: collapse the card to one full-width column. */
+html[data-mobile-layout="landscape"] .lobby-team-card{
+  grid-template-columns:minmax(0,1fr)!important;
+  justify-items:center;
+}
+
+html[data-mobile-layout="landscape"] .lobby-team-icon-frame{
+  width:100%!important;
+  max-width:100%;
+  margin:0!important;
+  justify-self:center;
+}
