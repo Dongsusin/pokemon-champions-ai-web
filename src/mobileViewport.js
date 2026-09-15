@@ -15,8 +15,13 @@ function isCompactTouchDevice() {
   const longSide = Math.max(screenWidth, screenHeight)
   const hasTouchInput = touchPointerQuery.matches || navigator.maxTouchPoints > 0
   const reportsMobileBrowser = MOBILE_USER_AGENT_PATTERN.test(navigator.userAgent)
+  // Treat a tablet-sized landscape viewport as compact even when a desktop
+  // browser is emulating the viewport without exposing touch points. This
+  // keeps the same information-priority frame in device emulation and on
+  // convertible tablets while leaving wide desktop layouts untouched.
+  const tabletLandscapeViewport = window.innerWidth > window.innerHeight && window.innerWidth <= 1200
 
-  return (hasTouchInput || reportsMobileBrowser) && shortSide <= 1200 && longSide <= 2048
+  return (hasTouchInput || reportsMobileBrowser || tabletLandscapeViewport) && shortSide <= 1200 && longSide <= 2048
 }
 
 export function syncMobileViewport() {
