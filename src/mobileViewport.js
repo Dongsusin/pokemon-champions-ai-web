@@ -1,7 +1,4 @@
-const DESKTOP_LANDSCAPE_WIDTH = 1440
-const DESKTOP_LANDSCAPE_HEIGHT = 720
 const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1.0, viewport-fit=cover'
-const KEYBOARD_HEIGHT_RATIO = 0.62
 
 const viewportMeta = document.querySelector('meta[name="viewport"]')
 const touchPointerQuery = window.matchMedia('(hover: none) and (pointer: coarse)')
@@ -10,7 +7,6 @@ const MOBILE_USER_AGENT_PATTERN = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEM
 
 let syncFrame = null
 let settleTimer = null
-let stableLandscapeHeight = null
 
 function isCompactTouchDevice() {
   const screenWidth = window.screen?.width || window.innerWidth
@@ -23,58 +19,15 @@ function isCompactTouchDevice() {
   return (hasTouchInput || reportsMobileBrowser) && shortSide <= 1200 && longSide <= 2048
 }
 
-function getLandscapeViewport() {
-  const visualWidth = window.visualViewport?.width || window.innerWidth
-  const visualHeight = window.visualViewport?.height || window.innerHeight
-  const visualScale = window.visualViewport?.scale || 1
-  const projectedVisualWidth = visualWidth * visualScale
-  const projectedVisualHeight = visualHeight * visualScale
-  const screenLongSide = Math.max(
-    window.screen?.width || 0,
-    window.screen?.height || 0,
-  )
-  const screenShortSide = Math.min(
-    window.screen?.width || Number.POSITIVE_INFINITY,
-    window.screen?.height || Number.POSITIVE_INFINITY,
-  )
-  const dimensionsAreStillPortrait = window.innerWidth < window.innerHeight
-  const availableWidth = Math.round(
-    landscapeQuery.matches && dimensionsAreStillPortrait && screenLongSide > projectedVisualWidth
-      ? screenLongSide
-      : projectedVisualWidth,
-  )
-  const measuredHeight = Math.round(
-    landscapeQuery.matches && dimensionsAreStillPortrait && Number.isFinite(screenShortSide)
-      ? screenShortSide
-      : projectedVisualHeight,
-  )
-  const keyboardIsLikelyOpen = stableLandscapeHeight !== null
-    && measuredHeight < stableLandscapeHeight * KEYBOARD_HEIGHT_RATIO
-
-  if (!keyboardIsLikelyOpen && measuredHeight > 0) {
-    stableLandscapeHeight = stableLandscapeHeight === null
-      ? measuredHeight
-      : Math.min(stableLandscapeHeight, measuredHeight)
-  }
-
-  const availableHeight = stableLandscapeHeight ?? measuredHeight
-  const initialScale = Math.min(
-    1,
-    availableWidth / DESKTOP_LANDSCAPE_WIDTH,
-    availableHeight / DESKTOP_LANDSCAPE_HEIGHT,
-  )
-
-  return `width=${DESKTOP_LANDSCAPE_WIDTH}, initial-scale=${initialScale.toFixed(5)}, viewport-fit=cover`
-}
-
 export function syncMobileViewport() {
   const isTouchDevice = isCompactTouchDevice()
   const layout = isTouchDevice
     ? (landscapeQuery.matches ? 'landscape' : 'portrait')
     : 'desktop'
-  const viewport = layout === 'landscape' ? getLandscapeViewport() : DEFAULT_VIEWPORT
-
-  if (layout !== 'landscape') stableLandscapeHeight = null
+  // Keep one CSS pixel equal to one device-independent pixel on phones. The
+  // old 1440x720 virtual desktop shrank every control, making 40px buttons
+  // roughly 20px wide on common landscape phones and difficult to tap.
+  const viewport = DEFAULT_VIEWPORT
 
   document.documentElement.dataset.mobileLayout = layout
 

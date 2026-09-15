@@ -1,0 +1,307 @@
+/* Phone landscape usability pass. Raid remains isolated until that mode ships. */
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  html[data-mobile-layout="landscape"] {
+    --mobile-topbar-height: 52px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) {
+    min-width: 0;
+    min-height: 100dvh;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) > .topbar {
+    display: grid;
+    grid-template-columns: auto minmax(90px, 1fr) auto;
+    gap: 7px;
+    width: 100%;
+    min-height: var(--mobile-topbar-height);
+    padding: 5px max(8px, env(safe-area-inset-left)) 5px max(8px, env(safe-area-inset-right));
+    flex-wrap: nowrap;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .topbar-brand-group {
+    gap: 5px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-mark {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .brand-title {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-badge {
+    min-width: 54px;
+    min-height: 40px;
+    gap: 5px;
+    padding: 4px 7px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-badge > svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-copy {
+    gap: 0;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-copy small {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-copy strong {
+    gap: 2px;
+    font-size: 14px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-copy strong span {
+    font-size: 9px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat {
+    width: auto;
+    min-width: 90px;
+    max-width: none;
+    margin: 0;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-trigger {
+    min-height: 40px;
+    padding: 5px 8px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-label,
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-preview-meta time,
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-chevron {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .top-status {
+    gap: 5px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.status-card, .player-account) {
+    min-width: 0;
+    min-height: 40px;
+    height: 40px;
+    padding: 4px 7px 4px 4px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.status-icon, .player-account-avatar) {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card small,
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-copy small {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card strong {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account {
+    max-width: 100px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account-copy strong {
+    max-width: 58px;
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .icon-button {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(
+    button,
+    [role="button"],
+    input,
+    select,
+    textarea
+  ) {
+    -webkit-tap-highlight-color: rgba(112, 231, 238, .18);
+    touch-action: manipulation;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(
+    .screen-back-button,
+    .battle-back-button,
+    .hatch-back-button,
+    .factory-back,
+    .pokemon-usage-back,
+    .battle-hub-enter,
+    .ranked-leaderboard-open,
+    .ranked-format-tabs button,
+    .ranked-primary,
+    .ranked-quiet
+  ) {
+    min-height: 44px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(
+    .lobby-layout,
+    .battle-select-screen,
+    .ranked-screen,
+    .battle-factory,
+    .factory-rankings,
+    .rooms-screen,
+    .competition-screen,
+    .pokemon-usage-screen,
+    .achievement-screen,
+    .pc-screen,
+    .training-screen,
+    .shop-screen,
+    .draw-screen,
+    .hatch-screen
+  ) {
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .lobby-layout {
+    grid-template-columns: minmax(255px, .8fr) minmax(360px, 1.2fr);
+    gap: 10px;
+    height: calc(100dvh - var(--mobile-topbar-height));
+    min-height: 0;
+    padding: 10px max(10px, env(safe-area-inset-right)) 10px max(10px, env(safe-area-inset-left));
+    overflow-y: auto;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .lobby-team-panel,
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mode-panel {
+    width: 100%;
+    min-height: 0;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mode-grid {
+    gap: 7px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mode-card {
+    min-height: 68px;
+    padding: 9px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .mode-copy > span {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-game-screen {
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: minmax(0, 58dvh) minmax(150px, 42dvh);
+    overflow: hidden;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-deck {
+    grid-template-columns: minmax(180px, .68fr) minmax(0, 1.32fr);
+    min-height: 0;
+    padding: 5px max(6px, env(safe-area-inset-right)) 6px max(6px, env(safe-area-inset-left));
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons > button,
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-move-button,
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-party-menu-grid button {
+    min-height: 44px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-header-actions > button {
+    width: 40px;
+    height: 40px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-rule-badge {
+    min-height: 38px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-status-anchor {
+    width: min(260px, 36vw);
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-hp-panel {
+    padding: 6px 9px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-log-focus > strong,
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons button strong,
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-move-name strong {
+    font-size: 12px;
+  }
+
+  html[data-mobile-layout="landscape"] .ranked-pokemon-tooltip,
+  html[data-mobile-layout="landscape"] .factory-info-tooltip,
+  html[data-mobile-layout="landscape"] .item-equip-tooltip,
+  html[data-mobile-layout="landscape"] .battle-pokemon-status-tooltip {
+    width: min(360px, calc(100vw - 20px));
+    max-height: calc(100dvh - 20px);
+    font-size: 13px;
+  }
+
+  html[data-mobile-layout="landscape"] .global-chat-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 12px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  html[data-mobile-layout="landscape"] .settings-modal-backdrop {
+    padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+  }
+
+  html[data-mobile-layout="landscape"] .settings-modal {
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  html[data-mobile-layout="landscape"] .settings-tabs button {
+    min-height: 42px;
+  }
+
+  html[data-mobile-layout="landscape"] .item-equip-card,
+  html[data-mobile-layout="landscape"] .tera-type-option,
+  html[data-mobile-layout="landscape"] .dynamax-mode-option,
+  html[data-mobile-layout="landscape"] .training-move-card {
+    min-height: 44px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-width: 760px) {
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) > .topbar {
+    grid-template-columns: auto minmax(70px, 1fr) auto;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account {
+    display: none;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .lobby-layout {
+    grid-template-columns: minmax(220px, .72fr) minmax(320px, 1.28fr);
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-deck {
+    grid-template-columns: minmax(130px, .52fr) minmax(0, 1.48fr);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .app-shell:not(.raid-view) :is(.status-card, .icon-button, .mode-card, .ranked-pokemon-card):hover {
+    transform: none;
+  }
+}
