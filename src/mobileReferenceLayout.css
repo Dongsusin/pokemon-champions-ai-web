@@ -2794,7 +2794,7 @@ html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training
    height goes to full-width rows and much longer sliders instead. Below
    this the boards stay, because six single rows would be crushed to 22px
    at 430px and 15px at 390px, under the 26px touch floor. */
-@media (min-height:600px){
+@media (min-height:520px){
   html[data-mobile-layout="landscape"] .training-stat-list{
     grid-template-columns:minmax(0,1fr)!important;
     grid-template-rows:repeat(6,minmax(0,1fr))!important;
@@ -2835,4 +2835,24 @@ html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training
 
 html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-select-stack>.training-picker-field:last-child{
   grid-column:1 / -1;
+}
+
+/* Move card: on a phone the move name is what matters, but it was truncated
+   to "블…" while 위력 / 명중 / PP took a third of the row. Every option in the
+   move picker already lists those numbers, so the card drops them and hands
+   the width to the name. The category chip stays — it is one short word and
+   it is the only part of the strip that changes how the move is used. */
+html[data-mobile-layout="landscape"] .training-move-metrics>span:not([class]){
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .training-move-select-button>span{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* The card's single 1fr row let the type badge stretch into a tall bar. */
+html[data-mobile-layout="landscape"] .training-move-card>*{
+  align-self:center;
 }

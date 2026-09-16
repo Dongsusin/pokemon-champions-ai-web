@@ -154,12 +154,15 @@ try {
           const value = await checkTextInContainer(card, '.training-move-slot, .training-move-type, .training-move-select small, .training-move-select-button > span, .training-move-metrics')
           metrics.push({ device: device.id, scale, section: 'move', value })
           assert.equal(value.issues.length, 0, JSON.stringify(value.issues.slice(0, 3)))
-          assert(value.text.some(item => item.text === 'PP'))
+          // The landscape card keeps only the type, the name and the category
+          // chip; 위력/명중/PP belong to the picker, which lists them per option.
+          assert.equal(value.text.some(item => item.text === 'PP'), !device.isMobile)
           await reachable(card.locator('.training-move-select-button'))
         }
         await page.screenshot({ path: path.join(output, `${device.id}-${scale}x-moves.png`) })
         await click(cards.last().locator('.training-move-select-button'))
         await page.locator('.move-picker-panel').waitFor()
+        assert.match(await page.locator('.move-picker-choice-stats').first().innerText(), /위력[\s\S]*명중[\s\S]*PP/)
         await page.keyboard.press('Escape')
         await page.locator('.move-picker-panel').waitFor({ state: 'hidden' })
       })
