@@ -3537,3 +3537,36 @@ html[data-mobile-layout="landscape"] .competition-team-selection button>:is(img,
   width:clamp(26px,7vh,44px);
   height:clamp(26px,7vh,44px);
 }
+
+/* ==================================================================
+   Battle intro: the trainer art sat in its own 220px grid column beside
+   the name column, so the two never shared an axis — measured at 962x597
+   the player art centred 213px left of its name and the opponent art 156px
+   right of its. Stack each trainer in one centred column so the art, the
+   name and the party icons all sit on the same centre line. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-intro-trainer,
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-intro-trainer.opponent{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-end;
+  min-width:0;
+  text-align:center;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view .battle-intro-trainer-sprite{
+  width:min(22vw,210px);
+  height:min(26vh,200px);
+}
+
+html[data-mobile-layout="landscape"] .battle-intro-trainer>div{
+  display:grid;
+  justify-items:center;
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .battle-intro-trainer>div>span,
+html[data-mobile-layout="landscape"] .battle-intro-trainer.opponent>div>span{
+  display:flex;
+  justify-content:center;
+}
