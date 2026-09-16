@@ -2856,3 +2856,86 @@ html[data-mobile-layout="landscape"] .training-move-select-button>span{
 html[data-mobile-layout="landscape"] .training-move-card>*{
   align-self:center;
 }
+
+/* ==================================================================
+   Battle arena: four modes, centred in the frame.
+
+   battleHub.css switches to two columns at `max-width:1050px` but only
+   when `min-height:601px`, and only compacts the 385px cards below
+   `max-height:600px`. A landscape phone between those two — 955x605, say —
+   gets two full-height cards and pushes 배틀팩토리 / 대전방 completely off
+   the bottom. A landscape frame is wide and short, so keep all four on one
+   row at every height, let the row size the cards, and centre it. */
+html[data-mobile-layout="landscape"] .battle-hub{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  min-height:0;
+  padding:10px clamp(12px,2vw,24px) 12px;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-heading{
+  flex:0 0 auto;
+  margin-bottom:clamp(8px,1.4vh,16px);
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-options{
+  flex:1 1 auto;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-rows:auto;
+  gap:clamp(8px,1.2vw,16px);
+  align-content:center;
+  min-height:0;
+}
+
+/* The card's 385px floor is what forced the overflow; let the row drive it. */
+html[data-mobile-layout="landscape"] .battle-hub-card{
+  min-height:0;
+  padding:clamp(12px,1.6vw,20px);
+  border-radius:17px;
+}
+
+/* The compact emblem/type treatment is scoped to max-height:600px upstream.
+   Landscape wants it at every height, so restate it here. */
+html[data-mobile-layout="landscape"] .battle-hub-emblem{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:clamp(34px,4vw,48px);
+  height:clamp(34px,4vw,48px);
+  margin-bottom:0;
+  border-radius:13px;
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-card>small{
+  padding-right:52px;
+  font-size:9px;
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-card h2{
+  margin:8px 0 6px;
+  padding-right:45px;
+  font-size:clamp(18px,2.4vw,26px);
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-card p{
+  margin:8px 0 10px;
+  font-size:clamp(10px,1.2vw,13px);
+  line-height:1.6;
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-tags{
+  margin-bottom:10px;
+  gap:5px;
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-tags>span{
+  padding:4px 6px;
+  font-size:clamp(9px,1vw,11px);
+}
+
+html[data-mobile-layout="landscape"] .battle-hub-card>strong{
+  padding-top:10px;
+  font-size:clamp(10px,1.2vw,13px);
+}
