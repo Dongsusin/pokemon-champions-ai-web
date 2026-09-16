@@ -13756,11 +13756,15 @@
   min-width: 0;
 }
 
-.competition-rules-toggle {
+/* Both header toggles exist for the phone header; the desktop screen shows the
+   same information in the match panel and the league workspace. */
+.competition-rules-toggle,
+.competition-standings-toggle {
   display: none;
 }
 
-.competition-rules-popover-layer {
+.competition-rules-popover-layer,
+.competition-standings-popover-layer {
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -13773,7 +13777,8 @@
   animation: competition-bracket-popover-in 180ms ease-out both;
 }
 
-.competition-rules-popover {
+.competition-rules-popover,
+.competition-standings-popover {
   width: min(560px, 100%);
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
@@ -13785,7 +13790,8 @@
   box-shadow: 0 28px 80px rgba(1, 5, 25, 0.62), inset 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.competition-rules-popover > header {
+.competition-rules-popover > header,
+.competition-standings-popover > header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -13793,19 +13799,22 @@
   margin-bottom: 13px;
 }
 
-.competition-rules-popover > header span {
+.competition-rules-popover > header span,
+.competition-standings-popover > header span {
   font-size: 10px;
   letter-spacing: 2px;
   color: #8fd3e8;
 }
 
-.competition-rules-popover > header h2 {
+.competition-rules-popover > header h2,
+.competition-standings-popover > header h2 {
   margin: 4px 0 0;
   font-size: 19px;
   letter-spacing: -0.5px;
 }
 
-.competition-rules-popover > header button {
+.competition-rules-popover > header button,
+.competition-standings-popover > header button {
   flex: none;
   display: grid;
   place-items: center;
@@ -14417,7 +14426,8 @@
   gap: 8px;
 }
 
-.competition-fixtures-panel article {
+.competition-fixtures-panel article,
+.competition-standings-popover-fixtures article {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
   align-items: center;
@@ -14429,12 +14439,14 @@
   text-align: center;
 }
 
-.competition-fixtures-panel article.player-match {
+.competition-fixtures-panel article.player-match,
+.competition-standings-popover-fixtures article.player-match {
   border-color: rgba(214, 255, 87, 0.56);
   background: rgba(101, 127, 45, 0.38);
 }
 
-.competition-fixtures-panel article span {
+.competition-fixtures-panel article span,
+.competition-standings-popover-fixtures article span {
   overflow: hidden;
   font-size: 12px;
   font-weight: 800;
@@ -14442,9 +14454,89 @@
   white-space: nowrap;
 }
 
-.competition-fixtures-panel article b {
+.competition-fixtures-panel article b,
+.competition-standings-popover-fixtures article b {
   color: #79e7ff;
   font-size: 10px;
+}
+
+/* The fixtures panel keeps its list scrollable so the round can always be
+   started from the bar pinned under it. */
+.competition-fixtures-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.competition-fixtures-panel > div {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.competition-fixtures-start-bar {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.competition-fixtures-start-bar > small {
+  color: #a9c4ef;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.competition-fixtures-start {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(214, 255, 87, 0.62);
+  border-radius: 12px;
+  color: #10210f;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.3px;
+  background: linear-gradient(145deg, #dcff67, #94d43f);
+  box-shadow: 0 10px 24px rgba(88, 132, 22, 0.32);
+  cursor: pointer;
+}
+
+.competition-fixtures-start:hover:not(:disabled),
+.competition-fixtures-start:focus-visible {
+  filter: brightness(1.07);
+}
+
+.competition-fixtures-start:disabled {
+  border-color: rgba(173, 208, 255, 0.24);
+  color: #9fb4d8;
+  background: rgba(23, 33, 74, 0.72);
+  box-shadow: none;
+  cursor: default;
+}
+
+.competition-standings-popover .competition-standings-table {
+  max-height: min(46dvh, 300px);
+  overflow-y: auto;
+}
+
+.competition-standings-popover-fixtures {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.competition-standings-popover-fixtures > span {
+  color: #8fd3e8;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.competition-standings-popover-fixtures > div {
+  display: grid;
+  gap: 7px;
 }
 
 .app-shell.battle-view {
@@ -19060,8 +19152,58 @@
     overflow: hidden;
   }
 
+  /* The league renders a third child, so a two-row template pushed the
+     workspace into an implicit row and crushed the match panel - with the team
+     selection and the start button inside it - down to a few pixels. */
+  .competition-screen:has(> .competition-league-workspace) {
+    grid-template-rows: auto auto minmax(150px, 1fr);
+  }
+
+  .competition-league-workspace {
+    min-height: 0;
+  }
+
+  .competition-league-participants,
+  .competition-standings-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .competition-league-participants > div,
+  .competition-standings-table {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .competition-current-match-panel {
     min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* A squeezed panel scrolls rather than hiding its controls, so pin the row
+     that starts the round to the bottom of that scroll. */
+  .competition-current-match-panel > footer {
+    position: sticky;
+    bottom: 0;
+    background: rgba(8, 14, 47, 0.94);
+  }
+
+  .competition-fixtures-panel > div {
+    flex: 1 1 auto;
+  }
+
+  .competition-fixtures-start-bar {
+    flex: none;
+    margin-top: 8px;
+  }
+
+  .competition-fixtures-start-bar > small {
+    display: none;
+  }
+
+  .competition-fixtures-start {
+    min-height: 34px;
+    font-size: 13px;
   }
 
   .competition-current-match-panel:has(.competition-team-selection) .competition-matchup-stage {

@@ -3861,7 +3861,8 @@ html[data-mobile-layout="landscape"] .competition-header-lead {
   gap: 6px;
 }
 
-html[data-mobile-layout="landscape"] .competition-rules-toggle {
+html[data-mobile-layout="landscape"] .competition-rules-toggle,
+html[data-mobile-layout="landscape"] .competition-standings-toggle {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -3880,28 +3881,39 @@ html[data-mobile-layout="landscape"] .competition-rules-toggle {
   cursor: pointer;
 }
 
-html[data-mobile-layout="landscape"] .competition-rules-toggle.is-open {
+html[data-mobile-layout="landscape"] .competition-rules-toggle.is-open,
+html[data-mobile-layout="landscape"] .competition-standings-toggle.is-open {
   border-color: rgba(218, 255, 103, 0.78);
   color: #f3ffd1;
   background: linear-gradient(145deg, rgba(85, 121, 56, 0.98), rgba(25, 59, 68, 0.98));
 }
 
-html[data-mobile-layout="landscape"] .competition-rules-popover {
+html[data-mobile-layout="landscape"] .competition-rules-popover,
+html[data-mobile-layout="landscape"] .competition-standings-popover {
   width: min(620px, 100%);
   padding: 11px 13px 13px;
 }
 
-html[data-mobile-layout="landscape"] .competition-rules-popover > header {
+html[data-mobile-layout="landscape"] .competition-rules-popover > header,
+html[data-mobile-layout="landscape"] .competition-standings-popover > header {
   margin-bottom: 9px;
 }
 
-html[data-mobile-layout="landscape"] .competition-rules-popover > header h2 {
+html[data-mobile-layout="landscape"] .competition-rules-popover > header h2,
+html[data-mobile-layout="landscape"] .competition-standings-popover > header h2 {
   font-size: 16px;
 }
 
-html[data-mobile-layout="landscape"] .competition-rules-popover > header button {
+html[data-mobile-layout="landscape"] .competition-rules-popover > header button,
+html[data-mobile-layout="landscape"] .competition-standings-popover > header button {
   width: 28px;
   height: 28px;
+}
+
+/* The phone starts the round straight from the match panel, so the fixtures
+   bar the desktop workspace adds is not part of this layout. */
+html[data-mobile-layout="landscape"] .competition-fixtures-start-bar {
+  display: none;
 }
 
 /* The freed row lets the matchup stage take the space the cards used. */

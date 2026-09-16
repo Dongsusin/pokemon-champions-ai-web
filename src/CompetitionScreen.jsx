@@ -1,5 +1,6 @@
 import SpriteImage from './SpriteImage'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowLeft,
   ChevronRight,
@@ -389,10 +390,58 @@ function TournamentOverview({ competition, currentMatch, playerGender = 'male', 
   )
 }
 
-function LeagueOverview({ competition, currentMatch, playerGender = 'male' }) {
+// The standings and the round pairings are shown twice: in the desktop
+// workspace and in the compact league-status popover the phone header opens.
+function LeagueStandingsTable({ competition }) {
   const standings = getSortedLeagueStandings(competition)
+
+  return (
+    <div className="competition-standings-table">
+      <div className="competition-standing-row heading">
+        <span>순위</span><span>트레이너</span><span>승</span><span>패</span><span>득실</span><span>PTS</span>
+      </div>
+      {standings.map((standing, index) => {
+        const participant = getCompetitionParticipant(competition, standing.participantId)
+        return (
+          <div
+            className={`competition-standing-row${participant.isPlayer ? ' player' : ''}`}
+            key={standing.participantId}
+          >
+            <strong>{index + 1}</strong>
+            <span>{participant.name}</span>
+            <b>{standing.wins}</b>
+            <b>{standing.losses}</b>
+            <em>{standing.differential > 0 ? '+' : ''}{standing.differential}</em>
+            <strong>{standing.points}</strong>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function LeagueFixtureList({ competition }) {
   const currentPairings = competition.schedule[competition.round] ?? []
 
+  return (
+    <div>
+      {currentPairings.map(([firstId, secondId]) => {
+        const first = getCompetitionParticipant(competition, firstId)
+        const second = getCompetitionParticipant(competition, secondId)
+        const isPlayerPair = [firstId, secondId].includes(PLAYER_PARTICIPANT_ID)
+        return (
+          <article className={isPlayerPair ? 'player-match' : ''} key={`${firstId}-${secondId}`}>
+            <span>{first.name}</span>
+            <b>VS</b>
+            <span>{second.name}</span>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
+function LeagueOverview({ competition, currentMatch, playerGender = 'male', startAction = null }) {
   return (
     <section className="competition-league-workspace">
       <div className="competition-league-participants">
@@ -424,27 +473,7 @@ function LeagueOverview({ competition, currentMatch, playerGender = 'male' }) {
           </div>
           <Medal size={23} />
         </header>
-        <div className="competition-standings-table">
-          <div className="competition-standing-row heading">
-            <span>순위</span><span>트레이너</span><span>승</span><span>패</span><span>득실</span><span>PTS</span>
-          </div>
-          {standings.map((standing, index) => {
-            const participant = getCompetitionParticipant(competition, standing.participantId)
-            return (
-              <div
-                className={`competition-standing-row${participant.isPlayer ? ' player' : ''}`}
-                key={standing.participantId}
-              >
-                <strong>{index + 1}</strong>
-                <span>{participant.name}</span>
-                <b>{standing.wins}</b>
-                <b>{standing.losses}</b>
-                <em>{standing.differential > 0 ? '+' : ''}{standing.differential}</em>
-                <strong>{standing.points}</strong>
-              </div>
-            )
-          })}
-        </div>
+        <LeagueStandingsTable competition={competition} />
       </div>
 
       <div className="competition-fixtures-panel">
@@ -452,20 +481,8 @@ function LeagueOverview({ competition, currentMatch, playerGender = 'male' }) {
           <span>CURRENT FIXTURES</span>
           <h2>{getCompetitionRoundLabel(competition)} 대진</h2>
         </header>
-        <div>
-          {currentPairings.map(([firstId, secondId]) => {
-            const first = getCompetitionParticipant(competition, firstId)
-            const second = getCompetitionParticipant(competition, secondId)
-            const isPlayerPair = [firstId, secondId].includes(PLAYER_PARTICIPANT_ID)
-            return (
-              <article className={isPlayerPair ? 'player-match' : ''} key={`${firstId}-${secondId}`}>
-                <span>{first.name}</span>
-                <b>VS</b>
-                <span>{second.name}</span>
-              </article>
-            )
-          })}
-        </div>
+        <LeagueFixtureList competition={competition} />
+        {startAction}
       </div>
     </section>
   )
@@ -497,6 +514,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
   const [isBracketOpen, setIsBracketOpen] = useState(false)
   const [isRulesOpen, setIsRulesOpen] = useState(false)
+  const [isStandingsOpen, setIsStandingsOpen] = useState(false)
   const [hoveredPokemonInspection, setHoveredPokemonInspection] = useState(null)
   const [focusedPokemonInspection, setFocusedPokemonInspection] = useState(null)
   const inspectedPokemon = hoveredPokemonInspection ?? focusedPokemonInspection
@@ -509,22 +527,24 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   useEffect(() => {
     setIsBracketOpen(false)
     setIsRulesOpen(false)
+    setIsStandingsOpen(false)
     setHoveredPokemonInspection(null)
     setFocusedPokemonInspection(null)
   }, [competition.id, competition.round, competition.status])
 
   useEffect(() => {
-    if (!isBracketOpen && !isRulesOpen) return undefined
+    if (!isBracketOpen && !isRulesOpen && !isStandingsOpen) return undefined
 
     const closeOnEscape = (event) => {
       if (event.key !== 'Escape') return
       setIsBracketOpen(false)
       setIsRulesOpen(false)
+      setIsStandingsOpen(false)
     }
 
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [isBracketOpen, isRulesOpen])
+  }, [isBracketOpen, isRulesOpen, isStandingsOpen])
 
   const toggleSelectedPokemon = (captureId) => {
     setSelectedCaptureIds((currentIds) => {
@@ -590,6 +610,19 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
             >
               <SlidersHorizontal size={16} />
               <span>배틀 환경</span>
+            </button>
+          )}
+
+          {!isTournament && (
+            <button
+              className={`competition-standings-toggle${isStandingsOpen ? ' is-open' : ''}`}
+              type="button"
+              aria-controls="competition-standings-popover"
+              aria-expanded={isStandingsOpen}
+              onClick={() => setIsStandingsOpen((isOpen) => !isOpen)}
+            >
+              <Medal size={16} />
+              <span>리그전 상황</span>
             </button>
           )}
         </div>
@@ -748,8 +781,68 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
         </div>
       )}
 
+      {/* The competition screen opens its own stacking context under the app
+          topbar, so a dialog left inside it has its close button covered. */}
+      {!isTournament && isStandingsOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="competition-standings-popover-layer"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setIsStandingsOpen(false)
+          }}
+        >
+          <section
+            id="competition-standings-popover"
+            className="competition-standings-popover"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="competition-standings-popover-title"
+          >
+            <header>
+              <div>
+                <span>LEAGUE TABLE</span>
+                <h2 id="competition-standings-popover-title">리그전 상황</h2>
+              </div>
+              <button type="button" aria-label="닫기" onClick={() => setIsStandingsOpen(false)}><X size={19} /></button>
+            </header>
+            <LeagueStandingsTable competition={competition} />
+            <div className="competition-standings-popover-fixtures">
+              <span>{roundLabel} 대진</span>
+              <LeagueFixtureList competition={competition} />
+            </div>
+          </section>
+        </div>,
+        document.body,
+      )}
+
       {!isTournament && (
-        <LeagueOverview competition={competition} currentMatch={currentMatch} playerGender={playerGender} />
+        <LeagueOverview
+          competition={competition}
+          currentMatch={currentMatch}
+          playerGender={playerGender}
+          startAction={currentMatch ? (
+            // A short desktop window leaves no room for the match panel's own
+            // footer, so the round also starts from the fixtures it belongs to.
+            <footer className="competition-fixtures-start-bar">
+              {requiresPokemonSelection && (
+                <small>
+                  {selectedCaptureIds.length === requiredPokemonCount
+                    ? '출전 준비 완료'
+                    : `출전 포켓몬 ${selectedCaptureIds.length}/${requiredPokemonCount} 선택`}
+                </small>
+              )}
+              <button
+                className="competition-fixtures-start"
+                type="button"
+                disabled={selectedCaptureIds.length !== requiredPokemonCount}
+                onClick={() => onStartBattle(selectedCaptureIds)}
+              >
+                <Swords size={16} />
+                대결 진행하기
+                <ChevronRight size={16} />
+              </button>
+            </footer>
+          ) : null}
+        />
       )}
     </main>
   )
