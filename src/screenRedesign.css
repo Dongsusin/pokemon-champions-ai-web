@@ -17829,6 +17829,14 @@
   transform-origin: left bottom;
 }
 
+/* Pinned to the viewport by BattleMoveTooltip so a scrolling move menu
+   cannot clip the description. Inline styles supply the coordinates. */
+.app-shell.battle-view .battle-move-option .battle-move-tooltip.is-pinned {
+  position: fixed;
+  z-index: 90;
+  transform-origin: center bottom;
+}
+
 .battle-move-option:nth-child(even) .battle-move-tooltip {
   right: 0;
   left: auto;

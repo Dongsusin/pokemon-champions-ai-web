@@ -1478,12 +1478,53 @@ function PokemonPartyMenu({ battle, forced, activeSlot = 0, reservedSwitchIndexe
 
 function BattleMoveTooltip({ id, move, opponent, presentation, visible, blockedReason }) {
   const accuracy = move.accuracyLabel ?? move.accuracy ?? '—'
+  const tooltipRef = useRef(null)
+  const [pinned, setPinned] = useState(null)
+
+  // The move menu scrolls in some layouts, so an absolutely positioned tooltip
+  // is cut off at its edge. Pin the open one to the viewport instead - above the
+  // move when there is room for it, below the move otherwise.
+  useLayoutEffect(() => {
+    const tooltip = tooltipRef.current
+    const option = tooltip?.parentElement
+    if (!visible || !option) {
+      setPinned(null)
+      return undefined
+    }
+    const place = () => {
+      const anchor = option.getBoundingClientRect()
+      const width = tooltip.offsetWidth
+      const height = tooltip.offsetHeight
+      const gap = 9
+      const margin = 8
+      const above = anchor.top - gap - height
+      const top = above >= margin
+        ? above
+        : Math.min(anchor.bottom + gap, window.innerHeight - margin - height)
+      setPinned({
+        top: `${Math.max(margin, top)}px`,
+        left: `${Math.max(margin, Math.min(anchor.left, window.innerWidth - margin - width))}px`,
+        width: `${width}px`,
+        right: 'auto',
+        bottom: 'auto',
+      })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [visible])
 
   return (
     <span
-      className={`battle-tooltip battle-move-tooltip type-accent-${typeClassName(move.type)} effectiveness-${presentation.tone}${visible ? ' is-visible' : ''}`}
+      className={`battle-tooltip battle-move-tooltip type-accent-${typeClassName(move.type)} effectiveness-${presentation.tone}${visible ? ' is-visible' : ''}${pinned ? ' is-pinned' : ''}`}
       id={id}
+      ref={tooltipRef}
       role="tooltip"
+      style={pinned ?? undefined}
       aria-hidden={!visible}
     >
       <span className="battle-tooltip-eyebrow">{move.type}타입 · {move.category}</span>
