@@ -3690,3 +3690,45 @@ html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .for
 html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .format-single .opponent-status-anchor{
   top:80px;
 }
+
+/* ==================================================================
+   Battle header.
+
+   The bar overlays the arena and carries five rule badges, a turn chip, the
+   match title and a "<player> VS <opponent>" label. Two things make it
+   crowd on a phone: the title lockup holds a min-width of min(285px,34vw) —
+   a third of an 844px frame — and the VS label is only dropped below 760px
+   wide, so on a landscape phone it stays and grows with the two pokémon
+   names, pushing the badge row left into the turn chip.
+
+   The names are already on the HP cards directly below, so the label goes;
+   the lockup gives up its floor; and the cluster can no longer overflow its
+   column. The bar is 74px of a 430px-tall screen, so the padding comes down
+   too. It is absolutely positioned, so the arena does not resize — 10px
+   less of it ends up covered. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-game-header{
+  padding:5px clamp(10px,1.8vw,24px);
+  column-gap:8px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-title-lockup{
+  min-width:0;
+  padding:4px 10px 5px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-title-lockup>strong{
+  overflow:hidden;
+  font-size:clamp(11px,1.5vh,15px);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Redundant with the HP cards, and it is what shoves the badges leftward. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-header-actions>span{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-header-cluster,
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-rule-hud{
+  min-width:0;
+}
