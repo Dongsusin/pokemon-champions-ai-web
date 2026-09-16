@@ -3286,3 +3286,254 @@ html[data-mobile-layout="landscape"] .draw-rate-zone[data-rate-open="true"] .dra
 html[data-mobile-layout="landscape"] .battle-mode-option-copy>small{
   display:none;
 }
+
+/* ==================================================================
+   Battle prep (competition match briefing).
+
+   The panel is a plain block sized for a desktop-height screen: a 38px
+   kicker, a 190px matchup stage, the rule board, the pokemon picker and a
+   58px footer, all in normal flow. The screen grid hands the panel whatever
+   row is left, and the panel clips its own overflow — so on a short phone
+   the picker and the 배틀 시작 button simply fall out of the frame and the
+   match cannot be started at all. Measured before this block at 932x430:
+   panel row 262px holding 411px of content, 배틀 시작 at y=525 in a 430px
+   frame; at 844x390 the panel ran to y=766.
+
+   Make the panel a grid that fits the row it is given, let the matchup art
+   be the part that flexes, and pull every fixed floor down to something a
+   phone can afford. */
+html[data-mobile-layout="landscape"] .competition-current-match-panel{
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) repeat(3,auto);
+  min-height:0;
+  border-radius:16px;
+}
+
+html[data-mobile-layout="landscape"] .competition-current-match-panel>*{
+  min-height:0;
+}
+
+/* Header: 79px of chrome for one title and a round chip. */
+html[data-mobile-layout="landscape"] .competition-header{
+  min-height:0;
+  padding:4px 12px;
+  border-radius:14px;
+}
+
+html[data-mobile-layout="landscape"] .competition-title-lockup h1{
+  font-size:clamp(13px,2.4vh,22px);
+}
+
+html[data-mobile-layout="landscape"] .competition-mode-emblem{
+  width:clamp(26px,4.4vh,44px);
+  height:clamp(26px,4.4vh,44px);
+}
+
+html[data-mobile-layout="landscape"] .competition-match-kicker{
+  min-height:0;
+  padding:3px 12px;
+}
+
+/* The matchup art is the flexible row: it takes what the fixed bands leave
+   instead of holding a 190px floor that pushes the button off-screen. */
+html[data-mobile-layout="landscape"] .competition-matchup-stage{
+  min-height:0;
+  padding:2px 12px;
+  grid-template-columns:minmax(0,1fr) clamp(46px,8vw,110px) minmax(0,1fr);
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer{
+  grid-template-columns:clamp(52px,10vw,150px) minmax(0,1fr);
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer.side-opponent{
+  grid-template-columns:minmax(0,1fr) clamp(52px,10vw,150px);
+}
+
+/* A fixed 168x144 sprite is taller than the whole row on a short frame. */
+html[data-mobile-layout="landscape"] .competition-match-trainer-sprite{
+  width:100%;
+  height:auto;
+  max-height:100%;
+  min-height:0;
+  object-fit:contain;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer h2{
+  margin:0;
+  font-size:clamp(14px,3.2vh,30px);
+}
+
+html[data-mobile-layout="landscape"] .competition-match-party{
+  grid-template-columns:repeat(6,clamp(18px,3.6vh,34px));
+  gap:3px;
+  margin-bottom:2px;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-party span,
+html[data-mobile-layout="landscape"] .competition-match-party button{
+  width:clamp(18px,3.6vh,34px);
+  height:clamp(18px,3.6vh,34px);
+  border-radius:7px;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-party :is(img,svg:where(.sprite-image-viewport)){
+  width:124%;
+  height:124%;
+}
+
+html[data-mobile-layout="landscape"] .competition-versus-mark strong{
+  font-size:clamp(16px,3.4vh,34px);
+}
+
+html[data-mobile-layout="landscape"] .competition-battle-rules{
+  padding:0 12px 5px;
+  gap:5px;
+}
+
+html[data-mobile-layout="landscape"] .competition-battle-rules>span{
+  padding:3px 7px 4px;
+  border-radius:8px;
+}
+
+html[data-mobile-layout="landscape"] .competition-battle-rules strong{
+  margin-top:1px;
+  font-size:10px;
+}
+
+/* The picker is the one band that has to stay tappable, so it keeps a real
+   floor while everything around it gives way. */
+html[data-mobile-layout="landscape"] .competition-team-selection{
+  padding:0 12px 6px;
+}
+
+html[data-mobile-layout="landscape"] .competition-team-selection>header{
+  margin-bottom:3px;
+}
+
+html[data-mobile-layout="landscape"] .competition-team-selection>div{
+  gap:5px;
+}
+
+html[data-mobile-layout="landscape"] .competition-team-selection button{
+  grid-template-columns:15px clamp(26px,7vh,44px) minmax(0,1fr);
+  min-height:32px;
+  padding:2px 5px 2px 2px;
+  border-radius:9px;
+}
+
+html[data-mobile-layout="landscape"] .competition-current-match-panel>footer{
+  min-height:0;
+  padding:4px 10px 4px 12px;
+}
+
+html[data-mobile-layout="landscape"] .competition-current-match-panel>footer>span{
+  overflow:hidden;
+  font-size:10px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .competition-current-match-panel>footer>button{
+  min-height:32px;
+  padding:0 12px;
+  border-radius:10px;
+  font-size:12px;
+}
+
+/* Below 900px wide screenRedesign.css hands the competition screen to a
+   phone-portrait branch: the screen becomes a scrolling block, the trainers
+   stack vertically and the party chips disappear. A landscape phone is that
+   narrow too (844x390), and there the branch is exactly wrong — it turned
+   the panel into an 847px scroller with 배틀 시작 at y=858. Keep the frame
+   grid and the side-by-side trainers at every landscape width. */
+html[data-mobile-layout="landscape"] .app-shell.competition-view{
+  overflow-y:hidden;
+}
+
+html[data-mobile-layout="landscape"] .competition-screen{
+  display:grid;
+  height:calc(100dvh - 84px);
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .competition-screen>*+*{
+  margin-top:0;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer{
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  text-align:left;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer.side-opponent{
+  text-align:right;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer-sprite{
+  grid-row:2/4;
+  order:0;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-trainer.side-opponent .competition-match-trainer-sprite{
+  grid-column:2;
+}
+
+html[data-mobile-layout="landscape"] .competition-match-party{
+  display:grid;
+}
+
+/* The party chips are inspect buttons, so they keep the 26px floor rather
+   than scaling all the way down with the row. */
+html[data-mobile-layout="landscape"] .competition-match-party{
+  grid-template-columns:repeat(6,clamp(26px,3.6vh,34px));
+}
+
+html[data-mobile-layout="landscape"] .competition-match-party span,
+html[data-mobile-layout="landscape"] .competition-match-party button{
+  width:clamp(26px,3.6vh,34px);
+  height:clamp(26px,3.6vh,34px);
+}
+
+/* At 844 wide the five rule cards let their labels wrap to two and three
+   lines, so the band grew to 83px and ate the whole matchup row (measured:
+   stage 4px, the trainer art clipped away). One line per label, and a floor
+   under the stage so it can never be squeezed out again. */
+html[data-mobile-layout="landscape"] .competition-battle-rules>span{
+  min-width:0;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .competition-battle-rules small,
+html[data-mobile-layout="landscape"] .competition-battle-rules strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-mobile-layout="landscape"] .competition-matchup-stage{
+  min-height:clamp(46px,12vh,170px);
+}
+
+/* The same <900px branch also restacks the rule board to two columns and the
+   pokemon picker to three — a portrait shape. A landscape phone has the
+   width for the full row, and the reflow was what pushed the picker into a
+   second row that fell out of the frame at 800x360. */
+html[data-mobile-layout="landscape"] .competition-battle-rules{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+}
+
+html[data-mobile-layout="landscape"] .competition-team-selection>div{
+  grid-template-columns:repeat(6,minmax(0,1fr));
+}
+
+/* The picker sprite is a fixed 44px, so it, not the button, set the row
+   height: the band stayed 50px tall on a 390px frame and the matchup row
+   lost the 46px it needs, drawing the trainer art over the rule cards.
+   Scale the sprite with the frame, never below the 26px tap floor. */
+html[data-mobile-layout="landscape"] .competition-team-selection button>:is(img,svg:where(.sprite-image-viewport)){
+  width:clamp(26px,7vh,44px);
+  height:clamp(26px,7vh,44px);
+}
