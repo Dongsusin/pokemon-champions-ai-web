@@ -184,12 +184,13 @@ function rollPokemonForBanner(bannerId, random, now) {
   return randomPoolEntry(pool, random)
 }
 
-function isDrawOwnedPokemon(pokemon) {
-  // A zero-count entry with an unlock source is an automatically materialized
-  // evolution-route placeholder. Other zero-count entries (for example a
-  // reward entitlement) are real ownership and must still be treated as a
-  // duplicate by the draw UI.
-  return Number(pokemon?.directDrawCount ?? 0) > 0 || !pokemon?.unlockSourceSpeciesId
+// Every entry in the collection counts as owned, including the evolution-route
+// placeholders `ensureEvolutionRoute` materializes for a family. Drawing 한카리아스
+// therefore also owns 딥상어동, so a later 딥상어동 is a duplicate and refunds VP.
+// The trade-off is deliberate: a pre-evolution can no longer be drawn on its own
+// once any member of its family is owned.
+function ownedDrawSpeciesIds(collection) {
+  return new Set(migratePokemonCollection(collection).map((pokemon) => pokemon.dexSpeciesId))
 }
 
 function rollUnownedPokemon(unowned, random) {
@@ -221,15 +222,9 @@ export function createPokemonDraw(count = 10, collection = [], random = Math.ran
   const drawCounts = collectionDrawCounts(collection)
   const banner = getDrawBanner(options.bannerId, options.now)
   const drawTimestamp = normalizedTimestamp(options.now)
-  // Route placeholders created for an unlocked evolution are visible in the
-  // collection, but they are not direct draw ownership.  Keep them eligible
-  // so an account that previously collected only final forms can still draw
-  // the missing pre-evolutions individually.
-  const owned = banner.id === 'standard'
-    ? new Set(migratePokemonCollection(collection)
-      .filter(isDrawOwnedPokemon)
-      .map((pokemon) => pokemon.dexSpeciesId))
-    : null
+  // Owning any member of a family owns the whole route, so the new-species
+  // guarantee never spends a slot on a pre-evolution the player already has.
+  const owned = banner.id === 'standard' ? ownedDrawSpeciesIds(collection) : null
   const unowned = owned ? new Set(POKEMON_POOL.filter((pokemon) => !owned.has(pokemon.id)).map((pokemon) => pokemon.id)) : null
   let newlyDrawnInBatch = []
   let guaranteedCount = 0
@@ -445,9 +440,7 @@ export function createCompletePokemonCollection(collection = []) {
 export function mergePokemonDraws(collection, results) {
   const currentCollection = migratePokemonCollection(collection)
   const collectionMap = new Map(currentCollection.map((pokemon) => [pokemon.dexSpeciesId, pokemon]))
-  const previouslyUnlocked = new Set(
-    currentCollection.filter(isDrawOwnedPokemon).map((pokemon) => pokemon.dexSpeciesId),
-  )
+  const previouslyUnlocked = new Set(currentCollection.map((pokemon) => pokemon.dexSpeciesId))
   const directlySeenThisDraw = new Set(previouslyUnlocked)
   const resolvedResults = []
   let duplicateCount = 0

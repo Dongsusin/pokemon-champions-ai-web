@@ -189,11 +189,9 @@ function checkGuarantee(name, run) {
 const collectionOf = ids => ids.map(id => ({ speciesId: id, dexSpeciesId: id, directDrawCount: 1 }))
 const draw = (collection, random = () => 0.5, options = {}) => createPokemonDraw(10, collection, random, { now: 0, ...options })
 function assertMinimumNew(collection, results, expected = 3) {
-  const before = new Set(
-    migratePokemonCollection(collection)
-      .filter(pokemon => Number(pokemon.directDrawCount ?? 0) > 0 || !pokemon.unlockSourceSpeciesId)
-      .map(pokemon => pokemon.dexSpeciesId),
-  )
+  // Every collection entry counts as owned, evolution-route placeholders
+  // included, so a pre-evolution of an owned species is never "new".
+  const before = new Set(migratePokemonCollection(collection).map(pokemon => pokemon.dexSpeciesId))
   const missing = POKEMON_POOL.filter(pokemon => !before.has(pokemon.id)).length
   const newIds = new Set(results.filter(pokemon => !before.has(pokemon.id)).map(pokemon => pokemon.id))
   assert(newIds.size >= Math.min(expected, missing), `${newIds.size} new species; expected ${Math.min(expected, missing)}`)
@@ -223,16 +221,24 @@ checkGuarantee('partial collections retain ten draws, original ownership and cor
   }
   assert.equal(JSON.stringify(collection), original)
 })
-checkGuarantee('evolution-route placeholders do not hide pre-evolution candidates', () => {
+checkGuarantee('owning a final evolution owns its pre-evolutions, which then refund as duplicates', () => {
   const finalEvolutionIds = NATIONAL_DEX
     .filter(pokemon => isFinalEvolutionSpecies(pokemon.id))
     .map(pokemon => pokemon.id)
   const collection = collectionOf(finalEvolutionIds)
-  // Legacy accounts commonly contain only final forms. Migration adds the
-  // family route placeholders, but those placeholders must remain eligible
-  // for a direct draw from the now-complete National Dex pool.
-  const merged = assertMinimumNew(collection, draw(collection, () => 0))
-  assert(merged.results.some(result => !result.isDuplicate && !isFinalEvolutionSpecies(result.id)))
+  const preEvolutionIds = migratePokemonCollection(collection)
+    .map(pokemon => pokemon.dexSpeciesId)
+    .filter(id => !finalEvolutionIds.includes(id))
+  assert(preEvolutionIds.length > 0, 'migration should materialize pre-evolution placeholders')
+  // 한카리아스를 보유하면 딥상어동도 보유로 본다: 하위 진화형을 따로 뽑을 수는 없고,
+  // 대신 뽑혔을 때 중복으로 VP를 돌려준다.
+  const merged = mergePokemonDraws(collection, preEvolutionIds.slice(0, 3).map(id => ({ id, isShiny: false })))
+  assert(merged.results.every(result => result.isDuplicate), 'pre-evolutions of owned species must count as duplicates')
+  assert.equal(merged.duplicateRefundVp, merged.results.length * DUPLICATE_DRAW_REFUND_VP)
+  assert.equal(merged.newlyUnlockedCount, 0)
+  // With every family owned the ten-draw guarantee has nothing new to award.
+  const batch = assertMinimumNew(collection, draw(collection, () => 0))
+  assert(batch.results.every(result => result.isDuplicate))
 })
 for (const remaining of [0, 1, 2, 3]) {
   checkGuarantee(`${remaining} unowned species left: award all possible new species without rerolling forever`, () => {
