@@ -2939,3 +2939,61 @@ html[data-mobile-layout="landscape"] .battle-hub-card>strong{
   padding-top:10px;
   font-size:clamp(10px,1.2vw,13px);
 }
+
+/* ------------------------------------------------- AI battle difficulty */
+
+/* mobileUiV2.css hides the hard-difficulty stage picker on landscape, so
+   하드 could be chosen but its 시작 능력 단계 could not — the header still
+   read "하드 · +1단계" with no way to change the number. Put the picker back
+   beside that label: `display:contents` lifts the controls wrapper's children
+   into the section's own grid so the stage buttons can share the heading row.
+   They stay dimmed and disabled until 하드 is selected, exactly as on desktop. */
+html[data-mobile-layout="landscape"] .battle-ai-difficulty{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:
+    "heading boost"
+    "options options";
+  gap:4px 8px;
+  align-items:center;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty>header{
+  grid-area:heading;
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty-controls{
+  display:contents;
+}
+
+html[data-mobile-layout="landscape"] .battle-ai-difficulty-options{
+  grid-area:options;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+html[data-mobile-layout="landscape"] .battle-hard-boost-selector{
+  grid-area:boost;
+  display:flex;
+  gap:4px;
+  align-items:center;
+  min-width:0;
+}
+
+/* The heading already reads "+N단계", so the caption is redundant here. */
+html[data-mobile-layout="landscape"] .battle-hard-boost-selector>span{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .battle-hard-boost-selector>div{
+  display:grid;
+  grid-auto-flow:column;
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .battle-hard-boost-selector button{
+  min-width:30px;
+  min-height:28px;
+  padding:0 6px;
+  font-size:11px;
+}
