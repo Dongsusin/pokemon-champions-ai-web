@@ -3198,3 +3198,25 @@ html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-showcase
   grid-template-columns:minmax(0,1fr);
   grid-template-rows:minmax(0,1fr);
 }
+
+/* The sealed egg is a fixed 54x61 and the revealed sprite a fixed 47px wide,
+   but a landscape slot is only clamp(46px,9vh,88px) tall. The art overran the
+   card and the slot clipped it, cutting the egg off top and bottom and
+   covering the 01-10 index. Size the art to the space the slot actually has. */
+html[data-mobile-layout="landscape"] .draw-slot.sealed .draw-slot-egg,
+html[data-mobile-layout="landscape"] .draw-slot:not(.revealed) img,
+html[data-mobile-layout="landscape"] .draw-slot.revealed img{
+  flex:1 1 auto;
+  width:auto;
+  height:auto;
+  min-height:0;
+  max-width:100%;
+  max-height:100%;
+  margin-bottom:0;
+  object-fit:contain;
+}
+
+/* Leave the index its own corner rather than letting the art sit under it. */
+html[data-mobile-layout="landscape"] .draw-slot{
+  padding:3px;
+}
