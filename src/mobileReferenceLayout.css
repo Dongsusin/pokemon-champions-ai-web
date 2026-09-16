@@ -3732,3 +3732,18 @@ html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .bat
 html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-rule-hud{
   min-width:0;
 }
+
+/* Battle intro party strip: screenRedesign.css hides the 4th icon onward
+   below 900px wide — a portrait-phone call sized for a 6-pokémon roster. But
+   this strip shows the *selected* battle team, which is 3 in singles and 4 in
+   doubles, and a landscape phone is 844-900px wide. So a 4대4 double battle
+   announced four and drew three. Show the whole selected team. */
+html[data-mobile-layout="landscape"] .battle-intro-trainer>div>span :is(img,svg:where(.sprite-image-viewport)):nth-child(n+4){
+  display:block;
+}
+
+/* Four icons need more room than three, so let the strip wrap rather than
+   run past the trainer column. */
+html[data-mobile-layout="landscape"] .battle-intro-trainer>div>span{
+  flex-wrap:wrap;
+}
