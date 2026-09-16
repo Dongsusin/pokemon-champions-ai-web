@@ -1,0 +1,283 @@
+{
+  "duration": 102,
+  "scenes": [
+    {
+      "id": "intro",
+      "sceneId": "intro",
+      "duration": 4,
+      "visibleText": [
+        "POKÉMON",
+        "CHAMPIONS ARENA"
+      ],
+      "brokenImages": [],
+      "animations": 0,
+      "bounds": [
+        {
+          "text": "POKÉMONCHAMPIONS ARENA",
+          "left": 65,
+          "top": 560,
+          "right": 1855,
+          "bottom": 787.328125
+        }
+      ]
+    },
+    {
+      "id": "mobile",
+      "sceneId": "mobile",
+      "duration": 6,
+      "visibleText": [
+        "모바일 최적화",
+        "가로 모드, 한 화면에 전부",
+        "뽑기",
+        "박스 · 팀 편성",
+        "트레이닝",
+        "배틀"
+      ],
+      "brokenImages": [],
+      "animations": 0,
+      "bounds": [
+        {
+          "text": "모바일 최적화",
+          "left": 106,
+          "top": 232,
+          "right": 986,
+          "bottom": 432.625
+        },
+        {
+          "text": "가로 모드, 한 화면에 전부",
+          "left": 106,
+          "top": 469.625,
+          "right": 986,
+          "bottom": 537.125
+        },
+        {
+          "text": "",
+          "left": 1047,
+          "top": 339,
+          "right": 1789,
+          "bottom": 705
+        },
+        {
+          "text": "뽑기",
+          "left": 112,
+          "top": 811,
+          "right": 262,
+          "bottom": 912
+        },
+        {
+          "text": "박스 · 팀 편성",
+          "left": 285,
+          "top": 811.0000610351562,
+          "right": 603,
+          "bottom": 912.0000610351562
+        },
+        {
+          "text": "트레이닝",
+          "left": 626.0330810546875,
+          "top": 811.2640380859375,
+          "right": 855.9668579101562,
+          "bottom": 912.2349853515625
+        },
+        {
+          "text": "배틀",
+          "left": 879.157958984375,
+          "top": 812.9312744140625,
+          "right": 1028.842041015625,
+          "bottom": 913.7185668945312
+        }
+      ]
+    },
+    {
+      "id": "outro",
+      "sceneId": "outro",
+      "duration": 8,
+      "visibleText": [
+        "POKÉMON",
+        "CHAMPIONS ARENA",
+        "휴대폰으로, 지금 바로",
+        "pokemon-champions-area-web.co.kr"
+      ],
+      "brokenImages": [],
+      "animations": 0,
+      "bounds": [
+        {
+          "text": "POKÉMONCHAMPIONS ARENA",
+          "left": 65,
+          "top": 351,
+          "right": 1855,
+          "bottom": 519.78125
+        },
+        {
+          "text": "휴대폰으로, 지금 바로",
+          "left": 60,
+          "top": 585,
+          "right": 1860,
+          "bottom": 681
+        },
+        {
+          "text": "pokemon-champions-area-web.co.kr",
+          "left": 430.5,
+          "top": 775,
+          "right": 1489.5,
+          "bottom": 893.390625
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "id": "lobby",
+      "lines": [
+        {
+          "text": "휴대폰을 가로로",
+          "left": 78,
+          "top": 59,
+          "right": 616,
+          "bottom": 149.859375
+        },
+        {
+          "text": "그대로 펼쳐지는 아레나",
+          "left": 78,
+          "top": 153,
+          "right": 860,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "draw",
+      "lines": [
+        {
+          "text": "뽑기도 한 손에",
+          "left": 78,
+          "top": 59,
+          "right": 566,
+          "bottom": 149.859375
+        },
+        {
+          "text": "확률표는 눌러서 확인",
+          "left": 78,
+          "top": 153,
+          "right": 786.5,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "box",
+      "lines": [
+        {
+          "text": "박스와 팀 편성",
+          "left": 78,
+          "top": 59,
+          "right": 566,
+          "bottom": 149.859375
+        },
+        {
+          "text": "겹침 없이 한눈에",
+          "left": 78,
+          "top": 153,
+          "right": 639.5,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "training",
+      "lines": [
+        {
+          "text": "기술 이름이 먼저",
+          "left": 78,
+          "top": 59,
+          "right": 639.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "좁은 화면의 우선순위",
+          "left": 78,
+          "top": 153,
+          "right": 786.5,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "modes",
+      "lines": [
+        {
+          "text": "싱글과 더블, 토너먼트와 리그전",
+          "left": 78,
+          "top": 59,
+          "right": 1120.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "난이도까지 한 화면",
+          "left": 78,
+          "top": 153,
+          "right": 713,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "prep",
+      "lines": [
+        {
+          "text": "배틀 준비도",
+          "left": 78,
+          "top": 59,
+          "right": 469,
+          "bottom": 149.859375
+        },
+        {
+          "text": "스크롤 없이",
+          "left": 78,
+          "top": 153,
+          "right": 469,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "single",
+      "lines": [
+        {
+          "text": "포켓몬을 가리지 않는 체력바",
+          "left": 78,
+          "top": 59,
+          "right": 1030.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "2×2 커맨드",
+          "left": 78,
+          "top": 153,
+          "right": 456.5,
+          "bottom": 243.859375
+        }
+      ]
+    },
+    {
+      "id": "double",
+      "lines": [
+        {
+          "text": "더블배틀도",
+          "left": 78,
+          "top": 59,
+          "right": 445.5,
+          "bottom": 149.859375
+        },
+        {
+          "text": "네 마리가 모두 보이게",
+          "left": 78,
+          "top": 153,
+          "right": 810,
+          "bottom": 243.859375
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

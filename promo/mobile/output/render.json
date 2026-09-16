@@ -1,0 +1,117 @@
+{
+  "output": "promo/mobile/output/champions-arena-mobile-update-1080p.mp4",
+  "duration": 102,
+  "fps": 30,
+  "sourceHashes": {
+    "intro": "120921042d6738f5f6bb5c1334f84eff17beca23429f192c24e382b236d55978",
+    "mobile": "19771b3a67d1b1fad516124164633119c9b93deeab1243ecfd00c72e3f051605",
+    "lobby": "3cc3889024d0092d763e678acb1c4740f8a8d970e452de98bb8d316386fb43fd",
+    "draw": "6557cf637b19e5774a6ed34eca7fdc105771bde7d4d6c56e90f436778d799bab",
+    "box": "0f05f48a8f87e3d0877cb344586ce892f551c1c9a44912ba32861c712d7ec855",
+    "training": "740032223e65101430a886db53ae04b0e8acf33714acdf3e321f18a2cef96c27",
+    "modes": "b24c8edf13b3f1a2cd9a8691015cfd8e317a5034424dc0811c70b8add24b5ed6",
+    "prep": "83da1d2d68b027a4b3a2fac352631178c68aba5ff8b2efed23e2d28cf242708c",
+    "single": "751c28b3a25a0870a885c0b62e32a349ebafe8af8af4fe686dc0cec1a192f5f8",
+    "double": "53b07dd52afd88da4d48cfba849d9393d43d3881168ab22452b6b7829d292c24",
+    "outro": "73e8544a9fc71c7d9e83e55250d2e4e5b67ac778f65b14a3f548b9f8cfddf3fa"
+  },
+  "cues": [
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 3.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/impact.wav",
+      "at": 4.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 9.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 17.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 29.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 39.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 49.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 58.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 67.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/impact.wav",
+      "at": 68.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 80.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/impact.wav",
+      "at": 81.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/mobile/generated/whoosh.wav",
+      "at": 93.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/mobile/generated/chime.wav",
+      "at": 95.1,
+      "volume": 0.5
+    }
+  ],
+  "audioMeasuredBeforeMastering": {
+    "input_i": "-17.07",
+    "input_tp": "-6.25",
+    "input_lra": "5.80",
+    "input_thresh": "-27.16",
+    "output_i": "-14.07",
+    "output_tp": "-2.50",
+    "output_lra": "2.80",
+    "output_thresh": "-24.09",
+    "normalization_type": "dynamic",
+    "target_offset": "-1.93"
+  },
+  "audioMeasuredAfterEncoding": {
+    "input_i": "-16.07",
+    "input_tp": "-4.83",
+    "input_lra": "5.80",
+    "input_thresh": "-26.16",
+    "output_i": "-14.06",
+    "output_tp": "-2.50",
+    "output_lra": "2.70",
+    "output_thresh": "-24.08",
+    "normalization_type": "dynamic",
+    "target_offset": "-1.94"
+  },
+  "audioEncoder": "aac-fast-256k",
+  "sha256": "667ba7fb0ef4f9614b98a9d2b10583850da80d7b5de6018c04dfc335085fb635",
+  "bytes": 16655815
+}

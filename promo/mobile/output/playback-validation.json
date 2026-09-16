@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-09-16T10:42:47.139Z",
+  "expectedDuration": 102,
+  "metadata": {
+    "duration": 102,
+    "width": 1920,
+    "height": 1080,
+    "chapters": [
+      0,
+      4,
+      10,
+      18,
+      30,
+      40,
+      50,
+      59,
+      68,
+      81,
+      94
+    ]
+  },
+  "playback": {
+    "waiting": [
+      0
+    ],
+    "stalls": [],
+    "errors": [],
+    "ended": true,
+    "startedAt": 872.8000000007451,
+    "endedAt": 103124.30000000075,
+    "currentTime": 102,
+    "quality": {
+      "totalVideoFrames": 3060,
+      "droppedVideoFrames": 1,
+      "corruptedVideoFrames": 0
+    }
+  },
+  "chapterChecks": [
+    {
+      "requested": 4,
+      "actual": 4.014139
+    },
+    {
+      "requested": 18,
+      "actual": 18.005735
+    },
+    {
+      "requested": 40,
+      "actual": 40.01645
+    },
+    {
+      "requested": 59,
+      "actual": 59.004694
+    },
+    {
+      "requested": 94,
+      "actual": 94.017996
+    }
+  ],
+  "cancelledMediaRequests": [
+    "http://127.0.0.1:5288/promo/mobile/output/champions-arena-mobile-update-1080p.mp4: net::ERR_ABORTED"
+  ],
+  "errors": [],
+  "passed": true,
+  "scope": "Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening."
+}

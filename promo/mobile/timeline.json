@@ -1,0 +1,122 @@
+[
+  {
+    "id": "intro",
+    "kind": "motion",
+    "scene": "intro",
+    "duration": 4,
+    "title": "POKÉMON CHAMPIONS ARENA",
+    "transition": "fade"
+  },
+  {
+    "id": "mobile",
+    "kind": "motion",
+    "scene": "mobile",
+    "duration": 6,
+    "title": "모바일 최적화 업데이트. 가로 모드, 한 화면에 전부.",
+    "transition": "smoothup"
+  },
+  {
+    "id": "lobby",
+    "kind": "footage",
+    "duration": 8,
+    "lines": [
+      "휴대폰을 가로로",
+      "그대로 펼쳐지는 아레나"
+    ],
+    "title": "가로 모드 전용 레이아웃으로 로비의 팀과 메뉴를 한 화면에 담았습니다.",
+    "accent": "#93e5ff",
+    "transition": "fade"
+  },
+  {
+    "id": "draw",
+    "kind": "footage",
+    "duration": 12,
+    "lines": [
+      "뽑기도 한 손에",
+      "확률표는 눌러서 확인"
+    ],
+    "title": "뽑기 화면을 가로에 맞춰 다시 배치하고, 확률은 확률표 버튼의 툴팁으로 옮겼습니다.",
+    "accent": "#ffdd8e",
+    "transition": "smoothleft"
+  },
+  {
+    "id": "box",
+    "kind": "footage",
+    "duration": 10,
+    "lines": [
+      "박스와 팀 편성",
+      "겹침 없이 한눈에"
+    ],
+    "title": "박스 목록과 포켓몬 세팅을 좌우로 나눠 스크롤 없이 함께 보이도록 했습니다.",
+    "accent": "#a2efe0",
+    "transition": "fade"
+  },
+  {
+    "id": "training",
+    "kind": "footage",
+    "duration": 10,
+    "lines": [
+      "기술 이름이 먼저",
+      "좁은 화면의 우선순위"
+    ],
+    "title": "트레이닝은 기술 이름과 타입을 앞세우고 남는 여백을 없앴습니다.",
+    "accent": "#ffb9d2",
+    "transition": "smoothright"
+  },
+  {
+    "id": "modes",
+    "kind": "footage",
+    "duration": 9,
+    "lines": [
+      "싱글과 더블, 토너먼트와 리그전",
+      "난이도까지 한 화면"
+    ],
+    "title": "모드 선택은 배틀 형식, 대회 방식, 난이도를 겹치지 않게 2×2로 배치했습니다.",
+    "accent": "#93e5ff",
+    "transition": "smoothup"
+  },
+  {
+    "id": "prep",
+    "kind": "footage",
+    "duration": 9,
+    "lines": [
+      "배틀 준비도",
+      "스크롤 없이"
+    ],
+    "title": "대전 상대와 규칙, 출전 포켓몬 선택을 가로 한 화면에 모았습니다.",
+    "accent": "#a2efe0",
+    "transition": "fade"
+  },
+  {
+    "id": "single",
+    "kind": "footage",
+    "duration": 13,
+    "lines": [
+      "포켓몬을 가리지 않는 체력바",
+      "2×2 커맨드"
+    ],
+    "title": "배틀은 체력 카드를 줄여 포켓몬을 가리지 않고, 명령은 기존 포켓몬 게임처럼 2×2로 놓았습니다.",
+    "accent": "#ffdd8e",
+    "transition": "smoothleft"
+  },
+  {
+    "id": "double",
+    "kind": "footage",
+    "duration": 13,
+    "lines": [
+      "더블배틀도",
+      "네 마리가 모두 보이게"
+    ],
+    "title": "더블배틀에서도 양쪽 네 마리와 체력, 기술 정보가 서로 겹치지 않습니다.",
+    "accent": "#ffb9d2",
+    "transition": "fade"
+  },
+  {
+    "id": "outro",
+    "kind": "motion",
+    "scene": "outro",
+    "duration": 8,
+    "title": "휴대폰으로, 지금 바로. pokemon-champions-area-web.co.kr",
+    "transition": "fade"
+  }
+]

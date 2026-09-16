@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent;font-family:'Malgun Gothic','Noto Sans KR',sans-serif}
+/* The take is composited into this window; the bezel ring is drawn around it
+   and its rounded border also masks the square corners of the clip. */
+.background{position:absolute;inset:0;background:
+  radial-gradient(ellipse at 24% 22%,#3fd3f52a,transparent 58%),
+  radial-gradient(ellipse at 84% 76%,#f5bb4a1c,transparent 46%),
+  linear-gradient(160deg,#08182acc,#050f1ce6 58%,#070d18f0),
+  url('/assets/champions-lobby-bg.jpg') center/cover}
+.veil{position:absolute;inset:0;backdrop-filter:blur(18px);background:#050e1a8c}
+.floor{position:absolute;left:-200px;right:-200px;top:1058px;height:2px;background:linear-gradient(90deg,transparent,#9ef1ff44 45%,#ffe0973a 75%,transparent);transform:rotate(-2deg)}
+.glow{position:absolute;left:242px;top:350px;width:1436px;height:682px;border-radius:44px;background:radial-gradient(ellipse at 50% 50%,#54d9f52e,transparent 70%);filter:blur(42px)}
+.bezel{position:absolute;left:242px;top:350px;width:1436px;height:682px;border:18px solid #1b2a3d;border-radius:34px;background:transparent;
+  box-shadow:0 38px 70px #00000073,0 0 0 1px #9fe4ff4d,inset 0 0 0 1px #8fd9ff45,0 0 70px #45c9ef1f}
+.notch{position:absolute;left:242px;top:645px;width:6px;height:92px;border-radius:3px;background:#9fe4ff3d}
+.notch.right{left:1672px}
+[data-hidden]{visibility:hidden}
+</style></head><body>
+<div data-layer="background"><div class="background"></div><div class="veil"></div><div class="floor"></div><div class="glow"></div></div>
+<div data-layer="bezel"><div class="bezel"></div><div class="notch"></div><div class="notch right"></div></div>
+<script>
+const layers=['background','bezel'];
+window.updateFrame={
+  ready:Promise.all([document.fonts.ready,new Promise((resolve,reject)=>{const image=new Image();image.onload=resolve;image.onerror=()=>reject(new Error('Lobby banner failed to load'));image.src='/assets/champions-lobby-bg.jpg'})]),
+  layers,
+  window:{x:260,y:368,width:1400,height:646},
+  setLayer(name){document.querySelectorAll('[data-layer]').forEach(node=>node.toggleAttribute('data-hidden',node.dataset.layer!==name))},
+};
+</script></body></html>

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent;color:#fff;font-family:'Malgun Gothic','Noto Sans KR',sans-serif}
+.shade{position:absolute;inset:0 0 auto;height:393px;background:linear-gradient(180deg,#020918ef,#020e1dcc 41%,#03101b76 70%,transparent)}
+.copy{position:absolute;left:78px;top:59px;font-size:77px;line-height:1.18;font-weight:900;letter-spacing:-3.5px;text-shadow:0 5px 25px #000d;margin:0;white-space:nowrap}
+.copy.second{top:153px;color:var(--accent)}
+.accent{position:absolute;left:81px;top:256px;width:224px;height:4px;background:linear-gradient(90deg,var(--accent),transparent);filter:drop-shadow(0 0 8px var(--accent))}
+[data-hidden]{visibility:hidden}
+</style></head><body><div class="shade" data-layer="shade"></div><div class="copy" data-layer="line-0"></div><div class="copy second" data-layer="line-1"></div><div class="accent" data-layer="accent"></div>
+<script>
+const data=JSON.parse(new URLSearchParams(location.search).get('data')||'{}');
+document.documentElement.style.setProperty('--accent',data.accent||'#ffe19b');
+document.querySelector('[data-layer="line-0"]').textContent=data.lines?.[0]||'';
+document.querySelector('[data-layer="line-1"]').textContent=data.lines?.[1]||'';
+const layers=['shade','line-0','line-1','accent'];
+window.updateOverlay={
+  ready:document.fonts.ready,layers,
+  setLayer(name){document.querySelectorAll('[data-layer]').forEach(e=>e.toggleAttribute('data-hidden',e.dataset.layer!==name))},
+  bounds(name){if(name==='shade')return{x:0,y:0,width:1920,height:400};const r=document.querySelector(`[data-layer="${name}"]`).getBoundingClientRect();const x=Math.max(0,Math.floor(r.x-25)),y=Math.max(0,Math.floor(r.y-25));return{x,y,width:Math.min(1920,Math.ceil(r.right+25))-x,height:Math.min(1080,Math.ceil(r.bottom+25))-y}},
+};
+</script></body></html>

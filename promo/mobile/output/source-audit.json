@@ -1,0 +1,334 @@
+{
+  "provenance": "The shipped screens rendered in a 932x430 landscape phone viewport with touch emulation, served by the local usage-test launcher (offline auth, loopback ranked backend, file-backed test store). Battle outcomes come from the real engine. No production account, database or game source edit.",
+  "sourceGameCommit": "61d9b9adc7843702cdfbaab0948d3d195a4e9717",
+  "sourceWorkingTreeChanged": true,
+  "sourceGameFiles": [
+    {
+      "path": "src/mobileViewport.js",
+      "bytes": 4032,
+      "sha256": "2f9727a6ed70387ebc9fd48cde3f22de1e8c35264d1d38839b274644d31b2253"
+    },
+    {
+      "path": "src/mobileReferenceLayout.css",
+      "bytes": 119148,
+      "sha256": "50901b5c23566809e7ed103b19f8719aa403501f0c598b2b133e2f5ae1cadbc4"
+    },
+    {
+      "path": "src/mobileLandscape.css",
+      "bytes": 15692,
+      "sha256": "4184f9bb10d02bb98b94ee85201cec2f33afa6ad3a46a5f62978984f14aa4d6b"
+    },
+    {
+      "path": "src/mobileTouch.css",
+      "bytes": 9884,
+      "sha256": "f7471c27eefe194fcb42a0289b8eb5f0bd757c15bc8ab0f14fa7d7da62c6b308"
+    },
+    {
+      "path": "src/mobileUiV2.css",
+      "bytes": 39696,
+      "sha256": "aa89c97d7820a1b013f0bca18568f55b388830f6aceb7d1e5e0304db1ffef316"
+    },
+    {
+      "path": "src/HatchScreen.jsx",
+      "bytes": 28546,
+      "sha256": "fcbea33e1fc366734fbc3fb0508557eaf83a8b6fe18151eed7bdc2a9f8371507"
+    },
+    {
+      "path": "src/BoxScreen.jsx",
+      "bytes": 57781,
+      "sha256": "f43946977645f7c0a4660e00501304a185fb745cf9d1ac8f5ba63b37b25d9f41"
+    },
+    {
+      "path": "src/TrainingScreen.jsx",
+      "bytes": 87699,
+      "sha256": "2564258c11bcc182737d7f75957718647618d1bec125ae1b1307376341ebb844"
+    },
+    {
+      "path": "src/BattleSelectScreen.jsx",
+      "bytes": 13856,
+      "sha256": "60eaf0b0d094b90fbc541c1746e4a7eb6181089659b61131de38bd94cc79f69e"
+    },
+    {
+      "path": "src/CompetitionScreen.jsx",
+      "bytes": 27990,
+      "sha256": "359921099b4f17135eeb663f6196fc41525658b4cf0c92ca27c01e4e88e2c31f"
+    },
+    {
+      "path": "src/BattleScreen.jsx",
+      "bytes": 120695,
+      "sha256": "3483934e04ac3a7d8a4998ec64b753843daf5a2da590b75611f409169ddc873c"
+    },
+    {
+      "path": "src/screenRedesign.css",
+      "bytes": 485657,
+      "sha256": "67d3a380809341062776141906d38e567ec4db6e387bef2c3dcd3f94be20dced"
+    },
+    {
+      "path": "src/battleGen5.css",
+      "bytes": 192771,
+      "sha256": "65593f7253d3395d9bf997259210f97edcb4365977eabe5cd6b4e4c332ab93f2"
+    },
+    {
+      "path": "src/styles.css",
+      "bytes": 51518,
+      "sha256": "0d28fc73da2357c3032111ca02923156ee77ccddda86d196d86dec0292a6345a"
+    },
+    {
+      "path": "promo/mobile/capture/capture.mjs",
+      "bytes": 15113,
+      "sha256": "d863f49e425bca117b47b9d3dafe013698fca28b8590d98df5e075db8a368d25"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "lobby",
+      "usableDuration": 9.088000000000001,
+      "visibleImages": 8,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\lobby.mp4",
+      "cleanStartSeconds": 7.6,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "draw",
+      "usableDuration": 13.084000000000001,
+      "visibleImages": 4,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\draw.mp4",
+      "cleanStartSeconds": 21.319999999999997,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "box",
+      "usableDuration": 11.082,
+      "visibleImages": 25,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\box.mp4",
+      "cleanStartSeconds": 39.8,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "training",
+      "usableDuration": 11.093,
+      "visibleImages": 8,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\training.mp4",
+      "cleanStartSeconds": 56.559999999999995,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "modes",
+      "usableDuration": 10.089,
+      "visibleImages": 7,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\modes.mp4",
+      "cleanStartSeconds": 74.67999999999999,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "prep",
+      "usableDuration": 10.095,
+      "visibleImages": 16,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\prep.mp4",
+      "cleanStartSeconds": 89.52,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "double",
+      "usableDuration": 14.091000000000001,
+      "visibleImages": 4,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\double.mp4",
+      "cleanStartSeconds": 109.2,
+      "recommendedTrimOffset": 0
+    },
+    {
+      "id": "single",
+      "usableDuration": 14.087000000000002,
+      "visibleImages": 4,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\generated\\footage\\single.mp4",
+      "cleanStartSeconds": 127.48,
+      "recommendedTrimOffset": 0
+    }
+  ],
+  "captureErrors": [],
+  "imageVerification": {
+    "allVisibleImagesLoaded": true
+  },
+  "music": {
+    "title": "Face The Champion!",
+    "creator": "Spring Spring",
+    "attribution": "Produced by Julie Damsgaard / Spring Spring / Spring Enterprises",
+    "sourceUrl": "https://opengameart.org/content/face-the-champion",
+    "creatorUrl": "https://spring-enterprises.neocities.org",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "source": "public/assets/audio/battle/battle-theme.ogg",
+    "sourceSha256": "5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540",
+    "output": "promo/mobile/generated/music.wav",
+    "outputSha256": "3aa65d674459bca28d98c003825a7de5ce0cf90aae2651ba1aa791f14eca61c0",
+    "sourceStartSeconds": 0,
+    "durationSeconds": 102,
+    "fadeInSeconds": 0.2,
+    "fadeOutSeconds": 1.6,
+    "sampleRate": 48000,
+    "channels": 2,
+    "targetIntegratedLUFS": -18,
+    "measuredIntegratedLUFS": -18,
+    "measuredTruePeakDbTP": -7.16,
+    "soundEffects": [
+      {
+        "name": "whoosh",
+        "file": "promo/mobile/generated/whoosh.wav",
+        "durationSeconds": 0.42,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      },
+      {
+        "name": "impact",
+        "file": "promo/mobile/generated/impact.wav",
+        "durationSeconds": 0.42,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      },
+      {
+        "name": "chime",
+        "file": "promo/mobile/generated/chime.wav",
+        "durationSeconds": 0.85,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      }
+    ],
+    "modifications": "Excerpted from the existing web-game BGM, faded in/out, normalized, and resampled. Final trailer may mix game effects over this music."
+  },
+  "timeline": [
+    {
+      "id": "intro",
+      "kind": "motion",
+      "scene": "intro",
+      "duration": 4,
+      "title": "POKÉMON CHAMPIONS ARENA",
+      "transition": "fade"
+    },
+    {
+      "id": "mobile",
+      "kind": "motion",
+      "scene": "mobile",
+      "duration": 6,
+      "title": "모바일 최적화 업데이트. 가로 모드, 한 화면에 전부.",
+      "transition": "smoothup"
+    },
+    {
+      "id": "lobby",
+      "kind": "footage",
+      "duration": 8,
+      "lines": [
+        "휴대폰을 가로로",
+        "그대로 펼쳐지는 아레나"
+      ],
+      "title": "가로 모드 전용 레이아웃으로 로비의 팀과 메뉴를 한 화면에 담았습니다.",
+      "accent": "#93e5ff",
+      "transition": "fade"
+    },
+    {
+      "id": "draw",
+      "kind": "footage",
+      "duration": 12,
+      "lines": [
+        "뽑기도 한 손에",
+        "확률표는 눌러서 확인"
+      ],
+      "title": "뽑기 화면을 가로에 맞춰 다시 배치하고, 확률은 확률표 버튼의 툴팁으로 옮겼습니다.",
+      "accent": "#ffdd8e",
+      "transition": "smoothleft"
+    },
+    {
+      "id": "box",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "박스와 팀 편성",
+        "겹침 없이 한눈에"
+      ],
+      "title": "박스 목록과 포켓몬 세팅을 좌우로 나눠 스크롤 없이 함께 보이도록 했습니다.",
+      "accent": "#a2efe0",
+      "transition": "fade"
+    },
+    {
+      "id": "training",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "기술 이름이 먼저",
+        "좁은 화면의 우선순위"
+      ],
+      "title": "트레이닝은 기술 이름과 타입을 앞세우고 남는 여백을 없앴습니다.",
+      "accent": "#ffb9d2",
+      "transition": "smoothright"
+    },
+    {
+      "id": "modes",
+      "kind": "footage",
+      "duration": 9,
+      "lines": [
+        "싱글과 더블, 토너먼트와 리그전",
+        "난이도까지 한 화면"
+      ],
+      "title": "모드 선택은 배틀 형식, 대회 방식, 난이도를 겹치지 않게 2×2로 배치했습니다.",
+      "accent": "#93e5ff",
+      "transition": "smoothup"
+    },
+    {
+      "id": "prep",
+      "kind": "footage",
+      "duration": 9,
+      "lines": [
+        "배틀 준비도",
+        "스크롤 없이"
+      ],
+      "title": "대전 상대와 규칙, 출전 포켓몬 선택을 가로 한 화면에 모았습니다.",
+      "accent": "#a2efe0",
+      "transition": "fade"
+    },
+    {
+      "id": "single",
+      "kind": "footage",
+      "duration": 13,
+      "lines": [
+        "포켓몬을 가리지 않는 체력바",
+        "2×2 커맨드"
+      ],
+      "title": "배틀은 체력 카드를 줄여 포켓몬을 가리지 않고, 명령은 기존 포켓몬 게임처럼 2×2로 놓았습니다.",
+      "accent": "#ffdd8e",
+      "transition": "smoothleft"
+    },
+    {
+      "id": "double",
+      "kind": "footage",
+      "duration": 13,
+      "lines": [
+        "더블배틀도",
+        "네 마리가 모두 보이게"
+      ],
+      "title": "더블배틀에서도 양쪽 네 마리와 체력, 기술 정보가 서로 겹치지 않습니다.",
+      "accent": "#ffb9d2",
+      "transition": "fade"
+    },
+    {
+      "id": "outro",
+      "kind": "motion",
+      "scene": "outro",
+      "duration": 8,
+      "title": "휴대폰으로, 지금 바로. pokemon-champions-area-web.co.kr",
+      "transition": "fade"
+    }
+  ]
+}

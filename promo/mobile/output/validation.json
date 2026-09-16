@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-09-16T10:36:27.459Z",
+  "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\output\\champions-arena-mobile-update-1080p.mp4",
+  "passed": true,
+  "failures": [],
+  "warnings": [
+    "7 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
+  ],
+  "review": {
+    "required": true,
+    "completed": false,
+    "note": "Review the contact sheet and play scene transitions. Stable title/data scenes can legitimately trigger freeze warnings; automatic detection alone cannot certify pacing or readability."
+  },
+  "embeddedSubtitleTracks": 0,
+  "durationSeconds": 102,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "pixelFormat": "yuv420p",
+    "decodedFrames": 3060,
+    "frameDurationSeconds": 102
+  },
+  "audio": {
+    "codec": "aac",
+    "sampleRate": 48000,
+    "channelLayout": "stereo",
+    "integratedLUFS": -16.07,
+    "truePeakDbTP": -4.83,
+    "loudnessRangeLU": 5.8
+  },
+  "decode": {
+    "passed": true,
+    "errors": ""
+  },
+  "scan": {
+    "blackSegments": [],
+    "freezeSegments": [
+      {
+        "start": 1.43333,
+        "end": 4.03333,
+        "duration": 2.6000000000000005
+      },
+      {
+        "start": 13.7333,
+        "end": 16.6667,
+        "duration": 2.933399999999999
+      },
+      {
+        "start": 33.7667,
+        "end": 36.2667,
+        "duration": 2.5
+      },
+      {
+        "start": 36.3333,
+        "end": 40.1,
+        "duration": 3.7667
+      },
+      {
+        "start": 40.8667,
+        "end": 43.4,
+        "duration": 2.533299999999997
+      },
+      {
+        "start": 44.9667,
+        "end": 50,
+        "duration": 5.033299999999997
+      },
+      {
+        "start": 97.0333,
+        "end": 100.433,
+        "duration": 3.39970000000001
+      }
+    ],
+    "silenceSegments": []
+  },
+  "contactSheet": {
+    "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\mobile\\output\\contact-sheet.jpg",
+    "rows": 4,
+    "columns": 4,
+    "approximateSampleSeconds": [
+      3.188,
+      9.563,
+      15.938,
+      22.313,
+      28.688,
+      35.063,
+      41.438,
+      47.813,
+      54.188,
+      60.563,
+      66.938,
+      73.313,
+      79.688,
+      86.063,
+      92.438,
+      98.813
+    ]
+  },
+  "bytes": 16655815,
+  "sha256": "667ba7fb0ef4f9614b98a9d2b10583850da80d7b5de6018c04dfc335085fb635"
+}
