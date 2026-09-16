@@ -2883,10 +2883,18 @@ html[data-mobile-layout="landscape"] .battle-hub-heading{
 html[data-mobile-layout="landscape"] .battle-hub-options{
   flex:1 1 auto;
   grid-template-columns:repeat(4,minmax(0,1fr));
-  grid-template-rows:auto;
+  grid-template-rows:minmax(0,1fr);
   gap:clamp(8px,1.2vw,16px);
-  align-content:center;
+  align-content:stretch;
   min-height:0;
+}
+
+/* The cards take the whole row, so the text block would sit under the
+   emblem with all the slack above the footer link. `strong` already has
+   margin-top:auto; giving the eyebrow one too splits the free space evenly
+   above and below, which centres the copy in the taller card. */
+html[data-mobile-layout="landscape"] .battle-hub-card>small{
+  margin-top:auto;
 }
 
 /* The card's 385px floor is what forced the overflow; let the row drive it. */
