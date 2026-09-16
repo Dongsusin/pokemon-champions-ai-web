@@ -2744,3 +2744,95 @@ html[data-mobile-layout="landscape"] .team-box-mobile-presets button.selected{
 html[data-mobile-layout="landscape"] .team-box-mobile-presets button.selected small{
   color:rgba(247,251,255,.8);
 }
+
+/* ==================================================================
+   Training editor: fill the page instead of hugging the top.
+
+   The body row was `grid-auto-rows:min-content` with `align-content:start`,
+   so each page sat at its intrinsic height inside a 406px body: 143px for
+   프로필, 154px for 능력치, 113px for 기술 — 62-72% of the panel left blank.
+   Let the row fill, and let each column's main list take the slack. The
+   three columns are already flex columns in screenRedesign.css. */
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page] .training-editor-body{
+  grid-auto-rows:minmax(0,1fr);
+  align-content:stretch;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-body>:is(.training-profile-column,.training-stat-column,.training-move-column){
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-list,
+html[data-mobile-layout="landscape"] .training-move-list{
+  flex:1 1 auto;
+  align-content:stretch!important;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .training-stat-list{
+  grid-template-rows:repeat(3,minmax(0,1fr))!important;
+}
+
+/* Both cards are single-row grids: `align-items:center` centres each item
+   inside its row, but the row itself still sits at the top of the taller
+   card. Centre the row too so the leftover is split evenly. */
+html[data-mobile-layout="landscape"] .training-stat-row,
+html[data-mobile-layout="landscape"] .training-move-card{
+  align-content:center;
+}
+
+/* 프로필: artwork and the selector stack stretch to the body height. */
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-profile-column{
+  grid-template-rows:minmax(0,1fr);
+  align-items:stretch;
+  min-height:0;
+}
+
+/* Only a tall landscape frame can afford one row per stat and per move.
+   There the 2x3 / 2x2 boards stretched to 112px and 185px cards holding a
+   single line of controls — the blank just moved inside the card — so the
+   height goes to full-width rows and much longer sliders instead. Below
+   this the boards stay, because six single rows would be crushed to 22px
+   at 430px and 15px at 390px, under the 26px touch floor. */
+@media (min-height:600px){
+  html[data-mobile-layout="landscape"] .training-stat-list{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:repeat(6,minmax(0,1fr))!important;
+  }
+
+  html[data-mobile-layout="landscape"] .training-move-list{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:repeat(4,minmax(0,1fr))!important;
+  }
+}
+
+/* 프로필: the art card carries `align-self:center` (line ~1489) and the
+   select stack is content-height, so both sat as a centred island with the
+   panel's slack split above and below. Stretch them into the column: the
+   sprite has room to read at a glance and the three fields share the rest. */
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-art-card{
+  align-self:stretch;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-select-stack{
+  display:grid;
+  grid-auto-rows:minmax(0,1fr);
+  gap:6px;
+  align-self:stretch;
+  align-content:stretch;
+}
+
+/* Each field is a <label> holding its caption and its <select>. Growing the
+   label to a 1fr row pushed those two to opposite ends; keep them together
+   in the middle of the card, and let the last field use the full width so
+   the bottom row is not half empty. */
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-select-stack>.training-picker-field{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  justify-content:center;
+}
+
+html[data-mobile-layout="landscape"] .training-editor-panel[data-mobile-training-page="0"] .training-select-stack>.training-picker-field:last-child{
+  grid-column:1 / -1;
+}
