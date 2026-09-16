@@ -3570,3 +3570,123 @@ html[data-mobile-layout="landscape"] .battle-intro-trainer.opponent>div>span{
   display:flex;
   justify-content:center;
 }
+
+/* ==================================================================
+   Battle screen.
+
+   1. The command menu. mobileUiV2.css flattens it to repeat(4,1fr) on one
+      row, so the four choices became 148x216 towers — the opposite shape of
+      the 2x2 block every mainline Pokémon game uses. Put the block back and
+      give each button its icon-then-label row again.
+   2. The HP panels. mobileTouch.css pins the anchor to min(260px,36vw) at a
+      specificity the format rules cannot reach, so the cards stay 260px wide
+      whatever the frame — they cover the field sprites in singles, and in
+      doubles the two cards of a side overlap each other as well, since their
+      anchors are only 18% apart. Measured overlap of panel over sprite:
+      2,310px² at 965x592 singles, 4,688 at 932x430 singles and 7,734 at
+      932x430 doubles.
+      Scale the cards with the frame instead, and take doubles down far
+      enough that four of them fit the arena. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-rows:repeat(2,minmax(0,1fr));
+  gap:5px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons>button{
+  grid-template-columns:clamp(20px,3.4vh,30px) minmax(0,1fr);
+  gap:6px;
+  justify-items:start;
+  padding:3px 8px;
+  text-align:left;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-command-buttons>button>span{
+  min-width:0;
+  text-align:left;
+}
+
+/* Singles: narrow enough to clear the field sprite on both sides. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-status-anchor{
+  width:min(176px,20vw);
+  gap:3px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-hp-panel,
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-hp-panel.side-player{
+  gap:2px;
+  padding:4px 8px;
+  border-width:2px;
+  outline-width:2px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-hp-panel header strong{
+  font-size:clamp(10px,1.6vh,14px);
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-hp-panel header>span{
+  font-size:9px;
+}
+
+/* Doubles: the anchors sit 18% apart, so the card has to live inside that
+   or the pair collides. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-status-anchor{
+  width:min(150px,16vw);
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-panel,
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-panel.side-player{
+  padding:3px 6px;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-panel header strong{
+  font-size:clamp(9px,1.4vh,12px);
+}
+
+/* A 430px-tall arena is only 249px deep, so the opponent art and the player
+   cards share a band. Pull the doubles cards in far enough to clear the art
+   horizontally and drop them to the floor of the arena. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-status-anchor{
+  width:min(124px,14vw);
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .format-double .player-status-anchor{
+  bottom:1%;
+}
+
+/* The opponent cards are pinned 78px from the top of the arena, and the
+   header above them is a fixed 74px, so they cannot be lifted — on a
+   249px-deep arena they end up sitting on the player art's head instead.
+   Take the height out of the card: in doubles the name and the HP bar are
+   what a player reads, so the type row goes on a short frame. */
+@media (max-height:470px){
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-type-row{
+    display:none;
+  }
+}
+
+/* One last few pixels on the shallowest frames: at 844x390 the second
+   opponent card still grazed the first player sprite by a 6px band. */
+@media (max-height:400px){
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-panel,
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-panel.side-player{
+    padding:2px 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-meter-row{
+    min-height:0;
+  }
+
+  html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.format-double,.format-triple,.format-rotation) .battle-hp-panel header strong{
+    font-size:10px;
+    line-height:1.1;
+  }
+}
+
+/* The singles opponent card is anchored at 16% of the arena, which on a
+   phone is 36-55px from the top — behind the 74px battle header. It has
+   always been tucked under there; with the card narrowed it is simply
+   narrower and still hidden. Drop it below the header instead. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .format-single .opponent-status-anchor{
+  top:80px;
+}
