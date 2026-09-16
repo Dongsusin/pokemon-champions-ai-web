@@ -53,14 +53,35 @@
 .raid-withdraw-dialog > svg { color: #efb279; }
 .raid-withdraw-dialog > div { display: flex; justify-content: center; gap: 12px; }
 @media (max-height: 620px) and (orientation: landscape) {
-  .app-shell.battle-view .raid-standard-battle > .battle-command-deck { flex-basis: 140px; padding: 4px 10px 5px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  /* 140px squeezed both card menus under the height of their own content: the
+     move rows lost their meta line and every target card was cut in half. */
+  .app-shell.battle-view .raid-standard-battle > .battle-command-deck { flex-basis: clamp(140px, 42dvh, 178px); padding: 4px 10px 5px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
   .raid-standard-battle .battle-log-scroll { font-size: 10px; line-height: 1.4; }
   .raid-standard-battle .battle-log-current { padding: 5px 7px; }
   .raid-standard-battle .battle-command-buttons button { min-height: 0; padding: 7px 12px; }
   .raid-standard-battle .battle-move-menu > header { padding: 3px 5px; }
   .raid-standard-battle .battle-move-button { min-height: 0; padding: 4px 6px; }
   .raid-standard-battle .battle-move-name strong { font-size: 12px; }
-  .raid-standard-battle .battle-move-menu > header button { min-height: 22px; padding: 3px 5px; font-size: 10px; }
+  .raid-standard-battle .battle-move-menu > header button { min-height: 26px; padding: 3px 5px; font-size: 10px; }
+  .raid-standard-battle .battle-move-grid { overflow-y: auto; }
+  .raid-standard-battle .battle-move-button { min-height: 32px; }
+  /* Fold the target card into a compact two-row shape and let a long list
+     scroll rather than shrink below what it can show. */
+  .app-shell.battle-view .raid-standard-battle .battle-target-grid { align-content: start; grid-auto-rows: minmax(44px, auto); gap: 5px; overflow-y: auto; }
+  .app-shell.battle-view .raid-standard-battle .battle-target-card { grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-rows: 10px minmax(0, 1fr); padding: 3px 5px; }
+  /* The slot label spans every column, so leaving it auto-placed pushed it
+     into a third row below the card and out of sight. */
+  .app-shell.battle-view .raid-standard-battle .battle-target-number { grid-row: 1; }
+  .app-shell.battle-view .raid-standard-battle .battle-target-icon { grid-row: 2; grid-column: 1; }
+  .app-shell.battle-view .raid-standard-battle .battle-target-info { grid-row: 2; grid-column: 2; padding-left: 5px; }
+  .app-shell.battle-view .raid-standard-battle .battle-target-effectiveness { grid-row: 2; grid-column: 3; grid-template-columns: 1fr; justify-items: center; gap: 0; margin-left: 4px; padding: 2px 4px; }
+  /* The bar already carries the remaining HP and the badge carries the
+     matchup, so drop the two lines that repeat them in words. */
+  .app-shell.battle-view .raid-standard-battle .battle-target-info > small,
+  .app-shell.battle-view .raid-standard-battle .battle-target-info > em,
+  .app-shell.battle-view .raid-standard-battle .battle-target-effectiveness small,
+  .app-shell.battle-view .raid-standard-battle .battle-target-effectiveness em { display: none; }
+  .app-shell.battle-view .raid-standard-battle .battle-target-hp { margin-top: 3px; }
   .raid-standard-battle .raid-command-wait { padding: 7px; gap: 5px; }
   .raid-standard-battle .raid-command-wait strong { font-size: 14px; }
   .raid-standard-battle .raid-command-wait p { font-size: 10px; }

@@ -875,7 +875,7 @@
   .raid-standard-battle .raid-standard-battle-header .battle-rule-badge > strong { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; }
   .raid-standard-battle .raid-header-status { gap: 4px; font-size: 9px; }
   .raid-standard-battle .raid-header-deadline,
-  .raid-standard-battle .raid-header-withdraw { min-height: 25px; gap: 4px; font-size: 10px; }
+  .raid-standard-battle .raid-header-withdraw { min-height: 26px; gap: 4px; font-size: 10px; }
   .raid-standard-battle .raid-header-withdraw { padding: 3px 6px; }
 
   .raid-standard-battle .raid-standard-battle-header .battle-header-actions {

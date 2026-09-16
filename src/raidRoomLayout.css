@@ -153,6 +153,10 @@ html[data-game-text-scale="2"] .raid-room-screen .raid-selected-pokemon :is(smal
   .raid-room-browser .raid-empty-rooms p { display: none; }
 }
 @media (max-height: 620px) and (orientation: landscape) {
+  /* The compact room drops this button to 24px, under the touch floor the
+     rest of the phone layout keeps. */
+  .raid-selected-pokemon-info > .raid-change-pokemon { min-height: 26px; }
+
   /* A wrapped app header can consume most of a phone's landscape height at
      2x text. Keep every action available in one compact row on these pages. */
   .app-shell.raid-view:has(> :is(.raid-room-browser, .raid-room-screen)) > .topbar { display: grid; grid-template-columns: auto minmax(84px, 1fr) auto; align-items: center; gap: 10px; min-height: 56px; height: 56px; padding: 5px 12px; flex-wrap: nowrap; }
