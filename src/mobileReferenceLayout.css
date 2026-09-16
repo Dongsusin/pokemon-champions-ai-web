@@ -3005,3 +3005,109 @@ html[data-mobile-layout="landscape"] .battle-hard-boost-selector button{
   padding:0 6px;
   font-size:11px;
 }
+
+/* ==================================================================
+   Draw results: keep the ten slots in the frame.
+
+   The result view stacks a 370px data panel, a 310px centre stage and an
+   88px slot strip behind fixed floors. In a 530px landscape screen the
+   showcase grew to 768px, so .draw-slot-strip landed at y=936 — the ten
+   pokemon you just pulled were entirely below the fold with nothing to
+   scroll, and .draw-dock clipped them. Let every band size to the frame. */
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-showcase{
+  flex:1 1 auto;
+  min-height:0;
+  gap:clamp(6px,1vw,14px);
+  padding-block:2px;
+}
+
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-data-panel{
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-center-stage{
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-dock{
+  flex:0 0 auto;
+  min-height:0;
+  padding:4px 8px 6px;
+}
+
+/* Ten fixed 72px columns of 88px cards cannot fit a phone; let the row
+   share the width and take the height the dock can spare. */
+html[data-mobile-layout="landscape"] .draw-slot-strip{
+  grid-template-columns:repeat(10,minmax(0,1fr));
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .draw-slot{
+  height:clamp(46px,9vh,88px);
+  min-height:0;
+}
+
+/* The slot cards kept an intrinsic width, so ten of them ran 920px wide in
+   an 891px dock. */
+html[data-mobile-layout="landscape"] .draw-slot{
+  min-width:0;
+}
+
+/* The egg / revealed artwork carries a 310px block inside a stage the row
+   now sizes to ~165px, so it was being clipped by the stage. */
+html[data-mobile-layout="landscape"] .draw-screen.showing-results :is(.draw-egg-reveal,.draw-revealed-pokemon){
+  height:100%;
+  min-height:0;
+}
+
+/* The stat panel's content is taller than the band on a phone. Cap it to the
+   band and let the panel scroll rather than cut the numbers off. */
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-data-panel{
+  max-height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+
+html[data-mobile-layout="landscape"] .draw-data-panel::-webkit-scrollbar{display:none}
+
+/* screenRedesign.css gives the strip a 920px floor and lets the dock scroll
+   sideways, which suits a narrow portrait screen. A landscape dock is ~891px
+   wide, so the ten slots fit outright once the floor is lifted — no sideways
+   scroll to find the tenth pull. */
+html[data-mobile-layout="landscape"] .draw-slot-strip{
+  min-width:0;
+}
+
+html[data-mobile-layout="landscape"] .draw-dock{
+  overflow-x:hidden;
+}
+
+/* The "not yet revealed" placeholder carries a 368px floor, taller than the
+   band, which pushed it past the frame and made the panel scroll to show a
+   placeholder. Let it sit inside the band. */
+html[data-mobile-layout="landscape"] .draw-concealed-panel{
+  min-height:0;
+  height:100%;
+  padding:clamp(4px,1.4vh,12px);
+}
+
+/* The banner selector renders as 28x7 (48x7 active) pills — a 7px tap target.
+   Keep the pill's look but pad the button out to the 26px floor so it can be
+   hit with a thumb; the pill itself is drawn by the background box. */
+html[data-mobile-layout="landscape"] .draw-banner-pagination button{
+  height:26px;
+  padding-block:9px;
+  background-clip:content-box;
+}
+
+/* On a 430px frame the placeholder's 78px badge plus its caption still
+   overran the band. Scale the badge with the frame. */
+html[data-mobile-layout="landscape"] .draw-concealed-panel>span{
+  width:clamp(28px,7vh,78px);
+  height:clamp(28px,7vh,78px);
+}
+
+html[data-mobile-layout="landscape"] .draw-concealed-panel{
+  gap:6px;
+  font-size:clamp(10px,1.2vw,13px);
+}
