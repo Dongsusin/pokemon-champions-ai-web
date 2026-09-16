@@ -3111,3 +3111,76 @@ html[data-mobile-layout="landscape"] .draw-concealed-panel{
   gap:6px;
   font-size:clamp(10px,1.2vw,13px);
 }
+
+/* ==================================================================
+   Draw banner: the card must never collapse.
+
+   screenRedesign.css sizes the card with `height:clamp(350px,52vh,490px)`,
+   but mobileLandscape.css replaces that with `height:100%` so it fills the
+   view's `minmax(0,1fr)` row. That row is whatever the rate board and the
+   purchase bar leave behind — when either grows (a wrapped rarity chip, a
+   two-line price block) the card shrinks with nothing to stop it, and since
+   it clips its own overflow the title and artwork simply vanish, leaving the
+   thin eyebrow-and-footer strip. Give the row and the card a floor, and keep
+   the two bands below from taking more than one line each. */
+html[data-mobile-layout="landscape"] .draw-banner-view{
+  grid-template-rows:minmax(clamp(120px,30vh,260px),1fr) auto auto;
+  gap:clamp(4px,1vh,10px);
+}
+
+html[data-mobile-layout="landscape"] .draw-banner-stage,
+html[data-mobile-layout="landscape"] .draw-banner-card{
+  min-height:clamp(120px,30vh,260px);
+}
+
+/* The title is absolutely placed at 16% of the card, so it has to scale with
+   the card rather than the viewport width or it drops out of a short one. */
+html[data-mobile-layout="landscape"] .draw-banner-copy{
+  top:10%;
+}
+
+html[data-mobile-layout="landscape"] .draw-banner-copy h2{
+  font-size:clamp(18px,7vh,54px);
+  line-height:1.15;
+}
+
+/* Five rarity chips on one line, each free to shrink. They were sized by
+   their content, so the last one ran past the board on a narrow frame. */
+html[data-mobile-layout="landscape"] .draw-banner-rate-board{
+  width:100%;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .draw-rate-chip{
+  min-height:30px;
+  padding:4px 6px;
+  overflow:hidden;
+}
+
+html[data-mobile-layout="landscape"] .draw-rate-chip>*{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* One line for the price and the button, whatever the label says. */
+html[data-mobile-layout="landscape"] .draw-banner-purchase{
+  flex-wrap:nowrap;
+  min-height:0;
+}
+
+html[data-mobile-layout="landscape"] .draw-purchase-button{
+  min-height:38px;
+  white-space:nowrap;
+}
+
+/* A narrow landscape frame re-stacks the purchase bar into two rows, which is
+   what steals the card's height in the first place. Keep it to one row with
+   every track free to shrink. */
+html[data-mobile-layout="landscape"] .draw-banner-purchase{
+  grid-template-columns:minmax(0,auto) minmax(0,1fr) minmax(110px,.7fr);
+  grid-template-rows:minmax(0,auto);
+  align-items:center;
+}
