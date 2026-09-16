@@ -459,7 +459,10 @@
   display: flex;
   align-items: flex-start;
   gap: clamp(5px, 0.7vw, 11px);
-  width: min(50%, 960px);
+  flex-wrap: wrap;
+  /* Stop short of the centred boss HUD, whose left edge sits at
+     50% - min(360px, 26.5%). */
+  width: calc(48% - min(360px, 26.5%) - 10px);
   pointer-events: none;
 }
 
@@ -469,8 +472,8 @@
   right: auto !important;
   bottom: auto !important;
   left: auto !important;
-  flex: 1 1 0;
-  width: 0;
+  flex: 0 1 clamp(150px, 17vw, 260px);
+  width: auto;
   min-width: 0;
   transform: none;
   pointer-events: auto;
