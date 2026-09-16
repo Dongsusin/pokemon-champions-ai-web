@@ -9,7 +9,6 @@ import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
 import FactoryInfoTooltip from './FactoryInfoTooltip'
 import RaidPartnerPreview from './RaidPartnerPreview'
-import TrainerSprite from './TrainerSprite'
 import { firebaseAuth } from './auth/firebaseClient'
 import { createBattleAudio } from './battleAudio'
 import { RAID_BOSS_CATALOG as RAID_BOSSES } from './data/raidCatalog'
@@ -350,7 +349,6 @@ function RaidRoomLobby({ room, boxPokemon, selectedCaptureId, onPick, onReady, o
   const host = Boolean(member?.isHost || room?.isHost)
   const allReady = members.filter(entry => !entry?.isAi).every(entry => entry?.ready)
   const startLabel = (room?.memberCount ?? members.length) <= 1 ? '솔로로 시작' : '보스전 시작'
-  const npcSlots = asArray(room?.npcSlots)
   return <main className="raid-room-screen">
     <header className="raid-page-header"><button className="screen-back-button" type="button" disabled={busy} onClick={onLeave}><ArrowLeft size={18} /> 보스 선택</button><div><span>CO-OP RAID ROOM</span><h1>{room?.title ?? '보스전 대기실'}</h1></div><aside>{connected ? <><Wifi size={15} /> 연결됨</> : <><WifiOff size={15} /> 복구 중</>}</aside></header>
     {error && <div className="raid-notice error" role="alert">{error}</div>}
@@ -360,9 +358,12 @@ function RaidRoomLobby({ room, boxPokemon, selectedCaptureId, onPick, onReady, o
           const entry = members.find(candidate => Number(candidate?.slotId ?? candidate?.slot ?? -1) === slot)
           const pokemon = entry?.selectedPokemon ?? (entry?.isOwn ? selected : null)
           const memberProfile = getSpeciesProfile(pokemon?.speciesId)
-          const npcSlot = npcSlots.find(candidate => Number(candidate?.slotId) === slot)
+          // Who fills an AI seat, and with what, stays hidden until the
+          // battle starts — both for a slot the server has already taken
+          // and for one still shown as an empty NPC preview.
+          const aiSlot = entry ? Boolean(entry.isAi) : true
           return <article key={slot} className={`raid-member-slot${entry?.isOwn ? ' own' : ''}${entry?.ready ? ' ready' : ''}`}>
-            {entry ? <><span>{entry.isOwn ? 'YOU' : entry.isAi ? 'NPC' : 'PLAYER'} · SLOT {slot + 1}</span><div>{pokemon && <SpriteImage src={pokemon.icon ?? memberProfile?.icon} fallbackSrc={memberProfile?.iconFallback} alt="" draggable="false" />}<strong>{entry.name ?? '트레이너'}</strong><small>{pokemon?.name ?? (entry.ready ? '출전 포켓몬 확인됨' : '포켓몬 선택 중')}</small></div><b>{entry.ready ? <><Check size={14} /> 준비 완료</> : '준비 중'}</b></> : <><span>NPC SLOT {slot + 1}</span><div>{npcSlot?.trainer ? <TrainerSprite trainer={npcSlot.trainer} className="raid-npc-trainer-image" /> : <UsersRound size={28} />}<strong>{npcSlot?.name ?? 'AI 트레이너'}</strong><small>{getSpeciesProfile(npcSlot?.speciesId)?.name ?? '함께 도전할 파트너'}</small></div><b>AI 참가</b></>}
+            {!aiSlot ? <><span>{entry.isOwn ? 'YOU' : 'PLAYER'} · SLOT {slot + 1}</span><div>{pokemon && <SpriteImage src={pokemon.icon ?? memberProfile?.icon} fallbackSrc={memberProfile?.iconFallback} alt="" draggable="false" />}<strong>{entry.name ?? '트레이너'}</strong><small>{pokemon?.name ?? (entry.ready ? '출전 포켓몬 확인됨' : '포켓몬 선택 중')}</small></div><b>{entry.ready ? <><Check size={14} /> 준비 완료</> : '준비 중'}</b></> : <><span>NPC SLOT {slot + 1}</span><div><UsersRound size={28} /><strong>랜덤 AI</strong><small>배틀이 시작되면 공개됩니다</small></div><b>AI 참가</b></>}
           </article>
         })}</div>
       </article>
