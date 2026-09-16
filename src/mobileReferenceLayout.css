@@ -3757,11 +3757,12 @@ html[data-mobile-layout="landscape"] .battle-intro-trainer>div>span{
    932x430: a 14px band holding 4.6px rows, the 50px icon and the title
    clipped away by the card's own overflow).
 
-   One column, two rows: each card gets a real row, and the band earns the
-   height it is given. */
+   The screen reads as a 2x2 of choices: 싱글/더블 on one band, 토너먼트/리그전
+   on the next, difficulty under both. So the two mode cards share one row
+   and the empty second row goes away. */
 html[data-mobile-layout="landscape"] .battle-mode-option-list{
-  grid-template-columns:minmax(0,1fr);
-  grid-template-rows:repeat(2,minmax(0,1fr));
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-rows:minmax(0,1fr);
 }
 
 /* The mode list is the only flexible row in the panel — heading, format
@@ -3782,8 +3783,7 @@ html[data-mobile-layout="landscape"] .battle-mode-option-list{
   }
 
   html[data-mobile-layout="landscape"] .battle-mode-option-list{
-    min-height:clamp(76px,22vh,150px);
-    gap:4px;
+    gap:5px;
   }
 
   html[data-mobile-layout="landscape"] .battle-ai-difficulty{
@@ -3804,5 +3804,42 @@ html[data-mobile-layout="landscape"] .battle-mode-option-list{
   html[data-mobile-layout="landscape"] .battle-mode-option-art{
     width:clamp(26px,7vh,58px);
     height:clamp(26px,7vh,58px);
+  }
+}
+
+/* ==================================================================
+   AI battle panel: five bands that must never collide.
+
+   The panel is a five-row grid whose third row (the mode cards) is the only
+   flexible one. On a short frame the four fixed bands eat everything, the
+   card row is handed ~19px, and anything given a min-height simply overflows
+   its track and paints over the difficulty band below — measured at 932x430
+   as 37,140px² of the mode list sitting on top of 난이도.
+
+   Give the card row a real floor on the track itself, and make the four
+   fixed bands small enough that the floor fits. Reading order stays
+   싱글/더블 → 토너먼트/리그전 → 난이도 → 시작. */
+@media (max-height:520px){
+  html[data-mobile-layout="landscape"] .ai-format-selection-screen .battle-mode-select-panel{
+    grid-template-rows:auto auto minmax(52px,1fr) auto auto;
+    gap:4px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-select-heading{
+    padding-block:2px;
+  }
+
+  html[data-mobile-layout="landscape"] .ai-battle-format-selector button{
+    min-height:28px;
+    padding-block:2px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button{
+    min-height:28px;
+    padding-block:2px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar>button{
+    min-height:28px;
   }
 }
