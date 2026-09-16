@@ -227,6 +227,37 @@ function saveDrawTutorialCompletion() {
   } catch {}
 }
 
+function shuffled(entries, random = Math.random) {
+  const shuffledEntries = [...entries]
+
+  for (let index = shuffledEntries.length - 1; index > 0; index -= 1) {
+    const targetIndex = Math.floor(random() * (index + 1))
+    ;[shuffledEntries[index], shuffledEntries[targetIndex]] = [shuffledEntries[targetIndex], shuffledEntries[index]]
+  }
+
+  return shuffledEntries
+}
+
+/**
+ * Auto-build draws a random party so repeated presses keep offering something
+ * new. When the box holds more than one party's worth, a draw that repeats the
+ * current team swaps one member out, so a press always visibly changes it.
+ */
+function pickAutoTeamIds(roster, size, currentIds = [], random = Math.random) {
+  const candidateIds = roster.map((pokemon) => pokemon.captureId)
+  const picked = shuffled(candidateIds, random).slice(0, size)
+  const current = new Set(currentIds)
+  const unchanged = picked.length === current.size && picked.every((id) => current.has(id))
+  if (!unchanged) return picked
+
+  const spares = candidateIds.filter((id) => !current.has(id))
+  if (spares.length === 0) return picked
+
+  const replacement = spares[Math.floor(random() * spares.length)]
+  const slot = Math.floor(random() * picked.length)
+  return picked.map((id, index) => (index === slot ? replacement : id))
+}
+
 // Mobile-only bottom navigation. Desktop keeps the existing mode grid and
 // per-screen back buttons; the bar is hidden outside the compact layouts.
 const MOBILE_TABS = [
@@ -1055,9 +1086,11 @@ export function GameApp({
       return
     }
 
-    const nextTeamIds = getTrainingRosterPokemon(boxPokemon)
-      .slice(0, BATTLE_TEAM_SIZE)
-      .map((pokemon) => pokemon.captureId)
+    const nextTeamIds = pickAutoTeamIds(
+      getTrainingRosterPokemon(boxPokemon),
+      BATTLE_TEAM_SIZE,
+      activeTeam?.pokemonIds ?? [],
+    )
     setTeams((currentTeams) => currentTeams.map((team) => (
       team.id === activeTeam?.id
         ? { ...team, pokemonIds: nextTeamIds }
