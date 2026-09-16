@@ -3277,3 +3277,12 @@ html[data-mobile-layout="landscape"] .draw-rate-zone .draw-banner-rate-board{
 html[data-mobile-layout="landscape"] .draw-rate-zone[data-rate-open="true"] .draw-banner-rate-board{
   display:grid;
 }
+
+/* ==================================================================
+   Mode cards: the Korean title is the only line a phone keeps — the
+   description, detail and meta row are already hidden — so the English
+   eyebrow above it is decoration competing with the one label that reads.
+   Drop it and let the title sit centred in the card it already has. */
+html[data-mobile-layout="landscape"] .battle-mode-option-copy>small{
+  display:none;
+}
