@@ -3184,3 +3184,17 @@ html[data-mobile-layout="landscape"] .draw-banner-purchase{
   grid-template-rows:minmax(0,auto);
   align-items:center;
 }
+
+/* Before a pull is revealed the two side panels only say "능력치 미확인" and
+   "기술·특성 미확인", yet they took most of a landscape frame and squeezed the
+   egg between them. Drop them on mobile: the stage carries the rarity, the
+   name and the artwork, and the dock carries the actions and the ten slots,
+   so the whole result reads in one glance. The panels stay on desktop. */
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-data-panel{
+  display:none;
+}
+
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-showcase{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);
+}
