@@ -18,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
+import InstallAppButton from './InstallAppButton'
 import BattleHub from './BattleHub'
 import RankedBattleScreen from './RankedBattleScreen'
 import BattleRoomsScreen from './BattleRoomsScreen'
@@ -1206,6 +1207,8 @@ export function GameApp({
               <strong>{displayedTrainerName}</strong>
             </span>
           </div>
+
+          <InstallAppButton />
 
           <button
             className="icon-button"

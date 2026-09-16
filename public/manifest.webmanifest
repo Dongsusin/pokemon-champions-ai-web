@@ -8,15 +8,63 @@
   "scope": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
-  "orientation": "any",
+  "orientation": "landscape",
   "background_color": "#060b24",
   "theme_color": "#0a1030",
+  "categories": ["games", "entertainment"],
   "icons": [
+    {
+      "src": "/assets/brand/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/brand/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/brand/app-icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/brand/app-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/assets/brand/champions-arena-emblem.png",
       "sizes": "320x320",
       "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/app/screenshot-lobby.png",
+      "sizes": "932x430",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "가로 모드 로비와 팀 편성"
+    },
+    {
+      "src": "/assets/app/screenshot-battle.png",
+      "sizes": "932x430",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "더블배틀 화면"
+    },
+    {
+      "src": "/assets/app/screenshot-draw.png",
+      "sizes": "932x430",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "포켓몬 뽑기와 확률표"
     }
   ]
 }

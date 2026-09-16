@@ -9,6 +9,8 @@
     "prebuild": "npm run generate:resource-manifest",
     "build": "vite build",
     "preview": "vite preview",
+    "app:icons": "node scripts/buildAppIcons.mjs",
+    "validate:installable-app": "node scripts/validateInstallableApp.mjs",
     "generate:battle-items": "node scripts/generateBattleItemData.mjs",
     "generate:battle-moves": "node scripts/generateBattleMoveData.mjs",
     "generate:move-animations": "node scripts/generateMoveAnimationManifest.mjs",

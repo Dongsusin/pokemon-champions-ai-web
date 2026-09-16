@@ -8,6 +8,7 @@ import {
   Sparkles,
   UserRound,
 } from 'lucide-react'
+import InstallAppButton from './InstallAppButton'
 
 function GoogleMark() {
   return (
@@ -76,6 +77,8 @@ function LoginScreen({
           <strong>CHAMPIONS ARENA</strong>
         </span>
       </header>
+
+      <InstallAppButton />
 
       <section className="auth-login-card" aria-labelledby="auth-login-title">
         <span className="auth-card-glow" aria-hidden="true" />

@@ -23,6 +23,7 @@ import './scaledTrainingEditor.css'
 import './mobileTouch.css'
 import './mobileUiV2.css'
 import './mobileReferenceLayout.css'
+import './installApp.css'
 import { loadGameSettings } from './gameSettings'
 import { applyGameTextScale } from './gameTextScale'
 
