@@ -3747,3 +3747,62 @@ html[data-mobile-layout="landscape"] .battle-intro-trainer>div>span :is(img,svg:
 html[data-mobile-layout="landscape"] .battle-intro-trainer>div>span{
   flex-wrap:wrap;
 }
+
+/* ==================================================================
+   Mode cards stacked, one per row.
+
+   mobileLandscape.css sets two columns and mobileUiV2.css sets two rows, so
+   the two cards sat side by side in row 1 and row 2 stayed empty — half the
+   band wasted, and on a short frame both rows shrank to nothing (measured at
+   932x430: a 14px band holding 4.6px rows, the 50px icon and the title
+   clipped away by the card's own overflow).
+
+   One column, two rows: each card gets a real row, and the band earns the
+   height it is given. */
+html[data-mobile-layout="landscape"] .battle-mode-option-list{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:repeat(2,minmax(0,1fr));
+}
+
+/* The mode list is the only flexible row in the panel — heading, format
+   picker, difficulty and confirm bar are all fixed — so on a 430px frame it
+   was handed 14px and both cards collapsed. Take a little from each fixed
+   band there and put a floor under the list so two cards stay legible. */
+@media (max-height:520px){
+  html[data-mobile-layout="landscape"] .battle-mode-select-heading{
+    gap:0;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-select-heading>strong{
+    font-size:13px;
+  }
+
+  html[data-mobile-layout="landscape"] .ai-battle-format-selector{
+    gap:4px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-option-list{
+    min-height:clamp(76px,22vh,150px);
+    gap:4px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty{
+    padding:3px 6px;
+    gap:3px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar{
+    min-height:0;
+    padding:3px 8px;
+  }
+}
+
+/* The card icon is sized off the viewport width (5.4vw = 50px at 932), which
+   is taller than the 45px card a short frame can afford — it overflowed and
+   the card clipped it. Let the icon follow the height there too. */
+@media (max-height:520px){
+  html[data-mobile-layout="landscape"] .battle-mode-option-art{
+    width:clamp(26px,7vh,58px);
+    height:clamp(26px,7vh,58px);
+  }
+}
