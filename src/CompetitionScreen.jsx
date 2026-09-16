@@ -6,6 +6,7 @@ import {
   Medal,
   MoveHorizontal,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Swords,
   Trophy,
@@ -495,6 +496,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   const pokemonSelectionLabel = `${requiredPokemonCount}마리를 출전 순서대로 선택하세요`
   const [selectedCaptureIds, setSelectedCaptureIds] = useState([])
   const [isBracketOpen, setIsBracketOpen] = useState(false)
+  const [isRulesOpen, setIsRulesOpen] = useState(false)
   const [hoveredPokemonInspection, setHoveredPokemonInspection] = useState(null)
   const [focusedPokemonInspection, setFocusedPokemonInspection] = useState(null)
   const inspectedPokemon = hoveredPokemonInspection ?? focusedPokemonInspection
@@ -506,20 +508,23 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
 
   useEffect(() => {
     setIsBracketOpen(false)
+    setIsRulesOpen(false)
     setHoveredPokemonInspection(null)
     setFocusedPokemonInspection(null)
   }, [competition.id, competition.round, competition.status])
 
   useEffect(() => {
-    if (!isBracketOpen) return undefined
+    if (!isBracketOpen && !isRulesOpen) return undefined
 
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setIsBracketOpen(false)
+      if (event.key !== 'Escape') return
+      setIsBracketOpen(false)
+      setIsRulesOpen(false)
     }
 
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [isBracketOpen])
+  }, [isBracketOpen, isRulesOpen])
 
   const toggleSelectedPokemon = (captureId) => {
     setSelectedCaptureIds((currentIds) => {
@@ -569,10 +574,25 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   return (
     <main className="competition-screen ai-format-competition-screen">
       <header className="competition-header">
-        <button className="screen-back-button" type="button" onClick={onBack}>
-          <ArrowLeft size={19} />
-          <span>모드 선택</span>
-        </button>
+        <div className="competition-header-lead">
+          <button className="screen-back-button" type="button" onClick={onBack}>
+            <ArrowLeft size={19} />
+            <span>모드 선택</span>
+          </button>
+
+          {matchRules && (
+            <button
+              className={`competition-rules-toggle${isRulesOpen ? ' is-open' : ''}`}
+              type="button"
+              aria-controls="competition-rules-popover"
+              aria-expanded={isRulesOpen}
+              onClick={() => setIsRulesOpen((isOpen) => !isOpen)}
+            >
+              <SlidersHorizontal size={16} />
+              <span>배틀 환경</span>
+            </button>
+          )}
+        </div>
         <div className="competition-title-lockup">
           <span className={`competition-mode-emblem mode-${competition.mode}`}><ModeIcon size={25} /></span>
           <div>
@@ -685,6 +705,32 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
           />
         )
       })}
+
+      {isRulesOpen && matchRules && (
+        <div
+          className="competition-rules-popover-layer"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setIsRulesOpen(false)
+          }}
+        >
+          <section
+            id="competition-rules-popover"
+            className="competition-rules-popover"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="competition-rules-popover-title"
+          >
+            <header>
+              <div>
+                <span>BATTLE CONDITIONS</span>
+                <h2 id="competition-rules-popover-title">배틀 환경</h2>
+              </div>
+              <button type="button" aria-label="닫기" onClick={() => setIsRulesOpen(false)}><X size={19} /></button>
+            </header>
+            <BattleRuleBoard rules={matchRules} />
+          </section>
+        </div>
+      )}
 
       {isTournament && isBracketOpen && (
         <div

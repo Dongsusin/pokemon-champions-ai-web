@@ -3843,3 +3843,68 @@ html[data-mobile-layout="landscape"] .battle-mode-option-list{
     min-height:28px;
   }
 }
+
+/* Battle briefing: the rule cards sat between the two trainers and covered
+   their names and party icons, so a landscape phone reads them from a header
+   toggle instead. The desktop board is untouched. */
+html[data-mobile-layout="landscape"] .competition-current-match-panel > .competition-battle-rules {
+  display: none;
+}
+
+/* The lead cell has to hold the back button and the toggle side by side, so
+   the first column sizes to them instead of the desktop's fixed 190px. */
+html[data-mobile-layout="landscape"] .competition-header {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+html[data-mobile-layout="landscape"] .competition-header-lead {
+  gap: 6px;
+}
+
+html[data-mobile-layout="landscape"] .competition-rules-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(126, 229, 255, 0.42);
+  border-radius: 10px;
+  color: #dff3ff;
+  background: linear-gradient(145deg, rgba(26, 60, 90, 0.86), rgba(18, 42, 68, 0.9));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+html[data-mobile-layout="landscape"] .competition-rules-toggle.is-open {
+  border-color: rgba(218, 255, 103, 0.78);
+  color: #f3ffd1;
+  background: linear-gradient(145deg, rgba(85, 121, 56, 0.98), rgba(25, 59, 68, 0.98));
+}
+
+html[data-mobile-layout="landscape"] .competition-rules-popover {
+  width: min(620px, 100%);
+  padding: 11px 13px 13px;
+}
+
+html[data-mobile-layout="landscape"] .competition-rules-popover > header {
+  margin-bottom: 9px;
+}
+
+html[data-mobile-layout="landscape"] .competition-rules-popover > header h2 {
+  font-size: 16px;
+}
+
+html[data-mobile-layout="landscape"] .competition-rules-popover > header button {
+  width: 28px;
+  height: 28px;
+}
+
+/* The freed row lets the matchup stage take the space the cards used. */
+html[data-mobile-layout="landscape"] .competition-current-match-panel {
+  grid-template-rows: auto minmax(0, 1fr) repeat(2, auto);
+}

@@ -120,10 +120,10 @@ try {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' })
   try {
     await applePage.goto(origin, { waitUntil: 'domcontentloaded' })
-    await applePage.waitForSelector('.install-app-button', { timeout: 30000 })
-    const box = await applePage.locator('.install-app-button').boundingBox()
+    await applePage.waitForSelector('.install-app-option', { timeout: 30000 })
+    const box = await applePage.locator('.install-app-option').boundingBox()
     const blocker = await applePage.evaluate(() => {
-      const el = document.querySelector('.install-app-button')
+      const el = document.querySelector('.install-app-option')
       const r = el.getBoundingClientRect()
       const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
       const style = getComputedStyle(el)
@@ -132,11 +132,11 @@ try {
         hit: hit ? (hit.className.toString().split(' ')[0] || hit.tagName) : 'none', covered: !(hit === el || el.contains(hit)) }
     })
     report.checks.installButtonBox = { box, ...blocker }
-    await applePage.locator('.install-app-button').click({ timeout: 8000 })
+    await applePage.locator('.install-app-option').click({ timeout: 8000 })
     await applePage.waitForSelector('.install-guide', { timeout: 10000 })
     const guide = (await applePage.locator('.install-guide').innerText()).replace(/\s+/g, ' ').trim()
     await applePage.screenshot({ path: path.join(dist, 'install-guide.png') })
-    report.checks.installAffordance = { appleButton: true, guide: guide.slice(0, 120), screenshot: 'dist/install-guide.png' }
+    report.checks.installAffordance = { appleOption: true, guide: guide.slice(0, 120), screenshot: 'dist/install-guide.png' }
     if (!guide.includes('홈 화면에 추가')) failures.push('the iOS install guide does not mention the Add to Home Screen step')
   } catch (error) {
     failures.push('install affordance: ' + error.message.split(String.fromCharCode(10))[0])

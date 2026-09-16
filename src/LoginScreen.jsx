@@ -78,10 +78,9 @@ function LoginScreen({
         </span>
       </header>
 
-      <InstallAppButton />
-
       <section className="auth-login-card" aria-labelledby="auth-login-title">
         <span className="auth-card-glow" aria-hidden="true" />
+        <div className="auth-login-intro">
         <div className="auth-login-emblem">
           <Sparkles size={28} aria-hidden="true" />
         </div>
@@ -90,7 +89,9 @@ function LoginScreen({
           <h1 id="auth-login-title">챔피언스 아레나</h1>
           <p>Google 계정을 연결하거나 게스트 트레이너로 시작하세요.</p>
         </div>
+        </div>
 
+        <div className="auth-login-panel">
         <div className="auth-login-actions">
           <button
             className="google-login-button"
@@ -118,6 +119,8 @@ function LoginScreen({
             </span>
             <ChevronRight size={21} aria-hidden="true" />
           </button>
+
+          <InstallAppButton variant="card" />
         </div>
 
         <div className="auth-auto-login-row">
@@ -159,6 +162,7 @@ function LoginScreen({
           <ShieldCheck size={16} aria-hidden="true" />
           <span>{configured ? '게스트도 온라인 플레이 · Google 연결로 계정 보관' : '오프라인 게스트는 이 브라우저에만 저장'}</span>
         </footer>
+        </div>
       </section>
     </main>
   )

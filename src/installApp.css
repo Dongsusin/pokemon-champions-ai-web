@@ -114,25 +114,189 @@ html[data-mobile-layout="landscape"] .install-guide > header h2 { font-size: 16p
 html[data-mobile-layout="landscape"] .install-guide ol { gap: 6px; margin-top: 10px; font-size: 12px; }
 html[data-mobile-layout="landscape"] .install-guide > p { margin-top: 9px; font-size: 11px; }
 
-/* The login screen centres its brand title across the header row, so the
-   button sits in the corner of the shell instead of in that flow. */
-.auth-shell > .install-app-button {
-  position: absolute;
-  top: max(14px, env(safe-area-inset-top, 0px));
-  right: 16px;
-  z-index: 30;
+/* Install option shown with the sign-in choices. It mirrors the guest button
+   so the three ways in read as one list. */
+.install-app-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 13px 18px;
+  border: 1px solid rgba(137, 231, 255, 0.34);
+  border-radius: 17px;
+  color: #eaf6ff;
+  background: linear-gradient(145deg, rgba(31, 62, 96, 0.72), rgba(20, 35, 70, 0.78));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.install-app-option:hover,
+.install-app-option:focus-visible {
+  outline: none;
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(2, 7, 31, 0.44), 0 0 28px rgba(88, 218, 255, 0.14);
+}
+
+.install-app-option-mark {
   display: grid;
   place-items: center;
   width: 42px;
   height: 42px;
-  border: 1px solid #7fd8f47a;
-  border-radius: 12px;
-  cursor: pointer;
+  border-radius: 13px;
+  color: #c9f4ff;
+  background: linear-gradient(145deg, rgba(83, 218, 255, 0.26), rgba(111, 75, 255, 0.3));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.18);
 }
 
-html[data-mobile-layout="landscape"] .auth-shell > .install-app-button {
-  top: max(10px, env(safe-area-inset-top, 0px));
-  right: 12px;
-  width: 36px;
-  height: 36px;
+.install-app-option strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: -0.4px;
+}
+
+.install-app-option small {
+  display: block;
+  margin-top: 2px;
+  color: #a9c2dd;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+/* Landscape phones: the tall single column did not fit, so the card splits
+   into an identity column and a choices column. Both wrappers are
+   display:contents elsewhere, which leaves the desktop card untouched. */
+.auth-login-intro,
+.auth-login-panel {
+  display: contents;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-card {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: 10px 20px;
+  width: min(780px, calc(100vw - 26px));
+  max-height: calc(100dvh - 20px);
+  padding: 14px 20px 14px;
+  border-radius: 20px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-intro,
+html[data-mobile-layout="landscape"] .auth-login-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-intro {
+  gap: 10px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-panel {
+  gap: 8px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-emblem {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-heading {
+  gap: 4px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-heading h1 {
+  font-size: clamp(22px, 4.6vh, 34px);
+}
+
+html[data-mobile-layout="landscape"] .auth-login-heading p {
+  font-size: 12px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-actions {
+  gap: 7px;
+}
+
+html[data-mobile-layout="landscape"] .google-login-button,
+html[data-mobile-layout="landscape"] .guest-login-button,
+html[data-mobile-layout="landscape"] .install-app-option {
+  padding: 8px 13px;
+  border-radius: 13px;
+}
+
+html[data-mobile-layout="landscape"] .guest-login-button strong,
+html[data-mobile-layout="landscape"] .install-app-option strong {
+  font-size: 13.5px;
+}
+
+html[data-mobile-layout="landscape"] .guest-login-button small,
+html[data-mobile-layout="landscape"] .install-app-option small {
+  font-size: 10px;
+}
+
+html[data-mobile-layout="landscape"] .install-app-option-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+html[data-mobile-layout="landscape"] .auth-auto-login-row {
+  padding: 7px 12px;
+  border-radius: 13px;
+}
+
+html[data-mobile-layout="landscape"] .auth-session-notice {
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-footer {
+  font-size: 10px;
+}
+
+html[data-mobile-layout="landscape"] .install-guide {
+  width: min(560px, 100%);
+  padding: 12px 15px 14px;
+}
+
+html[data-mobile-layout="landscape"] .install-guide > header h2 { font-size: 16px; }
+html[data-mobile-layout="landscape"] .install-guide ol { gap: 6px; margin-top: 10px; font-size: 12px; }
+
+/* A landscape phone keeps only the ways in: the sign-in buttons and the
+   install option. The prose around them is dropped so the card stays short
+   and reads at a glance. The desktop card keeps every line. */
+html[data-mobile-layout="landscape"] .auth-login-heading p,
+html[data-mobile-layout="landscape"] .auth-session-notice,
+html[data-mobile-layout="landscape"] .auth-login-footer,
+html[data-mobile-layout="landscape"] .guest-login-button small,
+html[data-mobile-layout="landscape"] .install-app-option small,
+html[data-mobile-layout="landscape"] .auth-auto-login-row .auth-auto-login-copy small {
+  display: none;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-card {
+  align-items: center;
+  gap: 10px 22px;
+  width: min(700px, calc(100vw - 26px));
+  padding: 16px 22px;
+}
+
+html[data-mobile-layout="landscape"] .auth-login-intro {
+  gap: 8px;
+}
+
+html[data-mobile-layout="landscape"] .google-login-button,
+html[data-mobile-layout="landscape"] .guest-login-button,
+html[data-mobile-layout="landscape"] .install-app-option {
+  padding: 10px 14px;
+}
+
+/* The card already carries the emblem and the game name, so the corner brand
+   header would only overlap it at this height. */
+html[data-mobile-layout="landscape"] .auth-brand {
+  display: none;
 }
