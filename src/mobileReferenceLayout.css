@@ -3220,3 +3220,60 @@ html[data-mobile-layout="landscape"] .draw-slot.revealed img{
 html[data-mobile-layout="landscape"] .draw-slot{
   padding:3px;
 }
+
+/* ==================================================================
+   확률표: five rarity chips took a whole band between the banner and the
+   purchase bar. On a phone that band is clutter and it squeezed the banner
+   card, so the row now carries one 확률표 button and the board opens above
+   it as a tooltip. The wrapper is display:contents on desktop, so it has to
+   become a real box here before the popover can anchor to it. */
+html[data-mobile-layout="landscape"] .draw-rate-zone{
+  display:flex;
+  position:relative;
+  z-index:6;
+  width:100%;
+  padding-inline:clamp(8px,3vw,30px);
+  justify-content:flex-end;
+}
+
+html[data-mobile-layout="landscape"] .draw-rate-toggle{
+  display:inline-flex;
+  min-height:28px;
+  padding:0 12px;
+  border:1px solid rgba(141,197,255,.42);
+  border-radius:999px;
+  color:#eaf5ff;
+  background:linear-gradient(145deg,rgba(17,28,77,.92),rgba(31,35,98,.82));
+  font-size:11px;
+  font-weight:800;
+  gap:5px;
+  align-items:center;
+}
+
+html[data-mobile-layout="landscape"] .draw-rate-zone[data-rate-open="true"] .draw-rate-toggle{
+  border-color:rgba(163,205,255,.9);
+  color:#fff;
+  background:linear-gradient(180deg,#6f5ce0,#5a49c8);
+}
+
+/* The board is absolute, so it overlays the banner instead of reserving a
+   row. One chip per line keeps 등급 · 확률 readable at phone sizes. */
+html[data-mobile-layout="landscape"] .draw-rate-zone .draw-banner-rate-board{
+  display:none;
+  position:absolute;
+  right:clamp(8px,3vw,30px);
+  bottom:calc(100% + 6px);
+  width:min(290px,calc(100vw - 28px));
+  margin:0;
+  padding:7px;
+  border:1px solid rgba(141,197,255,.45);
+  border-radius:12px;
+  background:rgba(9,14,44,.97);
+  box-shadow:0 14px 30px rgba(3,6,24,.6);
+  grid-template-columns:minmax(0,1fr);
+  gap:4px;
+}
+
+html[data-mobile-layout="landscape"] .draw-rate-zone[data-rate-open="true"] .draw-banner-rate-board{
+  display:grid;
+}

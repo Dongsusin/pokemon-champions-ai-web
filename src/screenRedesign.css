@@ -19303,6 +19303,17 @@
   transform: none;
 }
 
+/* The wrapper exists only so the mobile layout has something to anchor the
+   확률표 tooltip to. On a pointer screen the board stays a permanent band, so
+   the wrapper hands its children straight back to the banner grid. */
+.draw-rate-zone {
+  display: contents;
+}
+
+.draw-rate-toggle {
+  display: none;
+}
+
 .draw-banner-rate-board {
   display: grid;
   width: min(1080px, calc(100% - 136px));

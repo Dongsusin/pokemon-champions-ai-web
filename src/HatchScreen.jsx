@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Percent,
   RotateCcw,
   Sparkles,
   Star,
@@ -138,6 +139,8 @@ function HatchScreen({
   const [hatchingSlotId, setHatchingSlotId] = useState(null)
   const [isHatchingAll, setIsHatchingAll] = useState(false)
   const [revealBurstSlotId, setRevealBurstSlotId] = useState(null)
+  const [rateBoardOpen, setRateBoardOpen] = useState(false)
+  const rateZoneRef = useRef(null)
   const hatchTimerRef = useRef(null)
   const burstTimerRef = useRef(null)
   const hatchInProgressRef = useRef(false)
@@ -184,6 +187,27 @@ function HatchScreen({
   useEffect(() => {
     if (isDrawTutorial) setSelectedBannerIndex(0)
   }, [isDrawTutorial])
+
+  useEffect(() => {
+    setRateBoardOpen(false)
+  }, [selectedBannerIndex, view])
+
+  useEffect(() => {
+    if (!rateBoardOpen) return undefined
+
+    const closeOnOutsidePress = (event) => {
+      if (!rateZoneRef.current?.contains(event.target)) setRateBoardOpen(false)
+    }
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setRateBoardOpen(false)
+    }
+    window.addEventListener('pointerdown', closeOnOutsidePress)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.removeEventListener('pointerdown', closeOnOutsidePress)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [rateBoardOpen])
 
   useEffect(() => {
     if (!drawKey) {
@@ -329,14 +353,30 @@ function HatchScreen({
             </button>
           </div>
 
-          <div className="draw-banner-rate-board" aria-label={activeBanner.id === 'standard' ? '등급별 기본 등장 확률' : '등급별 등장 확률'}>
-            {DRAW_RARITY_ORDER.map((rarity) => (
-              <div className={`draw-rate-chip rarity-${rarity}`} key={rarity}>
-                <span>{RARITY_META[rarity].stars}</span>
-                <strong>{RARITY_META[rarity].label}</strong>
-                <em>{formatRate(RARITY_META[rarity].rate)}</em>
-              </div>
-            ))}
+          <div className="draw-rate-zone" data-rate-open={rateBoardOpen ? 'true' : 'false'} ref={rateZoneRef}>
+            <button
+              type="button"
+              className="draw-rate-toggle"
+              aria-controls="draw-rate-board"
+              aria-expanded={rateBoardOpen}
+              onClick={() => setRateBoardOpen((open) => !open)}
+            >
+              <Percent size={13} />
+              <span>확률표</span>
+            </button>
+            <div
+              className="draw-banner-rate-board"
+              id="draw-rate-board"
+              aria-label={activeBanner.id === 'standard' ? '등급별 기본 등장 확률' : '등급별 등장 확률'}
+            >
+              {DRAW_RARITY_ORDER.map((rarity) => (
+                <div className={`draw-rate-chip rarity-${rarity}`} key={rarity}>
+                  <span>{RARITY_META[rarity].stars}</span>
+                  <strong>{RARITY_META[rarity].label}</strong>
+                  <em>{formatRate(RARITY_META[rarity].rate)}</em>
+                </div>
+              ))}
+            </div>
           </div>
 
           <footer className={`draw-banner-purchase${isDrawTutorial ? ' is-tutorial' : ''}`}>
