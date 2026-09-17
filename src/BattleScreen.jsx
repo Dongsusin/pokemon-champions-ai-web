@@ -1941,6 +1941,7 @@ function BattleScreen({
 }) {
   const spectating = online?.spectator === true
   const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
+  const [isRuleHudOpen, setIsRuleHudOpen] = useState(false)
   const [introVisible, setIntroVisible] = useState(!online)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
@@ -2534,37 +2535,51 @@ function BattleScreen({
           <strong>{Math.max(1, battle.turn)}</strong>
         </div>
         <div className="battle-header-cluster">
-          <div className="battle-rule-hud" aria-label="현재 배틀 규칙">
-            <BattleRuleBadge
-              id="weather"
-              category="날씨"
-              label={`${battle.rules.weather.label}${Number.isFinite(weatherTurns) ? ` · ${weatherTurns}T` : ''}`}
-              description={weatherDescription}
-            />
-            <BattleRuleBadge
-              id="terrain"
-              category="필드"
-              label={`${battle.rules.terrain.label}${Number.isFinite(terrainTurns) ? ` · ${terrainTurns}T` : ''}`}
-              description={terrainDescription}
-            />
-            <BattleRuleBadge
-              id="format"
-              category="배틀"
-              label={battle.rules.format.label}
-              description={getBattleRuleDescription('format', battle.rules.format)}
-            />
-            <BattleRuleBadge
-              id="gimmick"
-              category="기믹"
-              label={battle.rules.gimmickRestriction.label}
-              description={getBattleRuleDescription('gimmick', battle.rules.gimmickRestriction)}
-            />
-            {!online && <BattleRuleBadge
-              id="difficulty"
-              category="AI"
-              label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty)}
-              description={getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
-            />}
+          {/* A narrow frame cannot carry five badges, so there it collapses into
+              this button and the badges read as a panel with their notes. */}
+          <div className={`battle-rule-hud-group${isRuleHudOpen ? ' is-open' : ''}`}>
+            <button
+              className="battle-rule-hud-toggle"
+              type="button"
+              aria-expanded={isRuleHudOpen}
+              aria-controls="battle-rule-hud-panel"
+              onClick={() => setIsRuleHudOpen((open) => !open)}
+            >
+              <Sparkles size={14} aria-hidden="true" />
+              <span>배틀 환경</span>
+            </button>
+            <div className="battle-rule-hud" id="battle-rule-hud-panel" aria-label="현재 배틀 규칙">
+              <BattleRuleBadge
+                id="weather"
+                category="날씨"
+                label={`${battle.rules.weather.label}${Number.isFinite(weatherTurns) ? ` · ${weatherTurns}T` : ''}`}
+                description={weatherDescription}
+              />
+              <BattleRuleBadge
+                id="terrain"
+                category="필드"
+                label={`${battle.rules.terrain.label}${Number.isFinite(terrainTurns) ? ` · ${terrainTurns}T` : ''}`}
+                description={terrainDescription}
+              />
+              <BattleRuleBadge
+                id="format"
+                category="배틀"
+                label={battle.rules.format.label}
+                description={getBattleRuleDescription('format', battle.rules.format)}
+              />
+              <BattleRuleBadge
+                id="gimmick"
+                category="기믹"
+                label={battle.rules.gimmickRestriction.label}
+                description={getBattleRuleDescription('gimmick', battle.rules.gimmickRestriction)}
+              />
+              {!online && <BattleRuleBadge
+                id="difficulty"
+                category="AI"
+                label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty)}
+                description={getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
+              />}
+            </div>
           </div>
           <div className="battle-header-actions">
             <span>{playerActive.name} VS {opponentActive.name}</span>

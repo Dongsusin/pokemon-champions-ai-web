@@ -204,6 +204,62 @@ try {
       await click(starter)
       await page.locator('.battle-intro-overlay').waitFor({ timeout: 30_000 })
       console.log('  battle started: yes')
+
+      // Walk into the battle itself: the move menu and the rule badges in its
+      // header are what a narrow frame squeezes.
+      await page.locator('.battle-intro-overlay.is-ready').waitFor({ timeout: 30_000 }).catch(() => {})
+      const enter = page.getByRole('button', { name: /배틀 개시/ }).first()
+      if (await enter.count()) { await click(enter); await page.waitForTimeout(1200) }
+      await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'hidden', timeout: 20_000 }).catch(() => {})
+      await page.waitForFunction(() => {
+        const fight = document.querySelector('.battle-command-buttons .fight')
+        return fight && !fight.disabled
+      }, undefined, { timeout: 30_000 })
+      await click(page.locator('.battle-command-buttons .fight'))
+      await page.locator('.battle-move-button').first().waitFor()
+      await page.waitForTimeout(400)
+      const battle = await page.evaluate(() => {
+        const r = node => { const b = node.getBoundingClientRect(); return { x: Math.round(b.x), w: Math.round(b.width), h: Math.round(b.height), right: Math.round(b.right) } }
+        const grid = document.querySelector('.battle-move-grid')
+        const hud = document.querySelector('.battle-rule-hud')
+        const cards = [...document.querySelectorAll('.battle-move-button')]
+        const spill = cards.flatMap(card => {
+          const box = card.getBoundingClientRect()
+          return [...card.children].filter(child => child.getBoundingClientRect().right > box.right + 1)
+            .map(child => `${child.className || child.tagName}:+${Math.round(child.getBoundingClientRect().right - box.right)}`)
+        })
+        return {
+          viewport: { width: innerWidth, height: innerHeight },
+          moveColumns: grid ? getComputedStyle(grid).gridTemplateColumns : null,
+          moveRows: grid ? getComputedStyle(grid).gridTemplateRows : null,
+          cards: cards.map(card => r(card)),
+          cardCols: cards[0] ? getComputedStyle(cards[0]).gridTemplateColumns : null,
+          spill,
+          ruleHud: hud ? { ...r(hud), badges: [...hud.querySelectorAll('.battle-rule-badge')].map(badge => ({
+            w: Math.round(badge.getBoundingClientRect().width),
+            cut: badge.scrollWidth > badge.clientWidth + 2,
+            text: badge.textContent.trim().slice(0, 14) })) } : null,
+        }
+      })
+      console.log('  BATTLE move grid:', battle.moveColumns, '| rows', battle.moveRows)
+      console.log('  BATTLE cards:', JSON.stringify(battle.cards))
+      console.log('  BATTLE card columns:', battle.cardCols, '| spill', JSON.stringify(battle.spill))
+      console.log('  BATTLE rule hud:', JSON.stringify(battle.ruleHud))
+      await page.screenshot({ path: path.join(output, `${mode}-${tag}-battle-moves.png`) })
+      const ruleToggle = page.locator('.battle-rule-hud-toggle')
+      if (await ruleToggle.isVisible()) {
+        await click(ruleToggle)
+        await page.waitForTimeout(400)
+        const panel = await page.evaluate(() => {
+          const hud = document.querySelector('.battle-rule-hud')
+          const box = hud.getBoundingClientRect()
+          return { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height),
+            bottom: Math.round(box.bottom), inFrame: box.x >= -1 && box.right <= innerWidth + 1 && box.bottom <= innerHeight + 1,
+            badges: hud.querySelectorAll('.battle-rule-badge').length }
+        })
+        console.log('  BATTLE rule panel:', JSON.stringify(panel))
+        await page.screenshot({ path: path.join(output, `${mode}-${tag}-battle-rules.png`) })
+      }
       await page.screenshot({ path: path.join(output, `${mode}-${tag}-battle.png`) })
       if (errors.length) console.log('  page errors:', errors.slice(0, 3))
     } catch (error) {
