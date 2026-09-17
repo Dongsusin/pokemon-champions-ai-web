@@ -13756,11 +13756,65 @@
   min-width: 0;
 }
 
-/* Both header toggles exist for the phone header; the desktop screen shows the
-   same information in the match panel and the league workspace. */
-.competition-rules-toggle,
-.competition-standings-toggle {
+/* The battle conditions already sit in the desktop match panel, so only the
+   phone header needs that toggle. */
+.competition-rules-toggle {
   display: none;
+}
+
+/* The league table and the round's pairings are behind this button on every
+   size, which keeps one full-height match panel instead of a row of cramped,
+   separately scrolling panels. */
+.competition-standings-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(126, 229, 255, 0.42);
+  border-radius: 13px;
+  color: #dff3ff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  background: linear-gradient(145deg, rgba(26, 60, 90, 0.86), rgba(18, 42, 68, 0.9));
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.competition-standings-toggle:hover,
+.competition-standings-toggle:focus-visible {
+  border-color: rgba(218, 255, 103, 0.6);
+  background: linear-gradient(145deg, rgba(41, 82, 112, 0.92), rgba(24, 54, 84, 0.94));
+}
+
+.competition-standings-toggle.is-open {
+  border-color: rgba(218, 255, 103, 0.78);
+  color: #f3ffd1;
+  background: linear-gradient(145deg, rgba(85, 121, 56, 0.98), rgba(25, 59, 68, 0.98));
+}
+
+/* One match panel fills the frame below the header now that the workspace is
+   no longer a third row. */
+.competition-screen.mode-league {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+/* The header lead carries two controls now, so keep both on one line. */
+.competition-header-lead .screen-back-button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Let the matchup stage take the height the workspace used to occupy instead
+   of leaving a band of empty panel under the footer. */
+.competition-screen.mode-league .competition-current-match-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) repeat(3, auto);
+  align-content: stretch;
 }
 
 .competition-rules-popover-layer,
@@ -14460,22 +14514,13 @@
   font-size: 10px;
 }
 
-/* The fixtures panel keeps its list scrollable so the round can always be
-   started from the bar pinned under it. */
-.competition-fixtures-panel {
-  display: flex;
-  flex-direction: column;
-}
-
-.competition-fixtures-panel > div {
-  min-height: 0;
-  overflow-y: auto;
-}
-
+/* The round starts from the bar under the pairings inside the league dialog. */
 .competition-fixtures-start-bar {
   display: grid;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(126, 229, 255, 0.22);
 }
 
 .competition-fixtures-start-bar > small {
@@ -14517,9 +14562,56 @@
   cursor: default;
 }
 
-.competition-standings-popover .competition-standings-table {
-  max-height: min(46dvh, 300px);
+/* The dialog scrolls its body only, so the header stays put and the bar that
+   starts the round is never below the fold. */
+.competition-standings-popover {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.competition-standings-popover > header {
+  flex: none;
+}
+
+.competition-standings-popover-body {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.competition-standings-popover .competition-fixtures-start-bar {
+  flex: none;
+}
+
+.competition-standings-popover-body,
+.competition-current-match-panel {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(126, 229, 255, 0.5) transparent;
+}
+
+.competition-standings-popover-body::-webkit-scrollbar,
+.competition-current-match-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.competition-standings-popover-body::-webkit-scrollbar-track,
+.competition-current-match-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.competition-standings-popover-body::-webkit-scrollbar-thumb,
+.competition-current-match-panel::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(126, 229, 255, 0.45);
+  background-clip: content-box;
+}
+
+.competition-standings-popover-body::-webkit-scrollbar-thumb:hover,
+.competition-current-match-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 244, 255, 0.72);
+  background-clip: content-box;
 }
 
 .competition-standings-popover-fixtures {
@@ -19152,29 +19244,6 @@
     overflow: hidden;
   }
 
-  /* The league renders a third child, so a two-row template pushed the
-     workspace into an implicit row and crushed the match panel - with the team
-     selection and the start button inside it - down to a few pixels. */
-  .competition-screen:has(> .competition-league-workspace) {
-    grid-template-rows: auto auto minmax(150px, 1fr);
-  }
-
-  .competition-league-workspace {
-    min-height: 0;
-  }
-
-  .competition-league-participants,
-  .competition-standings-panel {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .competition-league-participants > div,
-  .competition-standings-table {
-    min-height: 0;
-    overflow-y: auto;
-  }
-
   .competition-current-match-panel {
     min-height: 0;
     overflow-y: auto;
@@ -19186,24 +19255,6 @@
     position: sticky;
     bottom: 0;
     background: rgba(8, 14, 47, 0.94);
-  }
-
-  .competition-fixtures-panel > div {
-    flex: 1 1 auto;
-  }
-
-  .competition-fixtures-start-bar {
-    flex: none;
-    margin-top: 8px;
-  }
-
-  .competition-fixtures-start-bar > small {
-    display: none;
-  }
-
-  .competition-fixtures-start {
-    min-height: 34px;
-    font-size: 13px;
   }
 
   .competition-current-match-panel:has(.competition-team-selection) .competition-matchup-stage {

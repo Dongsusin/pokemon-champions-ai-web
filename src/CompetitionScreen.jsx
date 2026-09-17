@@ -37,23 +37,6 @@ function pokemonIconSources(slot) {
   }
 }
 
-function ParticipantCard({ participant, state, isOpponent = false, compact = false, playerGender = 'male' }) {
-  return (
-    <article
-      className={`competition-participant-card state-${state}${isOpponent ? ' current-opponent' : ''}${compact ? ' compact' : ''}`}
-      title={`${participant.name} · ${participant.tier} TIER`}
-    >
-      <TrainerSprite trainer={participant} isPlayer={participant.isPlayer} playerGender={playerGender} />
-      <span>
-        <small>{participant.isPlayer ? 'PLAYER' : `${participant.tier} TIER`}</small>
-        <strong>{participant.name}</strong>
-      </span>
-      {participant.isPlayer && <Shield size={13} />}
-      {isOpponent && <Swords size={13} />}
-    </article>
-  )
-}
-
 function MatchTrainer({ participant, side, team, getInspectorProps, playerGender = 'male' }) {
   return (
     <article className={`competition-match-trainer side-${side}`}>
@@ -441,53 +424,6 @@ function LeagueFixtureList({ competition }) {
   )
 }
 
-function LeagueOverview({ competition, currentMatch, playerGender = 'male', startAction = null }) {
-  return (
-    <section className="competition-league-workspace">
-      <div className="competition-league-participants">
-        <header>
-          <div>
-            <span>LEAGUE MEMBERS</span>
-            <h2>8인 참가 명단</h2>
-          </div>
-          <UsersRound size={24} />
-        </header>
-        <div>
-          {competition.participants.map((participant) => (
-            <ParticipantCard
-              key={participant.id}
-              participant={participant}
-              state="active"
-              isOpponent={participant.id === currentMatch?.opponent?.id}
-              playerGender={playerGender}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="competition-standings-panel">
-        <header>
-          <div>
-            <span>LEAGUE TABLE</span>
-            <h2>현재 순위</h2>
-          </div>
-          <Medal size={23} />
-        </header>
-        <LeagueStandingsTable competition={competition} />
-      </div>
-
-      <div className="competition-fixtures-panel">
-        <header>
-          <span>CURRENT FIXTURES</span>
-          <h2>{getCompetitionRoundLabel(competition)} 대진</h2>
-        </header>
-        <LeagueFixtureList competition={competition} />
-        {startAction}
-      </div>
-    </section>
-  )
-}
-
 function CompetitionScreen({ competition, playerGender = 'male', onBack, onStartBattle }) {
   const currentMatch = getCurrentCompetitionMatch(competition)
   const player = getCompetitionParticipant(competition, PLAYER_PARTICIPANT_ID)
@@ -592,7 +528,7 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
   }
 
   return (
-    <main className="competition-screen ai-format-competition-screen">
+    <main className={`competition-screen ai-format-competition-screen mode-${competition.mode}`}>
       <header className="competition-header">
         <div className="competition-header-lead">
           <button className="screen-back-button" type="button" onClick={onBack}>
@@ -804,46 +740,39 @@ function CompetitionScreen({ competition, playerGender = 'male', onBack, onStart
               </div>
               <button type="button" aria-label="닫기" onClick={() => setIsStandingsOpen(false)}><X size={19} /></button>
             </header>
-            <LeagueStandingsTable competition={competition} />
-            <div className="competition-standings-popover-fixtures">
-              <span>{roundLabel} 대진</span>
-              <LeagueFixtureList competition={competition} />
+            <div className="competition-standings-popover-body">
+              <LeagueStandingsTable competition={competition} />
+              <div className="competition-standings-popover-fixtures">
+                <span>{roundLabel} 대진</span>
+                <LeagueFixtureList competition={competition} />
+              </div>
             </div>
+            {currentMatch && (
+              <footer className="competition-fixtures-start-bar">
+                {requiresPokemonSelection && (
+                  <small>
+                    {selectedCaptureIds.length === requiredPokemonCount
+                      ? '출전 준비 완료'
+                      : `출전 포켓몬 ${selectedCaptureIds.length}/${requiredPokemonCount} 선택`}
+                  </small>
+                )}
+                <button
+                  className="competition-fixtures-start"
+                  type="button"
+                  disabled={selectedCaptureIds.length !== requiredPokemonCount}
+                  onClick={() => { setIsStandingsOpen(false); onStartBattle(selectedCaptureIds) }}
+                >
+                  <Swords size={16} />
+                  대결 진행하기
+                  <ChevronRight size={16} />
+                </button>
+              </footer>
+            )}
           </section>
         </div>,
         document.body,
       )}
 
-      {!isTournament && (
-        <LeagueOverview
-          competition={competition}
-          currentMatch={currentMatch}
-          playerGender={playerGender}
-          startAction={currentMatch ? (
-            // A short desktop window leaves no room for the match panel's own
-            // footer, so the round also starts from the fixtures it belongs to.
-            <footer className="competition-fixtures-start-bar">
-              {requiresPokemonSelection && (
-                <small>
-                  {selectedCaptureIds.length === requiredPokemonCount
-                    ? '출전 준비 완료'
-                    : `출전 포켓몬 ${selectedCaptureIds.length}/${requiredPokemonCount} 선택`}
-                </small>
-              )}
-              <button
-                className="competition-fixtures-start"
-                type="button"
-                disabled={selectedCaptureIds.length !== requiredPokemonCount}
-                onClick={() => onStartBattle(selectedCaptureIds)}
-              >
-                <Swords size={16} />
-                대결 진행하기
-                <ChevronRight size={16} />
-              </button>
-            </footer>
-          ) : null}
-        />
-      )}
     </main>
   )
 }
