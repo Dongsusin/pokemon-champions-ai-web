@@ -136,6 +136,8 @@ function audit() {
     viewport: { width: vw, height: vh },
     layoutAttribute: document.documentElement.dataset.mobileLayout ?? null,
     tabbarTop: tabbar ? tabTop : null,
+    topbar: (() => { const bar = document.querySelector('.topbar'); return bar ? Math.round(bar.getBoundingClientRect().height) : null })(),
+    tabbarBottom: tabbar ? Math.round(tabbar.getBoundingClientRect().bottom) : null,
     pageScroll: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight },
     belowFrame: belowFrame.slice(0, 8),
     belowFrameCount: belowFrame.length,
@@ -226,6 +228,7 @@ try {
       findings.push(result)
       await page.screenshot({ path: path.join(output, `${tag}-${name}.png`) })
       console.log(`\n--- ${name} (${result.viewport.width}x${result.viewport.height}, tabbar top ${result.tabbarTop}) ---`)
+      console.log(`  topbar ${result.topbar}px | tabbar bottom ${result.tabbarBottom} vs ${result.viewport.height}`)
       console.log(`  below frame ${result.belowFrameCount} | under tabbar ${result.underTabbarCount} | clipped ${result.cutCount} | off-centre art ${result.offCentreCount}`)
       for (const item of result.belowFrame.filter(entry => !entry.decorative).slice(0, 5)) console.log(`   BELOW ${item.node} by ${item.by}px "${item.text}"`)
       for (const item of result.underTabbar.slice(0, 5)) console.log(`   TABBAR ${item.node} by ${item.by}px "${item.text}"`)
@@ -239,6 +242,29 @@ try {
 
     try {
       await page.goto(`${origin}/mobile-screens.html`)
+      // CHAT_PREVIEW reproduces a topbar carrying a real message, whose author
+      // line makes the chat trigger two lines tall.
+      if (process.env.CHAT_PREVIEW) {
+        await page.addInitScript(() => {
+          const fill = () => {
+            const preview = document.querySelector('.global-chat-preview')
+            if (preview && !preview.querySelector('.global-chat-preview-meta')) {
+              const meta = document.createElement('span')
+              meta.className = 'global-chat-preview-meta'
+              meta.innerHTML = '<strong>개발자</strong><time>23:01</time>'
+              preview.prepend(meta)
+            }
+          }
+          setInterval(fill, 300)
+        })
+      }
+      // FORCE_LAYOUT pins the frame the CSS keys off, which is how a device that
+      // reports portrait while its window is wide ends up with no phone rules.
+      if (process.env.FORCE_LAYOUT) {
+        await page.addInitScript(frame => {
+          setInterval(() => { document.documentElement.dataset.mobileLayout = frame }, 120)
+        }, process.env.FORCE_LAYOUT)
+      }
       // The app boots straight into the lobby; there is no landing screen.
       await page.locator('.lobby-layout').waitFor()
       await report('lobby')
