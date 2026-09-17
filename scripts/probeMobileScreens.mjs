@@ -161,11 +161,15 @@ function audit() {
           }
           // A band whose own content is taller than the band paints onto
           // whatever follows it, whatever its overflow setting says.
-          const deepest = [...row.querySelectorAll('*')].filter(shown)
-            .reduce((low, child) => Math.max(low, child.getBoundingClientRect().bottom), a.bottom)
+          let deepest = a.bottom
+          let culprit = null
+          for (const child of [...row.querySelectorAll('*')].filter(shown)) {
+            const bottom = child.getBoundingClientRect().bottom
+            if (bottom > deepest) { deepest = bottom; culprit = label(child) }
+          }
           const spill = Math.round(deepest - a.bottom)
           if (spill > 2) found.push({ parent: label(parent), over: label(row), under: '(its own content)', by: spill,
-            box: Math.round(a.height), parts: [...row.children].filter(shown).map(child => `${label(child)}:${Math.round(child.getBoundingClientRect().height)}`).join(' ') })
+            box: Math.round(a.height), culprit, parts: [...row.children].filter(shown).map(child => `${label(child)}:${Math.round(child.getBoundingClientRect().height)}`).join(' ') })
         }
       }
       return found
@@ -233,7 +237,7 @@ try {
       for (const item of result.belowFrame.filter(entry => !entry.decorative).slice(0, 5)) console.log(`   BELOW ${item.node} by ${item.by}px "${item.text}"`)
       for (const item of result.underTabbar.slice(0, 5)) console.log(`   TABBAR ${item.node} by ${item.by}px "${item.text}"`)
       for (const item of result.cut.slice(0, 3)) console.log(`   CUT ${item.node} ${item.client} < ${item.scroll} [${item.parts}]`)
-      for (const item of result.overlaps ?? []) console.log(`   OVERLAP ${item.over} (box ${item.box ?? '?'}) paints ${item.by}px onto ${item.under} [${item.parts ?? ''}]`)
+      for (const item of result.overlaps ?? []) console.log(`   OVERLAP ${item.over} (box ${item.box ?? '?'}) paints ${item.by}px onto ${item.under} via ${item.culprit ?? '-'} [${item.parts ?? ''}]`)
       for (const item of result.offCentre.slice(0, 5)) console.log(`   ART ${item.node} in ${item.parent} drift ${item.drift}px (art ${item.width} of ${item.parentWidth})`)
       if (result.drawStage && result.drawStage.scroll > result.drawStage.client + 2) { console.log('   STAGE', result.drawStage.client, '<', result.drawStage.scroll); for (const row of result.drawStage.children) console.log('     ', JSON.stringify(row)) }
       if (result.pageScroll.height > result.viewport.height + 1) console.log(`   page scrolls down ${result.pageScroll.height} > ${result.viewport.height}`)

@@ -588,12 +588,13 @@ html[data-mobile-layout="landscape"] .team-box-selection>button{
   min-height:30px;
 }
 
-/* The panel scrolls, so the action that removes the pick would sit below the
-   fold and read as cut off by the tab bar. Keep it on the panel floor. */
+/* Sticking this action to the panel floor made it sit on top of the control
+   above it. The panel scrolls and the frame now keeps that panel clear of
+   the tab bar, so the action simply rides the scroll like its neighbours. */
+/* Sticking this action to the panel floor made it sit on top of the control
+   above it, so it rides the panel scroll like its neighbours instead. */
 html[data-mobile-layout="landscape"] .team-box-selection>button.remove{
-  position:sticky;
-  bottom:0;
-  z-index:2;
+  flex:0 0 auto;
 }
 
 html[data-mobile-layout="landscape"] .team-box-mobile-tools{
@@ -4029,9 +4030,19 @@ html[data-mobile-layout="landscape"] .ai-format-selection-screen .battle-mode-se
     padding:2px 6px;
   }
 
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-options{
+    min-height:0;
+  }
+
   html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button{
-    min-height:24px;
-    padding-block:1px;
+    min-height:22px;
+    padding-block:0;
+  }
+
+  /* The band still ran 4px past its row at 844x390; the eyebrow over the
+     difficulty name is the line it can spare. */
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty>header small{
+    display:none;
   }
 
   html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button small{
