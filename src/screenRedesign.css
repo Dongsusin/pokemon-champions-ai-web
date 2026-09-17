@@ -42,6 +42,9 @@
 .pokemon-icon-frame > :is(img, svg:where(.sprite-image-viewport)) {
   position: absolute;
   inset: 0;
+  /* Sprites that carry their own width would otherwise pin to the left edge of
+     the frame, because an explicit width wins over the inset's right offset. */
+  margin: auto;
   width: 100%;
   height: 100%;
   max-width: 100%;

@@ -176,8 +176,12 @@ html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) :is(.currency-ca
   border-radius:12px;
 }
 
+/* A fixed width cut the amount itself - 10vw leaves 93px for a 105px
+   "22,150 VP" - so keep that as the floor and let the number decide. */
 html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card{
-  width:clamp(78px,10vw,142px);
+  flex:0 0 auto;
+  width:auto;
+  min-width:clamp(78px,10vw,142px);
 }
 
 html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card small{
@@ -938,7 +942,8 @@ html[data-mobile-layout="landscape"] :is(.battle-hub-overview,.rooms-list,.rooms
   }
 
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card{
-    width:78px;
+    width:auto;
+    min-width:78px;
   }
 
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .currency-card small,

@@ -588,6 +588,14 @@ html[data-mobile-layout="landscape"] .team-box-selection>button{
   min-height:30px;
 }
 
+/* The panel scrolls, so the action that removes the pick would sit below the
+   fold and read as cut off by the tab bar. Keep it on the panel floor. */
+html[data-mobile-layout="landscape"] .team-box-selection>button.remove{
+  position:sticky;
+  bottom:0;
+  z-index:2;
+}
+
 html[data-mobile-layout="landscape"] .team-box-mobile-tools{
   display:grid;
   grid-template-columns:minmax(0,1fr) auto auto;
@@ -3053,11 +3061,33 @@ html[data-mobile-layout="landscape"] .draw-slot{
   min-width:0;
 }
 
+/* A 46px card cannot hold the number, the sprite and the rarity word: the
+   word was left as a 3px sliver, so drop it and let the card colour say it. */
+html[data-mobile-layout="landscape"] .draw-slot strong{
+  display:none;
+}
+
 /* The egg / revealed artwork carries a 310px block inside a stage the row
    now sizes to ~165px, so it was being clipped by the stage. */
 html[data-mobile-layout="landscape"] .draw-screen.showing-results :is(.draw-egg-reveal,.draw-revealed-pokemon){
   height:100%;
   min-height:0;
+}
+
+/* The revealed card still reserved a 46px inset and a 165px sprite frame,
+   which together with the rarity chip and the name asked for more than the
+   stage has: the artwork was cut to a strip and the name lost its tail. */
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-revealed-pokemon{
+  padding:20px 0 6px;
+}
+
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-main-sprite-frame{
+  width:min(220px,74%);
+  height:clamp(78px,24dvh,165px);
+}
+
+html[data-mobile-layout="landscape"] .draw-screen.showing-results .draw-revealed-pokemon>strong{
+  line-height:1.25;
 }
 
 /* The stat panel's content is taller than the band on a phone. Cap it to the
@@ -3919,4 +3949,39 @@ html[data-mobile-layout="landscape"] .competition-fixtures-start-bar {
 /* The freed row lets the matchup stage take the space the cards used. */
 html[data-mobile-layout="landscape"] .competition-current-match-panel {
   grid-template-rows: auto minmax(0, 1fr) repeat(2, auto);
+}
+
+/* Both boards paginate into a fixed row count, so a short phone hands each
+   card a row thinner than it is. Tighten the blocks that carry the surplus;
+   the achievement card still runs a few pixels over at 390px and under. */
+@media (max-height:430px){
+  html[data-mobile-layout="landscape"] .achievement-card{
+    padding:3px 5px;
+    gap:1px;
+  }
+
+  html[data-mobile-layout="landscape"] .achievement-card-progress{
+    gap:0;
+    font-size:8px;
+  }
+
+  html[data-mobile-layout="landscape"] .achievement-card-progress :is(.achievement-progress-label,small,span){
+    line-height:1.15;
+  }
+
+  html[data-mobile-layout="landscape"] .shop-item-card{
+    padding:2px 5px;
+    gap:0 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .shop-item-card>footer{
+    gap:3px;
+    min-height:0;
+  }
+
+  html[data-mobile-layout="landscape"] .shop-item-card>footer button{
+    min-height:22px;
+    padding:2px 7px;
+    font-size:9px;
+  }
 }
