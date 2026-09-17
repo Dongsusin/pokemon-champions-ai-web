@@ -3985,3 +3985,77 @@ html[data-mobile-layout="landscape"] .competition-current-match-panel {
     font-size:9px;
   }
 }
+
+/* The AI picker stacks five fixed bands - heading, format, modes, difficulty,
+   confirm - so a frame a little shorter than the sum pushes the last of them
+   past the panel and they read as overlapping. Let every band shrink, and
+   below 470px take the words the bands repeat elsewhere. */
+html[data-mobile-layout="landscape"] .ai-format-selection-screen .battle-mode-select-panel>*{
+  min-height:0;
+}
+
+@media (max-height:470px){
+  html[data-mobile-layout="landscape"] .ai-format-selection-screen .battle-mode-select-panel{
+    grid-template-rows:auto auto minmax(44px,1fr) auto auto;
+    gap:3px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-select-heading{
+    padding-block:0;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-select-heading>div>span{
+    display:none;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-select-heading>div>h2{
+    font-size:13px;
+    line-height:1.2;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar{
+    min-height:46px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-mode-confirm-bar em{
+    display:none;
+  }
+
+  /* The difficulty band was 21px taller than the row it sits in, so it
+     painted over the confirm bar below it. */
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty{
+    gap:2px;
+    padding:2px 6px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button{
+    min-height:24px;
+    padding-block:1px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button small{
+    display:none;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-options button strong{
+    font-size:11px;
+    line-height:1.2;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty-controls{
+    gap:3px;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-ai-difficulty>header em{
+    display:none;
+  }
+
+  /* The empty party slots collapsed to 10px for 31px of content. */
+  html[data-mobile-layout="landscape"] .battle-party-preview-card.empty{
+    min-height:0;
+  }
+
+  html[data-mobile-layout="landscape"] .battle-party-preview-card.empty>span:last-child{
+    display:none;
+  }
+}

@@ -17,7 +17,9 @@ const port = Number(process.env.MOBILE_SCREENS_PORT ?? 5293)
 const origin = `http://127.0.0.1:${port}`
 const owned = [6, 9, 3, 25, 94, 149, 130, 143, 68, 65, 445, 448]
   .map(speciesId => normalizePokemon({ speciesId, captureId: `dex-${speciesId}`, directDrawCount: 1 }))
-const ids = owned.slice(0, 6).map(pokemon => pokemon.captureId)
+// EMPTY_TEAM reproduces a fresh account, whose battle party panel is taller
+// than a filled one and pushes the pickers below it.
+const ids = process.env.EMPTY_TEAM ? [] : owned.slice(0, 6).map(pokemon => pokemon.captureId)
 const teams = createSavedTeams(ids, ids)
 const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector',
   'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor',
@@ -33,7 +35,7 @@ const storage = {
   'champions-team-v2': JSON.stringify(ids),
   'champions-vp-v1': '22150',
   'champions-draw-tutorial-v1': 'complete',
-  'champions-settings-v1': JSON.stringify({ audio: { enabled: false }, game: { attackAnimation: 'skip', hpBarSpeed: 'instant', playerGender: 'male' } }),
+  'champions-settings-v1': JSON.stringify({ audio: { enabled: false }, game: { attackAnimation: 'skip', hpBarSpeed: 'instant', playerGender: 'male', textScale: Number(process.env.TEXT_SCALE ?? 1) } }),
 }
 
 const server = await createServer({
@@ -141,6 +143,31 @@ function audit() {
     underTabbarCount: underTabbar.length,
     cut: cut.slice(0, 8),
     cutCount: cut.length,
+    // Stacked bands that outgrow their row paint over the next one, which no
+    // overflow test can see.
+    overlaps: (() => {
+      const found = []
+      for (const parent of document.querySelectorAll('.battle-mode-select-panel, .team-box-selection, .draw-dock, .pc-selection-bar')) {
+        const rows = [...parent.children].filter(shown)
+        for (let index = 0; index < rows.length; index += 1) {
+          const row = rows[index]
+          const a = row.getBoundingClientRect()
+          const next = rows[index + 1]
+          if (next) {
+            const by = Math.round(a.bottom - next.getBoundingClientRect().top)
+            if (by > 2) found.push({ parent: label(parent), over: label(row), under: label(next), by })
+          }
+          // A band whose own content is taller than the band paints onto
+          // whatever follows it, whatever its overflow setting says.
+          const deepest = [...row.querySelectorAll('*')].filter(shown)
+            .reduce((low, child) => Math.max(low, child.getBoundingClientRect().bottom), a.bottom)
+          const spill = Math.round(deepest - a.bottom)
+          if (spill > 2) found.push({ parent: label(parent), over: label(row), under: '(its own content)', by: spill,
+            box: Math.round(a.height), parts: [...row.children].filter(shown).map(child => `${label(child)}:${Math.round(child.getBoundingClientRect().height)}`).join(' ') })
+        }
+      }
+      return found
+    })(),
     drawStage: (() => {
       const stage = document.querySelector('.draw-center-stage')
       if (!stage) return null
@@ -203,6 +230,7 @@ try {
       for (const item of result.belowFrame.filter(entry => !entry.decorative).slice(0, 5)) console.log(`   BELOW ${item.node} by ${item.by}px "${item.text}"`)
       for (const item of result.underTabbar.slice(0, 5)) console.log(`   TABBAR ${item.node} by ${item.by}px "${item.text}"`)
       for (const item of result.cut.slice(0, 3)) console.log(`   CUT ${item.node} ${item.client} < ${item.scroll} [${item.parts}]`)
+      for (const item of result.overlaps ?? []) console.log(`   OVERLAP ${item.over} (box ${item.box ?? '?'}) paints ${item.by}px onto ${item.under} [${item.parts ?? ''}]`)
       for (const item of result.offCentre.slice(0, 5)) console.log(`   ART ${item.node} in ${item.parent} drift ${item.drift}px (art ${item.width} of ${item.parentWidth})`)
       if (result.drawStage && result.drawStage.scroll > result.drawStage.client + 2) { console.log('   STAGE', result.drawStage.client, '<', result.drawStage.scroll); for (const row of result.drawStage.children) console.log('     ', JSON.stringify(row)) }
       if (result.pageScroll.height > result.viewport.height + 1) console.log(`   page scrolls down ${result.pageScroll.height} > ${result.viewport.height}`)
@@ -230,6 +258,17 @@ try {
           }
         }
       }
+
+      // The AI competition picker stacks a format row, a difficulty row and a
+      // confirm bar into one panel, which is where they collide.
+      await tap(page.locator('.mobile-tabbar-item').filter({ hasText: '메인' }).first())
+      await page.locator('.lobby-layout').waitFor()
+      await tap(page.locator('.mode-card').filter({ hasText: '시작하기' }).first())
+      await page.locator('.battle-hub, .battle-select-screen').first().waitFor()
+      await report('battle-select')
+      await tap(page.locator('.battle-hub-card.ai'))
+      await page.locator('.ai-battle-format-options').waitFor()
+      await report('ai-competition')
 
       // The draw result is the screen the bottom strip and the revealed artwork
       // actually belong to, so run a real ten-pull.
