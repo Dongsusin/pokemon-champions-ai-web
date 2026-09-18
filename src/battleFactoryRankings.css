@@ -190,3 +190,14 @@
 }
 @media (max-width: 650px) and (min-height: 521px) { .factory-ranking-workspace { grid-template-columns: minmax(0, 1fr); } .factory-ranking-summary { display: none; } .factory-ranking-board-heading { padding-inline: 15px; } .factory-ranking-board-heading h2 { font-size: 21px; } .factory-ranking-column-labels, .factory-ranking-row { grid-template-columns: 28px minmax(60px, 1fr) 54px 91px 17px; gap: 5px; } .factory-ranking-column-labels { padding-inline: 13px; font-size: 8px; } .factory-ranking-list { padding-inline: 6px; } .factory-ranking-row { padding-inline: 6px; min-height: 72px; } .factory-ranking-player > strong { font-size: 10px; } .factory-ranking-player > small { font-size: 8px; } .factory-ranking-position > strong { font-size: 20px; } .factory-ranking-floor > strong { font-size: 19px; } .factory-ranking-floor > small { font-size: 8px; } .factory-ranking-team-preview { gap: 1px; } .factory-ranking-team-preview > span { width: 29px; height: 37px; } .factory-ranking-team-preview > span > :is(img, svg.sprite-image-viewport) { width: 28px; height: 31px; } .factory-ranking-mini-item { width: 15px; height: 15px; } .factory-ranking-mini-item > .battle-item-sheet-sprite { zoom: .7; } .factory-ranking-expand > svg { width: 14px; height: 14px; } .factory-ranking-final-team { grid-template-columns: 1fr; } .factory-ranking-pokemon > header > div { padding-right: 25px; } .factory-ranking-pokemon > header strong { font-size: 12px; } .factory-ranking-pokemon > header small { font-size: 10px; } .factory-ranking-move-names { grid-template-columns: 1fr 1fr; } .factory-ranking-expanded-heading > small { display: none; } .factory-ranking-board-footer { padding-inline: 14px; font-size: 8px; } .factory-ranking-error { margin-inline: 12px; } }
 @media (prefers-reduced-motion: reduce) { .factory-rankings .is-spinning { animation: none; } .factory-ranking-row, .factory-ranking-expand > svg { transition: none; } }
+
+/* Standard and challenge runs are ranked separately, so the board says which. */
+.factory-ranking-modes { display: flex; gap: 8px; margin: 0 0 12px; }
+.factory-ranking-mode { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; padding: 9px 13px; border: 1px solid #88afca40; border-radius: 11px; background: #0d2032b3; color: #c9dcea; text-align: left; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.factory-ranking-mode:hover:not(:disabled) { border-color: #9fd6f0aa; }
+.factory-ranking-mode.selected { border-color: #7fe4c8; color: #e4fbf3; background: #12332fcc; }
+.factory-ranking-mode:disabled { cursor: default; }
+.factory-ranking-mode > small { color: #85a9bf; font-size: 8px; letter-spacing: .12em; }
+.factory-ranking-mode.selected > small { color: #7fe4c8; }
+.factory-ranking-mode > strong { font-size: 13px; }
+@media (max-width: 760px) { .factory-ranking-mode { padding: 8px 10px; } .factory-ranking-mode > strong { font-size: 12px; } }

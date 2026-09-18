@@ -3,6 +3,7 @@ import {
   NATURE_OPTIONS, STAT_META, STAT_POINT_PER_STAT, STAT_POINT_TOTAL, TERA_TYPES,
 } from './trainingData.js'
 import { getBattleItem } from './shopData.js'
+import { FACTORY_DEFAULT_MODE, getFactoryMode } from './battleFactoryChallenge.js'
 
 export const FACTORY_RANKING_LIMIT = 10
 export const FACTORY_RANKING_MAX_FLOOR = 10000
@@ -11,7 +12,9 @@ const plain = value => value !== null && typeof value === 'object' && !Array.isA
 const invalid = message => { throw Object.assign(new Error(message), { code: 'FACTORY_RANKING_INVALID', status: 400 }) }
 const hasOnlyKeys = (value, keys) => plain(value) && Object.keys(value).every(key => keys.includes(key))
 const PARTY_FIELDS = ['speciesId', 'ability', 'nature', 'moves', 'heldItemId', 'teraType', 'dynamaxMode', 'trainingPoints']
-const REPORT_FIELDS = ['runId', 'floor', 'wins', 'party', 'outcome', 'forfeited']
+// Standard and challenge runs are ranked separately, so the mode travels with
+// the record. A report from before the split is a standard run.
+const REPORT_FIELDS = ['runId', 'floor', 'wins', 'party', 'outcome', 'forfeited', 'mode']
 
 export function canonicalFactoryRankingParty(party) {
   if (!Array.isArray(party) || party.length !== 3) invalid('최종 렌탈 팀 3마리의 정보가 필요합니다.')
@@ -53,10 +56,12 @@ export function validateFactoryRankingSubmission(report) {
     || !Number.isSafeInteger(report.wins) || report.wins !== report.floor - 1) invalid('도달 층수와 클리어 횟수가 올바르지 않습니다.')
   if (!['loss', 'draw'].includes(report.outcome) || typeof report.forfeited !== 'boolean'
     || (report.forfeited && report.outcome !== 'loss')) invalid('종료된 도전의 결과만 기록할 수 있습니다.')
+  const mode = report.mode ?? FACTORY_DEFAULT_MODE
+  if (typeof mode !== 'string' || getFactoryMode(mode).id !== mode) invalid('지원하지 않는 배틀팩토리 모드입니다.')
   return {
     runId: report.runId, floor: report.floor, wins: report.wins,
     party: canonicalFactoryRankingParty(report.party),
-    outcome: report.outcome, forfeited: report.forfeited,
+    outcome: report.outcome, forfeited: report.forfeited, mode,
   }
 }
 
@@ -66,7 +71,7 @@ export function createFactoryRankingSubmission(run) {
     || run.battleId !== `${run.id}:floor:${run.floor}`
     || (!['opponent', 'draw'].includes(run.lastResult.winner) && !run.lastResult.forfeited)) invalid('배틀팩토리 도전이 종료된 뒤 기록할 수 있습니다.')
   return validateFactoryRankingSubmission({
-    runId: run.id, floor: run.floor, wins: run.wins,
+    runId: run.id, floor: run.floor, wins: run.wins, mode: run.mode ?? FACTORY_DEFAULT_MODE,
     party: Array.isArray(run.party) ? run.party.map(entry => Object.fromEntries(PARTY_FIELDS.map(key => [key, entry[key]]))) : run.party,
     outcome: run.lastResult.forfeited || run.lastResult.winner === 'opponent' ? 'loss' : 'draw',
     forfeited: Boolean(run.lastResult.forfeited),

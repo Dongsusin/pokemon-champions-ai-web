@@ -7,15 +7,19 @@ import {
   createLocalFactoryRankingClient,
   isFactoryRankingLocalTest,
 } from './battleFactoryRankingClient.js'
+import { FACTORY_DEFAULT_MODE, getFactoryMode } from './data/battleFactoryChallenge.js'
 
 const empty = () => ({ entries: [], ownBest: null })
 
-export default function useBattleFactoryRankings(user) {
+// Each mode has its own board, so the session is rebuilt when the mode changes
+// and a record can never be reported to the other board.
+export default function useBattleFactoryRankings(user, mode = FACTORY_DEFAULT_MODE) {
+  const boardMode = getFactoryMode(mode).id
   const localGuest = Boolean(user?.isLocalGuest) && !isFactoryRankingLocalTest
   const source = localGuest || isFactoryRankingLocalTest ? 'local' : 'global'
   const scope = localGuest ? 'guest' : isFactoryRankingLocalTest ? 'test' : 'global'
   const uid = user?.uid
-  const identity = `${scope}:${uid ?? ''}`
+  const identity = `${scope}:${boardMode}:${uid ?? ''}`
   const identityRef = useRef(identity)
   identityRef.current = identity
   const session = useRef(null)
@@ -39,15 +43,15 @@ export default function useBattleFactoryRankings(user) {
       const storage = window.localStorage
       const client = localGuest
         ? createLocalFactoryRankingClient({ uid, trainerName: user.displayName ?? '트레이너', nickname: user.nickname,
-          isGuest: Boolean(user.isAnonymous || user.isLocalGuest), storage })
+          isGuest: Boolean(user.isAnonymous || user.isLocalGuest), storage, mode: boardMode })
         : createFactoryRankingClient({ uid, getIdToken: async () => {
           if (!isRankedEnabled) throw new Error('온라인 순위 서버가 아직 준비되지 않았습니다.')
           const active = firebaseAuth?.currentUser
           if (identityRef.current !== identity || active?.uid !== uid) return null
           const token = await active.getIdToken()
           return identityRef.current === identity && firebaseAuth?.currentUser?.uid === uid ? token : null
-        } })
-      current = createFactoryRankingSession({ uid, storage, client, scope,
+        }, mode: boardMode })
+      current = createFactoryRankingSession({ uid, storage, client, scope, mode: boardMode,
         isCurrent: () => identityRef.current === identity,
         onSnapshot: value => setSnapshot({ identity, value }), onLoading: setLoading, onError: setError, onRecordError: setRecordError })
       session.current = { identity, current }
@@ -70,7 +74,7 @@ export default function useBattleFactoryRankings(user) {
       if (session.current?.identity === identity) session.current = null
       window.removeEventListener('online', retryPending)
     }
-  }, [identity, uid, localGuest, scope, user?.displayName, restart])
+  }, [identity, uid, localGuest, scope, boardMode, user?.displayName, restart])
 
   useEffect(() => {
     const previous = lastNickname.current

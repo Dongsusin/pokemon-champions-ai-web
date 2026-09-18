@@ -6,6 +6,7 @@ import FactoryInfoTooltip from './FactoryInfoTooltip'
 import { RentalDetails } from './BattleFactoryLobby'
 import { normalizePokemon } from './data/trainingData'
 import { getBattleItem } from './data/shopData'
+import { FACTORY_DEFAULT_MODE, FACTORY_MODES, getFactoryMode } from './data/battleFactoryChallenge'
 import './battleFactoryRankings.css'
 
 function normalizeRecord(entry) {
@@ -56,7 +57,7 @@ function RankingRow({ entry, position, isOwn, open, onToggle, onDetails, regionI
   </article>
 }
 
-export default function BattleFactoryRankings({ ranking = {}, onBack }) {
+export default function BattleFactoryRankings({ ranking = {}, mode = FACTORY_DEFAULT_MODE, onSelectMode, onBack }) {
   const id = useId()
   const [openId, setOpenId] = useState(null)
   const [details, setDetails] = useState(null)
@@ -67,6 +68,7 @@ export default function BattleFactoryRankings({ ranking = {}, onBack }) {
   const ownBest = ranking.ownBest
   const isGlobal = ranking.source === 'global'
   const loading = Boolean(ranking.loading)
+  const board = getFactoryMode(mode)
 
   useEffect(() => {
     if (didRefresh.current) return
@@ -85,11 +87,18 @@ export default function BattleFactoryRankings({ ranking = {}, onBack }) {
         <span className="factory-ranking-summary-label"><Layers3 size={16} />BATTLE FACTORY</span>
         <div className="factory-ranking-top-ten"><span>가장 높은 층을 향해</span><strong>TOP<em>10</em></strong><p>기록을 펼치고,<br />최종 렌탈 팀을 살펴보세요.</p></div>
         <div className="factory-ranking-stair-art" aria-hidden="true"><i /><i /><i /><i /><Crown size={27} /></div>
-        <div className="factory-ranking-personal"><small><Flag size={13} />나의 최고 기록</small>{ownBest ? <><strong>{ownBest.floor}<em>F</em></strong><span>{ownBest.wins}층 클리어{recordDate(ownBest.recordedAt) && ` · ${recordDate(ownBest.recordedAt)}`}</span></> : <><strong className="factory-ranking-no-best">첫 기록을 기다려요</strong><span>도전을 마치고 기록을 남겨 보세요.</span></>}</div>
+        <div className="factory-ranking-personal"><small><Flag size={13} />나의 최고 기록 · {board.label}</small>{ownBest ? <><strong>{ownBest.floor}<em>F</em></strong><span>{ownBest.wins}층 클리어{recordDate(ownBest.recordedAt) && ` · ${recordDate(ownBest.recordedAt)}`}</span></> : <><strong className="factory-ranking-no-best">첫 기록을 기다려요</strong><span>도전을 마치고 기록을 남겨 보세요.</span></>}</div>
         <div className="factory-ranking-source"><Wifi size={14} /><span><strong>{isGlobal ? '전체 트레이너 랭킹' : '이 기기 랭킹'}</strong><small>{isGlobal ? '트레이너별 최고 기록 1개' : '이 기기에 저장된 도전 기록'}</small></span></div>
       </aside>
       <section className="factory-ranking-board" aria-label="배틀팩토리 상위 10위">
         <header className="factory-ranking-board-heading"><div><span>FACTORY LEADERBOARD</span><h2>어디까지 올라갔나요?</h2></div><span className="factory-ranking-count">{entries.length}<small> / 10</small></span></header>
+        <div className="factory-ranking-modes" role="tablist" aria-label="랭킹 모드 선택">
+          {FACTORY_MODES.map(entry => <button type="button" key={entry.id} role="tab" aria-selected={entry.id === board.id}
+            className={`factory-ranking-mode${entry.id === board.id ? ' selected' : ''}`}
+            disabled={!onSelectMode} onClick={() => onSelectMode?.(entry.id)}>
+            <small>{entry.tagline}</small><strong>{entry.label}</strong>
+          </button>)}
+        </div>
         <div className="factory-ranking-notices" aria-live="polite">
           {ranking.recordError && <div className="factory-ranking-error"><span><strong>내 기록을 전송하지 못했어요.</strong><small>{ranking.recordError}</small></span><button type="button" onClick={() => ranking.retry?.()} disabled={!ranking.retry || loading}>다시 전송</button></div>}
           {ranking.error && <div className="factory-ranking-error"><span><strong>랭킹을 불러오지 못했어요.</strong><small>{ranking.error}</small></span><button type="button" onClick={() => refresh.current?.()} disabled={loading}>다시 시도</button></div>}
@@ -97,12 +106,12 @@ export default function BattleFactoryRankings({ ranking = {}, onBack }) {
         <div className="factory-ranking-column-labels" aria-hidden="true"><span>순위</span><span>트레이너</span><span>도달 층수</span><span>최종 렌탈 팀</span><span /></div>
         <div className="factory-ranking-list" aria-busy={loading}>
           {loading && !entries.length ? <div className="factory-ranking-empty" role="status"><LoaderCircle size={37} className="is-spinning" /><h3>도전 기록을 불러오는 중입니다.</h3><p>잠시만 기다려 주세요.</p></div>
-            : !entries.length ? <div className="factory-ranking-empty"><span className="factory-ranking-empty-icon">{ranking.error ? <X size={34} /> : <Trophy size={37} />}</span><h3>{ranking.error ? '잠시 후 다시 확인해 주세요.' : '아직 등록된 기록이 없습니다.'}</h3><p>{ranking.error ? '다시 시도 버튼으로 랭킹을 불러올 수 있습니다.' : '배틀팩토리 도전을 마치면 최고 도달 층수와 최종 팀이 기록됩니다.'}</p>{!ranking.error && <button type="button" className="factory-secondary" onClick={onBack}>배틀팩토리로 돌아가기</button>}</div>
+            : !entries.length ? <div className="factory-ranking-empty"><span className="factory-ranking-empty-icon">{ranking.error ? <X size={34} /> : <Trophy size={37} />}</span><h3>{ranking.error ? '잠시 후 다시 확인해 주세요.' : '아직 등록된 기록이 없습니다.'}</h3><p>{ranking.error ? '다시 시도 버튼으로 랭킹을 불러올 수 있습니다.' : `${board.label} 도전을 마치면 최고 도달 층수와 최종 팀이 기록됩니다.`}</p>{!ranking.error && <button type="button" className="factory-secondary" onClick={onBack}>배틀팩토리로 돌아가기</button>}</div>
               : entries.map((entry, index) => <RankingRow key={entry.id ?? entry.runId} entry={entry} position={index + 1} isOwn={Boolean(ownBest?.id && entry.id === ownBest.id)}
                 open={openId === (entry.id ?? entry.runId)} onToggle={() => setOpenId(current => current === (entry.id ?? entry.runId) ? null : entry.id ?? entry.runId)}
                 regionId={`${id}-factory-rank-${index + 1}`} onDetails={setDetails} />)}
         </div>
-        <footer className="factory-ranking-board-footer"><Info size={13} /><span>최고 도달 층수 순 · 같은 층수는 먼저 기록한 순으로 표시합니다.</span></footer>
+        <footer className="factory-ranking-board-footer"><Info size={13} /><span>최고 도달 층수 순 · 같은 층수는 먼저 기록한 순으로 표시합니다. 일반 모드와 도전 모드는 각각 따로 집계합니다.</span></footer>
       </section>
     </div>
     {details && <RentalDetails pokemon={details} onClose={() => setDetails(null)} />}

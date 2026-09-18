@@ -405,7 +405,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       if (identity.isGuest) await guestIdentities.read(identity, tx)
       return work(tx)
     })
-    if (action === 'factoryLeaderboard') return transaction(tx => readFactoryLeaderboard(tx, identity.uid, identity))
+    if (action === 'factoryLeaderboard') return transaction(tx => readFactoryLeaderboard(tx, identity.uid, identity, payload.mode))
     if (action === 'rankedLeaderboard') return transaction(tx => readRankedLeaderboard(tx, identity.uid, now(), identity))
     if (action === 'reportFactoryRun') {
       const report = validateFactoryRankingReport(payload.report)

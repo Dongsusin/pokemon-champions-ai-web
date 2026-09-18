@@ -6,6 +6,7 @@ import {
   sortFactoryRankingEntries,
   validateFactoryRankingSubmission,
 } from './data/battleFactoryRanking.js'
+import { FACTORY_DEFAULT_MODE, getFactoryMode } from './data/battleFactoryChallenge.js'
 
 const env = import.meta.env ?? {}
 const loopback = host => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host)
@@ -23,6 +24,7 @@ const uidKey = uid => {
 
 export function normalizeFactoryRankingSnapshot(value) {
   const validEntry = entry => entry && typeof entry.id === 'string' && typeof entry.runId === 'string'
+    && (entry.mode === undefined || getFactoryMode(entry.mode).id === entry.mode)
     && typeof entry.trainerName === 'string' && Number.isSafeInteger(entry.floor) && entry.floor >= 1
     && entry.wins === entry.floor - 1 && Number.isFinite(entry.recordedAt) && entry.recordedAt >= 0
     && Array.isArray(entry.party) && entry.party.length === 3
@@ -34,7 +36,7 @@ export function normalizeFactoryRankingSnapshot(value) {
   return clone({ entries: value.entries, ownBest: value.ownBest })
 }
 
-export function createFactoryRankingClient({ uid, getIdToken, fetchImpl, apiUrl = rankedApiUrl } = {}) {
+export function createFactoryRankingClient({ uid, getIdToken, fetchImpl, apiUrl = rankedApiUrl, mode = FACTORY_DEFAULT_MODE } = {}) {
   uidKey(uid)
   if (isFactoryRankingLocalTest && (!loopback(new URL(apiUrl).hostname) || !testIdentities[uid])) {
     throw new Error('팩토리 테스트 계정은 지정된 로컬 서버에서만 사용할 수 있습니다.')
@@ -43,7 +45,9 @@ export function createFactoryRankingClient({ uid, getIdToken, fetchImpl, apiUrl 
     getIdToken: isFactoryRankingLocalTest ? async () => `ranked-test-${testIdentities[uid]}` : getIdToken,
   })
   return {
-    async read(signal) { return normalizeFactoryRankingSnapshot(await client.request('factoryLeaderboard', {}, { signal })) },
+    async read(signal) {
+      return normalizeFactoryRankingSnapshot(await client.request('factoryLeaderboard', { mode: getFactoryMode(mode).id }, { signal }))
+    },
     async report(report, signal) {
       const validated = validateFactoryRankingSubmission(report)
       return normalizeFactoryRankingSnapshot(await client.request('reportFactoryRun', { report: validated }, { signal }))
@@ -54,8 +58,11 @@ export function createFactoryRankingClient({ uid, getIdToken, fetchImpl, apiUrl 
 // Persist the report before attempting any request. A receipt from a lost
 // response is retried with the same run ID; successful IDs also suppress React
 // StrictMode replays and repeated completion callbacks after a remount.
-export function createFactoryRankingOutbox({ uid, storage, send, onSnapshot = () => {}, isCurrent = () => true, scope = 'global' }) {
-  const key = `champions-factory-outbox-v1-${scope}:${uidKey(uid)}`
+export function createFactoryRankingOutbox({ uid, storage, send, onSnapshot = () => {}, isCurrent = () => true, scope = 'global', mode = FACTORY_DEFAULT_MODE }) {
+  const boardMode = getFactoryMode(mode).id
+  const key = boardMode === FACTORY_DEFAULT_MODE
+    ? `champions-factory-outbox-v1-${scope}:${uidKey(uid)}`
+    : `champions-factory-outbox-v1-${scope}:${boardMode}:${uidKey(uid)}`
   let stopped = false
   let running = null
   const controller = new AbortController()
@@ -103,29 +110,36 @@ export function createFactoryRankingOutbox({ uid, storage, send, onSnapshot = ()
 // Guest rankings stay on this browser and are explicitly labelled local. Keep
 // every local user's personal best so their own record survives falling outside
 // the displayed top ten. The same comparison rules are used by the server.
-export function createLocalFactoryRankingClient({ uid, trainerName, nickname, isGuest = false, storage, now = Date.now }) {
+export function createLocalFactoryRankingClient({ uid, trainerName, nickname, isGuest = false, storage, now = Date.now, mode = FACTORY_DEFAULT_MODE }) {
   uidKey(uid)
-  const id = `local:${uidKey(uid)}`
-  const readEntries = () => {
+  const boardMode = getFactoryMode(mode).id
+  // One browser store holds every mode, so a record carries the mode it was set
+  // in and each board reads only its own. An entry saved before the split has
+  // no mode and belongs to the standard board.
+  const id = boardMode === FACTORY_DEFAULT_MODE ? `local:${uidKey(uid)}` : `local:${boardMode}:${uidKey(uid)}`
+  const entryMode = entry => getFactoryMode(entry?.mode).id
+  const readAll = () => {
     const entries = JSON.parse(storage.getItem(FACTORY_LOCAL_RANKINGS_KEY) ?? '[]')
     if (!Array.isArray(entries)) throw new Error('이 브라우저에 저장된 팩토리 순위를 읽지 못했습니다.')
     for (const entry of entries) normalizeFactoryRankingSnapshot({ entries: [entry], ownBest: null })
     return entries
   }
+  const readEntries = () => readAll().filter(entry => entryMode(entry) === boardMode)
   const snapshot = entries => ({ entries: sortFactoryRankingEntries(entries), ownBest: entries.find(entry => entry.id === id) ?? null })
   return {
     async read() { return normalizeFactoryRankingSnapshot(snapshot(readEntries())) },
     async report(report) {
       const validated = validateFactoryRankingSubmission(report)
-      const entries = readEntries()
-      const previous = entries.find(entry => entry.id === id) ?? null
+      const all = readAll()
+      const mine = all.filter(entry => entryMode(entry) === boardMode)
+      const previous = mine.find(entry => entry.id === id) ?? null
       const candidate = { id, runId: validated.runId, trainerName: maskRankedTrainerName(trainerName, isGuest, nickname),
-        floor: validated.floor, wins: validated.wins, party: clone(validated.party), recordedAt: now() }
+        floor: validated.floor, wins: validated.wins, party: clone(validated.party), recordedAt: now(), mode: validated.mode }
       const best = chooseFactoryPersonalBest(previous, candidate)
-      if (best === previous) return normalizeFactoryRankingSnapshot(snapshot(entries))
-      const next = [...entries.filter(entry => entry.id !== id), best]
+      if (best === previous) return normalizeFactoryRankingSnapshot(snapshot(mine))
+      const next = [...all.filter(entry => entry.id !== id), best]
       storage.setItem(FACTORY_LOCAL_RANKINGS_KEY, JSON.stringify(next))
-      return normalizeFactoryRankingSnapshot(snapshot(next))
+      return normalizeFactoryRankingSnapshot(snapshot(next.filter(entry => entryMode(entry) === boardMode)))
     },
   }
 }
@@ -133,7 +147,8 @@ export function createLocalFactoryRankingClient({ uid, trainerName, nickname, is
 // This testable session owns asynchronous lifetimes. The React hook only chooses
 // account/source and renders callbacks, so a late response can never overwrite
 // a different account's leaderboard or remove its pending reports.
-export function createFactoryRankingSession({ uid, storage, client, scope = 'global', isCurrent = () => true,
+export function createFactoryRankingSession({ uid, storage, client, scope = 'global', mode = FACTORY_DEFAULT_MODE,
+  isCurrent = () => true,
   onSnapshot = () => {}, onLoading = () => {}, onError = () => {}, onRecordError = () => {} }) {
   let stopped = false
   let refreshing = null
@@ -146,7 +161,7 @@ export function createFactoryRankingSession({ uid, storage, client, scope = 'glo
     revision++
     onSnapshot(normalizeFactoryRankingSnapshot(snapshot))
   }
-  const outbox = createFactoryRankingOutbox({ uid, storage, scope, isCurrent: current,
+  const outbox = createFactoryRankingOutbox({ uid, storage, scope, mode, isCurrent: current,
     send: (report, signal) => client.report(report, signal), onSnapshot: accept })
   const flush = async () => {
     if (!current()) return false

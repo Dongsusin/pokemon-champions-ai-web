@@ -14,7 +14,7 @@ import {
   healFactoryParty,
   rerollFactoryHeldItem,
 } from './data/battleFactory'
-import { isFactoryChallengeMode } from './data/battleFactoryChallenge'
+import { getFactoryMode } from './data/battleFactoryChallenge'
 
 export default function BattleFactoryScreen({
   run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
@@ -27,14 +27,19 @@ export default function BattleFactoryScreen({
   const [error, setError] = useState('')
   const [mode, setMode] = useState('standard')
   const [showRankings, setShowRankings] = useState(false)
-  const ranking = useBattleFactoryRankings(user)
+  // The rankings view can browse either board; it opens on the mode being played.
+  const [rankingMode, setRankingMode] = useState(mode)
+  const ranking = useBattleFactoryRankings(user, rankingMode)
   const active = run?.phase === 'battle'
 
   useEffect(() => {
-    // Challenge runs carry damage between floors, so their floor numbers are not
-    // comparable with standard runs and stay off the shared leaderboard.
-    if (run?.phase === 'finished' && !isFactoryChallengeMode(run.mode)) ranking.recordRun(run)
-  }, [run, ranking.recordRun])
+    // Each mode has its own board, so a finished run is only recorded while that
+    // board is the one loaded.
+    if (run?.phase === 'finished' && getFactoryMode(run.mode).id === rankingMode) ranking.recordRun(run)
+  }, [run, rankingMode, ranking.recordRun])
+
+  // Playing a mode switches the board that a finished run will be recorded to.
+  useEffect(() => { setRankingMode(getFactoryMode(run?.mode ?? mode).id) }, [run?.mode, mode])
 
   // A record set before titles existed still counts: report the stored personal
   // best once the leaderboard loads so its achievement settles retroactively.
@@ -98,7 +103,8 @@ export default function BattleFactoryScreen({
     })}
   />
 
-  if (showRankings) return <BattleFactoryRankings ranking={ranking} onBack={() => setShowRankings(false)} />
+  if (showRankings) return <BattleFactoryRankings ranking={ranking} mode={rankingMode} onSelectMode={setRankingMode}
+    onBack={() => { setRankingMode(getFactoryMode(run?.mode ?? mode).id); setShowRankings(false) }} />
 
   return <BattleFactoryLobby
     key={`${run.id}:${run.phase}:${run.floor}`}

@@ -19,8 +19,8 @@ const tests = []
 const test = (name, run) => tests.push({ name, run })
 const clone = value => structuredClone(value)
 const identity = index => ({ uid: `factory-ranking-user-${index}`, name: `도전자${index}` })
-function finishedRun({ floor = 1, seed = 42, id = 'factory-ranking-fixture', forfeited = false } = {}) {
-  let run = createFactoryRun({ seed, id })
+function finishedRun({ floor = 1, seed = 42, id = 'factory-ranking-fixture', forfeited = false, mode } = {}) {
+  let run = createFactoryRun({ seed, id, mode })
   run = selectFactoryRentals(run, run.offers.slice(0, 3).map(pokemon => pokemon.captureId))
   for (let current = 1; current <= floor; current += 1) {
     run = beginFactoryBattle(selectFactoryLead(run, run.party[0].captureId))
@@ -29,14 +29,14 @@ function finishedRun({ floor = 1, seed = 42, id = 'factory-ranking-fixture', for
   }
   return run
 }
-const report = (floor, id, seed = 42) => createFactoryRankingSubmission(finishedRun({ floor, id, seed }))
+const report = (floor, id, seed = 42, mode) => createFactoryRankingSubmission(finishedRun({ floor, id, seed, mode }))
 function environment(store = createMemoryRankedStore()) {
   let clock = 1000000, id = 0
   const engine = new Proxy({}, { get() { throw new Error('Factory ranking must not use rated battle or economy engine') } })
   const service = createRankedService({ store, engine, now: () => clock, newId: () => `opaque-factory-row-${++id}` })
   return { store, service, setTime: time => { clock = time },
     submit: (user, value, extra = {}) => service.execute(user, { action: 'reportFactoryRun', report: value, ...extra }),
-    read: user => service.execute(user, { action: 'factoryLeaderboard' }),
+    read: (user, mode) => service.execute(user, { action: 'factoryLeaderboard', mode }),
   }
 }
 const invalid = fn => assert.throws(fn, error => error.code === 'FACTORY_RANKING_INVALID' && error.status === 400)
@@ -45,7 +45,8 @@ test('finished snapshots keep legal final equipment and moves without runtime or
   const run = finishedRun({ floor: 3 })
   const before = JSON.stringify(run)
   const value = createFactoryRankingSubmission(run)
-  assert.deepEqual(Object.keys(value).sort(), ['runId', 'floor', 'wins', 'party', 'outcome', 'forfeited'].sort())
+  assert.deepEqual(Object.keys(value).sort(), ['runId', 'floor', 'wins', 'party', 'outcome', 'forfeited', 'mode'].sort())
+  assert.equal(value.mode, 'standard')
   assert.equal(value.floor, 3)
   assert.equal(value.wins, 2)
   for (let index = 0; index < 3; index += 1) {
@@ -110,6 +111,29 @@ test('eleven authenticated players produce top ten by floor and keep out-of-boar
   assert.deepEqual(Object.keys(database.collections).sort(), ['factoryPersonalBest', 'factoryRanking'])
   assert.equal(Object.keys(database.collections.factoryPersonalBest).length, 11)
   assert.equal(database.collections.factoryRanking.top10.entries.length, 10)
+})
+
+test('each mode keeps its own board and personal best, and standard records stay on the original keys', async () => {
+  const env = environment()
+  env.setTime(3000)
+  await env.submit(identity(1), report(6, 'standard-only-run'))
+  await env.submit(identity(1), report(4, 'challenge-only-run', 42, 'challenge'))
+  const standard = await env.read(identity(1))
+  const challenge = await env.read(identity(1), 'challenge')
+  assert.deepEqual(standard.entries.map(entry => entry.floor), [6])
+  assert.deepEqual(challenge.entries.map(entry => entry.floor), [4])
+  // A deeper standard run must not block or overwrite a shallower challenge record.
+  assert.equal(standard.ownBest.floor, 6)
+  assert.equal(challenge.ownBest.floor, 4)
+  assert.notEqual(standard.ownBest.id, challenge.ownBest.id)
+  const database = await env.store.inspect()
+  assert.deepEqual(Object.keys(database.collections.factoryRanking).sort(), ['top10', 'top10-challenge'])
+  assert.equal(Object.keys(database.collections.factoryPersonalBest).length, 2, 'One owner key per mode')
+  // Reading an unknown mode falls back to the standard board instead of opening a new one,
+  // but a report can never claim one.
+  assert.deepEqual(await env.read(identity(1), 'made-up-mode'), standard)
+  invalid(() => validateFactoryRankingSubmission({ ...report(2, 'bad-mode-run'), mode: 'made-up-mode' }))
+  invalid(() => validateFactoryRankingSubmission({ ...report(2, 'bad-mode-type-run'), mode: 7 }))
 })
 
 test('server acceptance times decide ties; same-floor retries preserve team, nickname, time and row ID', async () => {
