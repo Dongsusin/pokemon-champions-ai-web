@@ -11573,6 +11573,15 @@
   text-align: center;
 }
 
+/* The battle intro puts its start button at the bottom centre, where the toast
+   also sits, and on a short phone frame the toast covered it outright - players
+   reported the start button missing. Move the toast to the top while the intro
+   is on screen. */
+.app-shell:has(.battle-intro-overlay) .toast {
+  top: max(14px, env(safe-area-inset-top));
+  bottom: auto;
+}
+
 .draw-guide,
 .draw-guide span,
 .pc-workspace,

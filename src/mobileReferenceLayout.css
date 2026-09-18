@@ -4265,3 +4265,36 @@ html[data-mobile-layout]:not([data-mobile-layout="desktop"]) .battle-party-previ
   line-height:1.3;
   font-size:11px;
 }
+
+/* The battle screen keeps a 560px height floor, but a phone's visible frame is
+   often shorter than that - an in-app browser's bars eat 80px or more - so the
+   screen hangs below the window and takes the intro's start button with it.
+   Players reported the yellow start button never coming into view. Cap the
+   intro to the frame the player can actually see, and let its content shrink so
+   the button always lands inside it. */
+html[data-mobile-layout]:not([data-mobile-layout="desktop"]) .battle-intro-overlay{
+  max-height:100dvh;
+  grid-template-rows:minmax(0,1fr) auto;
+  align-content:stretch;
+  /* Android browsers keep the layout viewport at full height while their
+     toolbars cover the bottom of it - Samsung Internet puts its bar at the
+     bottom - so a button that ends at the frame edge is unreachable even
+     though the page thinks it is on screen. Keep a toolbar's worth of
+     clearance under it. */
+  padding-bottom:max(56px,calc(env(safe-area-inset-bottom) + 40px));
+}
+
+html[data-mobile-layout]:not([data-mobile-layout="desktop"]) .battle-intro-overlay .battle-intro-trainer{
+  min-height:0;
+}
+
+html[data-mobile-layout]:not([data-mobile-layout="desktop"]) .battle-intro-overlay .battle-intro-trainer-sprite{
+  max-height:100%;
+}
+
+/* The desktop button is lifted off the bottom edge by a negative offset; on a
+   phone that slack is the difference between reachable and clipped. */
+html[data-mobile-layout]:not([data-mobile-layout="desktop"]) .app-shell .battle-intro-overlay>button{
+  top:0;
+  align-self:end;
+}
