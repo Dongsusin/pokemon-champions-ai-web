@@ -52,7 +52,7 @@ function RankBadge({ record, compact = false }) {
 export default function RankedBattleScreen({
   user, teams = [], boxPokemon = [], activeTeamId, onSelectTeam, onOpenBox, onBack, onBeforeJoin,
   soundEnabled = true, gameSettings = {}, playerGender = 'male', audioSettings = {},
-  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards, onOpenRooms,
+  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards, onOpenRooms, onRankedPoints,
 }) {
   const [identity, setIdentity] = useState(initialIdentity)
   const [format, setFormat] = useState('single')
@@ -262,6 +262,13 @@ export default function RankedBattleScreen({
   const teamReady = roster.length === BATTLE_TEAM_SIZE
   const shownMatchFormat = match?.format ?? null
   const currentFormat = RANKED_FORMATS.find(entry => entry.id === (shownMatchFormat ?? snapshot.queue?.format ?? format)) ?? RANKED_FORMATS[0]
+  // The highest tier ever reached earns its title, so report the best points
+  // across both formats whenever the ladder profile arrives. Points earned
+  // before titles existed settle on the first snapshot after this update.
+  const bestPoints = Math.max(0, ...['single', 'double'].map(id => snapshot.profile?.[id]?.points ?? 0))
+  useEffect(() => {
+    if (bestPoints > 0) onRankedPoints?.(bestPoints)
+  }, [bestPoints, onRankedPoints])
   const record = snapshot.profile?.[format] ?? createRankedProfile(format)
   const deadline = timeValue(match?.deadlineAt)
   const secondsLeft = Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - now - serverOffset) / 1000)) : null

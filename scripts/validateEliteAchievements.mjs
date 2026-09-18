@@ -59,20 +59,22 @@ function playCompetition(mode, changes = new Map(), difficulty = 'normal', mutat
   return { competition, progress, results, last: results.at(-1) }
 }
 
-check('five elite definitions use sealed unique reward identities and the correct targets', () => {
-  assert.equal(ACHIEVEMENTS.length, 278)
+check('five elite definitions stay sealed and award the right title, item and VP', () => {
+  assert.equal(ACHIEVEMENTS.length, 283)
   const secrets = ACHIEVEMENTS.filter((entry) => entry.secretReward)
   assert.equal(secrets.length, 5)
-  assert.deepEqual(secrets.map((entry) => [entry.id, entry.rewardId, entry.rewardVp]), [
-    ['flawless-league', 'armored-mewtwo', 100000],
-    ['flawless-tournament', 'shadow-lugia', 100000],
-    ['collection-all', 'crystal-ho-oh', 200000],
-    ['collection-shiny-all', 'astral-rayquaza', 400000],
-    ['achievements-all', 'legend-plate', 600000],
+  assert.deepEqual(secrets.map((entry) => [entry.id, entry.titleId, entry.rewardId, entry.rewardVp]), [
+    ['flawless-league', 'unbeaten-commander', null, 100000],
+    ['flawless-tournament', 'flawless-champion', null, 100000],
+    ['collection-all', 'dex-master', null, 200000],
+    ['collection-shiny-all', 'shiny-seeker', null, 400000],
+    ['achievements-all', 'champion-proof', 'legend-plate', 600000],
   ])
   const meta = ACHIEVEMENTS.find((entry) => entry.id === 'achievements-all')
   assert.equal(meta.target, ACHIEVEMENTS.length - 1)
-  assert(secrets.every((entry) => !`${entry.title} ${entry.description}`.includes(entry.rewardId)))
+  // A sealed goal must not name its own reward before it is earned.
+  assert(secrets.every((entry) => [entry.titleId, entry.rewardId].filter(Boolean)
+    .every((id) => !`${entry.title} ${entry.description}`.includes(id))))
 })
 
 check('normal league and hard tournament require all seven verified flawless rounds', () => {
@@ -218,13 +220,13 @@ check('the meta goal excludes itself and unlocks in the same call as the last co
   const state = allBut('collection-shiny-all')
   const meta = ACHIEVEMENTS.find((entry) => entry.id === 'achievements-all')
   const before = getAchievementProgress(meta, state)
-  assert.equal(before.current, 276)
-  assert.equal(before.target, 277)
+  assert.equal(before.current, 281)
+  assert.equal(before.target, 282)
   assert.equal(before.completed, false)
   const result = applyCollectionAchievements(state, shinyDrawCollection, 5000)
   assert.deepEqual(result.unlocked.map((entry) => entry.id), ['collection-shiny-all', 'achievements-all'])
   assert.equal(result.rewardVp, 1000000)
-  assert.equal(getAchievementProgress(meta, result.state).current, 277)
+  assert.equal(getAchievementProgress(meta, result.state).current, 282)
   const replay = applyCollectionAchievements(result.state, shinyDrawCollection)
   assert.equal(replay.rewardVp, 0)
   assert.equal(replay.processed, false)

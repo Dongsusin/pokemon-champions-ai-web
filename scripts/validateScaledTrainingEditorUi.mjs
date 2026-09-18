@@ -50,7 +50,7 @@ const server = await createServer({ root, mode: 'scaled-card-validation', logLev
 await server.listen()
 const require = createRequire(new URL('../promo/package.json', import.meta.url))
 const { chromium } = require('playwright')
-const localSprite = await fs.readFile(path.join(root, 'public/assets/pokemon/skins/armored-mewtwo-front.gif'))
+const localSprite = await fs.readFile(path.join(root, 'scripts/fixtures/test-sprite-96.gif'))
 const checks = [], errors = [], apiRequests = [], metrics = []
 async function test(name, run) {
   try { await run(); checks.push({ name, passed: true }); console.log(`PASS ${name}`) }

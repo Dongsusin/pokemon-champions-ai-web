@@ -21,7 +21,7 @@ const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battl
 const owned = migratePokemonCollection([6, 9, 3, 25, 94, 149].map(speciesId => normalizePokemon({ speciesId, captureId: `chat-ui-${speciesId}`, directDrawCount: 1 })))
 const teams = createSavedTeams(owned.map(pokemon => pokemon.captureId), owned.map(pokemon => pokemon.captureId))
 const identities = {
-  'global-chat-ui-a-token': { uid: 'global-chat-ui-a', name: '가람트레이너', isGuest: false },
+  'global-chat-ui-a-token': { uid: 'global-chat-ui-a', name: '가람트레이너', isGuest: false, title: 'dex-master' },
   'global-chat-ui-b-token': { uid: 'global-chat-ui-b', name: '나래트레이너', isGuest: false },
 }
 const entry = `import'/src/mobileViewport.js';import React,{StrictMode}from'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';
@@ -175,7 +175,9 @@ try {
   const { chromium } = require(process.env.GLOBAL_CHAT_PLAYWRIGHT_MODULE ?? 'playwright')
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const html = await server.transformIndexHtml('/global-chat.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/global-chat-entry.js"></script></body></html>')
-  const sprite = await fs.readFile(path.join(root, 'public/assets/pokemon/skins/armored-mewtwo-front.gif'))
+  // Any external image request is answered with this 1x1 GIF, so the test does
+  // not depend on a particular sprite shipping with the game.
+  const sprite = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
   async function client(letter, device = { id: 'desktop', viewport: { width: 1920, height: 900 } }, scale = 1) {
     const context = await browser.newContext({ viewport: device.viewport, hasTouch: Boolean(device.hasTouch), isMobile: Boolean(device.hasTouch), reducedMotion: 'reduce' })
     const settings = createDefaultGameSettings()
@@ -321,6 +323,21 @@ try {
     assert.equal(await b.page.locator(selectors.text).filter({ hasText: correctedText }).count(), 1)
     assert.equal(await b.page.locator(selectors.text).filter({ hasText: blockedText }).count(), 0)
     assert.equal((await localRequest('global-chat-ui-b-token', { action: 'read' })).latest?.text, correctedText)
+  })
+  await test('an earned trainer title renders beside the sender name and an unset one renders nothing', async () => {
+    await send(a.page, '칭호가 보이는 메시지')
+    await b.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    const titled = b.page.locator(selectors.message).filter({ hasText: '칭호가 보이는 메시지' }).last()
+    await titled.locator('.global-chat-title-tag').waitFor()
+    assert.equal(await titled.locator('.global-chat-title-tag').innerText(), '도감 마스터')
+    await send(b.page, '칭호가 없는 메시지')
+    await a.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    const plain = a.page.locator(selectors.message).filter({ hasText: '칭호가 없는 메시지' }).last()
+    await plain.waitFor()
+    assert.equal(await plain.locator('.global-chat-title-tag').count(), 0)
+    // The tag belongs to the author, not to whoever is reading the room.
+    const ownView = a.page.locator(selectors.message).filter({ hasText: '칭호가 보이는 메시지' }).last()
+    assert.equal(await ownView.locator('.global-chat-title-tag').innerText(), '도감 마스터')
   })
   await test('message markup stays literal text and never creates executable HTML', async () => {
     const text = '<img src=x onerror="window.__chatXss=1"> & <script>window.__chatXss=1</script>'

@@ -32,8 +32,8 @@ import PokemonUsagePanel from './PokemonUsagePanel'
 import usePokemonUsage from './usePokemonUsage'
 import { creditBattleFactoryVpReward, creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
+import { applyFactoryAchievements, applyRankedAchievements } from './data/achievementData'
 import { getAiBattleVpReward } from './data/aiBattleRewards'
-import { getUnlockedPokemonSkins } from './data/rareRewards'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
 import HatchScreen from './HatchScreen'
@@ -134,9 +134,6 @@ function loadStoredBox(progress) {
   const obtainedPokemon = storedPokemon.filter((pokemon) => (
     pokemon?.directDrawCount === undefined
     || Math.max(0, Number(pokemon.directDrawCount) || 0) > 0
-    || getUnlockedPokemonSkins(progress, pokemon).some((skin) => (
-      pokemon?.rewardOrigin === skin.achievementId
-    ))
   ))
 
   return migratePokemonCollection(obtainedPokemon)
@@ -330,6 +327,7 @@ export function GameApp({
   onConnectGoogle,
   onDeleteAccount,
   onSetNickname,
+  onSetTitle,
   onPlayerDataChanged,
   onSyncBeforeRanked,
   onSignOut,
@@ -453,8 +451,41 @@ export function GameApp({
       showNotice(`배틀팩토리 ${result.floor}층 승리 보상 ${credited.granted.toLocaleString()} VP 지급 완료`)
       gameAudioRef.current?.playEvent('reward')
     }
+    settleFactoryAchievements(result.floor)
     return credited
   }
+
+  // Both ladders settle the same way: report the best result seen so far and
+  // let the achievement record decide whether that is new. Reporting a record
+  // the player already held is a no-op, so a stored best earned before this
+  // update still unlocks its achievement the first time it is observed.
+  function settleLadderAchievements(result) {
+    if (!result.processed) return
+    const nextVp = vpBalance.current + result.rewardVp
+    try {
+      saveAchievementWallet(result.state, nextVp)
+    } catch {
+      showNotice('업적을 저장하지 못했습니다. 잠시 후 다시 시도합니다.')
+      return
+    }
+    achievementProgressRef.current = result.state
+    vpBalance.current = nextVp
+    setAchievementProgress(result.state)
+    setVp(nextVp)
+    if (result.unlocked.length > 0) {
+      enqueueAchievementToasts(result.unlocked)
+      gameAudioRef.current?.playEvent('reward')
+    }
+    onPlayerDataChanged?.()
+  }
+
+  const settleFactoryAchievements = useCallback(floor => {
+    settleLadderAchievements(applyFactoryAchievements(achievementProgressRef.current, floor))
+  }, [onPlayerDataChanged])
+
+  const settleRankedAchievements = useCallback(points => {
+    settleLadderAchievements(applyRankedAchievements(achievementProgressRef.current, points))
+  }, [onPlayerDataChanged])
 
   function enqueueAchievementToasts(unlocked) {
     const fresh = unlocked.filter((definition) => {
@@ -1123,10 +1154,7 @@ export function GameApp({
       return false
     }
 
-    const unlockedSkins = getUnlockedPokemonSkins(achievementProgressRef.current, pokemon)
-    const normalizedPokemon = normalizePokemon({ ...pokemon,
-      skinId: unlockedSkins.some(skin => skin.id === pokemon.skinId) ? pokemon.skinId : null,
-    })
+    const normalizedPokemon = normalizePokemon(pokemon)
     const trainingCost = getTrainingCostBreakdown(normalizePokemon(savedPokemon), normalizedPokemon)
 
     if (trainingCost.total > vpBalance.current) {
@@ -1301,10 +1329,11 @@ export function GameApp({
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRanked} onBack={() => setScreen('battle-hub')}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
-          onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards} />
+          onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards}
+          onRankedPoints={settleRankedAchievements} />
       ) : screen === 'factory' ? (
         <BattleFactoryScreen user={user} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
-          onVpReward={receiveFactoryVpReward}
+          onVpReward={receiveFactoryVpReward} onFactoryBestFloor={settleFactoryAchievements}
           playerName={trainerName}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
@@ -1446,6 +1475,7 @@ export function GameApp({
           onConnectGoogle={onConnectGoogle}
           onDeleteAccount={onDeleteAccount}
           onSetNickname={onSetNickname}
+          onSetTitle={onSetTitle}
           onChange={updateSetting}
           onClose={() => setSettingsOpen(false)}
           onReset={resetSettings}
@@ -1502,6 +1532,7 @@ function App() {
     signOut,
     deleteAccount,
     setNickname,
+    setTitle,
   } = useAuth()
 
   if (!ready) {
@@ -1544,6 +1575,7 @@ function App() {
         onConnectGoogle={connectGuestToGoogle}
         onDeleteAccount={deleteAccount}
         onSetNickname={setNickname}
+        onSetTitle={setTitle}
         onSignOut={signOut}
       />
     </>

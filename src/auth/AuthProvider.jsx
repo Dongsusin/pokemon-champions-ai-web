@@ -39,7 +39,7 @@ import {
   clearCompletedGuestDeletions,
 } from './accountStorage'
 import { resolveGuestIdentity, deleteGuestAccount } from './guestIdentityClient'
-import { deletePlayerProfile, ensurePlayerProfile, setPlayerNickname, withPlayerNickname } from './playerProfile'
+import { deletePlayerProfile, ensurePlayerProfile, setPlayerNickname, setPlayerTitle, withPlayerNickname } from './playerProfile'
 import { acquireAccountSession, ACCOUNT_SESSION_ERROR_CODES } from './accountSession'
 
 const AuthContext = createContext(null)
@@ -678,6 +678,28 @@ export function AuthProvider({ children }) {
     } finally { nicknamePendingRef.current = false }
   }, [setCurrentUser])
 
+  // Shares the nickname's in-flight guard: both write the same profile record,
+  // so letting them overlap would let the older response win.
+  const setTitle = useCallback(async value => {
+    const currentUser = userRef.current
+    const generation = generationRef.current
+    if (!currentUser || currentUser.isAnonymous || currentUser.isLocalGuest) throw new Error('게스트는 칭호를 설정할 수 없습니다.')
+    if (nicknamePendingRef.current || logoutPendingRef.current || manualAuthRef.current || !sessionRef.current?.handle.isActive()) {
+      throw new Error('계정 처리가 진행 중입니다. 잠시 후 다시 시도해주세요.')
+    }
+    nicknamePendingRef.current = true
+    try {
+      const result = await setPlayerTitle(currentUser, value)
+      if (!mountedRef.current || generationRef.current !== generation || userRef.current?.uid !== currentUser.uid
+        || !sessionRef.current?.handle.isActive() || logoutPendingRef.current) {
+        throw new Error('로그인 계정이 변경되었습니다. 현재 계정에서 다시 확인해주세요.')
+      }
+      setCurrentUser(withPlayerNickname(currentUser, result.profile))
+      setProfileSyncError('')
+      return result.profile.title
+    } finally { nicknamePendingRef.current = false }
+  }, [setCurrentUser])
+
   const value = useMemo(() => ({
     user,
     ready,
@@ -694,12 +716,14 @@ export function AuthProvider({ children }) {
     signOut,
     deleteAccount,
     setNickname,
+    setTitle,
   }), [
     autoLogin,
     busy,
     connectGuestToGoogle,
     deleteAccount,
     setNickname,
+    setTitle,
     error,
     profileSyncError,
     ready,

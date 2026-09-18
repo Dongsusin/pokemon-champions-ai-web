@@ -1,3 +1,5 @@
+import { getTrainerTitle } from './data/titleData.js'
+
 const environment = import.meta.env ?? {}
 const pageUrl = typeof window === 'undefined' ? 'http://localhost/' : window.location.href
 export const globalChatApiUrl = new URL(environment.VITE_CHAT_API_URL || '/api/chat', pageUrl).href
@@ -17,6 +19,7 @@ function messageValid(message) {
   return message && typeof message === 'object'
     && typeof message.id === 'string' && message.id.length > 0 && message.id.length <= 128
     && typeof message.name === 'string' && [...message.name].length <= 64
+    && (message.title === undefined || (typeof message.title === 'string' && getTrainerTitle(message.title) !== null) || message.title === '')
     && typeof message.text === 'string' && [...message.text].length <= CHAT_MAX_CHARACTERS
     && Number.isSafeInteger(message.createdAt) && message.createdAt >= 0 && message.createdAt <= 8_640_000_000_000_000
     && typeof message.isOwn === 'boolean'

@@ -21,14 +21,14 @@ test('bounded TTL cache coalesces repeated reads and refreshes after fifteen sec
   const env = fixture()
   await env.save('alice', '별빛')
   const read = createVerifiedNicknameReader({ accountStore: env.store, now: env.now })
-  assert.deepEqual(await Promise.all(Array.from({ length: 20 }, () => read('alice'))), Array(20).fill('별빛'))
+  assert.deepEqual((await Promise.all(Array.from({ length: 20 }, () => read('alice')))).map(entry => entry.nickname), Array(20).fill('별빛'))
   assert.equal(env.reads(), 1)
   await env.save('alice', '새별명')
   env.advance(NICKNAME_CACHE_MS - 1)
-  assert.equal(await read('alice'), '별빛')
+  assert.equal((await read('alice')).nickname, '별빛')
   assert.equal(env.reads(), 1)
   env.advance(1)
-  assert.equal(await read('alice'), '새별명')
+  assert.equal((await read('alice')).nickname, '새별명')
   assert.equal(env.reads(), 2)
 })
 
@@ -36,12 +36,12 @@ test('forced public writes read canonical changes immediately including nickname
   const env = fixture()
   await env.save('alice', '첫별명')
   const read = createVerifiedNicknameReader({ accountStore: env.store, now: env.now })
-  assert.equal(await read('alice'), '첫별명')
+  assert.equal((await read('alice')).nickname, '첫별명')
   await env.save('alice', '바뀐별명')
-  assert.equal(await read('alice', { fresh: true }), '바뀐별명')
-  assert.equal(await read('alice'), '바뀐별명')
+  assert.equal((await read('alice', { fresh: true })).nickname, '바뀐별명')
+  assert.equal((await read('alice')).nickname, '바뀐별명')
   await env.save('alice', '')
-  assert.equal(await read('alice', { fresh: true }), '')
+  assert.equal((await read('alice', { fresh: true })).nickname, '')
   assert.equal(env.reads(), 3)
 })
 
@@ -51,10 +51,10 @@ test('an old in-flight read cannot overwrite a newer forced nickname lookup', as
   const store = { transaction: async work => work({ get: async () => ++reads === 1 ? old : { nickname: '최신별명' } }) }
   const read = createVerifiedNicknameReader({ accountStore: store })
   const pending = read('alice')
-  assert.equal(await read('alice', { fresh: true }), '최신별명')
+  assert.equal((await read('alice', { fresh: true })).nickname, '최신별명')
   finishOld({ nickname: '이전별명' })
-  assert.equal(await pending, '이전별명')
-  assert.equal(await read('alice'), '최신별명')
+  assert.equal((await pending).nickname, '이전별명')
+  assert.equal((await read('alice')).nickname, '최신별명')
   assert.equal(reads, 2)
 })
 
@@ -63,7 +63,7 @@ test('cache remains bounded and invalid stored names never become verified publi
   const read = createVerifiedNicknameReader({ accountStore: env.store, now: env.now })
   for (const value of ['한글😀', '시발', 'a'.repeat(13), '한', '\u115f\u1160', '별\u3164명', '\uffa0별명', 'guest-000000']) {
     await env.save('invalid', value)
-    assert.equal(await read('invalid', { fresh: true }), '')
+    assert.equal((await read('invalid', { fresh: true })).nickname, '')
   }
   for (let index = 0; index < 2001; index++) await read(`user-${index}`)
   const before = env.reads()
@@ -81,8 +81,8 @@ test('failed profile lookup is not cached and another account never shares its n
     return env.store.transaction(work)
   } }, now: env.now })
   await assert.rejects(read('alice'))
-  assert.equal(await read('alice'), '앨리스')
-  assert.equal(await read('bob'), '보브')
+  assert.equal((await read('alice')).nickname, '앨리스')
+  assert.equal((await read('bob')).nickname, '보브')
 })
 
 test('production authentication takes nickname from server profile, skips account heartbeats and guests', async () => {

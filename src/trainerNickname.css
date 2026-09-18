@@ -43,3 +43,9 @@
 }
 html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-nickname-input-row { flex-wrap: wrap; }
 html:is([data-game-text-scale="1.5"], [data-game-text-scale="2"]) .settings-nickname-input-row input { flex-basis: 100%; }
+
+.settings-title { margin-top: 14px; padding: 16px 17px; border: 1px solid rgba(125, 185, 213, .2); border-radius: 12px; background: rgba(15, 30, 48, .35); }
+.settings-title-select { width: 100%; margin-top: 6px; padding: 10px 12px; border: 1px solid rgba(125, 185, 213, .28); border-radius: 9px; color: #e6f1fb; font-size: 13px; line-height: 1.5; background: rgba(9, 21, 36, .8); }
+.settings-title-select:disabled { opacity: .55; }
+.settings-title-preview { margin: 9px 0 0; color: #bdc9db; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.settings-title-empty { margin: 4px 0 0; padding: 12px 15px; border: 1px solid rgba(125, 185, 213, .2); border-radius: 10px; color: #afc9dc; font-size: 12px; line-height: 1.65; background: rgba(21, 40, 61, .25); }

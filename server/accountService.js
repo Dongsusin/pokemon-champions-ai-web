@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
 import { normalizeTrainerNickname, readTrainerNickname } from '../src/data/trainerNickname.js'
+import { hasTrainerTitle, normalizeTrainerTitle, readTrainerTitle } from '../src/data/titleData.js'
+import { ACHIEVEMENT_STORAGE_KEY } from '../src/data/achievementData.js'
 import { containsChatProfanity } from './chatModeration.js'
 
 export const ACCOUNT_LEASE_MS = 90_000
@@ -71,7 +73,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
       if (!identity || !validId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
       if (!plain(command) || !validOwner(command.ownerId)) fail('INVALID_SESSION_OWNER', '이 창의 세션 식별자가 올바르지 않습니다.')
       const { action, ownerId } = command
-      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'setNickname', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
+      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'setNickname', 'setTitle', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
         fail('UNKNOWN_ACTION', '지원하지 않는 계정 요청입니다.')
       }
       if (action === 'sessionHeartbeat' || action === 'sessionRelease') {
@@ -116,8 +118,17 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         catch (error) { fail('INVALID_NICKNAME', error.message) }
         if (containsChatProfanity(nickname)) fail('NICKNAME_PROFANITY', '욕설이나 비속어가 포함된 닉네임은 사용할 수 없습니다.', 422)
       }
+      let titleId
+      if (action === 'setTitle') {
+        if (identity.isGuest === true || identity.isLocalGuest === true
+          || !identity.accountProfile?.providerIds?.includes('google.com')) {
+          fail('TITLE_GOOGLE_ONLY', '칭호는 Google 계정으로 로그인한 트레이너만 설정할 수 있습니다.', 403)
+        }
+        try { titleId = normalizeTrainerTitle(command.title) }
+        catch (error) { fail('INVALID_TITLE', error.message) }
+      }
       let metadata
-      if (action === 'ensureProfile' || action === 'setNickname') {
+      if (action === 'ensureProfile' || action === 'setNickname' || action === 'setTitle') {
         const guest = identity.isGuest === true ? await guestRegistry.read(identity) : null
         const source = identity.accountProfile ?? {}
         const photoURL = text(source.photoURL, 2048)
@@ -184,11 +195,26 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           tx.set('gameData', uid, { schemaVersion: 1, revision: command.revision, updatedAtMs: now(), payload })
           return { revision: command.revision }
         }
-        if (action === 'ensureProfile' || action === 'setNickname') {
+        if (action === 'ensureProfile' || action === 'setNickname' || action === 'setTitle') {
           const previous = await tx.get('profiles', uid)
           const previousNickname = readTrainerNickname(previous?.nickname)
+          // A title is a claim about this account's achievements, so it is
+          // checked against the saved achievement record rather than trusted
+          // from the request. Clearing one ('') always works.
+          if (action === 'setTitle' && titleId) {
+            const saved = await tx.get('gameData', uid)
+            let progress = null
+            try { progress = JSON.parse(saved?.payload?.[ACHIEVEMENT_STORAGE_KEY] ?? 'null') } catch { progress = null }
+            if (!hasTrainerTitle(progress, titleId)) {
+              fail('TITLE_NOT_EARNED', '아직 획득하지 않은 칭호입니다.', 403)
+            }
+          }
+          const previousTitle = readTrainerTitle(previous?.title)
           const profile = { ...metadata,
-            ...(!identity.isGuest ? { nickname: action === 'setNickname' ? nickname : containsChatProfanity(previousNickname) ? '' : previousNickname } : {}),
+            ...(!identity.isGuest ? {
+              nickname: action === 'setNickname' ? nickname : containsChatProfanity(previousNickname) ? '' : previousNickname,
+              title: action === 'setTitle' ? titleId : previousTitle,
+            } : {}),
             createdAtMs: Number.isSafeInteger(previous?.createdAtMs) ? previous.createdAtMs : now(), lastSeenAtMs: now(),
           }
           if (!isDeepStrictEqual(previous, profile)) tx.set('profiles', uid, profile)

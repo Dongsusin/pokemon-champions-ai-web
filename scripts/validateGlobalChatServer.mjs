@@ -44,11 +44,11 @@ test('server identity, server clock and per-view ownership override all spoofed 
   const sent = await env.send(alice, '안녕하세요!', {
     uid: bob.uid, name: '운영자', createdAt: 0, id: 'forged-id', owner: bob.uid, isOwn: false, isGuest: true,
   })
-  assert.deepEqual(sent.latest, { id: 'server-message-2', name: '김**', text: '안녕하세요!', createdAt: env.now(), isOwn: true })
+  assert.deepEqual(sent.latest, { id: 'server-message-2', name: '김**', title: '', text: '안녕하세요!', createdAt: env.now(), isOwn: true })
   const seen = await env.call(bob, 'read', { expanded: true })
   assert.equal(seen.latest.isOwn, false)
   assert.equal(seen.messages[0].isOwn, false)
-  assert.deepEqual(Object.keys(seen.messages[0]).sort(), ['createdAt', 'id', 'isOwn', 'name', 'text'])
+  assert.deepEqual(Object.keys(seen.messages[0]).sort(), ['createdAt', 'id', 'isOwn', 'name', 'text', 'title'])
   assert.doesNotMatch(JSON.stringify(seen), /private|비공개|운영자|owner|requestId|digest/)
   assert.doesNotMatch(JSON.stringify(await env.database.inspect()), /chat-private-alice|김비공개/)
 })

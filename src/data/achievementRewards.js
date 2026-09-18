@@ -1,29 +1,21 @@
 import { applyBattleAchievements, applyCollectionAchievements, normalizeAchievementState } from './achievementData.js'
 import { normalizePokemon } from './trainingData.js'
 import { normalizeItemInventory } from './shopData.js'
-import { POKEMON_SKINS, RARE_BATTLE_ITEMS, fulfillRareRewardCollection, getUnlockedPokemonSkins, getUnlockedRareItems } from './rareRewards.js'
+import { RARE_BATTLE_ITEMS, getUnlockedRareItems } from './rareRewards.js'
 
 const rareItemIds = new Set(RARE_BATTLE_ITEMS.map(item => item.id))
 
 // Entitlements live in the atomic achievement record. Reconstruct their tangible
 // rewards after a reload even if the ordinary box/item mirror was not written yet.
 export function restoreAchievementRewards(progress, collection = [], inventory = {}) {
-  const materialized = fulfillRareRewardCollection(progress, collection)
-  const grantedIds = new Set(materialized.grantedPokemon.map(pokemon => pokemon.captureId))
   const earnedItems = getUnlockedRareItems(progress)
   const earnedItemIds = new Set(earnedItems.map(item => item.id))
-  let collectionChanged = materialized.collection !== collection
-  const restoredCollection = materialized.collection.map(pokemon => {
-    const skinAllowed = !pokemon.skinId || getUnlockedPokemonSkins(progress, pokemon).some(skin => skin.id === pokemon.skinId)
-    const itemAllowed = !rareItemIds.has(pokemon.heldItemId) || earnedItemIds.has(pokemon.heldItemId)
-    if (!grantedIds.has(pokemon.captureId) && skinAllowed && itemAllowed) return pokemon
+  let collectionChanged = false
+  const source = Array.isArray(collection) ? collection : []
+  const restoredCollection = source.map(pokemon => {
+    if (!rareItemIds.has(pokemon.heldItemId) || earnedItemIds.has(pokemon.heldItemId)) return pokemon
     collectionChanged = true
-    return normalizePokemon({
-      ...pokemon,
-      skinId: skinAllowed ? pokemon.skinId : null,
-      heldItemId: itemAllowed ? pokemon.heldItemId : null,
-      heldItemName: itemAllowed ? pokemon.heldItemName : null,
-    })
+    return normalizePokemon({ ...pokemon, heldItemId: null, heldItemName: null })
   })
   const restoredInventory = normalizeItemInventory({
     ...Object.fromEntries(Object.entries(inventory).filter(([id]) => !rareItemIds.has(id))),
@@ -32,7 +24,6 @@ export function restoreAchievementRewards(progress, collection = [], inventory =
   return {
     collection: collectionChanged ? restoredCollection : collection,
     inventory: JSON.stringify(restoredInventory) === JSON.stringify(inventory) ? inventory : restoredInventory,
-    grantedPokemon: materialized.grantedPokemon,
   }
 }
 
@@ -44,16 +35,13 @@ export function prepareAchievementRewards(progress, collection, inventory, battl
   let state = battleResult?.state ?? initialState
   let rewardVp = battleResult?.rewardVp ?? 0
   const unlocked = [...(battleResult?.unlocked ?? [])]
-  let restored = { collection, inventory }
-  for (let step = 0; step < POKEMON_SKINS.length + 2; step += 1) {
-    const beforeCollection = restored.collection
-    restored = restoreAchievementRewards(state, restored.collection, restored.inventory)
-    const result = applyCollectionAchievements(state, restored.collection, now)
-    state = result.state
-    rewardVp += result.rewardVp
-    unlocked.push(...result.unlocked)
-    if (restored.collection === beforeCollection && result.unlocked.length === 0) break
-  }
+  let restored = restoreAchievementRewards(state, collection, inventory)
+  // The collection pass can complete a goal that entitles the player to a rare
+  // item, so settle once more before reporting the final state.
+  const result = applyCollectionAchievements(state, restored.collection, now)
+  state = result.state
+  rewardVp += result.rewardVp
+  unlocked.push(...result.unlocked)
   restored = restoreAchievementRewards(state, restored.collection, restored.inventory)
   return {
     state, unlocked, rewardVp,

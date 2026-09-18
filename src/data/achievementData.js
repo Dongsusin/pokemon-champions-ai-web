@@ -1,6 +1,8 @@
 import { TRAINERS } from './trainerTeams.js'
 import { POKEMON_POOL } from './pokemonPool.js'
 import { NATIONAL_DEX, getEvolutionSpeciesIds, getSpeciesProfile } from './trainingData.js'
+import { getTitleForAchievement } from './titleData.js'
+import { RANKED_TIERS } from './rankedRules.js'
 
 export const ACHIEVEMENT_STORAGE_KEY = 'champions-achievements-v1'
 export const ACHIEVEMENT_CATEGORIES = Object.freeze([
@@ -9,6 +11,8 @@ export const ACHIEVEMENT_CATEGORIES = Object.freeze([
   { id: 'gimmick', label: '기믹 마스터' },
   { id: 'exploration', label: '무대 정복' },
   { id: 'competition', label: '대회 업적' },
+  { id: 'factory', label: '배틀팩토리' },
+  { id: 'ranked', label: '레이팅 배틀' },
   { id: 'trainers', label: 'AI 첫 승리' },
   { id: 'collection', label: '도감 완성' },
   { id: 'mastery', label: '궁극의 도전' },
@@ -23,9 +27,13 @@ export const ACHIEVABLE_SPECIES_IDS = Object.freeze([...new Set(
 )].sort((left, right) => left - right))
 export const ACHIEVABLE_SHINY_SPECIES_IDS = ACHIEVABLE_SPECIES_IDS
 const ACHIEVABLE_IDS = new Set(ACHIEVABLE_SPECIES_IDS)
+export const RANKED_TITLE_TIERS = Object.freeze(RANKED_TIERS.slice(1))
+export const FACTORY_TITLE_FLOORS = Object.freeze([50, 100])
 const definition = (id, title, description, category, rewardVp, metric, target = 1) => (
   { id, title, description, category, rewardVp, metric, target }
 )
+// A title is the cosmetic reward; titleData.js owns its name and description.
+const titled = (entry) => ({ ...entry, titleId: getTitleForAchievement(entry.id)?.id ?? null })
 const secretDefinition = (id, title, description, category, rewardVp, rewardId, metric, target = 1) => ({
   ...definition(id, title, description, category, rewardVp, metric, target), secretReward: true, rewardId,
 })
@@ -66,10 +74,16 @@ const standardAchievements = [
   definition('streak-3', '멈추지 않는 기세', '패배·무승부·기권 없이 3연승을 달성하세요.', 'victory', 600, 'bestStreak', 3),
   definition('streak-5', '승리의 흐름', '패배·무승부·기권 없이 5연승을 달성하세요.', 'victory', 1200, 'bestStreak', 5),
   definition('streak-10', '무패의 행진', '패배·무승부·기권 없이 10연승을 달성하세요.', 'victory', 2000, 'bestStreak', 10),
-  secretDefinition('flawless-league', '불패의 리그 지휘관', '노말 또는 하드 난이도로 리그 7경기 전체에서 단 한 번의 기절 없이 전승 우승하세요. 부활해도 기절 기록은 남습니다.', 'competition', 100000, 'armored-mewtwo', 'flawlessLeagues'),
-  secretDefinition('flawless-tournament', '완전무결한 토너먼트', '노말 또는 하드 난이도로 128강부터 결승까지 7경기 전체에서 단 한 번의 기절 없이 우승하세요. 부활해도 기절 기록은 남습니다.', 'competition', 100000, 'shadow-lugia', 'flawlessTournaments'),
-  secretDefinition('collection-all', '전국도감의 완성', `획득 가능한 전국도감 ${ACHIEVABLE_SPECIES_IDS.length}종을 모두 수집하세요. 뽑기로 해금한 진화계열도 포함합니다.`, 'collection', 200000, 'crystal-ho-oh', 'collectionSpeciesCount', ACHIEVABLE_SPECIES_IDS.length),
-  secretDefinition('collection-shiny-all', '모든 빛깔의 발견', `획득 가능한 전국도감 ${ACHIEVABLE_SHINY_SPECIES_IDS.length}종의 이로치를 모두 해금하세요. 같은 진화계열에서 이로치를 얻으면 그 계열 전체의 해금으로 인정합니다.`, 'collection', 400000, 'astral-rayquaza', 'shinySpeciesCount', ACHIEVABLE_SHINY_SPECIES_IDS.length),
+  secretDefinition('flawless-league', '불패의 리그 지휘관', '노말 또는 하드 난이도로 리그 7경기 전체에서 단 한 번의 기절 없이 전승 우승하세요. 부활해도 기절 기록은 남습니다.', 'competition', 100000, null, 'flawlessLeagues'),
+  secretDefinition('flawless-tournament', '완전무결한 토너먼트', '노말 또는 하드 난이도로 128강부터 결승까지 7경기 전체에서 단 한 번의 기절 없이 우승하세요. 부활해도 기절 기록은 남습니다.', 'competition', 100000, null, 'flawlessTournaments'),
+  secretDefinition('collection-all', '전국도감의 완성', `획득 가능한 전국도감 ${ACHIEVABLE_SPECIES_IDS.length}종을 모두 수집하세요. 뽑기로 해금한 진화계열도 포함합니다.`, 'collection', 200000, null, 'collectionSpeciesCount', ACHIEVABLE_SPECIES_IDS.length),
+  secretDefinition('collection-shiny-all', '모든 빛깔의 발견', `획득 가능한 전국도감 ${ACHIEVABLE_SHINY_SPECIES_IDS.length}종의 이로치를 모두 해금하세요. 같은 진화계열에서 이로치를 얻으면 그 계열 전체의 해금으로 인정합니다.`, 'collection', 400000, null, 'shinySpeciesCount', ACHIEVABLE_SHINY_SPECIES_IDS.length),
+  definition('factory-floor-50', '배팩 50층 정복자', '배틀팩토리에서 50층에 도달하세요.', 'factory', 3000, 'factoryBestFloor', 50),
+  definition('factory-floor-100', '배팩 100층 정복자', '배틀팩토리에서 100층에 도달하세요.', 'factory', 8000, 'factoryBestFloor', 100),
+  ...RANKED_TITLE_TIERS.map((tier, index) => definition(
+    `ranked-${tier.id}`, `${tier.name} 도달`, `레이팅 배틀에서 ${tier.name} 등급에 도달하세요.`,
+    'ranked', 2000 + index * 2000, 'rankedTierIndex', index + 1,
+  )),
   ...TRAINERS.map((trainer) => ({
     ...definition(`trainer-${trainer.id}`, `${trainer.name}에게 첫 승리`, `${trainer.name}에게 처음 승리하세요.`, 'trainers', 200, 'trainer'),
     trainerId: trainer.id,
@@ -78,7 +92,7 @@ const standardAchievements = [
 export const ACHIEVEMENTS = Object.freeze([
   ...standardAchievements,
   secretDefinition('achievements-all', '챔피언의 모든 증명', `이 업적을 제외한 모든 ${standardAchievements.length}개 업적을 달성하세요.`, 'mastery', 600000, 'legend-plate', 'otherAchievements', standardAchievements.length),
-].map((entry) => Object.freeze(entry)))
+].map((entry) => Object.freeze(titled(entry))))
 
 const ACHIEVEMENT_IDS = new Set(ACHIEVEMENTS.map((entry) => entry.id))
 const COUNTERS = [
@@ -87,6 +101,7 @@ const COUNTERS = [
   'hardWins', 'boostedWins', 'leagueChampionships', 'tournamentChampionships',
   'perfectLeagues', 'currentStreak', 'bestStreak',
   'flawlessLeagues', 'flawlessTournaments', 'collectionSpeciesCount', 'shinySpeciesCount',
+  'factoryBestFloor', 'rankedTierIndex',
 ]
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {}
 const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : 0
@@ -114,6 +129,8 @@ export function normalizeAchievementState(value) {
   state.stats.collectionSpeciesCount = Math.min(ACHIEVABLE_SPECIES_IDS.length, state.stats.collectionSpeciesCount)
   state.stats.shinySpeciesCount = Math.min(ACHIEVABLE_SHINY_SPECIES_IDS.length, state.stats.shinySpeciesCount)
   state.stats.bestStreak = Math.max(state.stats.bestStreak, state.stats.currentStreak)
+  state.stats.factoryBestFloor = Math.min(FACTORY_TITLE_FLOORS.at(-1), state.stats.factoryBestFloor)
+  state.stats.rankedTierIndex = Math.min(RANKED_TITLE_TIERS.length, state.stats.rankedTierIndex)
   const mechanicWins = record(stats.mechanicWins)
   for (const mechanic of MECHANICS) state.stats.mechanicWins[mechanic] = count(mechanicWins[mechanic])
   for (const [id, wins] of Object.entries(record(stats.trainerWins))) {
@@ -213,6 +230,39 @@ export function applyCollectionAchievements(value, collection, now = Date.now())
   state.stats.shinySpeciesCount = shinySpecies.size
   unlockEligible(result, now, ACHIEVEMENTS.filter((def) => def.category === 'collection'))
   result.processed ||= result.unlocked.length > 0
+  return result
+}
+
+/**
+ * Record a Battle Factory result. Only the best floor ever reached counts, so
+ * replaying an easier run never takes a title away, and floors past the last
+ * milestone are clamped: climbing higher is allowed, it just earns nothing new.
+ */
+export function applyFactoryAchievements(value, floor, now = Date.now()) {
+  const state = normalizeAchievementState(value)
+  const result = { state, unlocked: [], rewardVp: 0, processed: false }
+  const ceiling = FACTORY_TITLE_FLOORS.at(-1)
+  const reached = Math.min(ceiling, count(floor))
+  if (reached <= state.stats.factoryBestFloor) return result
+  state.stats.factoryBestFloor = reached
+  result.processed = true
+  unlockEligible(result, now, ACHIEVEMENTS.filter((def) => def.category === 'factory'))
+  return result
+}
+
+/**
+ * Record the highest ranked tier ever held. Points can fall after a loss, but a
+ * tier that was actually reached keeps its title.
+ */
+export function applyRankedAchievements(value, points, now = Date.now()) {
+  const state = normalizeAchievementState(value)
+  const result = { state, unlocked: [], rewardVp: 0, processed: false }
+  const safePoints = count(points)
+  const reached = RANKED_TITLE_TIERS.filter((tier) => safePoints >= tier.minPoints).length
+  if (reached <= state.stats.rankedTierIndex) return result
+  state.stats.rankedTierIndex = reached
+  result.processed = true
+  unlockEligible(result, now, ACHIEVEMENTS.filter((def) => def.category === 'ranked'))
   return result
 }
 

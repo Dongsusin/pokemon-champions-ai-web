@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChartNoAxesCombined,
   Clock3,
@@ -21,6 +21,7 @@ import {
   Trash2,
   Trophy,
   Type,
+  BadgeCheck,
   UserRound,
   Volume2,
   VolumeX,
@@ -32,6 +33,7 @@ import { GAME_TEXT_SCALES } from './gameSettings'
 import { isGameTextScaleLocked } from './gameTextScale'
 import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { NICKNAME_MIN_LENGTH, NICKNAME_MAX_LENGTH, normalizeTrainerNickname, readTrainerNickname } from './data/trainerNickname'
+import { getEarnedTrainerTitles, readTrainerTitle } from './data/titleData'
 import './trainerNickname.css'
 
 const SETTINGS_TAB_IDS = ['game', 'audio', 'achievements', 'usage', 'account']
@@ -114,6 +116,45 @@ function AudioSlider({ channel, value, disabled, onChange }) {
   )
 }
 
+function TrainerTitleEditor({ title, titles, authBusy, saving, onSetTitle }) {
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const mountedRef = useRef(false)
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false } }, [])
+  const unavailable = authBusy || saving || typeof onSetTitle !== 'function'
+  const selected = titles.find((entry) => entry.id === title) ?? null
+
+  async function submit(value) {
+    if (unavailable || value === title) return
+    setError('')
+    setNotice('')
+    try {
+      await onSetTitle(value)
+      if (mountedRef.current) setNotice(value ? '칭호를 적용했습니다.' : '칭호를 해제했습니다.')
+    } catch (error) {
+      if (mountedRef.current) setError(error?.message || '칭호를 저장하지 못했습니다. 다시 시도해 주세요.')
+    }
+  }
+
+  return <section className="settings-title" aria-label="트레이너 칭호 설정" aria-busy={saving}>
+    <div className="settings-nickname-heading"><BadgeCheck size={19} aria-hidden="true" /><strong>트레이너 칭호</strong></div>
+    <p className="settings-nickname-description">업적으로 얻은 칭호를 닉네임 옆에 표시합니다. 채팅에도 함께 보입니다.</p>
+    {titles.length === 0
+      ? <p className="settings-title-empty">아직 획득한 칭호가 없습니다. 업적을 달성하면 여기에서 선택할 수 있습니다.</p>
+      : <>
+        <label className="settings-nickname-label" htmlFor="settings-trainer-title">칭호</label>
+        <select id="settings-trainer-title" className="settings-title-select" value={title} disabled={unavailable}
+          onChange={(event) => void submit(event.target.value)}>
+          <option value="">칭호 표시 안 함</option>
+          {titles.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+        </select>
+        <p className="settings-title-preview">{selected ? selected.description : '칭호를 선택하면 설명이 표시됩니다.'}</p>
+      </>}
+    {error && <p className="settings-nickname-error" role="alert">{error}</p>}
+    {notice && <p className="settings-nickname-notice" role="status">{notice}</p>}
+  </section>
+}
+
 function TrainerNicknameEditor({ nickname, accountName, authBusy, saving, onSetNickname }) {
   const [draft, setDraft] = useState(nickname)
   const [error, setError] = useState('')
@@ -191,11 +232,14 @@ function AccountPanel({
   onSignOut,
   onSetNickname,
   nicknameSaving,
+  onSetTitle,
+  titleSaving,
+  earnedTitles = [],
 }) {
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false)
   const isGuest = Boolean(user?.isAnonymous || user?.isLocalGuest)
   const localGuest = Boolean(user?.isLocalGuest)
-  const accountActionsBusy = authBusy || nicknameSaving
+  const accountActionsBusy = authBusy || nicknameSaving || titleSaving
   const baseName = user?.displayName?.trim()
     || user?.email?.split('@')[0]
     || (isGuest ? '게스트 트레이너' : '트레이너')
@@ -225,9 +269,13 @@ function AccountPanel({
         </span>
       </div>
 
-      {isGuest ? <p className="settings-nickname-guest">게스트는 현재 트레이너 이름을 사용합니다. Google 계정에 연결하면 닉네임을 설정할 수 있습니다.</p>
-        : <TrainerNicknameEditor key={user?.uid} nickname={nickname} accountName={accountName}
-          authBusy={authBusy} saving={nicknameSaving} onSetNickname={onSetNickname} />}
+      {isGuest ? <p className="settings-nickname-guest">게스트는 현재 트레이너 이름을 사용합니다. Google 계정에 연결하면 닉네임과 칭호를 설정할 수 있습니다.</p>
+        : <>
+          <TrainerNicknameEditor key={user?.uid} nickname={nickname} accountName={accountName}
+            authBusy={authBusy} saving={nicknameSaving} onSetNickname={onSetNickname} />
+          <TrainerTitleEditor key={`${user?.uid}:title`} title={readTrainerTitle(user?.title)} titles={earnedTitles}
+            authBusy={authBusy} saving={titleSaving} onSetTitle={onSetTitle} />
+        </>}
 
       <div className="settings-account-persistence">
         <span className="settings-option-label">
@@ -342,10 +390,13 @@ function SettingsModal({
   onReset,
   onSignOut,
   onSetNickname,
+  onSetTitle,
 }) {
   const [activeTab, setActiveTab] = useState(() => SETTINGS_TAB_IDS.includes(initialTab) ? initialTab : 'game')
+  const earnedTitles = useMemo(() => getEarnedTrainerTitles(achievementProgress), [achievementProgress])
   const textScaleLocked = isGameTextScaleLocked()
   const [nicknameSaving, setNicknameSaving] = useState(false)
+  const [titleSaving, setTitleSaving] = useState(false)
   const nicknamePendingRef = useRef(false)
   const closeButtonRef = useRef(null)
   const panelRef = useRef(null)
@@ -358,6 +409,17 @@ function SettingsModal({
     try { await onSetNickname(value) } finally {
       nicknamePendingRef.current = false
       setNicknameSaving(false)
+    }
+  } : undefined
+  // The nickname and the title write the same profile record, so they share one
+  // in-flight guard and the close button waits for either of them.
+  const setTitle = typeof onSetTitle === 'function' ? async value => {
+    if (nicknamePendingRef.current) return
+    nicknamePendingRef.current = true
+    setTitleSaving(true)
+    try { await onSetTitle(value) } finally {
+      nicknamePendingRef.current = false
+      setTitleSaving(false)
     }
   } : undefined
 
@@ -586,6 +648,9 @@ function SettingsModal({
               onSignOut={onSignOut}
               onSetNickname={setNickname}
               nicknameSaving={nicknameSaving}
+              onSetTitle={setTitle}
+              titleSaving={titleSaving}
+              earnedTitles={earnedTitles}
             />
           )}
         </div>

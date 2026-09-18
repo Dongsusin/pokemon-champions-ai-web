@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowDown, ChevronDown, MessageCircle, RefreshCw, Send, X } from 'lucide-react'
 import useGlobalChat from './useGlobalChat'
 import './globalChat.css'
+import { getTrainerTitle } from './data/titleData.js'
 
 const MAX_MESSAGE_LENGTH = 200
 const NEAR_BOTTOM_DISTANCE = 64
@@ -21,6 +22,14 @@ function MessageTime({ value, className }) {
 
 function trimMessage(value) {
   return Array.from(value).slice(0, MAX_MESSAGE_LENGTH).join('')
+}
+
+// Titles are cosmetic, so an id this build does not know about renders nothing
+// rather than leaking a raw identifier into the conversation.
+function TrainerTitleTag({ titleId }) {
+  const title = getTrainerTitle(titleId)
+  if (!title) return null
+  return <span className="global-chat-title-tag" title={title.description}>{title.name}</span>
 }
 
 export default function GlobalChat({ user }) {
@@ -177,7 +186,7 @@ export default function GlobalChat({ user }) {
         <span className="global-chat-mark" aria-hidden="true"><MessageCircle size={19} /></span>
         <span className="global-chat-label">전체 채팅</span>
         <span className="global-chat-preview" id={`${id}-preview`}>
-          {latest && <span className="global-chat-preview-meta"><strong>{latest.name}</strong><MessageTime value={latest.createdAt} /></span>}
+          {latest && <span className="global-chat-preview-meta"><TrainerTitleTag titleId={latest.title} /><strong>{latest.name}</strong><MessageTime value={latest.createdAt} /></span>}
           <span className="global-chat-preview-text">{preview}</span>
         </span>
         <ChevronDown className="global-chat-chevron" size={15} aria-hidden="true" />
@@ -211,7 +220,7 @@ export default function GlobalChat({ user }) {
             if (scrollRef.current.nearBottom) setNewMessageCount(0)
           }}>
             {visibleMessages.map((message) => <li key={message.id} data-message-id={message.id} className={`global-chat-message${message.isOwn ? ' is-own' : ''}`}>
-              <div className="global-chat-message-meta"><strong className="global-chat-message-name">{message.name}</strong>{message.isOwn && <span className="global-chat-own-label">나</span>}<MessageTime className="global-chat-message-time" value={message.createdAt} /></div>
+              <div className="global-chat-message-meta"><TrainerTitleTag titleId={message.title} /><strong className="global-chat-message-name">{message.name}</strong>{message.isOwn && <span className="global-chat-own-label">나</span>}<MessageTime className="global-chat-message-time" value={message.createdAt} /></div>
               <p className="global-chat-message-text">{message.text}</p>
             </li>)}
             {!visibleMessages.length && <li className="global-chat-empty"><MessageCircle size={30} aria-hidden="true" /><strong>{loading ? '채팅을 불러오는 중입니다' : errorText ? '채팅을 불러오지 못했습니다' : '아직 메시지가 없습니다'}</strong><span>{loading || errorText ? '연결 상태를 확인하고 있습니다.' : '첫 인사를 남겨 보세요.'}</span></li>}

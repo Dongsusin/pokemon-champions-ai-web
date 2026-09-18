@@ -48,7 +48,6 @@ import {
 } from './data/trainingData'
 import { getTrainingCostBreakdown, TRAINING_COSTS } from './data/trainingCosts'
 import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
-import { getUnlockedPokemonSkins } from './data/rareRewards.js'
 import { useIsCompactLayout } from './useMobileLayout'
 import './trainingEmptyMoves.css'
 
@@ -84,7 +83,6 @@ function trainingSignature(pokemon) {
     speciesId: pokemon.speciesId,
     gender: pokemon.gender,
     isShiny: Boolean(pokemon.isShiny),
-    skinId: pokemon.skinId ?? null,
     nature: pokemon.nature,
     ability: pokemon.ability,
     moves: pokemon.moves,
@@ -229,7 +227,6 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
     : editablePokemon
   const species = previewSpecies ?? editableSpecies
   const isPreviewForm = Boolean(previewSpecies)
-  const unlockedSkins = getUnlockedPokemonSkins(progress, editablePokemon)
   const zaMegaStone = species ? getZaMegaStoneByFormSlug(species.slug) : null
   const evolutionOptions = editablePokemon ? getEvolutionOptions(editablePokemon.speciesId) : []
   const persistentFormOptions = editablePokemon ? getPersistentFormOptions(editablePokemon.speciesId) : []
@@ -821,16 +818,6 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                   </div>
 
                   <div className="training-select-stack">
-                    {unlockedSkins.length > 0 && (
-                      <label className="training-picker-field training-reward-skin-picker">
-                        <span><Sparkles size={14} /> 특별 스킨 <em className="training-field-cost">변경 무료</em></span>
-                        <select aria-label="획득한 특별 스킨 선택" value={editablePokemon.skinId ?? ''} disabled={isPreviewForm} onChange={(event) => updateSelected({ skinId: event.target.value || null })}>
-                          <option value="">기본 모습</option>
-                          {unlockedSkins.map((skin) => <option key={skin.id} value={skin.id}>{skin.name}</option>)}
-                        </select>
-                        <small>업적으로 획득한 모습입니다. 변경 후 저장하면 배틀에도 적용됩니다.</small>
-                      </label>
-                    )}
                     <div className="training-picker-field">
                       <span>
                         <Dna size={14} /> 진화 형태

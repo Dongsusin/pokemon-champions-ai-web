@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { maskRankedTrainerName } from '../src/data/rankedPrivacy.js'
+import { readTrainerTitle } from '../src/data/titleData.js'
 import { CHAT_PROFANITY_MESSAGE, containsChatProfanity } from './chatModeration.js'
 
 export const GLOBAL_CHAT_MAX_MESSAGES = 30
@@ -19,7 +20,8 @@ const publicName = (name, isGuest, nickname) => {
   return containsChatProfanity(bounded) ? '트**' : bounded
 }
 const publicMessage = (message, owner) => message ? {
-  id: message.id, name: message.name, text: message.text, createdAt: message.createdAt,
+  id: message.id, name: message.name, title: readTrainerTitle(message.title),
+  text: message.text, createdAt: message.createdAt,
   isOwn: message.owner === owner,
 } : null
 
@@ -110,6 +112,9 @@ export function createGlobalChatService({ store, guestRegistry, now = Date.now, 
         if (receipt) return snapshot(metadata, owner, feed?.messages ?? [])
         const message = {
           id, owner, name: publicName(guest?.displayName ?? identity.name, identity.isGuest === true, identity.nickname),
+          // The title is stamped onto the message, so an old line keeps the
+          // title its author actually held when they wrote it.
+          title: identity.isGuest === true ? '' : readTrainerTitle(identity.title),
           text, createdAt: Math.max(timestamp, metadata?.latest?.createdAt ?? 0),
         }
         const messages = [...(feed?.messages ?? []), message].slice(-GLOBAL_CHAT_MAX_MESSAGES)

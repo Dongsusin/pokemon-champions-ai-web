@@ -7,7 +7,8 @@ import { createServer } from 'vite'
 import { createBattle, getBattleSummary, playBattleTurnWithActions } from '../src/data/battleEngine.js'
 import { BATTLE_ITEMS } from '../src/data/shopData.js'
 import { ACHIEVEMENTS, ACHIEVABLE_SPECIES_IDS, applyBattleAchievements, createAchievementState } from '../src/data/achievementData.js'
-import { getRareReward, POKEMON_SKINS } from '../src/data/rareRewards.js'
+import { getRareReward } from '../src/data/rareRewards.js'
+import { getTrainerTitle } from '../src/data/titleData.js'
 import { AI_BATTLE_VP_REWARDS } from '../src/data/aiBattleRewards.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
@@ -67,7 +68,7 @@ await context.route('**/src/App.jsx', async route => {
     purchase: (...args) => purchaseBattleItem(...args), open: id => selectMode({id}),
     replaceCollection: value => setBoxPokemon(value)
   }; window.__firstAchievementRender ??= {
-    pokemon: boxPokemon.map(({speciesId,skinId,heldItemId,captureId})=>({speciesId,skinId,heldItemId,captureId})),
+    pokemon: boxPokemon.map(({speciesId,heldItemId,captureId})=>({speciesId,heldItemId,captureId})),
     inventory: {...itemInventory}, vp
   }; const trainerInitial =`)
   await route.fulfill({ response, body })
@@ -100,7 +101,7 @@ await context.addInitScript(({ initialVp, speciesIds, seed }) => {
   window.__boxMirrorWrites = []
   Storage.prototype.setItem = function(key, value) {
     if (window.__failAchievementSave && key === 'champions-achievements-v1') throw new DOMException('QA storage failure', 'QuotaExceededError')
-    if (key === 'champions-dex-v2') window.__boxMirrorWrites.push(JSON.parse(value).map(({speciesId,skinId,heldItemId,captureId})=>({speciesId,skinId,heldItemId,captureId})))
+    if (key === 'champions-dex-v2') window.__boxMirrorWrites.push(JSON.parse(value).map(({speciesId,heldItemId,captureId})=>({speciesId,heldItemId,captureId})))
     return originalSetItem.call(this, key, value)
   }
 }, { initialVp, speciesIds, seed })
@@ -148,16 +149,26 @@ async function validateSealedRewards(targetPage) {
     assert.equal(await card.locator('.achievement-sealed-reward').count(), 1)
     assert.equal((await card.locator('.achievement-sealed-reward').innerText()).trim(), '?', 'Secret rewards must use the requested question-mark label')
     const dom = await card.innerHTML()
-    const reward = getRareReward(definition.rewardId)
-    for (const hiddenValue of [definition.rewardId, reward.name, String(definition.rewardVp), definition.rewardVp.toLocaleString('ko-KR'), reward.spriteFront, reward.sprite].filter(Boolean)) {
+    // A sealed goal may award a title, a rare item, or both. None of it, nor the
+    // VP figure, may appear before the goal is earned.
+    const item = definition.rewardId ? getRareReward(definition.rewardId) : null
+    const title = getTrainerTitle(definition.titleId)
+    for (const hiddenValue of [
+      definition.rewardId, definition.titleId, title?.name, title?.description,
+      item?.name, item?.sprite,
+      String(definition.rewardVp), definition.rewardVp.toLocaleString('ko-KR'),
+    ].filter(Boolean)) {
       assert(!dom.includes(hiddenValue), `Sealed reward leaked text, image or attribute: ${hiddenValue}`)
     }
   }
   assert.equal(await targetPage.locator('.achievement-reward-showcase').count(), 0)
   assert.match(await targetPage.locator('.achievement-earned-stat').innerText(), /0\s*VP/)
   for (const definition of secretAchievements) {
-    await targetPage.getByRole('searchbox', { name: '업적 또는 트레이너 검색' }).fill(getRareReward(definition.rewardId).name)
-    assert.equal(await targetPage.locator('.achievement-card').count(), 0, 'Unrevealed reward identity must not be searchable')
+    for (const rewardName of [getTrainerTitle(definition.titleId)?.name,
+      definition.rewardId ? getRareReward(definition.rewardId).name : null].filter(Boolean)) {
+      await targetPage.getByRole('searchbox', { name: '업적 또는 트레이너 검색' }).fill(rewardName)
+      assert.equal(await targetPage.locator('.achievement-card').count(), 0, 'Unrevealed reward identity must not be searchable')
+    }
   }
   await targetPage.getByRole('searchbox', { name: '업적 또는 트레이너 검색' }).fill('')
 }
@@ -224,7 +235,7 @@ async function verifyEarnedRewardRecovery() {
   secretAchievements.forEach(entry => { earnedProgress.unlocked[entry.id] = 1234567890 })
   const earnedBalance = 905000
   const earnedContext = await browser.newContext({ viewport: { width: 1440, height: 900 } })
-  await installHarness(earnedContext, { collection: [{ speciesId: 493, directDrawCount: 1 }], progress: earnedProgress, balance: earnedBalance })
+  await installHarness(earnedContext, { collection: [{ speciesId: 493, directDrawCount: 1 }, { speciesId: 150, captureId: 'dex-150', directDrawCount: 1 }], progress: earnedProgress, balance: earnedBalance })
   const earnedPage = await earnedContext.newPage()
   earnedPage.on('pageerror', error => errors.push(error.message))
   try {
@@ -233,39 +244,9 @@ async function verifyEarnedRewardRecovery() {
     await earnedPage.waitForFunction(() => window.__boxMirrorWrites.length > 0)
     const initial = await earnedPage.evaluate(() => ({ first: window.__firstAchievementRender, mirror: window.__boxMirrorWrites[0], vp: window.__achievementQA.vp }))
     assert.equal(initial.vp, earnedBalance, 'Restoring an already earned reward must not pay again')
-    for (const skin of POKEMON_SKINS) {
-      assert(initial.first.pokemon.some(entry => entry.speciesId === skin.baseSpeciesId && entry.skinId === skin.id), 'Earned base Pokemon must exist on the first render')
-      assert(initial.mirror.some(entry => entry.speciesId === skin.baseSpeciesId && entry.skinId === skin.id), 'The first box mirror must include the restored Pokemon')
-      assert.equal(initial.first.pokemon.find(entry => entry.speciesId === skin.baseSpeciesId).captureId, `dex-${skin.baseSpeciesId}`, 'Gift Pokemon must use IDs that survive collection migration')
-    }
     assert.equal(initial.first.inventory['legend-plate'], 1)
     assert.equal(await earnedPage.getByRole('dialog').count(), 0, 'Rehydrating an old achievement must not show a new reward notice')
     assert.equal(await earnedPage.locator('.achievement-toast').count(), 0, 'Previously paid rewards must not enqueue a fresh notification')
-
-    await openMode(earnedPage, 'training')
-    await earnedPage.getByRole('searchbox', { name: '포켓몬 이름 검색' }).fill('뮤츠')
-    await earnedPage.locator('.training-roster-card').filter({ hasText: '뮤츠' }).first().click()
-    const skinSelect = earnedPage.getByRole('combobox', { name: '획득한 특별 스킨 선택' })
-    assert.deepEqual(await skinSelect.locator('option').evaluateAll(options => options.map(option => option.value)), ['', 'armored-mewtwo'])
-    await skinSelect.selectOption('')
-    await earnedPage.getByRole('button', { name: '설정 저장 · 무료', exact: true }).click()
-    await earnedPage.waitForFunction(() => window.__achievementQA.boxPokemon.some(entry => entry.speciesId === 150 && !entry.skinId))
-    await earnedPage.waitForFunction(() => JSON.parse(localStorage.getItem('champions-dex-v2')).some(entry => entry.speciesId === 150 && !entry.skinId))
-    await earnedPage.reload()
-    await waitScreen('lobby', earnedPage)
-    assert.equal(await earnedPage.evaluate(() => window.__achievementQA.boxPokemon.find(entry => entry.speciesId === 150).skinId), null, 'Restoration must preserve a saved default appearance')
-    await openMode(earnedPage, 'training')
-    await earnedPage.getByRole('searchbox', { name: '포켓몬 이름 검색' }).fill('뮤츠')
-    await earnedPage.locator('.training-roster-card').filter({ hasText: '뮤츠' }).first().click()
-    await earnedPage.getByRole('combobox', { name: '획득한 특별 스킨 선택' }).selectOption('armored-mewtwo')
-    await earnedPage.getByRole('button', { name: '설정 저장 · 무료', exact: true }).click()
-    await earnedPage.waitForFunction(() => window.__achievementQA.boxPokemon.some(entry => entry.speciesId === 150 && entry.skinId === 'armored-mewtwo'))
-    await earnedPage.waitForFunction(() => JSON.parse(localStorage.getItem('champions-dex-v2')).some(entry => entry.speciesId === 150 && entry.skinId === 'armored-mewtwo'))
-    await earnedPage.screenshot({ path: path.join(output, 'rare-skin-training.png') })
-    await earnedPage.reload()
-    await waitScreen('lobby', earnedPage)
-    assert.equal(await earnedPage.evaluate(() => window.__achievementQA.vp), earnedBalance)
-    assert.equal(await earnedPage.evaluate(() => window.__achievementQA.boxPokemon.filter(entry => entry.speciesId === 150 && entry.skinId === 'armored-mewtwo').length), 1)
 
     await openMode(earnedPage, 'shop')
     await earnedPage.getByRole('button', { name: /업적 보상/ }).click()
@@ -290,9 +271,10 @@ async function verifyEarnedRewardRecovery() {
     assert.equal(await earnedPage.evaluate(() => window.__achievementQA.vp), earnedBalance)
     await openMode(earnedPage, 'achievements')
     await earnedPage.locator('.achievement-reward-showcase').waitFor()
-    assert.equal(await earnedPage.locator('.achievement-reward-showcase .achievement-revealed-reward').count(), 5)
+    assert.equal(await earnedPage.locator('.achievement-reward-showcase .achievement-revealed-reward').count(), 6,
+      "Five sealed titles plus the meta goal rare item")
     await earnedPage.screenshot({ path: path.join(output, 'rare-rewards-earned.png') })
-    console.log('Browser QA: earned reward recovery, skin save and rare held item passed')
+    console.log('Browser QA: earned reward recovery, trainer titles and rare held item passed')
   } catch (error) {
     await earnedPage.screenshot({ path: path.join(output, 'rare-recovery-failure.png') }).catch(() => {})
     throw error
@@ -420,8 +402,8 @@ try {
   await page.getByRole('button', { name: '업적 보기', exact: true }).click()
   await waitScreen('achievements')
   assert.equal(await page.locator('.achievement-card').count(), 12)
-  assert.equal(ACHIEVEMENTS.length, 278)
-  assert.match(await page.locator('.achievement-overview').innerText(), /278/)
+  assert.equal(ACHIEVEMENTS.length, 283)
+  assert.match(await page.locator('.achievement-overview').innerText(), /283/)
   await validateSealedRewards(page)
   await page.getByRole('button', { name: '달성', exact: true }).click()
   assert.equal(await page.locator('.achievement-empty').count(), 1)
@@ -578,7 +560,7 @@ try {
   assert.deepEqual(errors, [], 'Browser must not emit runtime errors')
   console.log(process.argv.includes('--collection-only')
     ? 'Achievement collection UI passed: ordinary and shiny collection rewards, nonblocking toast dismissal/timeout, VP persistence and no repeat payment.'
-    : 'Achievement UI passed: settings achievement tab without battle remount, status filters and sorting, 278 question-mark sealed rewards, realtime grouped toasts and queue/dismiss/timeout without focus theft, catalog/search/paging, real battle settlement, duplicate settlement/finish, mobile layout, reload/spending, failed-write retry, reward recovery before mirrors, saved skins, earned-only rare items, and once-only ordinary/shiny collection rewards.')
+    : 'Achievement UI passed: settings achievement tab without battle remount, status filters and sorting, 283 question-mark sealed rewards, realtime grouped toasts and queue/dismiss/timeout without focus theft, catalog/search/paging, real battle settlement, duplicate settlement/finish, mobile layout, reload/spending, failed-write retry, reward recovery before mirrors, trainer titles, earned-only rare items, and once-only ordinary/shiny collection rewards.')
   console.log(`Screenshots: ${output}`)
 } catch (error) {
   console.error('Browser errors:', errors)

@@ -41,7 +41,6 @@ import {
   getVisibleBattleItems,
 } from './data/shopData'
 import { getCombinedPokemonItemUsage } from './data/pokemonUsage.js'
-import { getPokemonSkin } from './data/rareRewards'
 import {
   DYNAMAX_MODES,
   TERA_TYPES,
@@ -288,10 +287,9 @@ function BoxScreen({
     }).sort((left, right) => (recommendationRanks.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (recommendationRanks.get(right.id) ?? Number.MAX_SAFE_INTEGER))
   }, [itemCategory, itemSearch, ownedItems, recommendationRanks])
   const partySlots = Array.from({ length: PARTY_SIZE }, (_, index) => teamPokemon[index] ?? null)
-  const selectedSkin = getPokemonSkin(selectedPokemon?.skinId)
-  const selectedSprite = selectedSkin?.spriteFront ?? (selectedProfile
+  const selectedSprite = selectedProfile
     ? showShiny ? selectedProfile.spriteFrontShiny : selectedProfile.spriteFront
-    : null)
+    : null
   const selectedSpriteFallback = selectedProfile
     ? showShiny ? selectedProfile.spriteFrontShinyFallback : selectedProfile.spriteFrontFallback
     : null

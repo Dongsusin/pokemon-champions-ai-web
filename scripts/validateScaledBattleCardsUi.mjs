@@ -14,7 +14,7 @@ const output = path.join(root, 'scripts/.cache/scaled-battle-cards-ui')
 await fs.mkdir(output, { recursive: true })
 const pokemon = [25, 6, 9, 143, 1009, 1021].map((speciesId, index) => ({
   ...normalizePokemon({ speciesId, captureId: `scaled-card-${index}`, heldItemId: 'assault-vest' }),
-  icon: '/assets/pokemon/skins/armored-mewtwo-front.gif', iconFallback: '/assets/pokemon/skins/armored-mewtwo-front.gif',
+  icon: '/test-sprite-96.gif', iconFallback: '/test-sprite-96.gif',
 }))
 const teams = Array.from({ length: 5 }, (_, index) => ({ id: `team-${index + 1}`, name: `팀 ${index + 1}`, pokemonIds: index ? [] : pokemon.map(entry => entry.captureId) }))
 const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'settings', 'mobileLandscape', 'ranked', 'battleRooms', 'battleFactory', 'gameTextScale', 'scaledBattleCards']
@@ -67,12 +67,15 @@ async function verifyCardText(page, selector, nameSelector = ':scope > strong, :
 let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
+  // Local animated artwork keeps sprite sizing independent of external CDNs.
+  const testSprite = await fs.readFile(path.join(root, 'scripts/fixtures/test-sprite-96.gif'))
   const html = await server.transformIndexHtml('/scaled-cards.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/scaled-cards-entry.js"></script></body></html>')
   for (const device of [{ id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true }].filter(device => !process.env.SCALED_CARDS_UI_DEVICE || device.id === process.env.SCALED_CARDS_UI_DEVICE)) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     await context.addInitScript(fixture => { window.__fixture = fixture; window.__snapshot = fixture.snapshot }, { pokemon, teams, snapshot: initial(), run: { id: 'card-ui-factory', phase: 'selection', floor: 1, offers: pokemon, party: [] } })
     await context.route(/^https:\/\//, route => route.abort())
     await context.route('**/scaled-cards.html', route => route.fulfill({ contentType: 'text/html', body: html }))
+    await context.route('**/test-sprite-96.gif', route => route.fulfill({ contentType: 'image/gif', body: testSprite }))
     const page = await context.newPage()
     const click = locator => device.hasTouch ? locator.tap() : locator.click()
     page.setDefaultTimeout(8000)

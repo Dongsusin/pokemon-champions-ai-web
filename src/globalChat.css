@@ -27,6 +27,7 @@
 .global-chat-preview { display: grid; flex: 1 1 auto; gap: 3px; min-width: 0; }
 .global-chat-preview-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 10px; line-height: 1.35; }
 .global-chat-preview-meta strong { overflow: hidden; color: #c4e8f0; text-overflow: ellipsis; white-space: nowrap; }
+.global-chat-preview-meta .global-chat-title-tag { padding: 0 4px; font-size: 8px; }
 .global-chat-preview-meta time { flex-shrink: 0; color: #8fa8bf; font-variant-numeric: tabular-nums; }
 .global-chat-preview-text { overflow: hidden; font-size: 12px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 .global-chat-chevron { flex-shrink: 0; color: #84b7c7; }
@@ -75,6 +76,7 @@
 .global-chat-message.is-own { border-color: rgba(114, 225, 212, .22); background: rgba(54, 172, 168, .09); }
 .global-chat-message-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 8px; min-width: 0; }
 .global-chat-message-name { min-width: 0; color: #a7e5ee; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.global-chat-title-tag { flex-shrink: 0; padding: 1px 6px; border: 1px solid rgba(255, 213, 128, .35); border-radius: 6px; color: #ffd580; font-size: 9px; line-height: 1.5; letter-spacing: .02em; background: rgba(255, 193, 84, .12); }
 .global-chat-own-label { padding: 1px 5px; border-radius: 5px; color: #8be2d0; font-size: 9px; line-height: 1.45; background: rgba(78, 195, 169, .14); }
 .global-chat-message-time { margin-left: auto; color: #91a9c0; font-size: 10px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .global-chat-message-text { margin: 5px 0 0; color: #e2ecf7; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }

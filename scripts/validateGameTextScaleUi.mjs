@@ -21,8 +21,8 @@ const opponentTeam = [mon(143, ['tackle', 'protect']), mon(68, ['protect']), mon
 const battle = getRankedBattleView(createRankedBattle({ playerTeam, opponentTeam, format: 'single', playerName: '테스트', opponentName: '상대' }), 'player')
 // Local animated artwork makes sprite-size checks independent of external CDNs.
 for (const side of [battle.player, battle.opponent]) for (const pokemon of side.team) {
-  pokemon.spriteFront = '/assets/pokemon/skins/armored-mewtwo-front.gif'
-  pokemon.spriteBack = '/assets/pokemon/skins/armored-mewtwo-back.gif'
+  pokemon.spriteFront = '/test-sprite-96.gif'
+  pokemon.spriteBack = '/test-sprite-96.gif'
   pokemon.spriteFrontFallback = pokemon.spriteFront
   pokemon.spriteBackFallback = pokemon.spriteBack
 }
@@ -121,12 +121,15 @@ async function textColumnCollisions(page, selector) {
 let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
+  // Local animated artwork keeps sprite sizing independent of external CDNs.
+  const testSprite = await fs.readFile(path.join(root, 'scripts/fixtures/test-sprite-96.gif'))
   const html = await server.transformIndexHtml('/text-scale.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/text-scale-entry.js"></script></body></html>')
   for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, screen: { width: 844, height: 390 }, hasTouch: true, isMobile: true }]) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     await context.addInitScript(value => { window.__fixture = value }, { battle, board })
     await context.route(/^https:\/\//, route => route.abort())
     await context.route('**/text-scale.html', route => route.fulfill({ contentType: 'text/html', body: html }))
+    await context.route('**/test-sprite-96.gif', route => route.fulfill({ contentType: 'image/gif', body: testSprite }))
     const page = await context.newPage()
     page.setDefaultTimeout(10_000)
     page.on('pageerror', error => errors.push({ device: device.id, message: error.message }))

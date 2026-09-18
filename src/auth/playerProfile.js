@@ -3,6 +3,7 @@ import { firebaseDb } from './firebaseClient'
 import { createPlayerAccountClient, deletePlayerGameData, requireAccountSessionOwner } from './playerGameData'
 import { isServerGameStorage } from './gameStorageConfig.js'
 import { normalizeTrainerNickname, readTrainerNickname } from '../data/trainerNickname.js'
+import { normalizeTrainerTitle, readTrainerTitle } from '../data/titleData.js'
 
 export function withPlayerNickname(user, profile) {
   // Keep Firebase's original identity separate from the game's public nickname.
@@ -11,6 +12,8 @@ export function withPlayerNickname(user, profile) {
     ...user,
     nickname: !user?.isAnonymous && !user?.isLocalGuest && profile?.uid === user?.uid
       ? readTrainerNickname(profile.nickname) : '',
+    title: !user?.isAnonymous && !user?.isLocalGuest && profile?.uid === user?.uid
+      ? readTrainerTitle(profile.title) : '',
     ...(typeof user?.getIdToken === 'function' ? { getIdToken: user.getIdToken.bind(user) } : {}),
   }
 }
@@ -25,6 +28,20 @@ export async function setPlayerNickname(user, value) {
   const result = await createPlayerAccountClient(user.uid).request('setNickname', { ownerId, nickname })
   if (result?.profile?.uid !== user.uid || result.profile.nickname !== nickname) {
     throw new Error('닉네임 저장 결과를 확인하지 못했습니다. 다시 시도해주세요.')
+  }
+  return result
+}
+
+export async function setPlayerTitle(user, value) {
+  if (!user?.uid || user.isAnonymous || user.isLocalGuest) {
+    throw new Error('게스트는 칭호를 설정할 수 없습니다.')
+  }
+  if (!isServerGameStorage) throw new Error('칭호를 저장할 계정 서버에 연결되지 않았습니다.')
+  const title = normalizeTrainerTitle(value)
+  const ownerId = requireAccountSessionOwner(user.uid)
+  const result = await createPlayerAccountClient(user.uid).request('setTitle', { ownerId, title })
+  if (result?.profile?.uid !== user.uid || readTrainerTitle(result.profile.title) !== title) {
+    throw new Error('칭호 저장 결과를 확인하지 못했습니다. 다시 시도해주세요.')
   }
   return result
 }
@@ -49,7 +66,7 @@ export async function ensurePlayerProfile(user) {
     lastSeenAt: serverTimestamp(),
     ...(!profileSnapshot.exists() ? { createdAt: serverTimestamp() } : {}),
   }, { merge: true })
-  return { profile: { uid: user.uid, nickname: readTrainerNickname(profileSnapshot.data()?.nickname) } }
+  return { profile: { uid: user.uid, nickname: readTrainerNickname(profileSnapshot.data()?.nickname), title: readTrainerTitle(profileSnapshot.data()?.title) } }
 }
 
 export async function deletePlayerProfile(user) {

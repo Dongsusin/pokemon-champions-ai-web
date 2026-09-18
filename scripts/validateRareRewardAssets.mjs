@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { POKEMON_SKINS, RARE_BATTLE_ITEMS, getSkinSpritePresentation } from '../src/data/rareRewards.js'
+import { RARE_BATTLE_ITEMS } from '../src/data/rareRewards.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public')
 const sources = new Map()
@@ -24,22 +24,5 @@ async function dimensions(source) {
   return size
 }
 
-for (const skin of POKEMON_SKINS) {
-  assert.notEqual(skin.spriteFront, skin.spriteBack, 'Battle backs must have their own view')
-  for (const sprite of [skin.spriteFront, skin.spriteBack]) {
-    const presentation = getSkinSpritePresentation(sprite)
-    assert(presentation)
-    const size = await dimensions(presentation.source)
-    if (presentation.frame) {
-      const { x, y, width, height, sheetWidth, sheetHeight } = presentation.frame
-      assert.deepEqual(size, { width: sheetWidth, height: sheetHeight })
-      assert(x >= 0 && y >= 0 && width > 0 && height > 0)
-      assert(x + width <= sheetWidth && y + height <= sheetHeight)
-      // The next artwork row starts immediately after each 90px cell.
-      assert.equal(height, 90, 'Do not expose the neighboring row of the source sheet')
-    }
-  }
-}
 for (const item of RARE_BATTLE_ITEMS) await dimensions(item.sprite)
-assert.equal(getSkinSpritePresentation('https://example.invalid/ordinary.gif'), null)
-console.log(`Rare reward artwork passed: ${POKEMON_SKINS.length * 2} front/back views, ${RARE_BATTLE_ITEMS.length} item, ${sources.size} local files and safe atlas bounds.`)
+console.log(`Rare reward artwork passed: ${RARE_BATTLE_ITEMS.length} item and ${sources.size} local files.`)

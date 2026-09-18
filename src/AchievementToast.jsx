@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowRight, Check, Gift, Trophy, X } from 'lucide-react'
 import SpriteImage from './SpriteImage'
 import { getRareReward } from './data/rareRewards.js'
+import { getTrainerTitle } from './data/titleData.js'
 import './achievementToast.css'
 
 export const ACHIEVEMENT_TOAST_DURATION = 5500
@@ -10,6 +11,8 @@ const EXIT_DURATION = 220
 
 // A notification only represents newly committed grants, never all earned goals.
 // It does not take focus or block play; hover/focus pauses its reading time.
+const hasReward = (definition) => Boolean(definition?.titleId || definition?.rewardId)
+
 export default function AchievementToast({ notification, onDismiss, onOpenAchievements }) {
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -18,7 +21,7 @@ export default function AchievementToast({ notification, onDismiss, onOpenAchiev
   const remaining = useRef(ACHIEVEMENT_TOAST_DURATION)
   const dismissRef = useRef(onDismiss)
   dismissRef.current = onDismiss
-  const entries = [...notification.unlocked].sort((first, second) => Number(Boolean(second.rewardId)) - Number(Boolean(first.rewardId)))
+  const entries = [...notification.unlocked].sort((first, second) => Number(hasReward(second)) - Number(hasReward(first)))
   const visibleEntries = entries.slice(0, 2)
   const bonus = entries.reduce((total, definition) => total + definition.rewardVp, 0)
   const paused = hovered || focused || hidden
@@ -47,7 +50,7 @@ export default function AchievementToast({ notification, onDismiss, onOpenAchiev
 
   return createPortal(
     <aside className="achievement-toast-layer" aria-label="업적 알림 영역">
-      <section className={`achievement-toast${leaving ? ' is-leaving' : ''}${entries.some(entry => entry.rewardId) ? ' has-rare-reward' : ''}`}
+      <section className={`achievement-toast${leaving ? ' is-leaving' : ''}${entries.some(hasReward) ? ' has-rare-reward' : ''}`}
         role="status" aria-live="polite" aria-atomic="true" aria-label="업적 달성 알림"
         onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
         onFocusCapture={() => setFocused(true)}
@@ -59,10 +62,14 @@ export default function AchievementToast({ notification, onDismiss, onOpenAchiev
         </header>
         <ul>
           {visibleEntries.map(definition => {
-            const reward = getRareReward(definition.rewardId)
+            const item = getRareReward(definition.rewardId)
+            const title = getTrainerTitle(definition.titleId)
             return <li key={definition.id}>
-              <span className="achievement-toast-art" aria-hidden="true">{reward ? <SpriteImage src={reward.image} alt="" /> : <Check size={17} />}</span>
-              <div><strong>{definition.title}</strong>{reward && <span>{reward.name} 획득</span>}</div>
+              <span className="achievement-toast-art" aria-hidden="true">{item ? <SpriteImage src={item.image} alt="" /> : <Check size={17} />}</span>
+              <div><strong>{definition.title}</strong>
+                {title && <span>칭호 「{title.name}」 획득</span>}
+                {item && <span>{item.name} 획득</span>}
+              </div>
             </li>
           })}
         </ul>

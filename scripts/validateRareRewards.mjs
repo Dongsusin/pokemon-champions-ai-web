@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
-  POKEMON_SKINS, deriveRareRewardEntitlements, fulfillRareRewardCollection,
-  getPokemonSkin, getRareReward, getUnlockedPokemonSkins, getUnlockedRareItems,
+  deriveRareRewardEntitlements, getRareReward, getUnlockedRareItems,
 } from '../src/data/rareRewards.js'
 import {
   ALL_BATTLE_ITEMS, BATTLE_ITEMS, attemptItemEquip, attemptItemPurchase,
@@ -63,62 +62,12 @@ const turn = (state, playerAction = action(), opposingActions = []) => playBattl
 const legendBattle = (target = 'charizard') => battle([pokemon('arceus', ['judgment', 'protect'], { heldItemId: 'legend-plate' })], [pokemon(target)])
 
 test('hidden rewards have no entitlement until the exact achievement is earned', () => {
-  assert.deepEqual(getUnlockedPokemonSkins({}), [])
   assert.deepEqual(getUnlockedRareItems({}), [])
-  assert.deepEqual(getUnlockedPokemonSkins({ unlocked: { 'flawless-league': true } }), [])
-  assert.deepEqual(deriveRareRewardEntitlements(fullProgress), {
-    skinIds: ['armored-mewtwo', 'shadow-lugia', 'crystal-ho-oh', 'astral-rayquaza'], itemIds: ['legend-plate'],
-  })
+  assert.deepEqual(getUnlockedRareItems({ unlocked: { 'flawless-league': true } }), [])
+  assert.deepEqual(deriveRareRewardEntitlements(fullProgress), { itemIds: ['legend-plate'] })
   assert.equal(getRareReward('legend-plate').kind, 'item')
-  assert.equal(getRareReward('armored-mewtwo').kind, 'skin')
+  assert.equal(getRareReward('armored-mewtwo'), null, 'Cosmetic skins are trainer titles now')
   assert.equal(getRareReward('unknown'), null)
-})
-
-test('skin entitlement is species-specific and fulfillment is reload-safe and idempotent', () => {
-  assert.equal(getUnlockedPokemonSkins(fullProgress, { speciesId: 25 }).length, 0)
-  assert.deepEqual(getUnlockedPokemonSkins(fullProgress, { speciesId: 150 }).map((entry) => entry.id), ['armored-mewtwo'])
-  const initial = [pokemon('mewtwo')]
-  const granted = fulfillRareRewardCollection(fullProgress, initial)
-  assert.equal(granted.grantedPokemon.length, 3)
-  assert.equal(initial.length, 1, 'Grant calculation must not mutate the input collection')
-  assert(granted.grantedPokemon.every((entry) => entry.captureId === `dex-${entry.speciesId}`))
-  assert(granted.grantedPokemon.every((entry) => getPokemonSkin(normalizePokemon(entry).skinId)))
-  const retried = fulfillRareRewardCollection(fullProgress, granted.collection)
-  assert.equal(retried.collection, granted.collection)
-  assert.deepEqual(retried.grantedPokemon, [])
-  const empty = []
-  assert.equal(fulfillRareRewardCollection({}, empty).collection, empty)
-})
-
-for (const skin of POKEMON_SKINS) {
-  test(`${skin.id} changes only appearance and works with shiny ownership`, () => {
-    const basic = normalizePokemon({ speciesId: skin.baseSpeciesId, isShiny: true, shinyObtained: true })
-    const styled = normalizePokemon({ ...basic, skinId: skin.id })
-    assert.equal(styled.skinId, skin.id)
-    assert.equal(styled.spriteFront, skin.spriteFront)
-    assert.equal(styled.spriteBack, skin.spriteBack)
-    assert.equal(styled.image, skin.spriteFront)
-    assert.equal(styled.icon, skin.spriteFront)
-    assert.equal(styled.isShiny, true)
-    assert.equal(styled.shinyObtained, true)
-    assert.deepEqual(calculateStats(styled), calculateStats(basic))
-    for (const key of ['speciesId', 'types', 'ability', 'moves', 'trainingPoints', 'nature']) assert.deepEqual(styled[key], basic[key])
-    assert.equal(normalizePokemon({ ...styled, speciesId: 25 }).skinId, null)
-    assert.equal(normalizePokemon({ ...styled, skinId: null }).spriteFront, basic.spriteFront)
-  })
-}
-
-test('armored appearance remains cosmetic through Mega Evolution and battle snapshots', () => {
-  const plain = battle([pokemon('mewtwo', ['protect'], { heldItemId: 'mewtwonite-x' })])
-  const skinned = battle([pokemon('mewtwo', ['protect'], { heldItemId: 'mewtwonite-x', skinId: 'armored-mewtwo' })])
-  assert.equal(skinned.player.team[0].spriteBack, getPokemonSkin('armored-mewtwo').spriteBack)
-  const normalResult = turn(plain, action(0, 'mega'))
-  const skinResult = turn(skinned, action(0, 'mega'))
-  assert.equal(skinResult.player.team[0].megaActive, true)
-  assert.equal(skinResult.player.team[0].skinId, 'armored-mewtwo')
-  assert.equal(skinResult.player.team[0].spriteFront, getPokemonSkin('armored-mewtwo').spriteFront)
-  assert.deepEqual(skinResult.player.team[0].stats, normalResult.player.team[0].stats)
-  assert.deepEqual(skinResult.player.team[0].ability, normalResult.player.team[0].ability)
 })
 
 test('Legend Plate never enters normal purchase, complete inventory, or AI loadouts', () => {

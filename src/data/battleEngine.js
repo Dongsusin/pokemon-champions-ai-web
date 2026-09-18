@@ -4241,7 +4241,6 @@ function applyTransform(state, attacker, defender) {
       spriteBack: attacker.spriteBack,
       spriteFrontFallback: attacker.spriteFrontFallback,
       spriteBackFallback: attacker.spriteBackFallback,
-      skinId: attacker.skinId,
     }
   }
 
@@ -4261,7 +4260,6 @@ function applyTransform(state, attacker, defender) {
   attacker.spriteBack = defender.spriteBack
   attacker.spriteFrontFallback = defender.spriteFrontFallback
   attacker.spriteBackFallback = defender.spriteBackFallback
-  attacker.skinId = defender.skinId ?? null
   appendLog(state, `${attacker.transformSnapshot.name}은(는) ${defender.name}의 모습으로 변신했다!`, 'status')
   emitFormChangeTimeline(state, attacker, previousSnapshot, '변신')
   return true
@@ -5419,13 +5417,6 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
   pokemon.maxHp = nextMaxHp
   pokemon.hp = previousHp <= 0 ? 0 : Math.max(1, Math.min(nextMaxHp, Math.ceil(preservedHp)))
   Object.assign(pokemon, battleFormSprites(form, transformed, pokemon.isShiny))
-  pokemon.skinId = transformed.skinId
-  if (transformed.skinId) {
-    pokemon.spriteFront = transformed.spriteFront
-    pokemon.spriteBack = transformed.spriteBack
-    pokemon.spriteFrontFallback = transformed.spriteFrontFallback
-    pokemon.spriteBackFallback = transformed.spriteBackFallback
-  }
 
   if (options.log !== false) {
     appendLog(state, `${pokemon.name}의 ${sourceName}! ${previousName}에서 모습이 변했다!`, 'ability')

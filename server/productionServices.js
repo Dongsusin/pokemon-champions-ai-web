@@ -1,17 +1,21 @@
 import { createFirestoreRankedStore } from './rankedStore.js'
 import { createGuestIdentityRegistry, rankedIdentityFromVerifiedToken } from './guestIdentity.js'
 import { readTrainerNickname } from '../src/data/trainerNickname.js'
+import { readTrainerTitle } from '../src/data/titleData.js'
 import { containsChatProfanity } from './chatModeration.js'
 
 export const NICKNAME_CACHE_MS = 15_000
 const NICKNAME_CACHE_MAX_ENTRIES = 2000
 
+// One profile read serves both public labels: the nickname and the title shown
+// beside it in chat.
 export function createVerifiedNicknameReader({ accountStore, now = Date.now }) {
   const cache = new Map()
+  const empty = { nickname: '', title: '' }
   return async (uid, { fresh = false } = {}) => {
-    if (!accountStore) return ''
+    if (!accountStore) return empty
     const previous = cache.get(uid)
-    if (!fresh && previous?.expiresAt > now()) return previous.nickname
+    if (!fresh && previous?.expiresAt > now()) return previous.labels
     if (!fresh && previous?.pending) return previous.pending
     // Forced reads start a new transaction rather than joining an older lookup
     // that may have started before the user's nickname update committed.
@@ -23,13 +27,16 @@ export function createVerifiedNicknameReader({ accountStore, now = Date.now }) {
     cache.set(uid, entry)
     entry.pending = accountStore.transaction(tx => tx.get('profiles', uid)).then(profile => {
       const normalized = readTrainerNickname(profile?.nickname)
-      const nickname = containsChatProfanity(normalized) ? '' : normalized
+      const labels = {
+        nickname: containsChatProfanity(normalized) ? '' : normalized,
+        title: readTrainerTitle(profile?.title),
+      }
       if (cache.get(uid) === entry) {
-        entry.nickname = nickname
+        entry.labels = labels
         entry.expiresAt = now() + NICKNAME_CACHE_MS
         entry.pending = null
       }
-      return nickname
+      return labels
     }).catch(error => { if (cache.get(uid) === entry) cache.delete(uid); throw error })
     return entry.pending
   }
@@ -96,8 +103,10 @@ export async function initializeProductionServices({ env = process.env, loadModu
       // particular, lease heartbeats and autosaves must add no nickname query.
       let accountRequest = false
       try { accountRequest = new URL(request?.url).pathname === '/api/account' } catch { /* Direct service tests have no URL. */ }
-      const nickname = identity.isGuest || accountRequest ? '' : await readNickname(identity.uid, { fresh: freshNickname === true })
-      return { ...identity, nickname, accountProfile: {
+      const labels = identity.isGuest || accountRequest
+        ? { nickname: '', title: '' }
+        : await readNickname(identity.uid, { fresh: freshNickname === true })
+      return { ...identity, nickname: labels.nickname, title: labels.title, accountProfile: {
         email: verified.email ?? null, displayName: verified.name ?? null, photoURL: verified.picture ?? null,
         providerIds: typeof providerId === 'string' ? [providerId] : [],
       } }

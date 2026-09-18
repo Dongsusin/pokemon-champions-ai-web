@@ -16,6 +16,7 @@ import {
 export default function BattleFactoryScreen({
   run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
   playerGender = 'male', playerName, audioSettings = {}, onToggleSound, onOpenSettings, onVpReward,
+  onFactoryBestFloor,
 }) {
   const currentRun = useRef(run)
   currentRun.current = run
@@ -28,6 +29,13 @@ export default function BattleFactoryScreen({
   useEffect(() => {
     if (run?.phase === 'finished') ranking.recordRun(run)
   }, [run, ranking.recordRun])
+
+  // A record set before titles existed still counts: report the stored personal
+  // best once the leaderboard loads so its achievement settles retroactively.
+  const bestFloor = ranking.ownBest?.floor ?? 0
+  useEffect(() => {
+    if (bestFloor > 0) onFactoryBestFloor?.(bestFloor)
+  }, [bestFloor, onFactoryBestFloor])
 
   useEffect(() => {
     if (run) return

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import TrainerSprite from './TrainerSprite'
 import { TRAINERS } from './data/trainerTeams.js'
-import { getPokemonSkin } from './data/rareRewards.js'
+import { getTrainerTitle } from './data/titleData.js'
 import { getBattleItem } from './data/shopData.js'
 import {
   ACHIEVEMENTS,
@@ -65,25 +65,33 @@ function rewardDefinitions(unlocked) {
   )).filter(Boolean)
 }
 
-function getRevealedReward(definition) {
-  if (!definition?.rewardId) return null
-  const skin = getPokemonSkin(definition.rewardId)
-  if (skin) return { ...skin, image: skin.image ?? skin.spriteFront, kind: '특별 스킨' }
-  const item = getBattleItem(definition.rewardId)
-  return item ? { ...item, image: item.sprite, kind: '희귀 배틀 도구' } : null
+// An achievement can carry a title, a rare item, or both.
+function getRevealedRewards(definition) {
+  if (!definition) return []
+  const title = getTrainerTitle(definition.titleId)
+  const item = definition.rewardId ? getBattleItem(definition.rewardId) : null
+  return [
+    ...(title ? [{ ...title, image: null, kind: '칭호' }] : []),
+    ...(item ? [{ ...item, image: item.sprite, kind: '희귀 배틀 도구' }] : []),
+  ]
 }
+const hasRevealedReward = (definition) => Boolean(definition?.titleId || definition?.rewardId)
 
-function RevealedReward({ definition, compact = false }) {
-  const reward = getRevealedReward(definition)
+function RevealedRewardEntry({ reward, compact }) {
   const [imageFailed, setImageFailed] = useState(false)
-  useEffect(() => setImageFailed(false), [reward?.image])
-  if (!reward) return null
+  useEffect(() => setImageFailed(false), [reward.image])
   return (
     <div className={`achievement-revealed-reward${compact ? ' achievement-reward-compact' : ''}`}>
       <span className="achievement-reward-art" aria-hidden="true">{reward.image && !imageFailed ? <SpriteImage src={reward.image} alt="" loading="lazy" onError={() => setImageFailed(true)} /> : <Gift size={24} />}</span>
-      <div><small>{reward.kind} 획득</small><strong>{reward.name}</strong>{!compact && <p>{reward.description ?? reward.effect}</p>}{reward.artCredit && <small className="achievement-art-credit">스프라이트: {reward.artCredit}</small>}</div>
+      <div><small>{reward.kind} 획득</small><strong>{reward.name}</strong>{!compact && <p>{reward.description ?? reward.effect}</p>}</div>
     </div>
   )
+}
+
+function RevealedReward({ definition, compact = false }) {
+  const rewards = getRevealedRewards(definition)
+  if (rewards.length === 0) return null
+  return rewards.map((reward) => <RevealedRewardEntry key={`${reward.kind}:${reward.id}`} reward={reward} compact={compact} />)
 }
 
 function AchievementCard({ definition, record }) {
@@ -116,7 +124,7 @@ function AchievementCard({ definition, record }) {
           <span style={{ width: `${ratio}%` }} />
         </div>
       </div>
-      {record.completed && definition.rewardId && <RevealedReward definition={definition} compact />}
+      {record.completed && hasRevealedReward(definition) && <RevealedReward definition={definition} compact />}
       <footer className="achievement-card-footer">
         {isSealedReward ? <strong className="achievement-sealed-reward" aria-label="미공개 보상">?</strong> : <strong className="achievement-vp-reward"><Zap size={14} fill="currentColor" /> {formatNumber(definition.rewardVp)} <small>VP</small></strong>}
         {record.completed ? (
@@ -141,7 +149,7 @@ export function AchievementCatalog({ progress, onBack, balance = 0, embedded = f
   const completedRewardVp = completedEntries.reduce((sum, { definition }) => sum + definition.rewardVp, 0)
   const completionPercent = Math.round(completedEntries.length / Math.max(1, entries.length) * 100)
   const trainerCompleted = completedEntries.filter(({ definition }) => definition.trainerId).length
-  const revealedRewards = completedEntries.filter(({ definition }) => definition.rewardId)
+  const revealedRewards = completedEntries.filter(({ definition }) => hasRevealedReward(definition))
   const categoryCounts = useMemo(() => Object.fromEntries(ACHIEVEMENT_CATEGORIES.map((entry) => [
     entry.id, entries.filter(({ definition }) => definition.category === entry.id).length,
   ])), [entries])
@@ -153,8 +161,9 @@ export function AchievementCatalog({ progress, onBack, balance = 0, embedded = f
       if (status === 'in-progress' && record.completed) return false
       if (!search) return true
       const trainer = TRAINER_BY_ID.get(definition.trainerId)
-      const revealedName = record.completed ? getRevealedReward(definition)?.name : ''
-      return [definition.title, definition.description, trainer?.name, trainer?.alias, revealedName]
+      // Only an earned reward is searchable, so a sealed one stays hidden.
+      const revealedNames = record.completed ? getRevealedRewards(definition).map((reward) => reward.name) : []
+      return [definition.title, definition.description, trainer?.name, trainer?.alias, ...revealedNames]
         .some((text) => normalizeSearch(text).includes(search))
     })
     // Only public progress and titles participate in ordering. A sealed reward's
@@ -262,7 +271,7 @@ export function AchievementBattleRewards({ unlocked = [], baseVp = 0, rewardVp }
   return (
     <section className="achievement-battle-rewards" aria-label="이번 배틀에서 달성한 업적">
       <header><span><Trophy size={16} /> 새 업적 {definitions.length}개 달성</span><strong>+{formatNumber(bonus)} VP</strong></header>
-      <ul tabIndex={0} aria-label="이번 배틀 업적 보상 목록">{definitions.map((entry) => <li className={entry.rewardId ? 'achievement-battle-rare' : ''} key={entry.id}><Check size={13} /><div className="achievement-battle-reward-copy"><span>{entry.title}</span>{entry.rewardId && <RevealedReward definition={entry} compact />}</div><strong>+{formatNumber(entry.rewardVp)} VP</strong></li>)}</ul>
+      <ul tabIndex={0} aria-label="이번 배틀 업적 보상 목록">{definitions.map((entry) => <li className={hasRevealedReward(entry) ? 'achievement-battle-rare' : ''} key={entry.id}><Check size={13} /><div className="achievement-battle-reward-copy"><span>{entry.title}</span>{hasRevealedReward(entry) && <RevealedReward definition={entry} compact />}</div><strong>+{formatNumber(entry.rewardVp)} VP</strong></li>)}</ul>
       <footer><span>승리 보상 {formatNumber(baseVp)} VP + 업적 보상</span><strong>총 +{formatNumber(Number(baseVp) + bonus)} VP 지급</strong></footer>
     </section>
   )
