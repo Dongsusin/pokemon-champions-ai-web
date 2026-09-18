@@ -237,14 +237,17 @@ function buildTrainerTeam(profile, variant) {
   const specialist = rotate(specialistPool(profile), seed + variant * 5)
   const regional = rotate(REGION_POOLS[profile.region] ?? REGION_POOLS.international, seed + variant * 7)
   const synergy = rotate(synergyPool(profile), seed + variant * 11)
+  // Right behind the ace, so the widened roster always survives the six-slot
+  // cut instead of losing to the competitive pools further down the list.
+  const extra = profile.extra[variant] ? [profile.extra[variant]] : []
   let candidates
 
   if (variant === 0) {
-    candidates = [ace, ...rotatedCanon, ...competitive, ...specialist, ...profile.support, ...regional, ...DEFAULT_SYNERGY_POOL]
+    candidates = [ace, ...extra, ...rotatedCanon, ...competitive, ...specialist, ...profile.support, ...regional, ...DEFAULT_SYNERGY_POOL]
   } else if (variant === 1) {
-    candidates = [ace, ...rotatedCanon.slice(0, 2), ...competitive, ...specialist, ...profile.support, ...regional, ...synergy]
+    candidates = [ace, ...extra, ...rotatedCanon.slice(0, 2), ...competitive, ...specialist, ...profile.support, ...regional, ...synergy]
   } else {
-    candidates = [ace, ...rotatedCanon.slice(2, 4), ...profile.support, ...synergy, ...competitive, ...specialist, ...regional]
+    candidates = [ace, ...extra, ...rotatedCanon.slice(2, 4), ...profile.support, ...synergy, ...competitive, ...specialist, ...regional]
   }
 
   return applyLegendaryRule(profile, variant, assembleTeam(candidates), candidates)
@@ -281,6 +284,14 @@ function validateBlueprints() {
 
     for (const slug of unique([profile.ace, ...profile.canon, ...profile.support])) {
       resolvePokemon(slug)
+    }
+
+    // Extras take an ordinary slot, so a legendary there would collide with the
+    // one-legendary-per-team rule below.
+    for (const slug of profile.extra) {
+      if (isLegendaryPokemon(resolvePokemon(slug))) {
+        throw new Error(`${profile.name} lists a legendary Pokemon as an extra: ${slug}`)
+      }
     }
 
     const association = LEGENDARY_ASSOCIATIONS[profile.name]

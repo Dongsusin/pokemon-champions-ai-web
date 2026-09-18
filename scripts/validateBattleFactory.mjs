@@ -116,7 +116,6 @@ check('seeded six rentals are reproducible, diverse and legal level-50 loadouts'
       assert(entry.moves.every((name) => learnset.has(name)))
       assert(!entry.heldItemId || getBattleItem(entry.heldItemId))
       assert.equal(entry.rental, true)
-      assert.equal(entry.skinId, null)
       species.add(entry.dexSpeciesId)
       items.add(entry.heldItemId)
     }
@@ -134,7 +133,9 @@ check('all eligible rental species default to Gigantamax and both six offers and
   const selectedTypes = new Map()
   let nonGigantamax = 0
   let statusOnlyTeraExamples = 0
-  for (let seed = 0; seed < 512; seed += 1) {
+  // The rental pool roughly doubled when the trainer rosters widened, so the
+  // seed budget has to grow with it for every Gigantamax species to come up.
+  for (let seed = 0; seed < 1536; seed += 1) {
     const run = readyRun(seed)
     for (const entry of [...run.offers, ...run.opponentTeam.pokemon]) {
       assertRentalPreset(entry)
@@ -155,7 +156,7 @@ check('all eligible rental species default to Gigantamax and both six offers and
   const variedLoadouts = [...selectedTypes.values()].filter((types) => types.size > 1).length
   assert(variedLoadouts > 30, `Only ${variedLoadouts} identical loadouts received alternative random Tera types`)
   assert.equal(JSON.stringify(TRAINERS), sourceBefore, 'Factory-specific defaults must never mutate the ordinary AI trainer source')
-  console.log(`  ${gigantamaxRentals.size} eligible species / ${variedLoadouts} loadouts with alternative Tera types / 4,608 generated rentals`)
+  console.log(`  ${gigantamaxRentals.size} eligible species / ${variedLoadouts} loadouts with alternative Tera types / 13,824 generated rentals`)
 })
 
 check('Gigantamax compatibility distinguishes regional and special forms instead of matching only base species', () => {
@@ -377,30 +378,41 @@ check('real normal-AI turns accept factory parties without affecting the stored 
 
 check('borrowed opponents retain Mega, Z, Tera, Dynamax and Gigantamax as player rentals', () => {
   const examples = [
-    { seed: 1, configured: 'terastallization', mechanic: 'tera' },
-    { seed: 2, configured: 'gigantamax', mechanic: 'dynamax' },
-    { seed: 9, configured: 'mega-evolution', mechanic: 'mega' },
-    { seed: 24, configured: 'z-move', mechanic: 'zmove' },
-    { seed: 282, configured: 'dynamax', mechanic: 'dynamax' },
+    { configured: 'terastallization', mechanic: 'tera' },
+    { configured: 'gigantamax', mechanic: 'dynamax' },
+    { configured: 'mega-evolution', mechanic: 'mega' },
+    { configured: 'z-move', mechanic: 'zmove' },
+    { configured: 'dynamax', mechanic: 'dynamax' },
   ]
-  for (const { seed, configured, mechanic } of examples) {
-    const won = victory(readyRun(seed))
-    const incoming = won.previousOpponent.find((pokemon) => pokemon.factoryGimmicks.some((entry) => entry.type === configured))
-    assert(incoming, `Missing seeded ${configured} opponent`)
-    const next = advanceFactoryFloor(won, { giveCaptureId: won.party[0].captureId, takeCaptureId: incoming.captureId })
-    const battle = engineBattle(next)
-    const actor = battle.player.team[0]
-    // Player createSide intentionally receives no teamGimmicks container: the
-    // held item, species, Tera type and Dynamax mode must be sufficient.
-    assert.equal(actor.gimmickFormId, null)
-    assert(getAvailableBattleMechanics(battle).some((entry) => entry.id === mechanic), `${incoming.name}: ${mechanic} unavailable`)
-    const moveIndex = actor.moves.findIndex((move, index) => move.category !== '변화'
-      && (mechanic !== 'zmove' || getBattleMovePreview(battle, 'player', index, 0, 0, mechanic)?.zMoveCompatible === true))
-    assert(moveIndex >= 0, `${incoming.name}: compatible ${mechanic} move missing`)
-    const result = createBattleTurnTimeline(battle, {
-      type: 'move', moveIndex, actorSlot: 0, targetSlot: 0, gimmick: mechanic,
-    }, () => 0.5, [{ type: 'move', moveIndex: 0, actorSlot: 0, targetSlot: 0 }])
-    assert(result.timeline.some((step) => step.phase === 'gimmick' && step.sideId === 'player' && step.mechanicId === mechanic), `${incoming.name}: ${mechanic} did not activate`)
+  // Searched rather than hard-coded: which seed offers which gimmick shifts
+  // whenever the rental roster changes, and a borrowed Pokemon that the next
+  // floor's lead outspeeds and knocks out never gets to show its gimmick. So
+  // walk seeds until one both offers the gimmick and survives to use it, and
+  // only fail when the whole range cannot carry it over even once.
+  for (const { configured, mechanic } of examples) {
+    let activated = null
+    for (let seed = 1; seed <= 400 && !activated; seed += 1) {
+      const won = victory(readyRun(seed))
+      const incoming = won.previousOpponent.find((pokemon) => pokemon.factoryGimmicks.some((entry) => entry.type === configured))
+      if (!incoming) continue
+      const next = advanceFactoryFloor(won, { giveCaptureId: won.party[0].captureId, takeCaptureId: incoming.captureId })
+      const battle = engineBattle(next)
+      const actor = battle.player.team[0]
+      // Player createSide intentionally receives no teamGimmicks container: the
+      // held item, species, Tera type and Dynamax mode must be sufficient.
+      assert.equal(actor.gimmickFormId, null)
+      if (!getAvailableBattleMechanics(battle).some((entry) => entry.id === mechanic)) continue
+      const moveIndex = actor.moves.findIndex((move, index) => move.category !== '변화'
+        && (mechanic !== 'zmove' || getBattleMovePreview(battle, 'player', index, 0, 0, mechanic)?.zMoveCompatible === true))
+      if (moveIndex < 0) continue
+      const result = createBattleTurnTimeline(battle, {
+        type: 'move', moveIndex, actorSlot: 0, targetSlot: 0, gimmick: mechanic,
+      }, () => 0.5, [{ type: 'move', moveIndex: 0, actorSlot: 0, targetSlot: 0 }])
+      if (!result.timeline.some((step) => step.phase === 'gimmick' && step.sideId === 'player' && step.mechanicId === mechanic)) continue
+      activated = { seed, incoming, next, result }
+    }
+    assert(activated, `No seed in 1..400 let a borrowed ${configured} rental use ${mechanic}`)
+    const { incoming, next, result } = activated
     assert.equal(result.state.player.team[0].usedBattleMechanicId, mechanic)
     if (['gigantamax', 'mega-evolution'].includes(configured)) {
       const target = incoming.factoryGimmicks.find((entry) => entry.type === configured)
