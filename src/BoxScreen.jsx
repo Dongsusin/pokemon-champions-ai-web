@@ -27,7 +27,10 @@ import BattleItemSprite from './BattleItemSprite'
 import PokemonSprite from './PokemonSprite'
 import { useIsCompactLayout } from './useMobileLayout'
 import {
+  DRAW_RARITY_ORDER,
+  RARITY_META,
   getPokemonEvolutionFamilyKey,
+  getPokemonRarity,
   getTrainingRosterPokemon,
 } from './data/pokemonPool'
 import {
@@ -145,6 +148,7 @@ function BoxScreen({
   const [rosterSort, setRosterSort] = useState('obtained')
   const [rosterPage, setRosterPage] = useState(0)
   const [typeFilter, setTypeFilter] = useState('all')
+  const [rarityFilter, setRarityFilter] = useState('all')
   const [teamFilter, setTeamFilter] = useState('all')
   const [showShiny, setShowShiny] = useState(false)
   const [itemPickerOpen, setItemPickerOpen] = useState(false)
@@ -170,6 +174,20 @@ function BoxScreen({
       .sort((left, right) => left.localeCompare(right, 'ko-KR')),
     [trainingPokemon],
   )
+
+  // Grades come from the same table the draw screen uses, so "EX · 전설·환상"
+  // means the same thing in the box as it does on the banner. Counting them
+  // here turns the picker into a tally of what the player actually owns.
+  const rosterRarities = useMemo(() => {
+    const counts = new Map()
+    for (const entry of trainingPokemon) {
+      const rarity = getPokemonRarity(getSpeciesProfile(entry.speciesId))
+      counts.set(rarity, (counts.get(rarity) ?? 0) + 1)
+    }
+    return [...DRAW_RARITY_ORDER].reverse()
+      .filter((rarity) => counts.has(rarity))
+      .map((rarity) => ({ rarity, label: RARITY_META[rarity].label, count: counts.get(rarity) }))
+  }, [trainingPokemon])
   const filteredRoster = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('ko-KR')
 
@@ -184,11 +202,12 @@ function BoxScreen({
         || teamMember?.name.toLocaleLowerCase('ko-KR').includes(normalizedSearch)
         || String(teamMemberProfile?.id ?? '').includes(normalizedSearch.replace(/^#/, ''))
       const typeMatches = typeFilter === 'all' || entry.types?.includes(typeFilter)
+      const rarityMatches = rarityFilter === 'all' || getPokemonRarity(profile) === rarityFilter
       const teamMatches = teamFilter === 'all'
         || (teamFilter === 'in-team' && isInTeam)
         || (teamFilter === 'available' && !isInTeam)
 
-      return searchMatches && typeMatches && teamMatches
+      return searchMatches && typeMatches && rarityMatches && teamMatches
     })
 
     if (rosterSort === 'obtained') return matchingRoster
@@ -197,7 +216,7 @@ function BoxScreen({
       const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
       return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
     })
-  }, [rosterSort, search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
+  }, [rarityFilter, rosterSort, search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
 
   // Compact layouts show one screenful at a time instead of scrolling the
   // whole box: six columns by two rows, paged.
@@ -554,6 +573,16 @@ function BoxScreen({
               <select value={typeFilter} aria-label="포켓몬 타입 필터" onChange={(event) => setTypeFilter(event.target.value)}>
                 <option value="all">전체 타입</option>
                 {rosterTypes.map((type) => <option value={type} key={type}>{type}</option>)}
+              </select>
+            </label>
+
+            <label className="team-box-type-filter team-box-rarity-filter">
+              <span>등급</span>
+              <select value={rarityFilter} aria-label="포켓몬 등급 필터" onChange={(event) => setRarityFilter(event.target.value)}>
+                <option value="all">전체 등급</option>
+                {rosterRarities.map(({ rarity, label, count }) => (
+                  <option value={rarity} key={rarity}>{label} · {count}마리</option>
+                ))}
               </select>
             </label>
 
