@@ -107,10 +107,20 @@ try {
     const tap = locator => (phone ? locator.tap() : locator.click())
     try {
       await page.goto(`${origin}/factory-challenge.html`)
-      await page.locator('.factory-tp-panel').waitFor()
+      // The spending panel now opens from the action bar rather than filling the screen.
+      const manage = page.locator('.factory-team-manage')
+      await manage.waitFor()
+      const manageBadge = await manage.innerText()
+      if (!manageBadge.includes('팀 관리')) failures.push({ size, note: `manage button label: ${manageBadge}` })
+      if (await page.locator('.factory-team-manager').count() !== 0) {
+        failures.push({ size, note: 'The panel must stay closed until it is opened' })
+      }
+      await page.screenshot({ path: path.join(output, `${size}-closed.png`), fullPage: true })
+      await tap(manage)
+      await page.locator('.factory-team-manager').waitFor()
 
       const balance = await page.locator('.factory-tp-balance strong').innerText()
-      const meters = await page.locator('.factory-tp-panel .factory-card-health b').allInnerTexts()
+      const meters = await page.locator('.factory-team-manager .factory-card-health b').allInnerTexts()
       console.log(`\n=== ${size} ===`)
       console.log(`  TP ${balance} · 팀 상태 ${meters.join(' / ')}`)
       if (balance !== '120') failures.push({ size, note: `TP balance showed ${balance}` })
@@ -124,12 +134,12 @@ try {
 
       // Healing the fainted ally must spend exactly its listed price.
       const healButtons = page.locator('.factory-tp-buttons button', { hasText: '회복' })
-      const faintedRow = page.locator('.factory-tp-panel li').filter({ hasText: '기절' })
+      const faintedRow = page.locator('.factory-team-manager li').filter({ hasText: '기절' })
       const healLabel = await faintedRow.locator('button', { hasText: '회복' }).innerText()
       const price = Number(healLabel.match(/(\d+)/)?.[1] ?? 0)
       await tap(faintedRow.locator('button', { hasText: '회복' }))
       await page.waitForFunction(value => document.querySelector('.factory-tp-balance strong')?.textContent === value, String(120 - price))
-      const afterHeal = await page.locator('.factory-tp-panel .factory-card-health b').allInnerTexts()
+      const afterHeal = await page.locator('.factory-team-manager .factory-card-health b').allInnerTexts()
       console.log(`  회복 ${price} TP 사용 → 잔액 ${await page.locator('.factory-tp-balance strong').innerText()} · ${afterHeal.join(' / ')}`)
       if (afterHeal.includes('기절')) failures.push({ size, note: 'Healing left the ally fainted' })
 
@@ -143,19 +153,26 @@ try {
       console.log(`  도구 변경: ${itemBefore.trim()} → ${itemAfter.trim()} · 잔액 ${balanceAfter}`)
       if (balanceBefore - balanceAfter !== 25) failures.push({ size, note: `reroll charged ${balanceBefore - balanceAfter}` })
 
-      // Everything the panel offers must sit inside the frame.
-      const clipped = await page.locator('.factory-tp-panel').evaluate(element => {
+      // A floating panel must stay wholly inside the frame at every size.
+      const clipped = await page.locator('.factory-team-manager').evaluate(element => {
         const bounds = element.getBoundingClientRect()
-        return bounds.left < -1 || bounds.right > innerWidth + 1
+        return bounds.left < -1 || bounds.right > innerWidth + 1 || bounds.top < -1 || bounds.bottom > innerHeight + 1
       })
-      if (clipped) failures.push({ size, note: 'The Tower Point panel runs past the frame' })
+      if (clipped) failures.push({ size, note: 'The team manager runs past the frame' })
       await page.screenshot({ path: path.join(output, `${size}-after-spending.png`), fullPage: true })
-      console.log(`  패널 프레임 안: ${clipped ? 'NO' : 'yes'}`)
+
+      // Escape closes it and hands focus back to the button that opened it.
+      await page.keyboard.press('Escape')
+      await page.locator('.factory-team-manager').waitFor({ state: 'detached' })
+      const focused = await page.evaluate(() => document.activeElement?.className ?? '')
+      if (!focused.includes('factory-team-manage')) failures.push({ size, note: `focus went to ${focused}` })
+      console.log(`  패널 프레임 안: ${clipped ? 'NO' : 'yes'} · Esc 닫기/포커스 복귀: ${focused.includes('factory-team-manage') ? 'yes' : 'NO'}`)
     } catch (error) {
       failures.push({ size, note: String(error.message).split('\n')[0] })
       // What actually sits under the button tells us whether it is off-screen or covered.
       const diagnosis = await page.evaluate(() => {
         const button = [...document.querySelectorAll('.factory-tp-buttons button')].find(entry => entry.textContent.includes('회복'))
+          ?? document.querySelector('.factory-team-manage')
         if (!button) return { button: null }
         const rect = button.getBoundingClientRect()
         const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)

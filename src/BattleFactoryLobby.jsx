@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ArrowRight, Check, ChevronUp, Coins, Dices, Factory, Flag, Heart, HeartPulse, Info, Layers3, RefreshCw, Shuffle, Swords, Trophy, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronUp, Coins, Factory, Flag, Heart, Info, Layers3, RefreshCw, Shuffle, Swords, Trophy, X } from 'lucide-react'
 import SpriteImage from './SpriteImage'
 import BattleItemSprite from './BattleItemSprite'
 import FactoryInfoTooltip from './FactoryInfoTooltip'
+import FactoryTeamManager, { FactoryHealthMeter as HealthMeter } from './FactoryTeamManager'
 import { createBattlePreviewPokemon } from './data/battleEngine'
 import { getBattleFactoryVpReward } from './data/battleFactoryRewards'
 import { getBattleItem } from './data/shopData'
@@ -63,16 +64,6 @@ export function RentalDetails({ pokemon, onClose }) {
   </dialog>, document.body)
 }
 
-function HealthMeter({ pokemon }) {
-  const ratio = getFactoryHpRatio(pokemon)
-  const percent = Math.round(ratio * 100)
-  const tone = ratio <= 0 ? 'fainted' : ratio <= 0.25 ? 'critical' : ratio <= 0.5 ? 'warning' : 'healthy'
-  return <span className={`factory-card-health tone-${tone}`} aria-label={`체력 ${percent}%`}>
-    <span className="factory-card-health-track"><i style={{ width: `${percent}%` }} /></span>
-    <b>{ratio <= 0 ? '기절' : `${percent}%`}</b>
-  </span>
-}
-
 function RentalCard({ pokemon, order, selected = false, disabled = false, onSelect, onDetails, label, compact = false, selectAriaLabel, selectedLabel = '선택', showHealth = false, showRarity = false, footer = null }) {
   const profile = getSpeciesProfile(pokemon.speciesId)
   const item = getBattleItem(pokemon.heldItemId)
@@ -106,39 +97,6 @@ function FloorRail({ run }) {
     </li>)}</ol>
     <div className="factory-trainer"><div className="factory-trainer-image"><img src={TRAINER_IMAGE} alt="배틀팩토리 AI 트레이너" /></div><span><small>FACTORY TRAINER</small><strong>팩토리 AI 트레이너</strong><em>매 층, 새로운 랜덤 팀</em></span></div>
   </aside>
-}
-
-// The TP counter and the actions it pays for. Every button states its price and
-// disables itself when the run cannot afford it, so a click never fails.
-function TowerPointPanel({ run, onHeal, onRerollItem }) {
-  const party = run.party ?? []
-  const points = run.towerPoints ?? 0
-  return <section className="factory-tp-panel" aria-label="타워 포인트 사용">
-    <header>
-      <span className="factory-tp-balance"><Coins size={17} /><strong>{points}</strong><small>TP</small></span>
-      <p>승리할수록 더 많은 TP를 받습니다. 이번 도전에서만 사용할 수 있고, 패배하면 사라집니다.</p>
-    </header>
-    <ul className="factory-tp-actions">
-      {party.map(pokemon => {
-        const healCost = getFactoryHealCost(pokemon)
-        const healed = healCost === 0
-        return <li key={pokemon.captureId}>
-          <span className="factory-tp-name">
-            <strong>{nameOf(pokemon)}</strong>
-            <HealthMeter pokemon={pokemon} />
-          </span>
-          <span className="factory-tp-buttons">
-            <button type="button" disabled={healed || points < healCost} onClick={() => onHeal(pokemon.captureId)}>
-              <HeartPulse size={15} />{healed ? '회복 완료' : `회복 ${healCost} TP`}
-            </button>
-            <button type="button" disabled={points < FACTORY_TP_ITEM_REROLL_COST} onClick={() => onRerollItem(pokemon.captureId)}>
-              <Dices size={15} />도구 변경 {FACTORY_TP_ITEM_REROLL_COST} TP
-            </button>
-          </span>
-        </li>
-      })}
-    </ul>
-  </section>
 }
 
 function FactoryModePicker({ mode, onSelect }) {
@@ -212,7 +170,6 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
               selected={pokemon.captureId === run.leadCaptureId} selectedLabel="선봉" selectAriaLabel={`${nameOf(pokemon)} 선봉 선택`}
               disabled={challenge && isFactoryPokemonFainted(pokemon)} showHealth={challenge}
               onSelect={() => onChooseLead(pokemon.captureId)} onDetails={setDetails} />)}</div></section>
-            {challenge && <TowerPointPanel run={run} onHeal={onHeal} onRerollItem={onRerollItem} />}
             <section className="factory-enemy-group"><h3><Swords size={16} />{run.floor}층 상대 팀 <span>팩토리 AI 트레이너</span></h3><div className="factory-team-grid">{opponent.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={`상대 ${index + 1}`} onDetails={setDetails} compact />)}</div></section>
           </div>}
           {phase === 'exchange' && <div className="factory-team-groups factory-exchange-groups">
@@ -226,7 +183,6 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
               onSelect={() => setTakeId(current => current === pokemon.captureId ? null : pokemon.captureId)} onDetails={setDetails} />)}</div></section>
             {giveId && takeId && !distinctSpecies && <p className="factory-exchange-warning" role="status">같은 종류의 포켓몬을 2마리 데리고 갈 수 없습니다. 다른 조합을 선택해 주세요.</p>}
             {giveId && takeId && distinctSpecies && !canAffordSwap && <p className="factory-exchange-warning" role="status">TP가 부족합니다. 이 교체에는 {swapCost} TP가 필요하고 현재 {points} TP입니다.</p>}
-            {challenge && <TowerPointPanel run={run} onHeal={onHeal} onRerollItem={onRerollItem} />}
           </div>}
           {phase === 'finished' && <div className="factory-finished">
             <span className="factory-finished-emblem"><Trophy size={48} /></span><p>렌탈 팀과 함께 쌓아 올린 기록</p>
@@ -243,6 +199,7 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
               <small>{challenge ? 'HP는 이어지고 PP·상태만 회복' : '매 층 시작 시 HP·PP·상태 회복'}</small>
             </div> : <div className="factory-rules-note"><span><Heart size={14} />{challenge ? 'HP는 이어지고 PP·상태만 회복' : '매 층 시작 시 HP·PP·상태 회복'}</span><small>{challenge ? 'TP로만 회복·교체·도구 변경이 가능합니다.' : '렌탈 포켓몬은 도전 중에만 함께합니다.'}</small></div>}
             <div className="factory-action-buttons">
+              {challenge && ['ready', 'exchange'].includes(phase) && <FactoryTeamManager run={run} onHeal={onHeal} onRerollItem={onRerollItem} />}
               {phase === 'selection' && <button type="button" className="factory-primary" disabled={chosenIds.length !== 3} onClick={() => onChooseRentals(chosenIds)}>렌탈 팀 확정 <span>{chosenIds.length}/3</span><ArrowRight size={18} /></button>}
               {phase === 'ready' && <button type="button" className="factory-primary" disabled={!leadPokemon} onClick={onStartBattle}><Swords size={18} />{run.floor}층 배틀 시작</button>}
               {phase === 'exchange' && <><button type="button" className="factory-secondary" onClick={() => onAdvanceFloor(null)}>교환 없이 다음 층</button><button type="button" className="factory-primary" disabled={!canExchange} onClick={() => onAdvanceFloor({ giveCaptureId: giveId, takeCaptureId: takeId })}><RefreshCw size={17} />교환하고 다음 층{challenge && exchangeTarget ? ` · ${swapCost} TP` : ''}</button></>}

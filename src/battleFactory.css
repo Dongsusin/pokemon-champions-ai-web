@@ -267,14 +267,22 @@
 .factory-card-health.tone-fainted { color: #8fa3b4; }
 .factory-card-cost { display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin: 0 8px 10px; color: #9ff0d8; font-size: 10px; font-weight: 700; }
 
-.factory-tp-panel { margin-top: 16px; padding: 15px 16px; border: 1px solid #7fe4c840; border-radius: 14px; background: #0e2a2acc; }
-.factory-tp-panel > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.factory-tp-panel > header > p { flex: 1 1 220px; margin: 0; color: #a9c6cf; font-size: 11px; line-height: 1.6; }
+/* Opened from the action bar, so the standby screen keeps its vertical space. */
+.factory-team-manage { position: relative; gap: 8px; }
+.factory-team-manage.is-open { border-color: #7fe4c8; color: #b6f2e0; }
+.factory-team-manage-points { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 99px; color: #9ff0d8; font-size: 11px; background: #12332fcc; }
+.factory-team-manage-alert { position: absolute; top: -6px; right: -6px; display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; color: #08202a; font-size: 10px; font-weight: 800; background: #7fe4c8; }
+
+.factory-team-manager { position: fixed; z-index: 90; width: min(380px, calc(100vw - 24px)); max-height: min(440px, calc(100vh - 24px)); padding: 15px 16px; border: 1px solid #7fe4c855; border-radius: 14px; background: #0c2527f2; box-shadow: 0 18px 44px #04101ab8; overflow-y: auto; overscroll-behavior: contain; }
+.factory-team-manager > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.factory-team-manager-close { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid #88afca3d; border-radius: 9px; background: #0b1f30a6; color: #cfe3ef; cursor: pointer; }
+.factory-team-manager-close:hover { border-color: #9fd6f0aa; }
+.factory-team-manager-note { margin: 9px 0 0; color: #a9c6cf; font-size: 11px; line-height: 1.6; }
 .factory-tp-balance { display: inline-flex; align-items: baseline; gap: 6px; color: #9ff0d8; }
 .factory-tp-balance > svg { align-self: center; }
 .factory-tp-balance > strong { font-size: 21px; font-variant-numeric: tabular-nums; }
 .factory-tp-balance > small { font-size: 11px; letter-spacing: .08em; }
-.factory-tp-actions { display: grid; gap: 8px; margin: 13px 0 0; padding: 0; list-style: none; }
+.factory-tp-actions { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
 .factory-tp-actions > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border: 1px solid #88afca2e; border-radius: 11px; background: #0b1f30a6; }
 .factory-tp-name { display: flex; flex-direction: column; gap: 4px; min-width: 130px; color: #e4f1f8; font-size: 12px; }
 .factory-tp-name .factory-card-health { width: 130px; margin: 0; }
@@ -286,6 +294,7 @@
 
 @media (max-width: 760px) {
   .factory-mode-picker { grid-template-columns: 1fr; }
+  .factory-team-manage-points { display: none; }
   .factory-tp-actions > li { flex-direction: column; align-items: stretch; }
   .factory-tp-name .factory-card-health { width: 100%; }
   .factory-tp-buttons > button { flex: 1; justify-content: center; }
