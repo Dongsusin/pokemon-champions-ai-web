@@ -242,3 +242,51 @@
 }
 @media (max-width: 650px) and (min-height: 521px) { .battle-factory { padding: 12px; } .factory-heading { gap: 10px; } .factory-heading > div > span, .factory-format { display: none; } .factory-heading h1 { font-size: 21px; } .factory-back { font-size: 10px; padding-inline: 10px; } .factory-workspace { grid-template-columns: minmax(0, 1fr); } .factory-tower { display: none; } .factory-panel-heading { padding-inline: 14px; } .factory-panel-heading h2 { font-size: 20px; } .factory-panel-scroll { padding-inline: 14px; } .factory-rental-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .factory-rental-card { min-height: 150px; } .factory-team-grid { gap: 7px; } .factory-team-groups .factory-rental-card { min-height: 134px; } .factory-team-groups .factory-rental-select > strong { font-size: 11px; } .factory-card-item { font-size: 9px; } .factory-team-groups h3 > span { font-size: 8px; } .factory-actions { padding-inline: 13px; } .factory-action-row { flex-wrap: wrap; } .factory-action-buttons { margin-left: auto; } .factory-rules-note { font-size: 9px; } .factory-rules-note > small { font-size: 8px; } .factory-primary, .factory-secondary { min-height: 39px; font-size: 11px; padding-inline: 13px; } }
 @media (prefers-reduced-motion: reduce) { .factory-rental-card { transition: none; } .factory-details::backdrop { backdrop-filter: none; } }
+
+/* Challenge mode: carried damage, Tower Points and the actions they buy. */
+.factory-mode-badge.is-challenge { border-color: #ffb45c55; color: #ffd39a; background: #3a2a1ecc; }
+.factory-tp-badge { gap: 6px; border-color: #7fe4c855; color: #9ff0d8; background: #14322ecc; }
+
+.factory-mode-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.factory-mode-option { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 13px 15px; border: 1px solid #88afca40; border-radius: 13px; background: #0d2032b3; color: #dbeaf5; text-align: left; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.factory-mode-option:hover { border-color: #9fd6f0aa; }
+.factory-mode-option.selected { border-color: #7fe4c8; background: #12332fcc; }
+.factory-mode-option > small { color: #8fb4c9; font-size: 9px; letter-spacing: .12em; }
+.factory-mode-option.selected > small { color: #7fe4c8; }
+.factory-mode-option > strong { font-size: 15px; }
+.factory-mode-option > span { color: #b9cbd8; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+
+.factory-card-rarity { align-self: center; margin-top: 3px; color: #ffd39a; font-size: 10px; letter-spacing: .02em; }
+.factory-card-health { display: flex; align-items: center; gap: 6px; width: calc(100% - 22px); margin: 6px auto 0; }
+.factory-card-health-track { flex: 1; min-width: 0; height: 5px; border-radius: 99px; background: #0b1a28; overflow: hidden; }
+.factory-card-health-track > i { display: block; height: 100%; border-radius: 99px; background: currentColor; transition: width .2s ease; }
+.factory-card-health > b { flex-shrink: 0; font-size: 9px; font-variant-numeric: tabular-nums; }
+.factory-card-health.tone-healthy { color: #6fdc9a; }
+.factory-card-health.tone-warning { color: #ffd166; }
+.factory-card-health.tone-critical { color: #ff8f6b; }
+.factory-card-health.tone-fainted { color: #8fa3b4; }
+.factory-card-cost { display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin: 0 8px 10px; color: #9ff0d8; font-size: 10px; font-weight: 700; }
+
+.factory-tp-panel { margin-top: 16px; padding: 15px 16px; border: 1px solid #7fe4c840; border-radius: 14px; background: #0e2a2acc; }
+.factory-tp-panel > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.factory-tp-panel > header > p { flex: 1 1 220px; margin: 0; color: #a9c6cf; font-size: 11px; line-height: 1.6; }
+.factory-tp-balance { display: inline-flex; align-items: baseline; gap: 6px; color: #9ff0d8; }
+.factory-tp-balance > svg { align-self: center; }
+.factory-tp-balance > strong { font-size: 21px; font-variant-numeric: tabular-nums; }
+.factory-tp-balance > small { font-size: 11px; letter-spacing: .08em; }
+.factory-tp-actions { display: grid; gap: 8px; margin: 13px 0 0; padding: 0; list-style: none; }
+.factory-tp-actions > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border: 1px solid #88afca2e; border-radius: 11px; background: #0b1f30a6; }
+.factory-tp-name { display: flex; flex-direction: column; gap: 4px; min-width: 130px; color: #e4f1f8; font-size: 12px; }
+.factory-tp-name .factory-card-health { width: 130px; margin: 0; }
+.factory-tp-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+.factory-tp-buttons > button { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 7px 12px; border: 1px solid #7fe4c855; border-radius: 9px; background: #123630; color: #b6f2e0; font-size: 11px; font-weight: 700; cursor: pointer; }
+.factory-tp-buttons > button:hover:not(:disabled) { border-color: #7fe4c8; background: #17463d; }
+.factory-tp-buttons > button:disabled { border-color: #88afca2e; background: #14202cb3; color: #7e93a3; cursor: not-allowed; }
+.factory-result-mode { color: #ffd39a; }
+
+@media (max-width: 760px) {
+  .factory-mode-picker { grid-template-columns: 1fr; }
+  .factory-tp-actions > li { flex-direction: column; align-items: stretch; }
+  .factory-tp-name .factory-card-health { width: 100%; }
+  .factory-tp-buttons > button { flex: 1; justify-content: center; }
+}

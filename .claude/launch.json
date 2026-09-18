@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pokemon-ui-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--mode",
+        "uilocal",
+        "--port",
+        "5199",
+        "--strictPort"
+      ],
+      "port": 5199
+    },
+    {
+      "name": "battle-factory-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "factory:test"
+      ],
+      "port": 5187
+    }
+  ]
+}

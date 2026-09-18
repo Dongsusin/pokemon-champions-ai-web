@@ -11,7 +11,10 @@ import {
   beginFactoryBattle,
   resolveFactoryBattle,
   advanceFactoryFloor,
+  healFactoryPokemon,
+  rerollFactoryHeldItem,
 } from './data/battleFactory'
+import { isFactoryChallengeMode } from './data/battleFactoryChallenge'
 
 export default function BattleFactoryScreen({
   run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
@@ -22,12 +25,15 @@ export default function BattleFactoryScreen({
   currentRun.current = run
   const initialRun = useRef(null)
   const [error, setError] = useState('')
+  const [mode, setMode] = useState('standard')
   const [showRankings, setShowRankings] = useState(false)
   const ranking = useBattleFactoryRankings(user)
   const active = run?.phase === 'battle'
 
   useEffect(() => {
-    if (run?.phase === 'finished') ranking.recordRun(run)
+    // Challenge runs carry damage between floors, so their floor numbers are not
+    // comparable with standard runs and stay off the shared leaderboard.
+    if (run?.phase === 'finished' && !isFactoryChallengeMode(run.mode)) ranking.recordRun(run)
   }, [run, ranking.recordRun])
 
   // A record set before titles existed still counts: report the stored personal
@@ -40,7 +46,7 @@ export default function BattleFactoryScreen({
   useEffect(() => {
     if (run) return
     try {
-      initialRun.current ??= createFactoryRun()
+      initialRun.current ??= createFactoryRun({ mode })
       currentRun.current = initialRun.current
       onRunChange(initialRun.current)
     } catch (cause) {
@@ -64,7 +70,7 @@ export default function BattleFactoryScreen({
 
   if (!run) return <main className="battle-factory" aria-busy={!error}>
     <p role="status">{error || '배틀팩토리의 대여 포켓몬을 준비하고 있습니다.'}</p>
-    {error && <button type="button" onClick={() => transition(() => createFactoryRun())}>다시 준비하기</button>}
+    {error && <button type="button" onClick={() => transition(() => createFactoryRun({ mode }))}>다시 준비하기</button>}
   </main>
 
   if (active) return <BattleScreen
@@ -82,7 +88,8 @@ export default function BattleFactoryScreen({
     onToggleSound={onToggleSound}
     onOpenSettings={onOpenSettings}
     onComplete={summary => transition(current => {
-      const next = resolveFactoryBattle(current, { ...summary, battleId: run.battleId })
+      const next = resolveFactoryBattle(current, { ...summary, battleId: run.battleId,
+        playerTeamHp: summary.playerTeamHp })
       if (next !== current && next.lastResult?.won) onVpReward?.({
         runId: next.id, battleId: next.battleId, floor: next.floor,
         winner: next.lastResult.winner, forfeited: next.lastResult.forfeited,
@@ -101,7 +108,13 @@ export default function BattleFactoryScreen({
     onChooseLead={id => transition(current => selectFactoryLead(current, id))}
     onStartBattle={() => transition(beginFactoryBattle)}
     onAdvanceFloor={exchange => transition(current => advanceFactoryFloor(current, exchange))}
-    onRestart={() => transition(() => createFactoryRun())}
+    onHeal={captureId => transition(current => healFactoryPokemon(current, captureId))}
+    onRerollItem={captureId => transition(current => rerollFactoryHeldItem(current, captureId))}
+    onRestart={nextMode => transition(() => {
+      const chosen = nextMode ?? mode
+      setMode(chosen)
+      return createFactoryRun({ mode: chosen })
+    })}
     onBack={onBack}
     onOpenRankings={() => setShowRankings(true)}
     rankingError={ranking.recordError}

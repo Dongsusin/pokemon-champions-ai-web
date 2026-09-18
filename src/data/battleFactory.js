@@ -16,6 +16,11 @@ import {
   BATTLE_WEATHERS,
   normalizeAiBattleDifficulty,
 } from './battleRules.js'
+import {
+  FACTORY_DEFAULT_MODE, FACTORY_TP_ITEM_REROLL_COST, getFactoryHealCost, getFactoryHpRatio,
+  getFactoryMode, getFactorySwapCost, getFactoryTpAward, isFactoryChallengeMode,
+  isFactoryPokemonFainted, rollFactoryHeldItem, withFactoryHpRatio,
+} from './battleFactoryChallenge.js'
 
 export const FACTORY_TRAINER = Object.freeze({
   id: 'factory-clown',
@@ -197,13 +202,18 @@ function assertDistinctParty(party) {
   }
 }
 
-export function createFactoryRun({ seed = randomSeed(), id } = {}) {
+export function createFactoryRun({ seed = randomSeed(), id, mode = FACTORY_DEFAULT_MODE } = {}) {
   const normalizedSeed = seedValue(seed)
   const runId = id ?? `factory-${Date.now()}-${normalizedSeed.toString(36)}`
   return {
     version: 1,
     id: runId,
     seed: normalizedSeed,
+    mode: getFactoryMode(mode).id,
+    // Challenge mode only. Tower Points are earned by winning and spent on
+    // healing, swaps and item rerolls; they never outlive this run.
+    towerPoints: 0,
+    rerollCount: 0,
     phase: 'selection',
     floor: 1,
     wins: 0,
@@ -234,8 +244,10 @@ export function selectFactoryRentals(run, captureIds) {
 
 export function selectFactoryLead(run, captureId) {
   assertPhase(run, 'ready')
-  if (!run.party.some((pokemon) => pokemon.captureId === captureId)) {
-    fail('FACTORY_LEAD', '현재 렌탈 팀에서 선봉 포켓몬 1마리를 선택해 주세요.')
+  const lead = run.party.find((pokemon) => pokemon.captureId === captureId)
+  if (!lead) fail('FACTORY_LEAD', '현재 렌탈 팀에서 선봉 포켓몬 1마리를 선택해 주세요.')
+  if (isFactoryChallengeMode(run.mode) && isFactoryPokemonFainted(lead)) {
+    fail('FACTORY_LEAD', '기절한 포켓몬은 선봉으로 낼 수 없습니다. TP로 회복한 뒤 선택해 주세요.')
   }
   return run.leadCaptureId === captureId ? run : { ...run, leadCaptureId: captureId }
 }
@@ -246,6 +258,9 @@ export function beginFactoryBattle(run) {
   assertDistinctParty(run.party)
   const lead = run.party.find((pokemon) => pokemon.captureId === run.leadCaptureId)
   if (!lead) fail('FACTORY_LEAD', '배틀을 시작하기 전에 선봉 포켓몬을 선택해 주세요.')
+  if (isFactoryChallengeMode(run.mode) && isFactoryPokemonFainted(lead)) {
+    fail('FACTORY_LEAD', '기절한 포켓몬은 선봉으로 낼 수 없습니다. TP로 회복한 뒤 선택해 주세요.')
+  }
   if (run.opponentTeam?.pokemon?.length !== FACTORY_PARTY_SIZE) {
     fail('FACTORY_OPPONENT', '상대 포켓몬 3마리를 준비하지 못했습니다.')
   }
@@ -257,7 +272,19 @@ export function beginFactoryBattle(run) {
   }
 }
 
-export function resolveFactoryBattle(run, { battleId, winner, forfeited = false } = {}) {
+// Challenge mode carries damage forward, so a win records where every Pokemon
+// finished. A Pokemon the battle never reports keeps the health it started with.
+function carryPartyHealth(party, playerTeamHp) {
+  if (!Array.isArray(playerTeamHp)) return party
+  const byCaptureId = new Map(playerTeamHp
+    .filter((entry) => entry && typeof entry.captureId === 'string' && Number.isFinite(entry.hp) && entry.maxHp > 0)
+    .map((entry) => [entry.captureId, Math.min(1, Math.max(0, entry.hp / entry.maxHp))]))
+  return party.map((pokemon) => (
+    byCaptureId.has(pokemon.captureId) ? withFactoryHpRatio(pokemon, byCaptureId.get(pokemon.captureId)) : pokemon
+  ))
+}
+
+export function resolveFactoryBattle(run, { battleId, winner, forfeited = false, playerTeamHp = null } = {}) {
   // BattleScreen can deliver the same completed result again after a render.
   // An older floor's callback must never settle or stop the new floor's battle.
   if (battleId && run?.completedBattleIds.includes(battleId)) return run
@@ -265,26 +292,46 @@ export function resolveFactoryBattle(run, { battleId, winner, forfeited = false 
   if (!battleId || battleId !== run.battleId) fail('FACTORY_BATTLE_ID', '현재 층의 배틀 결과만 반영할 수 있습니다.')
   if (!['player', 'opponent', 'draw'].includes(winner)) fail('FACTORY_RESULT', '배틀이 끝난 뒤 다음 단계로 이동할 수 있습니다.')
   const won = winner === 'player' && !forfeited
+  const challenge = isFactoryChallengeMode(run.mode)
+  const award = challenge && won ? getFactoryTpAward(run.floor) : 0
   return {
     ...run,
     phase: won ? 'exchange' : 'finished',
     wins: run.wins + Number(won),
+    // Losing ends the run, and its Tower Points end with it.
+    towerPoints: won ? run.towerPoints + award : 0,
+    party: challenge && won ? carryPartyHealth(run.party, playerTeamHp) : run.party,
     previousOpponent: won ? clone(run.opponentTeam.pokemon) : [],
     completedBattleIds: [...run.completedBattleIds, battleId],
-    lastResult: { battleId, winner, forfeited: Boolean(forfeited), won, floor: run.floor },
+    lastResult: {
+      battleId, winner, forfeited: Boolean(forfeited), won, floor: run.floor,
+      towerPointsEarned: award,
+    },
   }
 }
 
 export function advanceFactoryFloor(run, exchange = null) {
   assertPhase(run, 'exchange')
+  const challenge = isFactoryChallengeMode(run.mode)
   let party = run.party
+  let towerPoints = run.towerPoints
   if (exchange !== null) {
     const giveIndex = party.findIndex((entry) => entry.captureId === exchange?.giveCaptureId)
     const incoming = run.previousOpponent.find((entry) => entry.captureId === exchange?.takeCaptureId)
     if (giveIndex < 0 || !incoming) {
       fail('FACTORY_EXCHANGE', '아군 1마리와 바로 이전 상대의 포켓몬 1마리를 선택해 주세요.')
     }
-    party = party.map((entry, index) => index === giveIndex ? incoming : entry)
+    let replacement = incoming
+    if (challenge) {
+      const cost = getFactorySwapCost(incoming)
+      if (towerPoints < cost) {
+        fail('FACTORY_TP', `이 포켓몬으로 교체하려면 TP ${cost}이 필요합니다. 현재 ${towerPoints} TP.`)
+      }
+      towerPoints -= cost
+      // The slot's condition stays with the slot, so a swap is never a free heal.
+      replacement = withFactoryHpRatio(incoming, getFactoryHpRatio(party[giveIndex]))
+    }
+    party = party.map((entry, index) => index === giveIndex ? replacement : entry)
   }
   assertDistinctParty(party)
   const floor = run.floor + 1
@@ -292,8 +339,10 @@ export function advanceFactoryFloor(run, exchange = null) {
     ...run,
     phase: 'ready',
     floor,
+    towerPoints,
     // These are original rental loadouts, never the mutable battle snapshots.
-    // createBattle restores HP, PP, status, items and gimmicks for the new floor.
+    // In standard mode createBattle restores HP, PP, status, items and gimmicks
+    // for the new floor; in challenge mode each slot keeps its recorded health.
     party: clone(party),
     leadCaptureId: null,
     opponentTeam: createOpponentTeam(run, floor),
@@ -301,4 +350,59 @@ export function advanceFactoryFloor(run, exchange = null) {
     battleId: null,
     lastExchange: exchange === null ? null : { ...exchange },
   }
+}
+
+function assertChallengeStandby(run) {
+  if (!isFactoryChallengeMode(run?.mode)) fail('FACTORY_MODE', '도전 모드에서만 사용할 수 있습니다.')
+  if (!['ready', 'exchange'].includes(run.phase)) {
+    fail('FACTORY_PHASE', '배틀 대기 중에만 TP를 사용할 수 있습니다.')
+  }
+}
+
+function findPartyIndex(run, captureId) {
+  const index = run.party.findIndex((entry) => entry.captureId === captureId)
+  if (index < 0) fail('FACTORY_PARTY', '현재 렌탈 팀의 포켓몬을 선택해 주세요.')
+  return index
+}
+
+/** Restores one Pokemon to full health, including a fainted one. */
+export function healFactoryPokemon(run, captureId) {
+  assertChallengeStandby(run)
+  const index = findPartyIndex(run, captureId)
+  const cost = getFactoryHealCost(run.party[index])
+  if (cost === 0) fail('FACTORY_HEAL', '이미 체력이 가득 찬 포켓몬입니다.')
+  if (run.towerPoints < cost) {
+    fail('FACTORY_TP', `회복에는 TP ${cost}이 필요합니다. 현재 ${run.towerPoints} TP.`)
+  }
+  return {
+    ...run,
+    towerPoints: run.towerPoints - cost,
+    party: run.party.map((entry, entryIndex) => entryIndex === index ? withFactoryHpRatio(entry, 1) : entry),
+  }
+}
+
+/** Trades the held item for a different random one. Health is untouched. */
+export function rerollFactoryHeldItem(run, captureId) {
+  assertChallengeStandby(run)
+  const index = findPartyIndex(run, captureId)
+  if (run.towerPoints < FACTORY_TP_ITEM_REROLL_COST) {
+    fail('FACTORY_TP', `도구 변경에는 TP ${FACTORY_TP_ITEM_REROLL_COST}이 필요합니다. 현재 ${run.towerPoints} TP.`)
+  }
+  const random = randomStream(seedValue(`${run.id}:reroll:${run.rerollCount}:${captureId}`))
+  const item = rollFactoryHeldItem(random, run.party[index].heldItemId)
+  if (!item) fail('FACTORY_ITEM', '변경할 수 있는 도구가 없습니다.')
+  return {
+    ...run,
+    towerPoints: run.towerPoints - FACTORY_TP_ITEM_REROLL_COST,
+    rerollCount: run.rerollCount + 1,
+    party: run.party.map((entry, entryIndex) => entryIndex === index
+      ? { ...entry, heldItemId: item.id, heldItemName: item.name }
+      : entry),
+  }
+}
+
+/** A challenge run cannot start a floor with every Pokemon knocked out. */
+export function getFactoryUsableParty(run) {
+  if (!isFactoryChallengeMode(run?.mode)) return run?.party ?? []
+  return (run.party ?? []).filter((pokemon) => !isFactoryPokemonFainted(pokemon))
 }

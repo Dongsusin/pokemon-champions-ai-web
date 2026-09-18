@@ -574,6 +574,14 @@ function crownedMoveRuntime(move, formSlug) {
   return { ...signature, currentPp: Math.max(0, signature.maxPp - spentPp) }
 }
 
+// A ratio of 0 means the Pokemon is carried over fainted; anything above 0
+// keeps at least 1 HP so rounding cannot knock it out on entry.
+function startingHp(maxHp, ratio) {
+  if (!Number.isFinite(ratio) || ratio >= 1) return maxHp
+  if (ratio <= 0) return 0
+  return Math.max(1, Math.min(maxHp, Math.round(maxHp * ratio)))
+}
+
 function buildBattlePokemon(entry, index, teamGimmicks = []) {
   const hasConfiguredMoves = Array.isArray(entry.moveIds) || Array.isArray(entry.moves)
   const configuredMoveCount = Math.min(4, Math.max(
@@ -617,9 +625,11 @@ function buildBattlePokemon(entry, index, teamGimmicks = []) {
     stats,
     maxHp: stats.hp,
     originalMaxHp: stats.hp,
-    hp: stats.hp,
+    // A mode that carries damage between battles supplies startHpRatio; every
+    // other caller leaves it unset and starts at full health.
+    hp: startingHp(stats.hp, entry.startHpRatio),
     moves: normalizedMoves.map(moveRuntime).map(move => crownedMoveRuntime(move, profile.slug)),
-    fainted: false,
+    fainted: startingHp(stats.hp, entry.startHpRatio) <= 0,
     status: null,
     statStages: {
       attack: 0,
@@ -13386,6 +13396,11 @@ export function getBattleSummary(state) {
       opponentTier: state.opponentMeta?.tier ?? null,
       opponentRegion: state.opponentMeta?.region ?? null,
     },
+    playerTeamHp: state.player.team.map((pokemon) => ({
+      captureId: pokemon.captureId,
+      hp: pokemon.fainted ? 0 : pokemon.hp,
+      maxHp: pokemon.maxHp,
+    })),
   }
 }
 
