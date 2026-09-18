@@ -11,7 +11,7 @@ import {
   beginFactoryBattle,
   resolveFactoryBattle,
   advanceFactoryFloor,
-  healFactoryPokemon,
+  healFactoryParty,
   rerollFactoryHeldItem,
 } from './data/battleFactory'
 import { isFactoryChallengeMode } from './data/battleFactoryChallenge'
@@ -108,7 +108,7 @@ export default function BattleFactoryScreen({
     onChooseLead={id => transition(current => selectFactoryLead(current, id))}
     onStartBattle={() => transition(beginFactoryBattle)}
     onAdvanceFloor={exchange => transition(current => advanceFactoryFloor(current, exchange))}
-    onHeal={captureId => transition(current => healFactoryPokemon(current, captureId))}
+    onHealParty={() => transition(healFactoryParty)}
     onRerollItem={captureId => transition(current => rerollFactoryHeldItem(current, captureId))}
     onRestart={nextMode => transition(() => {
       const chosen = nextMode ?? mode

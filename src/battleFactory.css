@@ -282,6 +282,12 @@
 .factory-tp-balance > svg { align-self: center; }
 .factory-tp-balance > strong { font-size: 21px; font-variant-numeric: tabular-nums; }
 .factory-tp-balance > small { font-size: 11px; letter-spacing: .08em; }
+.factory-heal-party { display: flex; align-items: center; gap: 9px; width: 100%; margin-top: 12px; min-height: 42px; padding: 10px 14px; border: 1px solid #7fe4c8; border-radius: 11px; background: #15443c; color: #d6fbee; font-size: 13px; font-weight: 700; cursor: pointer; }
+.factory-heal-party > span { flex: 1; text-align: left; }
+.factory-heal-party > b { font-variant-numeric: tabular-nums; }
+.factory-heal-party:hover:not(:disabled) { background: #1b5a4d; }
+.factory-heal-party:disabled { border-color: #88afca2e; background: #14202cb3; color: #7e93a3; cursor: not-allowed; }
+.factory-team-manager-warning { margin: 8px 0 0; color: #ffb38a; font-size: 11px; line-height: 1.6; }
 .factory-tp-actions { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
 .factory-tp-actions > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border: 1px solid #88afca2e; border-radius: 11px; background: #0b1f30a6; }
 .factory-tp-name { display: flex; flex-direction: column; gap: 4px; min-width: 130px; color: #e4f1f8; font-size: 12px; }

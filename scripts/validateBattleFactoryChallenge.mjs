@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import {
   advanceFactoryFloor, beginFactoryBattle, createFactoryRun, FACTORY_TRAINER,
-  healFactoryPokemon, rerollFactoryHeldItem, resolveFactoryBattle,
+  healFactoryParty, rerollFactoryHeldItem, resolveFactoryBattle,
   selectFactoryLead, selectFactoryRentals,
 } from '../src/data/battleFactory.js'
 import {
   FACTORY_MODES, FACTORY_TP_ITEM_REROLL_COST, FACTORY_TP_MAX_AWARD, FACTORY_TP_SWAP_COST,
-  getFactoryHealCost, getFactoryHpRatio, getFactoryPokemonRarity, getFactorySwapCost,
-  getFactoryTpAward, isFactoryChallengeMode,
+  FACTORY_TP_PARTY_HEAL_COST, getFactoryHpRatio, getFactoryPartyHealCost,
+  getFactoryPokemonRarity, getFactorySwapCost, getFactoryTpAward, isFactoryChallengeMode,
 } from '../src/data/battleFactoryChallenge.js'
 import { createBattle, getBattleSummary } from '../src/data/battleEngine.js'
 import { DRAW_RARITY_ORDER } from '../src/data/pokemonPool.js'
@@ -57,7 +57,7 @@ check('a standard run is untouched: no points, no carried damage, free swaps', (
   })
   assert.equal(next.towerPoints, 0, 'A standard swap is free')
   assert.equal(getFactoryHpRatio(next.party[0]), 1)
-  rejects(() => healFactoryPokemon(next, next.party[0].captureId), 'FACTORY_MODE')
+  rejects(() => healFactoryParty(next), 'FACTORY_MODE')
   rejects(() => rerollFactoryHeldItem(next, next.party[0].captureId), 'FACTORY_MODE')
 })
 
@@ -92,20 +92,27 @@ check('points die with the run and never survive a defeat', () => {
   assert.equal(createFactoryRun({ seed: 1, id: 'fresh', mode: 'challenge' }).towerPoints, 0)
 })
 
-check('healing costs what the wound is worth and cannot be bought without points', () => {
-  let run = winFloor(readyRun(14), [50, 0, 100])
-  const [hurt, fainted, healthy] = run.party
-  assert.equal(getFactoryHealCost(healthy), 0)
-  assert(getFactoryHealCost(fainted) > getFactoryHealCost(hurt), 'A knocked out Pokemon costs the most')
-  rejects(() => healFactoryPokemon(run, healthy.captureId), 'FACTORY_HEAL')
-  rejects(() => healFactoryPokemon(run, 'not-in-this-party'), 'FACTORY_PARTY')
-  rejects(() => healFactoryPokemon({ ...run, towerPoints: 0 }, hurt.captureId), 'FACTORY_TP')
-  const cost = getFactoryHealCost(hurt)
-  const healed = healFactoryPokemon({ ...run, towerPoints: 200 }, hurt.captureId)
+check('healing restores the whole team for one flat price', () => {
+  const run = winFloor(readyRun(14), [50, 0, 100])
+  const cost = getFactoryPartyHealCost(run.party)
+  assert.equal(cost, FACTORY_TP_PARTY_HEAL_COST)
+  assert.equal(cost, 20, 'The team heal stays affordable after a single win')
+  assert(cost < getFactoryTpAward(1), 'One win must cover a full heal')
+  // A barely scratched team and a wiped one pay the same.
+  const scratched = winFloor(readyRun(14), [99, 100, 100])
+  assert.equal(getFactoryPartyHealCost(scratched.party), cost)
+  const wiped = winFloor(readyRun(14), [0, 0, 1])
+  assert.equal(getFactoryPartyHealCost(wiped.party), cost)
+  rejects(() => healFactoryParty({ ...run, towerPoints: cost - 1 }), 'FACTORY_TP')
+  const healed = healFactoryParty({ ...run, towerPoints: 200 })
   assert.equal(healed.towerPoints, 200 - cost)
-  assert.equal(getFactoryHpRatio(healed.party[0]), 1)
-  assert.equal(getFactoryHpRatio(healFactoryPokemon({ ...run, towerPoints: 200 }, fainted.captureId).party[1]), 1,
-    'A fainted Pokemon can be brought back')
+  assert.deepEqual(healed.party.map(getFactoryHpRatio), [1, 1, 1], 'Every member ends at full health')
+  // With nobody hurt there is nothing to buy, so the action is refused rather
+  // than quietly charging for it.
+  assert.equal(getFactoryPartyHealCost(healed.party), 0)
+  rejects(() => healFactoryParty(healed), 'FACTORY_HEAL')
+  assert.equal(getFactoryPartyHealCost([]), 0)
+  assert.equal(getFactoryPartyHealCost(null), 0)
 })
 
 check('a swap is priced by the incoming grade and keeps the slot condition', () => {
@@ -148,12 +155,12 @@ check('points can only be spent while waiting between battles', () => {
   const standby = winFloor(readyRun(17), [40, 100, 100])
   const spendable = { ...standby, towerPoints: 300 }
   assert.equal(spendable.phase, 'exchange')
-  assert.doesNotThrow(() => healFactoryPokemon(spendable, spendable.party[0].captureId))
+  assert.doesNotThrow(() => healFactoryParty(spendable))
   const ready = { ...advanceFactoryFloor(spendable, null), towerPoints: 300 }
   assert.equal(ready.phase, 'ready')
-  assert.doesNotThrow(() => healFactoryPokemon(ready, ready.party[0].captureId))
+  assert.doesNotThrow(() => healFactoryParty(ready))
   const fighting = beginFactoryBattle(selectFactoryLead(ready, ready.party[1].captureId))
-  rejects(() => healFactoryPokemon(fighting, fighting.party[0].captureId), 'FACTORY_PHASE')
+  rejects(() => healFactoryParty(fighting), 'FACTORY_PHASE')
   rejects(() => rerollFactoryHeldItem(fighting, fighting.party[0].captureId), 'FACTORY_PHASE')
 })
 
@@ -163,7 +170,7 @@ check('a knocked out Pokemon cannot lead until it is paid back to health', () =>
   rejects(() => selectFactoryLead(run, fainted.captureId), 'FACTORY_LEAD')
   // A forged lead cannot sneak past selection either.
   rejects(() => beginFactoryBattle({ ...run, leadCaptureId: fainted.captureId }), 'FACTORY_LEAD')
-  const healed = healFactoryPokemon({ ...run, towerPoints: 300 }, fainted.captureId)
+  const healed = healFactoryParty({ ...run, towerPoints: 300 })
   assert.doesNotThrow(() => beginFactoryBattle(selectFactoryLead(healed, fainted.captureId)))
 })
 

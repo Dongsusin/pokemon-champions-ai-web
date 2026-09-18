@@ -9,9 +9,8 @@ import { createBattlePreviewPokemon } from './data/battleEngine'
 import { getBattleFactoryVpReward } from './data/battleFactoryRewards'
 import { getBattleItem } from './data/shopData'
 import {
-  FACTORY_MODES, FACTORY_TP_ITEM_REROLL_COST, getFactoryHealCost, getFactoryHpRatio,
-  getFactoryMode, getFactoryRarityLabel, getFactorySwapCost, isFactoryChallengeMode,
-  isFactoryPokemonFainted,
+  FACTORY_MODES, getFactoryMode, getFactoryRarityLabel, getFactorySwapCost,
+  isFactoryChallengeMode, isFactoryPokemonFainted,
 } from './data/battleFactoryChallenge'
 import { getAbility, getSpeciesProfile, NATURE_OPTIONS, STAT_META, typeClassName } from './data/trainingData'
 import './battleFactory.css'
@@ -108,7 +107,7 @@ function FactoryModePicker({ mode, onSelect }) {
   </div>
 }
 
-function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, onAdvanceFloor, onHeal, onRerollItem, onRestart, onBack, onOpenRankings, rankingError, onRetryRanking, error }) {
+function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, onAdvanceFloor, onHealParty, onRerollItem, onRestart, onBack, onOpenRankings, rankingError, onRetryRanking, error }) {
   const [chosenIds, setChosenIds] = useState([])
   const [giveId, setGiveId] = useState(null)
   const [takeId, setTakeId] = useState(null)
@@ -199,7 +198,7 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
               <small>{challenge ? 'HP는 이어지고 PP·상태만 회복' : '매 층 시작 시 HP·PP·상태 회복'}</small>
             </div> : <div className="factory-rules-note"><span><Heart size={14} />{challenge ? 'HP는 이어지고 PP·상태만 회복' : '매 층 시작 시 HP·PP·상태 회복'}</span><small>{challenge ? 'TP로만 회복·교체·도구 변경이 가능합니다.' : '렌탈 포켓몬은 도전 중에만 함께합니다.'}</small></div>}
             <div className="factory-action-buttons">
-              {challenge && ['ready', 'exchange'].includes(phase) && <FactoryTeamManager run={run} onHeal={onHeal} onRerollItem={onRerollItem} />}
+              {challenge && ['ready', 'exchange'].includes(phase) && <FactoryTeamManager run={run} onHealParty={onHealParty} onRerollItem={onRerollItem} />}
               {phase === 'selection' && <button type="button" className="factory-primary" disabled={chosenIds.length !== 3} onClick={() => onChooseRentals(chosenIds)}>렌탈 팀 확정 <span>{chosenIds.length}/3</span><ArrowRight size={18} /></button>}
               {phase === 'ready' && <button type="button" className="factory-primary" disabled={!leadPokemon} onClick={onStartBattle}><Swords size={18} />{run.floor}층 배틀 시작</button>}
               {phase === 'exchange' && <><button type="button" className="factory-secondary" onClick={() => onAdvanceFloor(null)}>교환 없이 다음 층</button><button type="button" className="factory-primary" disabled={!canExchange} onClick={() => onAdvanceFloor({ giveCaptureId: giveId, takeCaptureId: takeId })}><RefreshCw size={17} />교환하고 다음 층{challenge && exchangeTarget ? ` · ${swapCost} TP` : ''}</button></>}

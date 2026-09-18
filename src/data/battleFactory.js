@@ -17,9 +17,9 @@ import {
   normalizeAiBattleDifficulty,
 } from './battleRules.js'
 import {
-  FACTORY_DEFAULT_MODE, FACTORY_TP_ITEM_REROLL_COST, getFactoryHealCost, getFactoryHpRatio,
-  getFactoryMode, getFactorySwapCost, getFactoryTpAward, isFactoryChallengeMode,
-  isFactoryPokemonFainted, rollFactoryHeldItem, withFactoryHpRatio,
+  FACTORY_DEFAULT_MODE, FACTORY_TP_ITEM_REROLL_COST, getFactoryHpRatio,
+  getFactoryMode, getFactoryPartyHealCost, getFactorySwapCost, getFactoryTpAward,
+  isFactoryChallengeMode, isFactoryPokemonFainted, rollFactoryHeldItem, withFactoryHpRatio,
 } from './battleFactoryChallenge.js'
 
 export const FACTORY_TRAINER = Object.freeze({
@@ -365,19 +365,21 @@ function findPartyIndex(run, captureId) {
   return index
 }
 
-/** Restores one Pokemon to full health, including a fainted one. */
-export function healFactoryPokemon(run, captureId) {
+/**
+ * Restores the whole team to full health, fainted members included, for one
+ * flat price.
+ */
+export function healFactoryParty(run) {
   assertChallengeStandby(run)
-  const index = findPartyIndex(run, captureId)
-  const cost = getFactoryHealCost(run.party[index])
-  if (cost === 0) fail('FACTORY_HEAL', '이미 체력이 가득 찬 포켓몬입니다.')
+  const cost = getFactoryPartyHealCost(run.party)
+  if (cost === 0) fail('FACTORY_HEAL', '이미 팀 전체의 체력이 가득 찼습니다.')
   if (run.towerPoints < cost) {
-    fail('FACTORY_TP', `회복에는 TP ${cost}이 필요합니다. 현재 ${run.towerPoints} TP.`)
+    fail('FACTORY_TP', `전체 회복에는 TP ${cost}이 필요합니다. 현재 ${run.towerPoints} TP.`)
   }
   return {
     ...run,
     towerPoints: run.towerPoints - cost,
-    party: run.party.map((entry, entryIndex) => entryIndex === index ? withFactoryHpRatio(entry, 1) : entry),
+    party: run.party.map((entry) => withFactoryHpRatio(entry, 1)),
   }
 }
 

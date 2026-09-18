@@ -28,9 +28,9 @@ export const FACTORY_TP_BASE_AWARD = 20
 export const FACTORY_TP_PER_FLOOR = 4
 export const FACTORY_TP_MAX_AWARD = 60
 export const FACTORY_TP_ITEM_REROLL_COST = 25
-// A full heal from empty; a lighter wound costs proportionally less.
-export const FACTORY_TP_FULL_HEAL_COST = 50
-export const FACTORY_TP_MIN_HEAL_COST = 5
+// A flat price for putting the whole team back on its feet, cheap enough that
+// a bad floor does not end the run outright.
+export const FACTORY_TP_PARTY_HEAL_COST = 20
 
 // Swapping is priced by what you gain, so a legendary costs far more than a
 // rookie. The order matches the draw table's grades.
@@ -60,11 +60,10 @@ export function getFactorySwapCost(pokemon) {
   return FACTORY_TP_SWAP_COST[getFactoryPokemonRarity(pokemon)] ?? FACTORY_TP_SWAP_COST.common
 }
 
-/** 0 when the Pokemon is untouched; a fainted one costs the full price. */
-export function getFactoryHealCost(pokemon) {
-  const missing = 1 - getFactoryHpRatio(pokemon)
-  if (missing <= 0) return 0
-  return Math.max(FACTORY_TP_MIN_HEAL_COST, Math.ceil(FACTORY_TP_FULL_HEAL_COST * missing))
+/** The flat price, or 0 when there is nothing to heal. */
+export function getFactoryPartyHealCost(party) {
+  const members = Array.isArray(party) ? party : []
+  return members.some((pokemon) => getFactoryHpRatio(pokemon) < 1) ? FACTORY_TP_PARTY_HEAL_COST : 0
 }
 
 /** Rentals with no recorded damage are at full health. */

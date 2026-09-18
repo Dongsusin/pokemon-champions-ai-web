@@ -17,7 +17,7 @@ const entry = `import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import BattleFactoryLobby from '/src/BattleFactoryLobby.jsx'
 import {
-  advanceFactoryFloor, beginFactoryBattle, createFactoryRun, healFactoryPokemon,
+  advanceFactoryFloor, beginFactoryBattle, createFactoryRun, healFactoryParty,
   rerollFactoryHeldItem, resolveFactoryBattle, selectFactoryLead, selectFactoryRentals,
 } from '/src/data/battleFactory.js'
 import '/src/mobileViewport.js'
@@ -68,7 +68,7 @@ function Harness() {
     onChooseRentals: () => {}, onChooseLead: id => act(current => selectFactoryLead(current, id)),
     onStartBattle: () => {},
     onAdvanceFloor: exchange => act(current => advanceFactoryFloor(current, exchange)),
-    onHeal: id => act(current => healFactoryPokemon(current, id)),
+    onHealParty: () => act(healFactoryParty),
     onRerollItem: id => act(current => rerollFactoryHeldItem(current, id)),
     onRestart: () => {}, onBack: () => {},
   }))
@@ -132,16 +132,17 @@ try {
       if (swapCosts.length !== 3) failures.push({ size, note: `expected 3 swap prices, saw ${swapCosts.length}` })
       await page.screenshot({ path: path.join(output, `${size}-exchange.png`), fullPage: true })
 
-      // Healing the fainted ally must spend exactly its listed price.
-      const healButtons = page.locator('.factory-tp-buttons button', { hasText: '회복' })
-      const faintedRow = page.locator('.factory-team-manager li').filter({ hasText: '기절' })
-      const healLabel = await faintedRow.locator('button', { hasText: '회복' }).innerText()
+      // One button heals the whole team and charges the listed total.
+      const healButton = page.locator('.factory-heal-party')
+      const healLabel = await healButton.innerText()
       const price = Number(healLabel.match(/(\d+)/)?.[1] ?? 0)
-      await tap(faintedRow.locator('button', { hasText: '회복' }))
+      if (price <= 0) failures.push({ size, note: `team heal showed no price: ${healLabel}` })
+      await tap(healButton)
       await page.waitForFunction(value => document.querySelector('.factory-tp-balance strong')?.textContent === value, String(120 - price))
       const afterHeal = await page.locator('.factory-team-manager .factory-card-health b').allInnerTexts()
-      console.log(`  회복 ${price} TP 사용 → 잔액 ${await page.locator('.factory-tp-balance strong').innerText()} · ${afterHeal.join(' / ')}`)
-      if (afterHeal.includes('기절')) failures.push({ size, note: 'Healing left the ally fainted' })
+      console.log(`  전체 회복 ${price} TP 사용 → 잔액 ${await page.locator('.factory-tp-balance strong').innerText()} · ${afterHeal.join(' / ')}`)
+      if (afterHeal.some(text => text !== '100%')) failures.push({ size, note: `team not fully healed: ${afterHeal.join(',')}` })
+      if (!(await healButton.isDisabled())) failures.push({ size, note: 'A fully healed team must disable the button' })
 
       // An item reroll changes the item and charges the flat price.
       const itemBefore = await page.locator('.factory-team-grid .factory-card-item').first().innerText()

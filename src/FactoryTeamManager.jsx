@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Coins, Dices, HeartPulse, Users, X } from 'lucide-react'
-import { FACTORY_TP_ITEM_REROLL_COST, getFactoryHealCost, getFactoryHpRatio } from './data/battleFactoryChallenge'
+import { FACTORY_TP_ITEM_REROLL_COST, getFactoryHpRatio, getFactoryPartyHealCost } from './data/battleFactoryChallenge'
 import { getSpeciesProfile } from './data/trainingData'
 
 const nameOf = pokemon => pokemon?.name ?? getSpeciesProfile(pokemon?.speciesId)?.name ?? '포켓몬'
@@ -22,7 +22,7 @@ export function FactoryHealthMeter({ pokemon }) {
  * open while the player uses it; only an outside click, Escape or a resize
  * closes it.
  */
-export default function FactoryTeamManager({ run, onHeal, onRerollItem }) {
+export default function FactoryTeamManager({ run, onHealParty, onRerollItem }) {
   const id = useId()
   const anchor = useRef(null)
   const panel = useRef(null)
@@ -70,7 +70,8 @@ export default function FactoryTeamManager({ run, onHeal, onRerollItem }) {
     }
   }, [open])
 
-  const healable = party.filter(pokemon => getFactoryHealCost(pokemon) > 0 && points >= getFactoryHealCost(pokemon)).length
+  const healCost = getFactoryPartyHealCost(party)
+  const canHeal = healCost > 0 && points >= healCost
 
   return <>
     <button ref={anchor} type="button" className={`factory-secondary factory-team-manage${open ? ' is-open' : ''}`}
@@ -78,7 +79,7 @@ export default function FactoryTeamManager({ run, onHeal, onRerollItem }) {
       onClick={() => (open ? close() : setOpen(true))}>
       <Users size={17} />팀 관리
       <span className="factory-team-manage-points"><Coins size={13} />{points} TP</span>
-      {healable > 0 && <span className="factory-team-manage-alert" aria-label={`회복 가능한 포켓몬 ${healable}마리`}>{healable}</span>}
+      {canHeal && <span className="factory-team-manage-alert" aria-label="전체 회복 가능">!</span>}
     </button>
     {open && createPortal(<div ref={panel} id={id} role="dialog" aria-label="팀 관리 · 타워 포인트"
       className="factory-team-manager" style={{ ...position, visibility: position ? 'visible' : 'hidden' }}>
@@ -87,25 +88,24 @@ export default function FactoryTeamManager({ run, onHeal, onRerollItem }) {
         <button type="button" className="factory-team-manager-close" aria-label="팀 관리 닫기" onClick={close}><X size={16} /></button>
       </header>
       <p className="factory-team-manager-note">승리할수록 더 많은 TP를 받습니다. 이번 도전에서만 사용할 수 있고, 패배하면 사라집니다.</p>
+      <button type="button" className="factory-heal-party" disabled={healCost === 0 || points < healCost} onClick={onHealParty}>
+        <HeartPulse size={17} />
+        <span>{healCost === 0 ? '팀 전체 회복 완료' : '팀 전체 회복'}</span>
+        {healCost > 0 && <b>{healCost} TP</b>}
+      </button>
+      {healCost > 0 && points < healCost && <p className="factory-team-manager-warning" role="status">TP가 {healCost - points} 부족합니다.</p>}
       <ul className="factory-tp-actions">
-        {party.map(pokemon => {
-          const healCost = getFactoryHealCost(pokemon)
-          const healed = healCost === 0
-          return <li key={pokemon.captureId}>
-            <span className="factory-tp-name">
-              <strong>{nameOf(pokemon)}</strong>
-              <FactoryHealthMeter pokemon={pokemon} />
-            </span>
-            <span className="factory-tp-buttons">
-              <button type="button" disabled={healed || points < healCost} onClick={() => onHeal(pokemon.captureId)}>
-                <HeartPulse size={15} />{healed ? '회복 완료' : `회복 ${healCost} TP`}
-              </button>
-              <button type="button" disabled={points < FACTORY_TP_ITEM_REROLL_COST} onClick={() => onRerollItem(pokemon.captureId)}>
-                <Dices size={15} />도구 변경 {FACTORY_TP_ITEM_REROLL_COST} TP
-              </button>
-            </span>
-          </li>
-        })}
+        {party.map(pokemon => <li key={pokemon.captureId}>
+          <span className="factory-tp-name">
+            <strong>{nameOf(pokemon)}</strong>
+            <FactoryHealthMeter pokemon={pokemon} />
+          </span>
+          <span className="factory-tp-buttons">
+            <button type="button" disabled={points < FACTORY_TP_ITEM_REROLL_COST} onClick={() => onRerollItem(pokemon.captureId)}>
+              <Dices size={15} />도구 변경 {FACTORY_TP_ITEM_REROLL_COST} TP
+            </button>
+          </span>
+        </li>)}
       </ul>
     </div>, anchor.current?.closest('dialog') ?? document.body)}
   </>
