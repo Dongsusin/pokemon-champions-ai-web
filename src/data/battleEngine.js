@@ -10999,6 +10999,70 @@ function aiStageUtility(pokemon, changes, favorsIncrease) {
   }, 0)
 }
 
+// A read-only view of the battle with one field condition swapped in, so the
+// damage estimates can answer "what would this weather actually change?"
+// without touching the live state.
+function projectedEnvironmentState(state, kind, environmentId) {
+  const environment = environmentDefinition(kind, environmentId)
+  if (!environment) return null
+  const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
+  return {
+    ...state,
+    rules: { ...state.rules, [kind]: { ...environment } },
+    environment: { ...(state.environment ?? {}), [turnsKey]: 5, ...(kind === 'weather' ? { weatherStrong: false } : {}) },
+  }
+}
+
+// The share of a defender's HP this side can take off right now, averaged over
+// its active Pokemon. Comparing this before and after a field change is what
+// tells the AI whether the field is worth a turn.
+function aiSideStrikeRatio(state, attackingSideId, defendingSideId) {
+  const attackers = getActivePokemonList(state, attackingSideId)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  const defenders = getActivePokemonList(state, defendingSideId)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  if (attackers.length === 0 || defenders.length === 0) return 0
+  const total = attackers.reduce((sum, attacker) => {
+    const best = attacker.moves.reduce((bestMove, move) => {
+      if (move.currentPp <= 0 || isStatusMove(move)) return bestMove
+      return defenders.reduce((bestTarget, defender) => {
+        const resolved = resolveAiMove(state, attacker, defender, move, null)
+        if (!resolved) return bestTarget
+        const estimate = estimateAiDamage(state, resolved.attacker, defender, resolved.move)
+        return Math.max(bestTarget, estimate.expectedDamage / Math.max(1, defender.maxHp))
+      }, bestMove)
+    }, 0)
+    return sum + best
+  }, 0)
+  return total / attackers.length
+}
+
+// Chip damage and passive healing the field hands out every turn. Sandstorm
+// hurts whoever has more Pokemon that are not rock, ground or steel; grassy
+// terrain heals whoever keeps more feet on the ground.
+function aiEnvironmentResidualSwing(state, kind, environmentId, sideId) {
+  const living = (id) => getActivePokemonList(state, id)
+    .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+  const own = living(sideId)
+  const foe = living(getOtherSide(state, sideId).id)
+  if (kind === 'weather' && environmentId === 'sandstorm') {
+    const chipped = (list) => list.filter((pokemon) => (
+      !pokemon.types.some((type) => ['바위', '땅', '강철'].includes(type))
+      && !SANDSTORM_IMMUNE_ABILITIES.has(pokemon.ability)
+      && !hasActiveHeldItem(pokemon, 'safety-goggles')
+    )).length
+    return (chipped(foe) - chipped(own)) * 18
+  }
+  if (kind === 'terrain' && environmentId === 'grassy') {
+    const grounded = (list) => list.filter((pokemon) => isGrounded(pokemon, state)).length
+    return (grounded(own) - grounded(foe)) * 14
+  }
+  return 0
+}
+
+// Setting weather or terrain is only worth a turn when this side gains more
+// from it than the opponent does. Scoring the swing - rather than counting our
+// own matching types - stops the AI handing a rain team free rain.
 function aiEnvironmentUtility(state, attacker, kind, environmentId) {
   const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
   const sameEnvironmentHasTime = state.rules?.[kind]?.id === environmentId
@@ -11006,6 +11070,15 @@ function aiEnvironmentUtility(state, attacker, kind, environmentId) {
   if (sameEnvironmentHasTime) return 6
 
   const side = getPokemonSide(state, attacker)
+  const foeSideId = getOtherSide(state, side.id).id
+  const projected = projectedEnvironmentState(state, kind, environmentId)
+  if (!projected) return -Infinity
+
+  const ownGain = aiSideStrikeRatio(projected, side.id, foeSideId)
+    - aiSideStrikeRatio(state, side.id, foeSideId)
+  const foeGain = aiSideStrikeRatio(projected, foeSideId, side.id)
+    - aiSideStrikeRatio(state, foeSideId, side.id)
+
   const livingTeam = side.team.filter((pokemon) => pokemon.hp > 0 && !pokemon.fainted)
   const affinity = kind === 'weather'
     ? {
@@ -11023,9 +11096,12 @@ function aiEnvironmentUtility(state, attacker, kind, environmentId) {
   const synergyCount = livingTeam.filter((pokemon) => (
     pokemon.types.some((type) => affinity.includes(type)) || affinity.includes(pokemon.ability)
   )).length
-  return 58 + synergyCount * 7
-}
 
+  return 18
+    + (ownGain - foeGain) * 260
+    + aiEnvironmentResidualSwing(state, kind, environmentId, side.id)
+    + synergyCount * 7
+}
 function aiIncomingCategoryPressure(state, sideId, categoryId = null) {
   const defenders = getActivePokemonList(state, sideId)
     .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
@@ -11650,6 +11726,22 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
     score *= 0.68
   }
   if (resolvedMove.flags?.includes('recharge') && !resolvedMove.isZMove && !resolvedMove.isMaxMove) score -= 24
+
+  // Outrage and its kin keep swinging for another turn or two and end in
+  // confusion, so the opponent gets a free switch into whatever walls the
+  // locked type. Only commit when the bench cannot answer, or when this hit
+  // already ends the fight.
+  if (resolvedMove.self?.volatileStatus === 'lockedmove' && !knockout) {
+    const defenderSide = getPokemonSide(state, defender)
+    const bench = availableBenchIndexes(defenderSide)
+      .map((index) => defenderSide.team[index])
+      .filter((pokemon) => pokemon && pokemon.hp > 0 && !pokemon.fainted)
+    const answers = bench.filter((pokemon) => (
+      getMoveTypeEffectiveness(state, projectedAttacker, pokemon, resolvedMove) < 1
+    )).length
+    const benchRisk = bench.length > 0 ? answers / bench.length : 0
+    score -= 22 + benchRisk * 74
+  }
 
   if (resolvedMove.drain && estimate.expectedDamage > 0) {
     const [numerator, denominator] = resolvedMove.drain
