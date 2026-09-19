@@ -17,6 +17,11 @@ const testIdentities = Object.freeze({ 'factory-local': 'alice', 'factory-local-
 export const FACTORY_RANKING_PENDING_LIMIT = 20
 export const FACTORY_LOCAL_RANKINGS_KEY = 'champions-factory-local-rankings-v1'
 const clone = value => structuredClone(value)
+const reportForMode = (report, mode) => {
+  const validated = validateFactoryRankingSubmission(report)
+  if (validated.mode !== getFactoryMode(mode).id) throw new Error('기록의 모드와 랭킹 모드가 일치하지 않습니다.')
+  return validated
+}
 const uidKey = uid => {
   if (typeof uid !== 'string' || !uid.trim()) throw new Error('순위를 기록할 트레이너를 확인하지 못했습니다.')
   return encodeURIComponent(uid)
@@ -49,7 +54,7 @@ export function createFactoryRankingClient({ uid, getIdToken, fetchImpl, apiUrl 
       return normalizeFactoryRankingSnapshot(await client.request('factoryLeaderboard', { mode: getFactoryMode(mode).id }, { signal }))
     },
     async report(report, signal) {
-      const validated = validateFactoryRankingSubmission(report)
+      const validated = reportForMode(report, mode)
       return normalizeFactoryRankingSnapshot(await client.request('reportFactoryRun', { report: validated }, { signal }))
     },
   }
@@ -78,7 +83,7 @@ export function createFactoryRankingOutbox({ uid, storage, send, onSnapshot = ()
   return {
     enqueue(report) {
       if (!current()) return false
-      const validated = validateFactoryRankingSubmission(report)
+      const validated = reportForMode(report, boardMode)
       const value = read()
       if (value.completed.includes(validated.runId) || value.pending.some(entry => entry.runId === validated.runId)) return true
       if (value.pending.length >= FACTORY_RANKING_PENDING_LIMIT) throw new Error('전송 대기 중인 팩토리 기록이 가득 찼습니다. 순위에서 다시 시도해주세요.')
@@ -129,7 +134,7 @@ export function createLocalFactoryRankingClient({ uid, trainerName, nickname, is
   return {
     async read() { return normalizeFactoryRankingSnapshot(snapshot(readEntries())) },
     async report(report) {
-      const validated = validateFactoryRankingSubmission(report)
+      const validated = reportForMode(report, boardMode)
       const all = readAll()
       const mine = all.filter(entry => entryMode(entry) === boardMode)
       const previous = mine.find(entry => entry.id === id) ?? null

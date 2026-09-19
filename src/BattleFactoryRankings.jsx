@@ -62,7 +62,6 @@ export default function BattleFactoryRankings({ ranking = {}, mode = FACTORY_DEF
   const [openId, setOpenId] = useState(null)
   const [details, setDetails] = useState(null)
   const refresh = useRef(ranking.refresh)
-  const didRefresh = useRef(false)
   refresh.current = ranking.refresh
   const entries = useMemo(() => (Array.isArray(ranking.entries) ? ranking.entries : []).slice(0, 10).map(normalizeRecord), [ranking.entries])
   const ownBest = ranking.ownBest
@@ -71,10 +70,13 @@ export default function BattleFactoryRankings({ ranking = {}, mode = FACTORY_DEF
   const board = getFactoryMode(mode)
 
   useEffect(() => {
-    if (didRefresh.current) return
-    didRefresh.current = true
-    refresh.current?.()
-  }, [])
+    setOpenId(null)
+    setDetails(null)
+    // Parent effects must create the selected mode's session before we read it.
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) refresh.current?.() })
+    return () => { cancelled = true }
+  }, [board.id])
 
   return <main className="battle-factory factory-rankings">
     <header className="factory-heading">

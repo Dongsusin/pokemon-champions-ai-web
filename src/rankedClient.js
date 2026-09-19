@@ -47,6 +47,7 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
       const readOnly = action === 'status' || action === 'rooms' || action === 'fixtures' || action === 'usage' || action === 'factoryLeaderboard' || action === 'rankedLeaderboard' || action === 'queueCounts'
       if (readOnly) {
         url.searchParams.set('action', action)
+        if (action === 'factoryLeaderboard' && payload.mode) url.searchParams.set('mode', payload.mode)
         if (payload.matchId) url.searchParams.set('matchId', payload.matchId)
         if (Number.isSafeInteger(payload.timelineRevision)) url.searchParams.set('timelineRevision', String(payload.timelineRevision))
         if (action === 'rooms' && payload.spectateMatchId) {

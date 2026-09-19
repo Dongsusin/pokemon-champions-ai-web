@@ -13,6 +13,7 @@ import {
 import { normalizePokemon } from '../src/data/trainingData.js'
 import { createRankedService } from '../server/rankedService.js'
 import { createRankedHttpHandler } from '../server/rankedHttp.js'
+import { createFactoryRankingClient } from '../src/battleFactoryRankingClient.js'
 import { createMemoryRankedStore, createFileRankedStore, createFirestoreRankedStore } from '../server/rankedStore.js'
 
 const tests = []
@@ -40,6 +41,26 @@ function environment(store = createMemoryRankedStore()) {
   }
 }
 const invalid = fn => assert.throws(fn, error => error.code === 'FACTORY_RANKING_INVALID' && error.status === 400)
+
+test('real client and HTTP handler preserve legacy standard records and read challenge records separately', async () => {
+  const env = environment()
+  const legacy = report(6, 'legacy-http-standard')
+  delete legacy.mode
+  await env.submit(identity(1), legacy)
+  const handler = createRankedHttpHandler({ service: env.service, enabled: true, authenticate: async () => identity(1) })
+  const client = mode => createFactoryRankingClient({ uid: identity(1).uid, mode,
+    apiUrl: 'http://127.0.0.1/api/ranked', getIdToken: async () => 'factory-test-token',
+    fetchImpl: (url, options) => handler(new Request(url, options)) })
+  const standard = client('standard'), challenge = client('challenge')
+  assert.equal((await standard.read()).ownBest.floor, 6)
+  assert.deepEqual((await challenge.read()).entries, [])
+  await challenge.report(report(2, 'challenge-http-record', 42, 'challenge'))
+  for (const board of [standard, challenge, standard, challenge]) {
+    const value = await board.read()
+    assert.deepEqual(value.entries.map(entry => entry.floor), [board === standard ? 6 : 2])
+    assert.equal(value.ownBest.floor, board === standard ? 6 : 2)
+  }
+})
 
 test('finished snapshots keep legal final equipment and moves without runtime or identity fields', () => {
   const run = finishedRun({ floor: 3 })

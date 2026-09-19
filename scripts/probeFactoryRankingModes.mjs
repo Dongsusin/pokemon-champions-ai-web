@@ -16,6 +16,7 @@ const origin = `http://127.0.0.1:${port}`
 const entry = `import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import BattleFactoryRankings from '/src/BattleFactoryRankings.jsx'
+import useBattleFactoryRankings from '/src/useBattleFactoryRankings.js'
 import { createFactoryRun, selectFactoryRentals, selectFactoryLead, beginFactoryBattle, resolveFactoryBattle } from '/src/data/battleFactory.js'
 import { createFactoryRankingSubmission } from '/src/data/battleFactoryRanking.js'
 import '/src/mobileViewport.js'
@@ -47,18 +48,22 @@ const boards = {
 
 function Harness() {
   const [mode, setMode] = useState('standard')
-  window.__probe = { mode }
+  const ranking = useBattleFactoryRankings({ uid: 'ranking-probe', displayName: '테스트' }, mode)
+  window.__probe = { mode, boards }
   return React.createElement('div', { className: 'app-shell factory-view' },
-    React.createElement(BattleFactoryRankings, { ranking: boards[mode], mode, onSelectMode: setMode, onBack: () => {} }))
+    React.createElement(BattleFactoryRankings, { ranking, mode, onSelectMode: setMode, onBack: () => {} }))
 }
 createRoot(document.getElementById('root')).render(React.createElement(Harness))`
 
 const server = await createServer({
   root, mode: 'factory-ranking-probe', logLevel: 'error',
+  define: { 'import.meta.env.VITE_RANKED_ENABLED': '"true"', 'import.meta.env.VITE_RANKED_API_URL': JSON.stringify(`${origin}/api/ranked`) },
   plugins: [{
     name: 'factory-ranking-fixture', enforce: 'pre',
-    resolveId: source => source === '/factory-ranking-entry.js' ? source : undefined,
-    load: id => id === '/factory-ranking-entry.js' ? entry : undefined,
+    resolveId: source => source === '/factory-ranking-entry.js' ? source
+      : /\/auth\/firebaseClient(?:\.js)?$/.test(source) ? '\0ranking-probe-auth' : undefined,
+    load: id => id === '/factory-ranking-entry.js' ? entry : id === '\0ranking-probe-auth'
+      ? 'export const firebaseAuth = { currentUser: { uid: "ranking-probe", getIdToken: async () => "ranking-probe-token" } }' : undefined,
   }],
   server: { host: '127.0.0.1', port, strictPort: true, hmr: false },
 })
@@ -80,6 +85,13 @@ try {
     await context.route('**/factory-ranking.html', route => route.fulfill({ contentType: 'text/html', body: html }))
     await context.route(/^https:\/\//, route => route.abort())
     const page = await context.newPage()
+    const requests = []
+    await page.route('**/api/ranked?*', async route => {
+      const mode = new URL(route.request().url()).searchParams.get('mode')
+      requests.push(mode)
+      const board = await page.evaluate(mode => window.__probe.boards[mode ?? 'standard'], mode)
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(board) })
+    })
     page.on('pageerror', error => errors.push(`${size}: ${error.message}`))
     page.setDefaultTimeout(20_000)
     const tap = locator => (phone ? locator.tap() : locator.click())
@@ -87,6 +99,7 @@ try {
       await page.goto(`${origin}/factory-ranking.html`)
       const tabs = page.locator('.factory-ranking-mode')
       await tabs.first().waitFor()
+      await page.waitForFunction(() => document.querySelector('.factory-ranking-floor strong')?.textContent === '42F')
       const labels = await tabs.allInnerTexts()
       console.log(`\n=== ${size} ===`)
       console.log(`  탭: ${labels.map(text => text.replace(/\n/g, ' ')).join(' | ')}`)
@@ -102,6 +115,7 @@ try {
 
       await tap(tabs.nth(1))
       await page.waitForFunction(() => document.querySelector('.factory-ranking-mode.selected strong')?.textContent === '도전 모드')
+      await page.waitForFunction(() => document.querySelector('.factory-ranking-floor strong')?.textContent === '12F')
       const after = await floors()
       console.log(`  ${await selected()} → ${after.join(' / ')}`)
       if (!after.some(text => text.startsWith('12'))) failures.push({ size, note: `challenge board missing 12F: ${after.join(',')}` })
@@ -110,6 +124,11 @@ try {
         failures.push({ size, note: 'exactly one tab must report itself selected' })
       }
       await page.screenshot({ path: path.join(output, `${size}-challenge.png`), fullPage: true })
+      await tap(tabs.first())
+      await page.waitForFunction(() => document.querySelector('.factory-ranking-floor strong')?.textContent === '42F')
+      if (JSON.stringify(requests) !== JSON.stringify(['standard', 'challenge', 'standard'])) {
+        failures.push({ size, note: `incorrect mode requests: ${requests.join(',')}` })
+      }
 
       // The strip must not push the board off-screen or scroll the page sideways.
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)

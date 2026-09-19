@@ -71,6 +71,35 @@ test('factory leaderboard GET and compact report POST use fresh credentials and 
   assert.equal(requests[1].redirect, 'error')
 })
 
+test('local boards and pending reports preserve legacy records and reject cross-mode writes', async () => {
+  const storage = new MemoryStorage()
+  const legacy = entry(report('legacy-local-standard', 8), 'local:alice')
+  storage.setItem(FACTORY_LOCAL_RANKINGS_KEY, JSON.stringify([legacy]))
+  const standard = createLocalFactoryRankingClient({ uid: 'alice', storage })
+  const challenge = createLocalFactoryRankingClient({ uid: 'alice', storage, mode: 'challenge' })
+  const challengeReport = { ...report('challenge-local-run', 3), mode: 'challenge' }
+  assert.equal((await standard.read()).ownBest.floor, 8)
+  assert.deepEqual(await challenge.read(), snapshot())
+  await challenge.report(challengeReport)
+  assert.equal((await challenge.read()).ownBest.floor, 3)
+  await assert.rejects(standard.report(challengeReport), /모드/)
+  await assert.rejects(challenge.report(report('wrong-standard-run', 9)), /모드/)
+  assert.deepEqual((await standard.read()).ownBest, legacy)
+  const makeOutbox = mode => createFactoryRankingOutbox({ uid: 'alice', storage, mode, send: async () => snapshot() })
+  const standardOutbox = makeOutbox('standard'), challengeOutbox = makeOutbox('challenge')
+  assert.throws(() => standardOutbox.enqueue(challengeReport), /모드/)
+  standardOutbox.enqueue(report('pending-standard-run', 4))
+  challengeOutbox.enqueue(challengeReport)
+  await challengeOutbox.flush()
+  assert.equal(standardOutbox.pendingCount(), 1)
+  assert.equal(challengeOutbox.pendingCount(), 0)
+  let sent = false
+  const online = createFactoryRankingClient({ uid: 'alice', mode: 'standard',
+    fetchImpl: async () => { sent = true; return Response.json(snapshot()) } })
+  await assert.rejects(online.report(challengeReport), /모드/)
+  assert.equal(sent, false)
+})
+
 test('local test credentials require every dev, factory mode, flag and loopback guard', async () => {
   const url = new URL('../src/battleFactoryRankingClient.js', import.meta.url)
   const source = await readFile(url, 'utf8')
