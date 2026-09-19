@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Boxes, Crown, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Boxes, Crown, Gem, Maximize2, Package, Play, RotateCcw } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import PokemonSprite from './PokemonSprite'
+import RankedTeamRoster from './RankedTeamRoster'
+import './ranked.css'
 import { BOSS_CHALLENGES, createBossChallengeBattle } from './data/bossChallenge'
-import { getSpeciesProfile } from './data/trainingData'
+import { getSpeciesProfile, typeClassName } from './data/trainingData'
 import { getBattleItem } from './data/shopData'
 import './bossChallenge.css'
 
@@ -65,14 +67,22 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
           <strong>{entry.name || `팀 ${index + 1}`}</strong><small>{entry.pokemonIds.filter(id => boxPokemon.some(p => p.captureId === id)).length} / 6</small>
         </button>)}</nav>
 
-        <ol className="boss-party-slots">{Array.from({ length: 6 }, (_, index) => {
-          const pokemon = party[index]
-          const profile = pokemon ? getSpeciesProfile(pokemon.speciesId) : null
-          return <li key={index}><small>{index + 1}번{index < 2 ? ' · 선봉' : ''}</small>{pokemon ? <>
-            <PokemonSprite animatedSrc={pokemon.spriteFront || profile?.spriteFront} fallbackSrc={pokemon.spriteFrontFallback || profile?.spriteFrontFallback} alt={pokemon.name} />
-            <strong>{pokemon.name}</strong><small>{pokemon.heldItemId ? getBattleItem(pokemon.heldItemId).name : '도구 없음'}</small>
-          </> : <span>빈 슬롯</span>}</li>
-        })}</ol>
+        <RankedTeamRoster pokemon={party} className="boss-party-roster" renderCard={(pokemon, index, profile) => {
+          const teraType = pokemon.teraType ?? profile.types[0]
+          const gigantamax = pokemon.dynamaxMode === 'gigantamax'
+          return <>
+            <PokemonSprite animatedSrc={pokemon.spriteFront || profile.spriteFront} fallbackSrc={pokemon.spriteFrontFallback || profile.spriteFrontFallback} alt={pokemon.name} />
+            <span className="boss-party-copy">
+              <small>{index + 1}번{index < 2 ? ' · 선봉' : ''}</small>
+              <strong>{pokemon.name}</strong>
+              <span className="boss-party-loadout">
+                <span><Package size={11} />{getBattleItem(pokemon.heldItemId)?.name ?? '도구 없음'}</span>
+                <span className={`type-${typeClassName(teraType)}`}><Gem size={11} />테라 {teraType}</span>
+                <span className={gigantamax ? 'gigantamax' : 'dynamax'}>{gigantamax ? <Crown size={11} /> : <Maximize2 size={11} />}{gigantamax ? '거다이맥스' : '다이맥스'}</span>
+              </span>
+            </span>
+          </>
+        }} />
         {!teamReady && <p role="status">팀 편성에서 포켓몬 6마리를 등록해주세요.</p>}
       </section>
       <section className="boss-selection-panel"><header><h2>도전할 보스</h2><Crown size={20} /></header><section className="boss-challenge-choices" aria-label="보스 선택">{BOSS_CHALLENGES.map(candidate => {

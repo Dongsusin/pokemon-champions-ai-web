@@ -79,3 +79,21 @@
 .trainer-sprite-frame.trainer-portrait-group { display: flex; align-items: flex-end; justify-content: center; gap: 0; }
 .trainer-sprite-frame.trainer-portrait-group > .trainer-sprite-frame { flex: 1; width: 0; min-width: 0; height: 100%; }
 .trainer-sprite-frame.trainer-portrait-group > .trainer-sprite-frame > img { width: 100%; height: 100%; object-fit: contain; }
+.boss-challenge .boss-party-roster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(110px, 1fr)); gap: 10px; flex: 1; min-height: 0; overflow-y: auto; }
+.boss-challenge .boss-party-roster > .ranked-pokemon-card { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 10px; min-width: 0; min-height: 0; text-align: left; background: #17243d; border: 1px solid #7083b055; border-radius: 10px; }
+.boss-party-roster .pokemon-sprite-frame { width: 56px; height: 64px; flex-shrink: 0; }
+.boss-party-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.boss-challenge .boss-party-copy > strong { font-size: 14px; }
+.boss-challenge .boss-party-copy > small { color: #c9a8fa; }
+.boss-party-loadout { display: flex; flex-wrap: wrap; gap: 3px; }
+.boss-party-loadout > span { display: inline-flex; align-items: center; gap: 3px; padding: 2px 4px; border-radius: 4px; background: #263953; color: #e8ecff; font-size: 10px; line-height: 1.35; }
+.boss-party-loadout svg { flex-shrink: 0; }
+.boss-party-loadout > .dynamax, .boss-party-loadout > .gigantamax { background: #4d284f; color: #ffd6f3; }
+@media (max-height: 600px) and (min-width: 651px) {
+ .boss-challenge .boss-party-roster { grid-template-rows: repeat(3, minmax(88px, 1fr)); gap: 6px; }
+ .boss-challenge .boss-party-roster > .ranked-pokemon-card { padding: 5px; gap: 4px; }
+ .boss-party-roster .pokemon-sprite-frame { width: 38px; height: 44px; }
+ .boss-challenge .boss-party-copy > strong { font-size: 12px; }
+ .boss-party-copy { gap: 1px; }
+ .boss-party-loadout > span { font-size: 9px; padding: 1px 3px; }
+}
