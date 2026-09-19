@@ -66,16 +66,17 @@ try {
       await page.screenshot({ path: fileURLToPath(new URL(`trainers-${name}-${viewport.width}.png`, output)) })
       assert.equal(await page.evaluate(() => window.__bossBattle().player.team.length), 6)
       assert.equal(await page.evaluate(() => window.__bossBattle().player.activeIndexes.length), 2)
-      // Test-only terminal callback checks the controller, not combat outcomes.
-      await page.evaluate(() => window.__completeBossRound({ winner: 'player' }))
-      await page.getByRole('button', { name: '다음 라운드' }).click()
+      // Inject terminal battle state to verify automatic resolution, not combat outcomes.
+      await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
+      assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
       await page.waitForFunction(() => window.__bossRun()?.round === 2 && window.__bossRun()?.phase === 'battle')
       assert.equal(await page.evaluate(() => window.__bossBattle().opponent.team.length), name === '뮤츠' ? 6 : 3)
-      await page.evaluate(() => window.__completeBossRound({ winner: 'player' }))
-      await page.getByRole('button', { name: '다음 라운드' }).click()
+      assert.equal(await page.locator('.battle-intro-overlay, .battle-result-overlay').count(), 0)
+      await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
+      assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
       await page.waitForFunction(() => window.__bossBattle()?.raid?.phase === 3)
       if (name === '칠색조') {
-        await page.getByRole('button', { name: '배틀 개시' }).click({ timeout: 60000 })
+        assert.equal(await page.getByRole('button', { name: '배틀 개시' }).count(), 0)
         const dialogue = page.locator('.battle-trainer-dialogue-box')
         if (await dialogue.count()) await dialogue.click()
         await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'hidden' })
@@ -105,7 +106,7 @@ try {
         await page.locator('.battle-target-card').filter({ hasText: summonName }).click()
         await page.waitForFunction(() => window.__bossBattle().turn > 1, { timeout: 60000 })
       }
-      await page.evaluate(() => window.__completeBossRound({ winner: 'player' }))
+      await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
       await page.getByRole('heading', { name: `${name} 격파 성공!` }).waitFor()
       await page.getByRole('button', { name: '다시 준비하기' }).click()
     }

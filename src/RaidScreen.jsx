@@ -33,11 +33,16 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
   }
   function complete(summary) {
     if (current.current !== run || run.phase !== 'battle') return
-    const next = { ...run, phase: summary.winner !== 'player' ? 'lost' : run.round === 3 ? 'won' : 'interval' }
+    if (summary.winner === 'player' && run.round < 3) {
+      startRound(run.party, run.round + 1, run.bossId)
+      return
+    }
+    const next = { ...run, phase: summary.winner === 'player' ? 'won' : 'lost' }
     current.current = next; setRun(next)
   }
   if (active) return <BattleScreen key={`${run.bossId}-${run.round}`}
-    initialBattle={run.battle} playerPokemon={run.party} playerName={playerName}
+    initialBattle={run.battle} skipIntro={run.round > 1} hideResult onResolved={complete}
+    playerPokemon={run.party} playerName={playerName}
     opponent={run.battle.opponentMeta} opponentTeam={{ pokemon: run.battle.opponent.team }} rules={run.battle.rules}
     competitionLabel={`${boss.name} 보스전 · ROUND ${run.round} / 3`}
     soundEnabled={soundEnabled} gameSettings={gameSettings} playerGender={gameSettings?.playerGender}
@@ -46,12 +51,10 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
   return <main className="boss-challenge">
     <header className="boss-page-header"><button type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 모드</button><div><span>BOSS CHALLENGE</span><h1>보스전</h1></div><span className="boss-round-badge">3 ROUNDS</span></header>
     {run ? <section className="boss-challenge-result">
-      <Crown size={44} /><h1>{run.phase === 'won' ? `${boss.name} 격파 성공!` : run.phase === 'lost' ? '도전 종료' : `라운드 ${run.round} 클리어!`}</h1>
-      <p>{run.phase === 'interval' ? `팀의 HP·PP·상태·배틀 기믹을 회복하고 ${boss.rounds[run.round].name}에게 도전합니다.` : `${boss.name} 보스전 · ${run.round} / 3 라운드`}</p>
+      <Crown size={44} /><h1>{run.phase === 'won' ? `${boss.name} 격파 성공!` : '도전 종료'}</h1>
+      <p>{`${boss.name} 보스전 · ${run.round} / 3 라운드`}</p>
       {error && <p role="alert">{error}</p>}
-      {run.phase === 'interval' ? <button type="button" className="boss-primary" onClick={() => {
-        if (current.current === run) startRound(run.party, run.round + 1, run.bossId)
-      }}><Play size={18} /> 다음 라운드</button> : <button type="button" onClick={() => { setRun(null); setError('') }}><RotateCcw size={18} /> 다시 준비하기</button>}
+      <button type="button" onClick={() => { setRun(null); setError('') }}><RotateCcw size={18} /> 다시 준비하기</button>
     </section> : <>
       <div className="boss-selection-workspace">
       <section className="boss-challenge-party" aria-label="저장된 출전 팀">

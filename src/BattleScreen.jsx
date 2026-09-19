@@ -1978,12 +1978,14 @@ function BattleScreen({
   onResolved,
   battleRewards = null,
   initialBattle = null,
+  skipIntro = false,
+  hideResult = false,
   onComplete,
   online = null,
 }) {
   const spectating = online?.spectator === true
   const [battle, setBattle] = useState(() => online?.state ?? initialBattle ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
-  const [introVisible, setIntroVisible] = useState(!online)
+  const [introVisible, setIntroVisible] = useState(!online && !skipIntro)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
   const [queuedActions, setQueuedActions] = useState([])
@@ -2861,6 +2863,7 @@ function BattleScreen({
       )}
 
       {battle.winner
+        && !hideResult
         && !online
         && !introVisible
         && !isTurnAnimating
