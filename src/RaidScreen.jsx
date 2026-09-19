@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Boxes, Check, Crown, Gem, ShieldCheck, Maximize2, Package, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Boxes, Check, Crown, Gem, ShieldCheck, Package, Play, RotateCcw } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import PokemonSprite from './PokemonSprite'
 import SpriteImage from './SpriteImage'
@@ -69,7 +69,6 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
 
         <RankedTeamRoster pokemon={party} className="boss-party-roster" renderCard={(pokemon, index, profile) => {
           const teraType = pokemon.teraType ?? profile.types[0]
-          const gigantamax = pokemon.dynamaxMode === 'gigantamax'
           return <>
             <small className="boss-slot-number">{String(index + 1).padStart(2, '0')}</small><SpriteImage className="boss-party-icon" src={pokemon.icon ?? profile.icon} fallbackSrc={pokemon.iconFallback ?? profile.iconFallback} alt="" />
             <span className="boss-party-copy">
@@ -78,7 +77,6 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
               <span className="boss-party-loadout">
                 <span><Package size={11} />{getBattleItem(pokemon.heldItemId)?.name ?? '도구 없음'}</span>
                 <span className={`type-${typeClassName(teraType)}`}><Gem size={11} />테라 {teraType}</span>
-                <span className={gigantamax ? 'gigantamax' : 'dynamax'}>{gigantamax ? <Crown size={11} /> : <Maximize2 size={11} />}{gigantamax ? '거다이맥스' : '다이맥스'}</span>
               </span>
             </span>
           </>

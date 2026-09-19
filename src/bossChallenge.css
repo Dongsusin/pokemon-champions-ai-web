@@ -47,7 +47,6 @@
 .boss-party-loadout { display: flex; flex-wrap: wrap; gap: 3px; }
 .boss-party-loadout > span { display: inline-flex; align-items: center; gap: 3px; padding: 2px 4px; border-radius: 5px; background: #0b153999; color: #bbcae2; font-size: 8px; line-height: 1.2; white-space: nowrap; }
 .boss-party-loadout > span[class^=type-] { color: #e5ffc2; background: #63744455; }
-.boss-party-loadout > .dynamax, .boss-party-loadout > .gigantamax { color: #ffd3f3; background: #67356855; }
 .boss-party-loadout svg { flex-shrink: 0; }
 .boss-team-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
 .boss-team-footer > span { display: flex; align-items: center; gap: 5px; color: #e1ff69; font-size: 10px; }
