@@ -21,7 +21,7 @@ import {
   Zap,
 } from 'lucide-react'
 import PokemonSprite from './PokemonSprite'
-import { getPokemonEvolutionFamilyKey, getTrainingRosterPokemon } from './data/pokemonPool'
+import { getTrainingRosterPokemon } from './data/pokemonPool'
 import {
   BATTLE_LEVEL,
   canPokemonLearnMove,
@@ -154,7 +154,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   const [movePickerTooltip, setMovePickerTooltip] = useState(null)
   const [abilityPickerTooltip, setAbilityPickerTooltip] = useState(null)
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
-  const teamMembershipByFamily = useMemo(() => {
+  const teamMembershipByCaptureId = useMemo(() => {
     const pokemonByCaptureId = new Map(pokemon.map((entry) => [entry.captureId, entry]))
     const membershipMap = new Map()
 
@@ -162,10 +162,10 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
       (team.pokemonIds ?? []).forEach((captureId) => {
         const teamPokemon = pokemonByCaptureId.get(captureId)
         if (!teamPokemon) return
-        const familyKey = getPokemonEvolutionFamilyKey(teamPokemon)
-        const memberships = membershipMap.get(familyKey) ?? []
+        const memberId = teamPokemon.captureId
+        const memberships = membershipMap.get(memberId) ?? []
         memberships.push({ id: team.id, name: team.name })
-        membershipMap.set(familyKey, memberships)
+        membershipMap.set(memberId, memberships)
       })
     })
 
@@ -176,7 +176,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
     const query = rosterSearch.trim().toLocaleLowerCase('ko-KR')
     const matchingPokemon = trainingPokemon.filter((entry) => {
       const matchesSearch = !query || entry.name.toLocaleLowerCase('ko-KR').includes(query)
-      const memberships = teamMembershipByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? []
+      const memberships = teamMembershipByCaptureId.get(entry.captureId) ?? []
       const matchesTeam = !rosterTeamOnly || memberships.some((membership) => membership.id === activeTeam?.id)
       return matchesSearch && matchesTeam
     })
@@ -187,7 +187,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
       const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
       return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
     })
-  }, [activeTeam?.id, rosterSearch, pokemonSort, teamMembershipByFamily, rosterTeamOnly, trainingPokemon])
+  }, [activeTeam?.id, rosterSearch, pokemonSort, teamMembershipByCaptureId, rosterTeamOnly, trainingPokemon])
 
   useEffect(() => {
     if (!trainingPokemon.some((entry) => entry.captureId === selectedId)) {
@@ -575,7 +575,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
         <div className="training-title">
           <span>POKÉMON TRAINING LAB</span>
           <h1>트레이닝</h1>
-          <p>진화 계열마다 처음 만난 파트너를 선택해 배틀 설정을 조정하세요.</p>
+          <p>보유한 파트너를 선택해 배틀 설정을 조정하세요.</p>
         </div>
 
         <div className="training-level-badge">
@@ -594,7 +594,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
             </div>
             <strong aria-live="polite">
               {filteredTrainingPokemon.length}
-              <em>{compactLayout ? '마리' : rosterSearch.trim() || teamOnly ? ` / ${trainingPokemon.length}계열` : '계열'}</em>
+              <em>{compactLayout ? '마리' : rosterSearch.trim() || teamOnly ? ` / ${trainingPokemon.length}마리` : '마리'}</em>
             </strong>
           </div>
 
@@ -647,7 +647,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
 
           <div className="training-roster-grid">
             {filteredTrainingPokemon.map((entry) => {
-              const teamMemberships = teamMembershipByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? []
+              const teamMemberships = teamMembershipByCaptureId.get(entry.captureId) ?? []
               const isInTeam = teamMemberships.length > 0
               const isInActiveTeam = teamMemberships.some((membership) => membership.id === activeTeamId)
               const teamLabel = isInTeam

@@ -1137,7 +1137,7 @@ export function GameApp({
     }
 
     const nextTeamIds = pickAutoTeamIds(
-      getTrainingRosterPokemon(boxPokemon),
+      getTrainingRosterPokemon(boxPokemon, { includeDirectDraws: false }),
       BATTLE_TEAM_SIZE,
       activeTeam?.pokemonIds ?? [],
     )

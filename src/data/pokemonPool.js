@@ -342,7 +342,7 @@ export function getPokemonEvolutionFamilyKey(pokemon) {
     : `capture:${pokemon.captureId}`
 }
 
-export function getTrainingRosterPokemon(collection = []) {
+export function getTrainingRosterPokemon(collection = [], { includeDirectDraws = true } = {}) {
   const familyRepresentatives = new Map()
 
   for (const pokemon of Array.isArray(collection) ? collection : []) {
@@ -354,7 +354,13 @@ export function getTrainingRosterPokemon(collection = []) {
     }
   }
 
-  return [...familyRepresentatives.values()].sort((left, right) => {
+  // Keep route placeholders collapsed, but never hide a directly obtained partner.
+  // This also restores previously hidden draws from existing collection saves.
+  const visible = new Map([...familyRepresentatives.values()].map(pokemon => [pokemon.captureId, pokemon]))
+  for (const pokemon of Array.isArray(collection) ? collection : []) {
+    if (includeDirectDraws && (Number(pokemon.directDrawCount) > 0 || pokemon.shinyObtained)) visible.set(pokemon.captureId, pokemon)
+  }
+  return [...visible.values()].sort((left, right) => {
     const leftObtainedTime = obtainedTime(left)
     const rightObtainedTime = obtainedTime(right)
     if (leftObtainedTime !== rightObtainedTime) return leftObtainedTime < rightObtainedTime ? -1 : 1

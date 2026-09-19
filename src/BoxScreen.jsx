@@ -29,7 +29,6 @@ import { useIsCompactLayout } from './useMobileLayout'
 import {
   DRAW_RARITY_ORDER,
   RARITY_META,
-  getPokemonEvolutionFamilyKey,
   getPokemonRarity,
   getTrainingRosterPokemon,
 } from './data/pokemonPool'
@@ -164,8 +163,8 @@ function BoxScreen({
       .filter(Boolean),
     [pokemon, teamIds],
   )
-  const teamPokemonByFamily = useMemo(
-    () => new Map(teamPokemon.map((entry) => [getPokemonEvolutionFamilyKey(entry), entry])),
+  const teamPokemonByCaptureId = useMemo(
+    () => new Map(teamPokemon.map((entry) => [entry.captureId, entry])),
     [teamPokemon],
   )
   const rosterTypes = useMemo(
@@ -192,7 +191,7 @@ function BoxScreen({
 
     const matchingRoster = trainingPokemon.filter((entry) => {
       const profile = getSpeciesProfile(entry.speciesId)
-      const teamMember = teamPokemonByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? null
+      const teamMember = teamPokemonByCaptureId.get(entry.captureId) ?? null
       const teamMemberProfile = teamMember ? getSpeciesProfile(teamMember.speciesId) : null
       const isInTeam = Boolean(teamMember)
       const searchMatches = !normalizedSearch
@@ -215,7 +214,7 @@ function BoxScreen({
       const rightNumber = Number(right.dexSpeciesId ?? right.speciesId ?? Number.MAX_SAFE_INTEGER)
       return leftNumber - rightNumber || left.name.localeCompare(right.name, 'ko-KR')
     })
-  }, [rarityFilter, rosterSort, search, teamFilter, teamPokemonByFamily, trainingPokemon, typeFilter])
+  }, [rarityFilter, rosterSort, search, teamFilter, teamPokemonByCaptureId, trainingPokemon, typeFilter])
 
   // Compact layouts show one screenful at a time instead of scrolling the
   // whole box: six columns by two rows, paged.
@@ -236,12 +235,7 @@ function BoxScreen({
   const selectedSourcePokemon = trainingPokemon.find((entry) => entry.captureId === selectedCaptureId)
     ?? pokemon.find((entry) => entry.captureId === selectedCaptureId)
     ?? null
-  const selectedFamilyKey = selectedSourcePokemon
-    ? getPokemonEvolutionFamilyKey(selectedSourcePokemon)
-    : null
-  const selectedTeamMember = selectedFamilyKey
-    ? teamPokemonByFamily.get(selectedFamilyKey) ?? null
-    : null
+  const selectedTeamMember = teamPokemonByCaptureId.get(selectedSourcePokemon?.captureId) ?? null
   const selectedPokemon = selectedTeamMember ?? selectedSourcePokemon
   const selectedProfile = selectedPokemon ? getSpeciesProfile(selectedPokemon.speciesId) : null
   const selectedTeamIndex = selectedTeamMember ? teamIds.indexOf(selectedTeamMember.captureId) : -1
@@ -440,11 +434,11 @@ function BoxScreen({
         <div className="pc-title">
           <span>POKÉMON BOX & BATTLE PARTY</span>
           <h1>박스 · 팀 편성</h1>
-          <p>보유한 진화 계열 대표 포켓몬 중 배틀에 참가할 6마리를 선택하세요.</p>
+          <p>보유 포켓몬 중 배틀에 참가할 6마리를 선택하세요.</p>
         </div>
 
-        <div className="pc-summary" aria-label={`보유 ${trainingPokemon.length}계열, 이로치 ${shinyCount}, 팀 ${teamPokemon.length}`}>
-          <span><Dna size={15} /> {trainingPokemon.length}<em>계열</em></span>
+        <div className="pc-summary" aria-label={`보유 ${trainingPokemon.length}마리, 이로치 ${shinyCount}, 팀 ${teamPokemon.length}`}>
+          <span><Dna size={15} /> {trainingPokemon.length}<em>마리</em></span>
           <span><Star size={15} /> {shinyCount}<em>SHINY</em></span>
           <span><ShieldCheck size={15} /> {teamPokemon.length}<em>/6</em></span>
         </div>
@@ -551,7 +545,7 @@ function BoxScreen({
             <div className="team-box-heading">
               <span>BOX POKÉMON</span>
               <strong>보유 포켓몬</strong>
-              <em>{trainingPokemon.length}계열</em>
+              <em>{trainingPokemon.length}마리</em>
             </div>
 
             <label className="pokedex-search team-box-search">
@@ -670,7 +664,7 @@ function BoxScreen({
           </div>
 
           <div className="team-box-result-bar">
-            <span className="team-box-result-note">트레이닝과 동일한 진화 계열 대표 목록</span>
+            <span className="team-box-result-note">직접 획득한 포켓몬과 진화 계열 대표 목록</span>
             <div className="team-box-sort-control" role="group" aria-label="포켓몬 정렬 기준">
               <ArrowDownAZ size={13} aria-hidden="true" />
               <button
@@ -697,15 +691,15 @@ function BoxScreen({
             <div className="team-box-grid" aria-label={`보유 포켓몬 ${filteredRoster.length}마리`}>
               {visibleRoster.map((entry) => {
                 const profile = getSpeciesProfile(entry.speciesId)
-                const teamMember = teamPokemonByFamily.get(getPokemonEvolutionFamilyKey(entry)) ?? null
+                const teamMember = teamPokemonByCaptureId.get(entry.captureId) ?? null
                 const teamIndex = teamMember ? teamIds.indexOf(teamMember.captureId) : -1
                 const isInTeam = Boolean(teamMember)
-                const isSelected = getPokemonEvolutionFamilyKey(entry) === selectedFamilyKey
+                const isSelected = entry.captureId === selectedCaptureId
                 const loadoutPokemon = teamMember ?? entry
                 const heldItem = ITEM_BY_ID.get(loadoutPokemon.heldItemId) ?? null
                 const addDisabled = !isInTeam && teamPokemon.length >= PARTY_SIZE
                 const toggleLabel = isInTeam
-                  ? `${teamMember.name} (${entry.name} 계열) 팀 ${teamIndex + 1}번에서 빼기`
+                  ? `${teamMember.name} 팀 ${teamIndex + 1}번에서 빼기`
                   : teamPokemon.length >= PARTY_SIZE
                     ? '팀이 가득 차서 추가할 수 없음'
                     : `${entry.name} 팀에 추가`
@@ -789,7 +783,7 @@ function BoxScreen({
                   <small>NO. {String(selectedProfile.id).padStart(4, '0')}</small>
                   <strong>{selectedProfile.name}</strong>
                   <span className="pokedex-category">
-                    {selectedIsInTeam ? `팀 ${selectedTeamIndex + 1}번` : '진화 계열 대표'}
+                    {selectedIsInTeam ? `팀 ${selectedTeamIndex + 1}번` : '보유 포켓몬'}
                   </span>
                 </div>
                 <div className="type-chip-list">

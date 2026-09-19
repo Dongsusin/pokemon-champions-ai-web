@@ -13,6 +13,7 @@ import {
   createPokemonDraw,
   mergePokemonDraws,
   migratePokemonCollection,
+  getTrainingRosterPokemon,
   getCurrentLegendaryPickup,
   getPokemonRarity,
   getShinyOdds,
@@ -288,6 +289,26 @@ checkGuarantee('prices and base rarity/shiny rates remain unchanged', () => {
   assert.deepEqual(Object.values(DRAW_BANNERS).map(banner => banner.price), [1000, 1800, 3600])
   assert.deepEqual(DRAW_RARITY_ORDER.map(rarity => RARITY_META[rarity].rate), [0.5, 0.32, 0.14, 0.03, 0.01])
   assert.equal(BASE_SHINY_ODDS, 4096)
+})
+
+checkGuarantee('direct draws in the same evolution family remain visible after reload', () => {
+  const drawSpecies = (id, isShiny = false) => ({ ...POKEMON_POOL.find(p => p.id === id), isShiny })
+  let collection = mergePokemonDraws([], [drawSpecies(133)]).collection
+  assert.equal(getTrainingRosterPokemon(collection).length, 1, 'route unlocks should not flood the box')
+  collection = mergePokemonDraws(collection, [drawSpecies(134), drawSpecies(135, true), drawSpecies(792)]).collection
+  const reloaded = migratePokemonCollection(JSON.parse(JSON.stringify(collection)))
+  assert.equal(getTrainingRosterPokemon(reloaded, { includeDirectDraws: false }).length, 2, 'auto team candidates remain one per family')
+  const visible = getTrainingRosterPokemon(reloaded)
+  for (const id of [133, 134, 135, 792]) assert(visible.some(p => p.dexSpeciesId === id), 'missing drawn species ' + id)
+  assert.equal(visible.find(p => p.dexSpeciesId === 135).shinyObtained, true)
+  const duplicate = mergePokemonDraws(reloaded, [drawSpecies(134)])
+  assert.equal(getTrainingRosterPokemon(duplicate.collection).length, visible.length)
+  assert.equal(duplicate.duplicateRefundVp, DUPLICATE_DRAW_REFUND_VP)
+})
+checkGuarantee('every directly drawn species is discoverable in the box roster', () => {
+  const collection = mergePokemonDraws([], POKEMON_POOL.map(p => ({ ...p, isShiny: false }))).collection
+  const visible = new Set(getTrainingRosterPokemon(collection).map(p => p.dexSpeciesId))
+  assert.equal(visible.size, POKEMON_POOL.length)
 })
 
 if (failures.length > 0) {
