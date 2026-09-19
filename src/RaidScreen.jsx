@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Crown, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Boxes, Crown, Play, RotateCcw } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import PokemonSprite from './PokemonSprite'
 import { BOSS_CHALLENGES, createBossChallengeBattle } from './data/bossChallenge'
 import { getSpeciesProfile } from './data/trainingData'
+import { getBattleItem } from './data/shopData'
 import './bossChallenge.css'
 
 const MECHANICS = {
@@ -12,10 +13,15 @@ const MECHANICS = {
   lugia: ['50%: 다크루기아로 폼체인지', '25%: 전투가 끝날 때까지 변경 불가능한 비'],
 }
 
-export default function RaidScreen({ boxPokemon, onBack, onBattleActiveChange, playerName = '트레이너',
+export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSelectTeam, onOpenBox,
+  selectedBossId, onSelectBoss, onBack, onBattleActiveChange, playerName = '트레이너',
   soundEnabled, gameSettings, audioSettings, onToggleSound, onOpenSettings }) {
-  const [bossId, setBossId] = useState('mewtwo')
-  const [selected, setSelected] = useState([])
+  const [localBossId, setLocalBossId] = useState('mewtwo')
+  const bossId = selectedBossId ?? localBossId
+  const setBossId = onSelectBoss ?? setLocalBossId
+  const team = teams.find(entry => entry.id === activeTeamId) ?? teams[0]
+  const party = (team?.pokemonIds ?? []).map(id => boxPokemon.find(pokemon => pokemon.captureId === id)).filter(Boolean)
+  const teamReady = party.length === 6 && new Set(party.map(pokemon => pokemon.captureId)).size === 6
   const [run, setRun] = useState(null)
   const [error, setError] = useState('')
   const current = useRef(run)
@@ -54,6 +60,23 @@ export default function RaidScreen({ boxPokemon, onBack, onBattleActiveChange, p
       }}><Play size={18} /> 다음 라운드</button> : <button type="button" onClick={() => { setRun(null); setError('') }}><RotateCcw size={18} /> 다시 준비하기</button>}
     </section> : <>
       <div className="boss-challenge-title"><Crown size={30} /><h1>전설의 보스에 도전</h1><p>내 포켓몬 6마리로 3라운드를 돌파하세요.</p></div>
+      <section className="boss-challenge-party" aria-label="저장된 출전 팀">
+        <header><h2>{team?.name ?? '출전 팀'} <span>{party.length} / 6</span></h2>
+          <button type="button" onClick={onOpenBox}><Boxes size={18} /> 팀 편성</button></header>
+        <nav className="boss-team-switcher" aria-label="출전 팀 변경">{teams.map((entry, index) => <button
+          type="button" key={entry.id} aria-pressed={entry.id === team?.id} onClick={() => onSelectTeam?.(entry.id)}>
+          <strong>{entry.name || `팀 ${index + 1}`}</strong><small>{entry.pokemonIds.filter(id => boxPokemon.some(p => p.captureId === id)).length} / 6</small>
+        </button>)}</nav>
+        <p>저장된 팀의 편성 순서대로 출전합니다. 처음 2마리가 더블배틀 선봉입니다.</p>
+        <ol className="boss-party-slots">{Array.from({ length: 6 }, (_, index) => {
+          const pokemon = party[index]
+          return <li key={index}><small>{index + 1}번{index < 2 ? ' · 선봉' : ''}</small>{pokemon ? <>
+            <PokemonSprite animatedSrc={pokemon.spriteFront} fallbackSrc={pokemon.spriteFrontFallback} alt={pokemon.name} />
+            <strong>{pokemon.name}</strong><small>{pokemon.heldItemId ? getBattleItem(pokemon.heldItemId).name : '도구 없음'}</small>
+          </> : <span>빈 슬롯</span>}</li>
+        })}</ol>
+        {!teamReady && <p role="status">팀 편성에서 포켓몬 6마리를 등록해주세요.</p>}
+      </section>
       <section className="boss-challenge-choices" aria-label="보스 선택">{BOSS_CHALLENGES.map(candidate => {
         const profile = getSpeciesProfile(candidate.speciesId)
         return <button type="button" aria-pressed={candidate.id === bossId} key={candidate.id} onClick={() => setBossId(candidate.id)}>
@@ -67,22 +90,10 @@ export default function RaidScreen({ boxPokemon, onBack, onBattleActiveChange, p
         <ul><li>75%: HP·공격·방어·특공·특방·스피드 1단계 상승</li>{MECHANICS[bossId].map(text => <li key={text}>{text}</li>)}</ul>
         <small>HP 1단계는 최대 HP 1.5배이며 현재 HP 비율을 유지합니다. 라운드 사이에는 팀을 전부 회복합니다.</small>
       </section>
-      <section className="boss-challenge-party" aria-label="출전 포켓몬 선택">
-        <h2>출전 팀 선택 <span>{selected.length} / 6</span></h2><p>선택 순서대로 출전합니다. 더블배틀은 처음 2마리가 선봉입니다.</p>
-        <div>{boxPokemon.map(pokemon => {
-          const index = selected.indexOf(pokemon.captureId)
-          return <button type="button" key={pokemon.captureId} aria-pressed={index >= 0}
-            disabled={index < 0 && selected.length === 6} onClick={() => setSelected(ids => ids.includes(pokemon.captureId) ? ids.filter(id => id !== pokemon.captureId) : [...ids, pokemon.captureId])}>
-            <PokemonSprite animatedSrc={pokemon.spriteFront} fallbackSrc={pokemon.spriteFrontFallback} alt={pokemon.name} />
-            <strong>{pokemon.name}</strong><small>{index >= 0 ? `${index + 1}번 출전` : '선택'}</small>
-          </button>
-        })}</div>
-        {boxPokemon.length < 6 && <p role="status">보유 포켓몬이 6마리 이상 필요합니다.</p>}
-      </section>
       {error && <p role="alert">{error}</p>}
-      <footer><button type="button" className="boss-primary" disabled={selected.length !== 6} onClick={() => {
+      <footer><button type="button" className="boss-primary" disabled={!teamReady} onClick={() => {
         if (current.current) return
-        startRound(selected.map(id => boxPokemon.find(p => p.captureId === id)).filter(Boolean), 1, bossId)
+        startRound(party, 1, bossId)
       }}><Play size={18} /> {boss.name}에게 도전</button></footer>
     </>}
   </main>

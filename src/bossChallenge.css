@@ -19,8 +19,12 @@
 .boss-challenge-rules ul { padding-left: 20px; line-height: 1.8; }
 .boss-challenge small { color: #b5bfd5; line-height: 1.5; }
 .boss-challenge-party h2 span { color: #d3acff; }
-.boss-challenge-party > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 10px; max-height: 420px; overflow: auto; padding: 4px; }
-.boss-challenge-party button { flex-direction: column; padding: 8px; }
+.boss-team-switcher { display: flex; gap: 8px; flex-wrap: wrap; }
+.boss-team-switcher button { flex: 1; flex-direction: column; padding: 8px; min-width: 80px; }
+.boss-party-slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; list-style: none; padding: 0; }
+.boss-party-slots li { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 140px; padding: 8px; background: #17243d; border: 1px solid #7083b055; border-radius: 12px; }
+.boss-party-slots li > strong { font-size: 14px; }
+@media (max-width: 650px) { .boss-party-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .boss-challenge-party .pokemon-sprite-frame { width: 65px; height: 65px; }
 .boss-challenge footer { position: sticky; bottom: 0; padding: 18px 0 0; display: flex; justify-content: flex-end; }
 .boss-challenge .boss-primary { background: #6949b4; border-color: #cba5ff; font-weight: 700; }

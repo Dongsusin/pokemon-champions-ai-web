@@ -15,7 +15,8 @@ import RaidScreen from '/src/RaidScreen.jsx';import {createBossOpponent} from '/
 import '/src/mobileViewport.js';
 ${['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'mobileLandscape', 'mobileTouch', 'mobileUiV2'].map(name => `import '/src/${name}.css';`).join('\n')}
 const party=[6,9,3,25,94,149,150].map((speciesId,i)=>createBossOpponent({speciesId},'ui-'+i));
-function App(){const[active,setActive]=useState(false);return <div className={'app-shell'+(active?' battle-view':' raid-view')}><RaidScreen boxPokemon={party} onBack={()=>{}} onBattleActiveChange={setActive} soundEnabled={false} gameSettings={{attackAnimation:'skip',hpBarSpeed:'instant'}} /></div>};
+const teams=[{id:'team-1',name:'팀 1',pokemonIds:party.slice(0,6).map(p=>p.captureId)},{id:'team-2',name:'팀 2',pokemonIds:[]}];
+function App(){const[active,setActive]=useState(false);const[teamId,setTeamId]=useState('team-2');return <div className={'app-shell'+(active?' battle-view':' raid-view')}><RaidScreen boxPokemon={party} teams={teams} activeTeamId={teamId} onSelectTeam={setTeamId} onOpenBox={()=>{}} onBack={()=>{}} onBattleActiveChange={setActive} soundEnabled={false} gameSettings={{attackAnimation:'skip',hpBarSpeed:'instant'}} /></div>};
 createRoot(document.getElementById('root')).render(<App/>);`
 const server = await createServer({ root, configFile: false, logLevel: 'error',
   plugins: [(await import('@vitejs/plugin-react')).default(), { name: 'boss-ui-fixture', enforce: 'pre',
@@ -40,8 +41,10 @@ try {
     assert.equal(await page.getByText('방 만들기', { exact: true }).count(), 0)
     const start = page.locator('footer button')
     assert(await start.isDisabled())
-    for (let i = 0; i < 6; i++) await page.locator('.boss-challenge-party button').nth(i).click()
-    assert(await page.locator('.boss-challenge-party button').nth(6).isDisabled())
+    await page.locator('.boss-team-switcher button').first().click()
+    assert.equal(await page.locator('.boss-party-slots li').count(), 6)
+    assert.equal(await page.locator('.boss-party-slots button').count(), 0)
+    assert(!(await start.isDisabled()))
     await page.screenshot({ path: fileURLToPath(new URL(`selection-${viewport.width}.png`, output)), fullPage: true })
     for (const name of ['뮤츠', '칠색조', '루기아']) {
       await page.getByRole('button', { name: new RegExp(name) }).filter({ has: page.locator('strong') }).first().click()

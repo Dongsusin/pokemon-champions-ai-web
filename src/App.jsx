@@ -342,6 +342,7 @@ export function GameApp({
   const [battleMatch, setBattleMatch] = useState(null)
   const [rankedBattleActive, setRankedBattleActive] = useState(false)
   const [raidBattleActive, setRaidBattleActive] = useState(false)
+  const [raidBossId, setRaidBossId] = useState('mewtwo')
   const [factoryRun, setFactoryRun] = useState(null)
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
@@ -675,6 +676,11 @@ export function GameApp({
 
   const openBoxFromRanked = () => {
     setBoxReturnScreen('ranked')
+    setScreen('box')
+  }
+
+  const openBoxFromRaid = () => {
+    setBoxReturnScreen('raid')
     setScreen('box')
   }
 
@@ -1200,7 +1206,7 @@ export function GameApp({
           onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')}
           onSelectRaid={() => setScreen('raid')} />
       ) : screen === 'raid' ? (
-        <RaidScreen playerName={trainerName} boxPokemon={boxPokemon} onBack={() => setScreen('battle-hub')}
+        <RaidScreen playerName={trainerName} boxPokemon={boxPokemon} teams={teams} activeTeamId={activeTeamId} onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRaid} selectedBossId={raidBossId} onSelectBoss={setRaidBossId} onBack={() => setScreen('battle-hub')}
           onBattleActiveChange={setRaidBattleActive}
           soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio}
           onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
@@ -1299,7 +1305,7 @@ export function GameApp({
           inventory={itemInventory}
           onBack={returnFromBox}
           pokemonUsage={pokemonUsage}
-          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : boxReturnScreen === 'rooms' ? '대전방' : '로비'}
+          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : boxReturnScreen === 'rooms' ? '대전방' : boxReturnScreen === 'raid' ? '보스전' : '로비'}
           onEquipItem={equipBattleItem}
           onSetTeraType={setPokemonTeraType}
           onSetDynamaxMode={setPokemonDynamaxMode}
