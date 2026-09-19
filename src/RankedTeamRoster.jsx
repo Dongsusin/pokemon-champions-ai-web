@@ -1,3 +1,4 @@
+import './ranked.css'
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Info } from 'lucide-react'
@@ -86,7 +87,7 @@ function PokemonDetails({ id, pokemon, anchor, onEnter, onLeave, tooltipRef, sho
 
 // Only the player's registered roster uses this inspector. Opponent previews
 // keep using the public species cards from RankedBattleScreen.
-export default function RankedTeamRoster({ pokemon: roster, className = '', renderCard, showDynamax = false }) {
+export default function RankedTeamRoster({ pokemon: roster, className = '', gridClassName = 'ranked-six-grid', cardClassName = 'ranked-pokemon-card ranked-roster-card', renderCard, renderEmpty, showDynamax = false }) {
   const id = useId()
   const [activeId, setActiveId] = useState(null)
   const anchors = useRef(new Map())
@@ -123,12 +124,13 @@ export default function RankedTeamRoster({ pokemon: roster, className = '', rend
     }
   }, [activeId, active, anchor])
 
-  return <div className={`ranked-six-grid ${className}`} aria-label="선택한 팀 포켓몬">
+  return <div className={`${gridClassName} ${className}`} aria-label="선택한 팀 포켓몬">
     {Array.from({ length: BATTLE_TEAM_SIZE }, (_, index) => {
       const pokemon = roster[index]
+      if (!pokemon && renderEmpty) return renderEmpty(index)
       if (!pokemon) return <div className="ranked-pokemon-card empty" key={`empty-${index}`}><span>+</span><small>팀 편성 필요</small></div>
       const profile = getSpeciesProfile(pokemon.speciesId)
-      return <button type="button" className="ranked-pokemon-card ranked-roster-card" key={pokemon.captureId}
+      return <button type="button" className={typeof cardClassName === 'function' ? cardClassName(pokemon) : cardClassName} key={pokemon.captureId}
         ref={element => { if (element) anchors.current.set(pokemon.captureId, element); else anchors.current.delete(pokemon.captureId) }}
         aria-label={`${pokemon.name ?? profile?.name} 정보 보기`} aria-describedby={activeId === pokemon.captureId && preview ? id : undefined}
         onPointerEnter={event => { if (event.pointerType !== 'touch') open(pokemon) }}

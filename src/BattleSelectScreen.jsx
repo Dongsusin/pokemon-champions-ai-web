@@ -1,3 +1,4 @@
+import RankedTeamRoster from './RankedTeamRoster'
 import SpriteImage from './SpriteImage'
 import { useMemo, useState } from 'react'
 import {
@@ -77,10 +78,6 @@ function BattleSelectScreen({
     id: selectedDifficultyId,
     boostStage: hardBoostStage,
   })
-  const partySlots = Array.from(
-    { length: BATTLE_TEAM_SIZE },
-    (_, index) => activeTeamPokemon[index] ?? null,
-  )
   const isBattleReady = activeTeamPokemon.length === BATTLE_TEAM_SIZE
 
   return (
@@ -131,10 +128,13 @@ function BattleSelectScreen({
             ))}
           </div>
 
-          <div className="battle-party-preview-list">
-            {partySlots.map((entry, index) => (
-              entry ? (
-                <article className={`battle-party-preview-card${entry.isShiny ? ' is-shiny' : ''}`} key={entry.captureId}>
+          <RankedTeamRoster
+            key={activeTeam?.id ?? 'ai-roster'}
+            pokemon={activeTeamPokemon}
+            gridClassName="battle-party-preview-list"
+            cardClassName={entry => `battle-party-preview-card${entry.isShiny ? ' is-shiny' : ''}`}
+            showDynamax
+            renderCard={(entry, index) => <>
                   <span className="battle-party-slot-number">{String(index + 1).padStart(2, '0')}</span>
                   {entry.isShiny && <span className="pokemon-shiny-mark" aria-label="이로치">★</span>}
                   <span className="pokemon-icon-frame battle-party-icon-frame" aria-hidden="true">
@@ -160,16 +160,15 @@ function BattleSelectScreen({
                       </b>
                     </span>
                   </span>
-                </article>
-              ) : (
+            </>}
+            renderEmpty={index => (
                 <article className="battle-party-preview-card empty" key={`battle-party-empty-${index}`}>
                   <span className="battle-party-slot-number">{String(index + 1).padStart(2, '0')}</span>
                   <Sparkles size={20} />
                   <span><strong>빈 슬롯</strong><small>포켓몬을 편성하세요</small></span>
                 </article>
-              )
-            ))}
-          </div>
+            )}
+          />
 
           <footer className="battle-party-preview-footer">
             <span className={isBattleReady ? 'ready' : ''}>
