@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MAX_CHARACTERS, createGlobalChatClient } from './globalChatClient'
 
 const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sendError: '', sendErrorCode: '', sending: false })
-const CLOSED_POLL_MS = 15_000
+const CLOSED_POLL_MS = 30_000
 const OPEN_POLL_MS = 4_000
 
 export default function useGlobalChat(user, expanded) {

@@ -1,7 +1,7 @@
 import { updateOnlinePlayers, clearOnlinePlayers } from './onlinePlayers.js'
 
 export const ACCOUNT_SESSION_LEASE_MS = 90_000
-export const ACCOUNT_SESSION_HEARTBEAT_MS = 20_000
+export const ACCOUNT_SESSION_HEARTBEAT_MS = 30_000
 export const ACCOUNT_SESSION_ERROR_CODES = {
   occupied: 'account-session/occupied',
   unavailable: 'account-session/unavailable',

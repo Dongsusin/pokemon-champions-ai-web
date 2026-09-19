@@ -8,9 +8,11 @@ import { firebaseAuth, firebaseDb } from './firebaseClient'
 import { getActiveAccountSessionOwnerId } from './accountSession'
 import { isServerGameStorage } from './gameStorageConfig.js'
 import { AccountRequestError, createAccountApiClient } from './accountApiClient.js'
+import { createAccountSavePatch } from './accountSavePatch.js'
 
 const GAME_DATA_SCHEMA_VERSION = 1
 const accountSaveSequences = new Map()
+let saveBaseline = null
 const COLLECTION_STORAGE_KEYS = new Set([
   'champions-dex-v2',
   'champions-box-v1',
@@ -81,8 +83,13 @@ function validateServerGameData(data) {
 export async function loadPlayerGameData(userId) {
   if (isServerGameStorage) {
     const ownerId = requireAccountSessionOwner(userId)
-    const result = await createPlayerAccountClient(userId).request('load', { ownerId })
-    return validateServerGameData(result.gameData)
+    saveBaseline = null
+    const result = await createPlayerAccountClient(userId).request('load', { ownerId, patchVersion: 1 })
+    const data = validateServerGameData(result.gameData)
+    if (result.savePatchVersion === 1 && getActiveAccountSessionOwnerId(userId) === ownerId) {
+      saveBaseline = { userId, ownerId, revision: data?.revision ?? null, payload: { ...data?.payload } }
+    }
+    return data
   }
   if (!firebaseDb || !userId) return null
 
@@ -117,6 +124,11 @@ export async function loadPlayerGameData(userId) {
 export async function savePlayerGameData(userId, payload) {
   if (isServerGameStorage) {
     const ownerId = requireAccountSessionOwner(userId)
+    const client = createPlayerAccountClient(userId)
+    const nextPayload = { ...payload }
+    const baseline = saveBaseline?.userId === userId && saveBaseline.ownerId === ownerId ? saveBaseline : null
+    const delta = baseline?.revision ? createAccountSavePatch(baseline.payload, nextPayload) : null
+    if (delta && !Object.keys(delta.patch).length && !delta.removed.length) return { revision: baseline.revision }
     const revision = createRevision()
     // A timed-out HTTP request can still reach the database. Ordering belongs to
     // the entire lease, so a late older save cannot replace a newer confirmed one.
@@ -124,8 +136,29 @@ export async function savePlayerGameData(userId, payload) {
     const saveSequence = (accountSaveSequences.get(ownerId) ?? 0) + 1
     if (!Number.isSafeInteger(saveSequence)) throw new AccountRequestError('저장 세션을 다시 시작해주세요.', 'account-session/lost', 409)
     accountSaveSequences.set(ownerId, saveSequence)
-    const result = await createPlayerAccountClient(userId).request('save', { ownerId, revision, payload, saveSequence })
-    if (result.revision !== revision) throw new AccountRequestError('서버 저장 결과를 확인하지 못했습니다.', 'account/invalid-response')
+    // While a write is uncertain, no overlapping caller may skip a save using
+    // the old baseline. Restore it only after the newest write is confirmed.
+    saveBaseline = null
+    try {
+      let result
+      try {
+        result = delta
+          ? await client.request('savePatch', { ownerId, revision, saveSequence, baseRevision: baseline.revision, ...delta })
+          : await client.request('save', { ownerId, revision, payload: nextPayload, saveSequence })
+      } catch (error) {
+        // Only a rejected base (never a stale sequence/auth/network failure)
+        // permits a full retry. Keep the sequence so a newer save always wins.
+        if (!delta || error.code !== 'SAVE_BASE_MISMATCH') throw error
+        result = await client.request('save', { ownerId, revision, payload: nextPayload, saveSequence })
+      }
+      if (result.revision !== revision) throw new AccountRequestError('서버 저장 결과를 확인하지 못했습니다.', 'account/invalid-response')
+      if (baseline && getActiveAccountSessionOwnerId(userId) === ownerId && accountSaveSequences.get(ownerId) === saveSequence) {
+        saveBaseline = { userId, ownerId, revision, payload: nextPayload }
+      }
+    } catch (error) {
+      if (saveBaseline?.ownerId === ownerId && accountSaveSequences.get(ownerId) === saveSequence) saveBaseline = null
+      throw error
+    }
     return { revision }
   }
   if (!firebaseDb || !userId) throw new Error('Firebase game data storage is unavailable.')
@@ -157,6 +190,7 @@ export async function savePlayerGameData(userId, payload) {
 }
 
 export async function deletePlayerGameData(userId) {
+  if (saveBaseline?.userId === userId) saveBaseline = null
   if (isServerGameStorage) {
     const ownerId = requireAccountSessionOwner(userId)
     await createPlayerAccountClient(userId).request('deleteGameData', { ownerId })

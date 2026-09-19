@@ -42,6 +42,21 @@ class FixturePool extends EventEmitter {
           if (code) throw sqlError(code)
           this.rows = draft; return { rows: [] }
         }
+        if (text.includes('AS merged_bytes')) {
+          const saved = draft.get(address(values))
+          if (!saved) return { rows: [] }
+          const merged = { ...saved.payload, ...JSON.parse(values[3]) }
+          for (const key of values[4]) delete merged[key]
+          return { rows: [{ revision: saved.revision, patch_hash: saved.patchHash, merged_bytes: Buffer.byteLength(JSON.stringify(merged)) }] }
+        }
+        if (text.startsWith('UPDATE') && text.includes("jsonb_build_object('payload'")) {
+          const saved = draft.get(address(values))
+          if (saved?.revision !== values[6]) return { rows: [], rowCount: 0 }
+          const merged = { ...saved.payload, ...JSON.parse(values[3]) }
+          for (const key of values[4]) delete merged[key]
+          draft.set(address(values), { ...JSON.parse(values[5]), payload: merged })
+          return { rows: [], rowCount: 1 }
+        }
         if (text.startsWith("SELECT payload->>'revision'")) {
           const payload = draft.get(address(values))
           return { rows: payload === undefined ? [] : [{ revision: payload.revision, payload_matches: isDeepStrictEqual(payload.payload, JSON.parse(values[3])) }] }
@@ -202,6 +217,29 @@ test('projected saves retain idempotency, sequence ordering and revision reuse p
   await assert.rejects(execute(first), error => error.code === 'STALE_SAVE')
   assert.deepEqual(pool.rows.get('account/gameData/account_a').payload, { 'champions-vp-v1': '45000' })
   assert(!pool.calls.some(call => /^SELECT payload FROM/.test(call.text) && call.values[1] === 'gameData'))
+})
+
+test('SQL patch saves preserve collections without downloading or uploading the unchanged box', async () => {
+  const { pool, store } = fixture({ namespace: 'account' })
+  const service = createAccountService({ store, now: () => 1000, newVersion: () => 'validation-lease' })
+  const execute = command => service.execute({ uid: 'patch_a' }, { ownerId: 'validation-owner-12345', ...command })
+  await execute({ action: 'sessionAcquire' })
+  const collection = 'x'.repeat(100_000)
+  await execute({ action: 'save', revision: 'revision-first', saveSequence: 1, payload: { 'champions-dex-v2': collection, 'champions-vp-v1': '50000' } })
+  pool.calls.length = 0
+  const patch = { action: 'savePatch', baseRevision: 'revision-first', revision: 'revision-patch', saveSequence: 2, patch: { 'champions-vp-v1': '45000' }, removed: [] }
+  pool.conflicts.push('40001')
+  await execute(patch)
+  await execute(patch)
+  assert.deepEqual(pool.rows.get('account/gameData/patch_a').payload, { 'champions-dex-v2': collection, 'champions-vp-v1': '45000' })
+  assert(!pool.calls.some(call => /^SELECT payload FROM/.test(call.text) && call.values[1] === 'gameData'))
+  assert(!JSON.stringify(pool.calls).includes(collection))
+  await assert.rejects(execute({ ...patch, revision: 'revision-late', saveSequence: 3 }), error => error.code === 'SAVE_BASE_MISMATCH')
+  await assert.rejects(store.transaction(async tx => {
+    await tx.writeGameDataPatch('patch_a', {}, ['champions-dex-v2'], { revision: 'rollback-revision' }, 'revision-patch')
+    throw new Error('rollback patch')
+  }), /rollback patch/)
+  assert.equal(pool.rows.get('account/gameData/patch_a').payload['champions-dex-v2'], collection)
 })
 
 test('guest cleanup reads only related metadata and removes only matching usage receipts atomically', async () => {
@@ -442,6 +480,18 @@ if (process.env.POSTGRES_STORE_INTEGRATION === 'true') {
       assert.equal(candidates[0].id, 'entry_2')
       assert.equal(candidates.at(-1).owner, 'owner_11')
     })
+    await store.transaction(async tx => {
+      const state = await tx.readGameDataPatch('save_fixture', { 'champions-vp-v1': '49999' }, [])
+      assert.equal(state.revision, 'live-revision')
+      assert(state.mergedBytes >= 100_000)
+      await tx.writeGameDataPatch('save_fixture', { 'champions-vp-v1': '49999' }, [], { schemaVersion: 1, revision: 'live-patched', patchHash: 'fixture' }, state.revision)
+      assert.equal((await tx.get('gameData', 'save_fixture')).payload['champions-vp-v1'], '49999')
+    })
+    await assert.rejects(store.transaction(async tx => {
+      await tx.writeGameDataPatch('save_fixture', {}, ['champions-dex-v2'], { revision: 'live-rollback' }, 'live-patched')
+      throw new Error('live patch rollback')
+    }), /live patch rollback/)
+    assert.deepEqual((await store.transaction(tx => tx.get('gameData', 'save_fixture'))).payload, { ...savedPayload, 'champions-vp-v1': '49999' })
     assert.equal(await store.transaction(tx => tx.get('pokemonUsageEvents', 'receipt_fixture')), null)
     const privileges = await pool.query("SELECT current_user, has_schema_privilege('anon', 'champions', 'USAGE') AS anon_schema, has_table_privilege('authenticated', 'champions.documents', 'SELECT') AS auth_read, relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = 'champions.documents'::regclass")
     assert.equal(privileges.rows[0].current_user, 'champions_server')

@@ -121,6 +121,29 @@ export function createPostgresStore({
           }
           return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
         },
+        async readGameDataPatch(key, patch, removed) {
+          assertActive(); checkAddress('gameData', key)
+          if (writes.has(`gameData/${key}`)) throw new Error('Cannot patch a buffered game save')
+          const result = await client.query(`SELECT payload->>'revision' AS revision,
+            payload->>'patchHash' AS patch_hash,
+            octet_length(((payload->'payload' || $4::jsonb) - $5::text[])::text) AS merged_bytes
+            FROM ${TABLE} WHERE namespace = $1 AND collection = $2 AND key = $3`,
+          [namespace, 'gameData', key, jsonDocument(patch, maxDocumentBytes).encoded, removed])
+          const row = result.rows[0]
+          return row ? { revision: row.revision, patchHash: row.patch_hash, mergedBytes: Number(row.merged_bytes) } : null
+        },
+        async writeGameDataPatch(key, patch, removed, metadata, baseRevision) {
+          assertActive(); checkAddress('gameData', key)
+          // Merge inside the same SERIALIZABLE transaction: neither direction
+          // transfers the unchanged collection, and a rollback includes this write.
+          const result = await client.query(`UPDATE ${TABLE} SET payload = $6::jsonb ||
+            jsonb_build_object('payload', (payload->'payload' || $4::jsonb) - $5::text[])
+            WHERE namespace = $1 AND collection = $2 AND key = $3 AND payload->>'revision' = $7`,
+          [namespace, 'gameData', key, jsonDocument(patch, maxDocumentBytes).encoded, removed,
+            jsonDocument(metadata, maxDocumentBytes).encoded, baseRevision])
+          if (result.rowCount !== 1) throw new Error('Game save changed during transaction')
+          reads.delete(`gameData/${key}`)
+        },
         async compareGameData(key, expectedPayload) {
           assertActive(); checkAddress('gameData', key)
           const pending = writes.get(`gameData/${key}`)

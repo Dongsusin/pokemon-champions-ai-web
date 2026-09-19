@@ -198,7 +198,8 @@ export default function RankedBattleScreen({
         return false
       }
     }
-    const polling = startRankedPolling({ refresh, getSnapshot: () => snapshotRef.current, visibleInterval: () => 1500 })
+    const polling = startRankedPolling({ refresh, getSnapshot: () => snapshotRef.current,
+      visibleInterval: () => snapshotRef.current.queue || (snapshotRef.current.match && snapshotRef.current.match.phase !== 'finished') ? 1500 : 10_000 })
     refreshRef.current = polling.refresh
     if (isRankedLocalTest) client.request('fixtures', {}, { signal: controller.signal }).then(value => {
       if (active) { setFixtures(value.teams ?? []); setFixtureTeamId(value.teams?.[0]?.id ?? null) }
@@ -245,9 +246,9 @@ export default function RankedBattleScreen({
       operationRef.current = false
       if (mountedRef.current) {
         setBusy(false)
-        // A join can complete after the user hides the idle lobby. Wake its
-        // queue heartbeat even though the idle polling timer was paused.
-        if (document.hidden) refreshRef.current?.()
+        // Joining must immediately replace the slower idle-lobby cadence,
+        // including a lobby whose hidden-tab timer was paused.
+        if (document.hidden || action === 'join') refreshRef.current?.()
       }
     }
   }

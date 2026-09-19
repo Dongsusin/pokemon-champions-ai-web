@@ -291,6 +291,27 @@ test('real production module loader initializes Firebase and PostgreSQL adapters
   }
 })
 
+test('patch saves preserve untouched data, delete keys, and reject stale, invalid and oversized merges', async () => {
+  const env = environment()
+  await env.call(alice, 'sessionAcquire')
+  const payload = { 'champions-dex-v2': '["collection"]', 'champions-vp-v1': '100', 'champions-settings-v1': '{}' }
+  await env.call(alice, 'save', { revision: 'base-revision', payload, saveSequence: 1 })
+  assert.equal((await env.call(alice, 'load', { patchVersion: 1 })).savePatchVersion, 1)
+  const change = { baseRevision: 'base-revision', revision: 'next-revision', saveSequence: 2, patch: { 'champions-vp-v1': '200' }, removed: ['champions-settings-v1'] }
+  await env.call(alice, 'savePatch', change)
+  await env.call(alice, 'savePatch', change)
+  assert.deepEqual((await env.call(alice, 'load')).gameData.payload, { 'champions-dex-v2': '["collection"]', 'champions-vp-v1': '200' })
+  await rejectCode(env.call(alice, 'savePatch', { ...change, patch: { 'champions-vp-v1': '300' } }), 'SAVE_REVISION_REUSED')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, revision: 'late-revision', saveSequence: 1 }), 'STALE_SAVE')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, revision: 'late-revision', saveSequence: 3 }), 'SAVE_BASE_MISMATCH')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, removed: ['unknown'] }), 'INVALID_SAVE')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, removed: ['champions-vp-v1'] }), 'INVALID_SAVE')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, ownerId: ownerB }), 'account-session/lost')
+  await env.call(alice, 'save', { revision: 'large-revision', saveSequence: 3, payload: { 'champions-dex-v2': 'a'.repeat(ACCOUNT_PAYLOAD_MAX_BYTES - 100) } })
+  await rejectCode(env.call(alice, 'savePatch', { baseRevision: 'large-revision', revision: 'huge-revision', saveSequence: 4, patch: { 'champions-vp-v1': 'b'.repeat(200) }, removed: [] }), 'SAVE_TOO_LARGE')
+  assert.equal((await env.call(alice, 'load')).gameData.revision, 'large-revision')
+})
+
 for (const { name, run } of tests) {
   await run()
   console.log(`PASS ${name}`)

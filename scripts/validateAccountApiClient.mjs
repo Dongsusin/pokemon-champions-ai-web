@@ -135,6 +135,52 @@ try {
     await assert.rejects(api.savePlayerGameData(user.uid, validData.payload), { code: 'account/invalid-response' })
     responseBody = original
   })
+  await check('negotiated saves skip identical snapshots and send only changed or deleted keys', async () => {
+    const original = responseBody
+    const collection = JSON.stringify(Array.from({ length: 541 }, (_, i) => ({ captureId: `fixture-${i}`, speciesId: i + 1, moves: [1, 2, 3, 4] })))
+    const payload = { ...validData.payload, 'champions-dex-v2': collection, 'champions-settings-v1': '{}' }
+    responseBody = body => body.action === 'load' ? { gameData: { ...validData, payload }, savePatchVersion: 1 } : { revision: body.revision }
+    await api.loadPlayerGameData(user.uid)
+    const before = requests.length
+    await api.savePlayerGameData(user.uid, payload)
+    assert.equal(requests.length, before)
+    await api.savePlayerGameData(user.uid, { ...payload, 'champions-vp-v1': '12346' })
+    assert.equal(requests.at(-1).action, 'savePatch')
+    assert.deepEqual(requests.at(-1).patch, { 'champions-vp-v1': '12346' })
+    assert.deepEqual(requests.at(-1).removed, [])
+    const fullBytes = Buffer.byteLength(JSON.stringify({ ...requests.at(-1), action: 'save', patch: undefined, removed: undefined, baseRevision: undefined, payload }))
+    const patchBytes = Buffer.byteLength(JSON.stringify(requests.at(-1)))
+    console.log(`Synthetic 541 Pokemon VP-only save: ${fullBytes} -> ${patchBytes} bytes (${(100 * (1 - patchBytes / fullBytes)).toFixed(2)}% less)`)
+    const { 'champions-settings-v1': omitted, ...withoutSettings } = payload
+    await api.savePlayerGameData(user.uid, withoutSettings)
+    assert.deepEqual(requests.at(-1).removed, ['champions-settings-v1'])
+    await api.deletePlayerGameData(user.uid)
+    responseBody = original
+  })
+  await check('base conflicts retry the full snapshot with the same sequence; failed patches are not acknowledged', async () => {
+    const original = responseBody
+    responseBody = body => body.action === 'load' ? { gameData: validData, savePatchVersion: 1 } : { revision: body.revision }
+    await api.loadPlayerGameData(user.uid)
+    responseBody = body => {
+      status = body.action === 'savePatch' ? 409 : 200
+      return body.action === 'savePatch' ? { error: { code: 'SAVE_BASE_MISMATCH', message: 'conflict' } } : { revision: body.revision }
+    }
+    await api.savePlayerGameData(user.uid, { 'champions-vp-v1': '7' })
+    const [patch, full] = requests.slice(-2)
+    assert.equal(patch.action, 'savePatch')
+    assert.equal(full.action, 'save')
+    assert.equal(full.saveSequence, patch.saveSequence)
+    assert.equal(full.revision, patch.revision)
+    responseBody = () => ({ error: { code: 'STALE_SAVE', message: 'stale' } })
+    status = 409
+    const before = requests.length
+    await assert.rejects(api.savePlayerGameData(user.uid, { 'champions-vp-v1': '8' }), { code: 'STALE_SAVE' })
+    assert.equal(requests.length, before + 1)
+    status = 200
+    responseBody = original
+    await api.savePlayerGameData(user.uid, { 'champions-vp-v1': '7' })
+    assert.equal(requests.at(-1).action, 'save', 'An uncertain baseline never skips the recovery write')
+  })
   await check('unsafe HTTP endpoints and embedded credentials are rejected', async () => {
     for (const apiUrl of ['http://example.invalid/api/account', 'https://name:password@example.invalid/api/account', 'file:///api/account']) {
       assert.throws(() => api.createAccountApiClient({ apiUrl }), { code: 'account/invalid-endpoint' })

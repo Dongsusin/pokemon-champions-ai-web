@@ -72,7 +72,9 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
     async execute(identity, command) {
       if (!identity || !validId(identity.uid)) fail('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
       if (!plain(command) || !validOwner(command.ownerId)) fail('INVALID_SESSION_OWNER', '이 창의 세션 식별자가 올바르지 않습니다.')
-      const { action, ownerId } = command
+      const { ownerId } = command
+      const patchSave = command.action === 'savePatch'
+      const action = patchSave ? 'save' : command.action
       if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'setNickname', 'setTitle', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
         fail('UNKNOWN_ACTION', '지원하지 않는 계정 요청입니다.')
       }
@@ -107,7 +109,16 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         }
         return { deleted: true, uid: identity.uid }
       }
-      const payload = action === 'save' ? validateAccountPayload(command.payload) : null
+      const payload = action === 'save' && !patchSave ? validateAccountPayload(command.payload) : null
+      let patch, patchHash
+      if (patchSave) {
+        if (!validVersion(command.baseRevision)) fail('INVALID_SAVE_REVISION', '기준 저장 버전이 올바르지 않습니다.')
+        patch = validateAccountPayload(command.patch)
+        if (!Array.isArray(command.removed) || command.removed.length > keys.size
+          || command.removed.some(key => !keys.has(key) || Object.hasOwn(patch, key))
+          || new Set(command.removed).size !== command.removed.length) fail('INVALID_SAVE', '삭제할 저장 항목이 올바르지 않습니다.')
+        patchHash = createHash('sha256').update(JSON.stringify([command.baseRevision, Object.entries(patch).sort(), [...command.removed].sort()])).digest('hex')
+      }
       let nickname
       if (action === 'setNickname') {
         if (identity.isGuest === true || identity.isLocalGuest === true
@@ -175,9 +186,34 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         }
         if (action === 'load') {
           const saved = await tx.get('gameData', uid)
-          return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null }
+          return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null,
+            ...(command.patchVersion === 1 ? { savePatchVersion: 1 } : {}) }
         }
         if (action === 'save') {
+          if (patchSave) {
+            const sqlPatch = typeof tx.readGameDataPatch === 'function' && typeof tx.writeGameDataPatch === 'function'
+            const saved = sqlPatch ? await tx.readGameDataPatch(uid, patch, command.removed) : await tx.get('gameData', uid)
+            const lastSequence = Number.isSafeInteger(session.lastSaveSequence) ? session.lastSaveSequence : 0
+            if (command.saveSequence < lastSequence) fail('STALE_SAVE', '더 최신 게임 데이터가 이미 저장됐습니다.', 409)
+            if (saved?.revision === command.revision) {
+              if (saved.patchHash !== patchHash) fail('SAVE_REVISION_REUSED', '이미 사용된 저장 버전입니다.', 409)
+              if (command.saveSequence > lastSequence) tx.set('sessions', uid, { ...session, lastSaveSequence: command.saveSequence })
+              return { revision: command.revision }
+            }
+            if (command.saveSequence === lastSequence) fail('STALE_SAVE', '더 최신 게임 데이터가 이미 저장됐습니다.', 409)
+            if (!saved || saved.revision !== command.baseRevision) fail('SAVE_BASE_MISMATCH', '저장 기준 버전이 변경됐습니다.', 409)
+            const metadata = { schemaVersion: 1, revision: command.revision, updatedAtMs: now(), patchHash }
+            if (sqlPatch) {
+              if (!Number.isSafeInteger(saved.mergedBytes) || saved.mergedBytes > ACCOUNT_PAYLOAD_MAX_BYTES) fail('SAVE_TOO_LARGE', '게임 저장 데이터가 허용 크기를 넘었습니다.', 413)
+              await tx.writeGameDataPatch(uid, patch, command.removed, metadata, command.baseRevision)
+            } else {
+              const merged = { ...saved.payload, ...patch }
+              for (const key of command.removed) delete merged[key]
+              tx.set('gameData', uid, { ...metadata, payload: validateAccountPayload(merged) })
+            }
+            tx.set('sessions', uid, { ...session, lastSaveSequence: command.saveSequence })
+            return { revision: command.revision }
+          }
           const previous = typeof tx.compareGameData === 'function'
             ? await tx.compareGameData(uid, payload)
             : await tx.get('gameData', uid).then(saved => saved ? { revision: saved.revision, payloadMatches: isDeepStrictEqual(saved.payload, payload) } : null)
