@@ -52,11 +52,19 @@ export function createBossOpponent(entry, captureId) {
   return normalizePokemon({ speciesId: profile.id, captureId, moves, ability: profile.abilities[0], nature: '노력' })
 }
 
-export function createBossChallengeBattle({ bossId, round, party, playerName, random = Math.random }) {
+export function createBossChallengeBattle({ bossId, round, party, playerName, previousPlayerTeam = null, random = Math.random }) {
   const challenge = BOSS_CHALLENGES.find(boss => boss.id === bossId)
   const encounter = challenge?.rounds[round - 1]
   if (!encounter || party?.length !== 6 || new Set(party.map(p => p.captureId)).size !== 6) {
     throw new Error('서로 다른 보유 포켓몬 6마리와 올바른 라운드를 선택해주세요.')
+  }
+  const playerHealth = round > 1 && previousPlayerTeam ? previousPlayerTeam.map(({ captureId, hp, maxHp, fainted }) => (
+    { captureId, hp, maxHp, fainted }
+  )) : null
+  if (playerHealth && (playerHealth.length !== party.length
+    || new Set(playerHealth.map(pokemon => pokemon.captureId)).size !== party.length
+    || party.some(pokemon => !playerHealth.some(previous => previous.captureId === pokemon.captureId)))) {
+    throw new Error('이전 배틀과 같은 팀으로 보스전을 이어가야 합니다.')
   }
   const slots = encounter.format === 'double' ? 2 : 1
   const rules = {
@@ -71,7 +79,7 @@ export function createBossChallengeBattle({ bossId, round, party, playerName, ra
       return { name: profile.name, spriteSources: [profile.spriteFront, profile.spriteFrontFallback].flat().filter(Boolean) }
     }) : undefined
   )
-  const battle = createBattle({ playerPokemon: structuredClone(party), playerName,
+  const battle = createBattle({ playerPokemon: structuredClone(party), playerName, playerHealth,
     opponent: { id: `boss-${bossId}-${round}`, name: encounter.name, portraitMembers, tier: 'S', specialties: [] },
     opponentTeam: { pokemon: encounter.pokemon.map((p, i) => createBossOpponent(p, `boss-${round}-${i}`)), battleGimmicks: [], strategy: {} }, rules, random })
   if (round === 3) {

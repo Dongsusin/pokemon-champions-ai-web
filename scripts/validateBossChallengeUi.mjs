@@ -94,6 +94,50 @@ async function verifyRoundOpening(page, bossName, round, viewport) {
   await page.clock.resume()
 }
 
+
+async function assertHealthyFirstRound(page) {
+  const state = await page.evaluate(() => {
+    const battle = window.__bossBattle()
+    return { round: window.__bossRun().round, teamSize: battle.player.team.length,
+      healthy: battle.player.team.every(pokemon => pokemon.hp === pokemon.maxHp && !pokemon.fainted),
+      activeIndexes: battle.player.activeIndexes }
+  })
+  assert.deepEqual(state, { round: 1, teamSize: 6, healthy: true, activeIndexes: [0, 1] }, 'a new challenge heals all six Pokemon before round 1')
+}
+async function finishWoundedRound(page, round) {
+  return page.evaluate(round => {
+    const battle = structuredClone(window.__bossBattle())
+    const party = battle.player.team
+    // Keep a fainted lead, a wounded survivor, and a wounded bench member.
+    // Round 2 adds a new faint and more damage without reviving round 1's lead.
+    party[round - 1].hp = 0
+    party[round - 1].fainted = true
+    if (round === 1) party[1].hp = Math.ceil(party[1].maxHp * .6)
+    party[2].hp = Math.ceil(party[2].maxHp * (round === 1 ? .85 : .6))
+    party[4].hp = party[4].maxHp - round * 13
+    const health = party.map(({ captureId, hp, maxHp, fainted }) => ({ captureId, hp, maxHp, fainted }))
+    const lead = party.find(pokemon => pokemon.hp > 0 && !pokemon.fainted)
+    window.__setBossBattleFixture({ ...battle, winner: 'player' })
+    return { health, leadCaptureId: lead.captureId, leadName: lead.name }
+  }, round)
+}
+async function assertCarriedHealth(page, expected, round) {
+  const state = await page.evaluate(() => {
+    const battle = window.__bossBattle()
+    const lead = battle.player.team[battle.player.activeIndexes[0]]
+    return { health: battle.player.team.map(({ captureId, hp, maxHp, fainted }) => ({ captureId, hp, maxHp, fainted })),
+      leadCaptureId: lead.captureId, leadName: lead.name, activeCount: battle.player.activeIndexes.length,
+      healthyLead: lead.hp > 0 && !lead.fainted, awaitingSwitch: Boolean(battle.awaitingPlayerSwitch) }
+  })
+  assert.deepEqual(state.health, expected.health, `round ${round}: every owned Pokemon keeps its resolved HP and fainted state`)
+  assert.equal(state.leadCaptureId, expected.leadCaptureId, `round ${round}: the next living Pokemon leads`)
+  assert.equal(state.leadName, expected.leadName)
+  assert.equal(state.activeCount, 1)
+  assert.equal(state.healthyLead, true)
+  assert.equal(state.awaitingSwitch, false, 'the next round must not open with a forced switch for a fainted lead')
+  assert.equal(await page.locator('.battle-hp-panel.side-player header strong').innerText(), expected.leadName)
+}
+
 async function verifyHoOhRevivalWaves(page, viewport) {
   const wave = async gate => page.evaluate(async gate => {
     const { beginRaidDamageRoot, applyBattleHpLoss, finishRaidDamageRoot } = await import('/src/data/raidPolicy.js')
@@ -263,22 +307,25 @@ try {
       })
       assert.equal(await portrait.locator('img').count(), name === '뮤츠' ? 1 : 2)
       await page.screenshot({ path: fileURLToPath(new URL(`trainers-${name}-${viewport.width}.png`, output)) })
-      assert.equal(await page.evaluate(() => window.__bossBattle().player.team.length), 6)
-      assert.equal(await page.evaluate(() => window.__bossBattle().player.activeIndexes.length), 2)
-      // Inject terminal battle state to verify automatic resolution, not combat outcomes.
+      await assertHealthyFirstRound(page)
+      // Carry the resolved roster through the actual BattleScreen completion callback.
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100))
-      await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
+      const afterRoundOne = await finishWoundedRound(page, 1)
       assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
       await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'visible' })
       assert.equal(await page.evaluate(() => window.__bossRun().round), 2)
       assert.equal(await page.evaluate(() => window.__bossBattle().opponent.team.length), name === '뮤츠' ? 6 : 3)
+      await assertCarriedHealth(page, afterRoundOne, 2)
       await verifyRoundOpening(page, name, 2, viewport)
+      if (name === '뮤츠') await page.screenshot({ path: fileURLToPath(new URL(`carryover-round-2-${viewport.width}.png`, output)) })
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100))
-      await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
+      const afterRoundTwo = await finishWoundedRound(page, 2)
       assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
       await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'visible' })
       assert.equal(await page.evaluate(() => window.__bossBattle().raid.phase), 3)
+      await assertCarriedHealth(page, afterRoundTwo, 3)
       await verifyRoundOpening(page, name, 3, viewport)
+      if (name === '뮤츠') await page.screenshot({ path: fileURLToPath(new URL(`carryover-round-3-${viewport.width}.png`, output)) })
       assert.equal(await page.locator('.boss-invulnerability-badge').count(), 0, 'a full-health final boss starts without a shield')
       if (name === '칠색조') await verifyHoOhRevivalWaves(page, viewport)
       await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
@@ -287,10 +334,19 @@ try {
     }
     await start.click()
     await page.waitForFunction(() => window.__bossRun()?.phase === 'battle')
-    await page.evaluate(() => window.__completeBossRound({ winner: 'opponent' }))
+    await assertHealthyFirstRound(page)
+    await page.evaluate(() => {
+      const battle = structuredClone(window.__bossBattle())
+      for (const pokemon of battle.player.team) { pokemon.hp = 0; pokemon.fainted = true }
+      window.__setBossBattleFixture({ ...battle, winner: 'opponent' })
+    })
     await page.getByRole('heading', { name: '도전 종료' }).waitFor()
     assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
-    console.log(`PASS ${viewport.width}x${viewport.height}: selection, all three automatic round journeys with opponent dialogue, locked/unlocked commands, sequential Ho-Oh shields and target selection, defeat`)
+    await page.getByRole('button', { name: '다시 준비하기' }).click()
+    await start.click()
+    await page.waitForFunction(() => window.__bossRun()?.phase === 'battle')
+    await assertHealthyFirstRound(page)
+    console.log(`PASS ${viewport.width}x${viewport.height}: healthy starts/retry, HP and faint carryover through both automatic transitions, living leads, all opponent dialogues, sequential Ho-Oh shields/target selection, defeat`)
     await page.close()
   }
   assert.deepEqual(errors, [])

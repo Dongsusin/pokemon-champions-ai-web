@@ -2055,8 +2055,8 @@ function BattleScreen({
   useEffect(() => {
     if (online || !summary.winner || isTurnAnimating || resultReportedRef.current) return
     resultReportedRef.current = true
-    onResolved?.(summary)
-  }, [summary, isTurnAnimating, onResolved, Boolean(online)])
+    onResolved?.(summary, battle)
+  }, [summary, battle, isTurnAnimating, onResolved, Boolean(online)])
   const currentLogEntry = battle.log.at(-1)
   const currentBattleMessage = turnCue?.message ?? currentLogEntry?.message ?? '배틀을 준비하고 있습니다.'
   const currentBattleTone = turnCue ? cueTone(turnCue) : currentLogEntry?.tone ?? 'neutral'
@@ -2482,7 +2482,7 @@ function BattleScreen({
       winner: forcedWinner ?? summary.winner,
       playerRemaining: forcedWinner === 'opponent' ? 0 : summary.playerRemaining,
       forfeited: forcedWinner === 'opponent' && !summary.winner,
-    })
+    }, battle)
   }
 
   const dismissTrainerDialogue = useCallback(() => {

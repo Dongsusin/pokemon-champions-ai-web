@@ -36,17 +36,17 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
     })
   }, [boss])
 
-  function startRound(party, round, id) {
+  function startRound(party, round, id, previousPlayerTeam = null) {
     try {
-      const battle = createBossChallengeBattle({ bossId: id, round, party, playerName })
+      const battle = createBossChallengeBattle({ bossId: id, round, party, playerName, previousPlayerTeam })
       const next = { bossId: id, party: structuredClone(party), round, phase: 'battle', battle }
       current.current = next; setRun(next); setError('')
     } catch (cause) { setError(cause.message) }
   }
-  function complete(summary) {
+  function complete(summary, finishedBattle) {
     if (current.current !== run || run.phase !== 'battle') return
     if (summary.winner === 'player' && run.round < 3) {
-      startRound(run.party, run.round + 1, run.bossId)
+      startRound(run.party, run.round + 1, run.bossId, finishedBattle.player.team)
       return
     }
     const next = { ...run, phase: summary.winner === 'player' ? 'won' : 'lost' }

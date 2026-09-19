@@ -12910,7 +12910,7 @@ function chooseAiActions(state, random) {
   return chooseAiActionsForSide(state, 'opponent', random)
 }
 
-export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null, playerName = 'PLAYER_01', random = Math.random }) {
+export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null, playerName = 'PLAYER_01', playerHealth = null, random = Math.random }) {
   const battleRules = rules ?? {
     weather: { id: 'clear', label: '맑음' },
     terrain: { id: 'neutral', label: '일반 필드' },
@@ -12927,6 +12927,24 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     resolvedRules.raid ? playerPokemon.length : opponentTeam.pokemon.length,
   ))
   const player = createSide('player', playerName, playerPokemon, [], '', activeSlots)
+  if (playerHealth) {
+    const healthById = new Map(playerHealth.map(pokemon => [pokemon.captureId, pokemon]))
+    for (const pokemon of player.team) {
+      const previous = healthById.get(pokemon.captureId)
+      if (!previous || !Number.isFinite(previous.hp) || !Number.isFinite(previous.maxHp) || previous.maxHp <= 0) {
+        throw new Error('이전 배틀의 포켓몬 체력 정보를 확인할 수 없습니다.')
+      }
+      // Revert temporary HP multipliers (Dynamax) without healing between rounds.
+      pokemon.hp = previous.fainted || previous.hp <= 0 ? 0
+        : Math.min(pokemon.maxHp, Math.max(1, Math.ceil(previous.hp * pokemon.maxHp / previous.maxHp)))
+      pokemon.fainted = pokemon.hp === 0
+    }
+    // Choose living leads before opening logs, Illusion, and entry abilities run.
+    player.faintCount = player.team.filter(pokemon => pokemon.fainted).length
+    player.activeIndexes = player.team.flatMap((pokemon, index) => pokemon.fainted ? [] : [index]).slice(0, activeSlots)
+    if (!player.activeIndexes.length) throw new Error('출전할 수 있는 포켓몬이 없습니다.')
+    player.activeIndex = player.activeIndexes[0]
+  }
   const opponentSide = createSide(
     'opponent',
     opponent.name,
