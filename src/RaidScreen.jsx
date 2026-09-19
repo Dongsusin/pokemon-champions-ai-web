@@ -44,7 +44,7 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
     current.current = next; setRun(next)
   }
   if (active) return <BattleScreen key={`${run.bossId}-${run.round}`}
-    initialBattle={run.battle} skipIntro={run.round > 1} hideResult onResolved={complete}
+    initialBattle={run.battle} skipIntro={run.round > 1} startWithDialogue={run.round > 1} hideResult onResolved={complete}
     playerPokemon={run.party} playerName={playerName}
     opponent={run.battle.opponentMeta} opponentTeam={{ pokemon: run.battle.opponent.team }} rules={run.battle.rules}
     competitionLabel={`${boss.name} 보스전 · ROUND ${run.round} / 3`}

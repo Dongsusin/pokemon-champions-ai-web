@@ -98,7 +98,10 @@ if (errors.length === 0 && process.argv.includes('--ui')) {
     })
     await page.goto('http://127.0.0.1:5193/trainer-dialogue-qa.html')
     await page.waitForFunction(() => Boolean(window.__dialogueQA))
-    await page.clock.install()
+    // Freeze wall-clock advancement so browser assertions cannot consume the
+    // last millisecond of the dialogue's three-second visibility check.
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') })
+    await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'))
     const dialogue = page.locator('.battle-trainer-dialogue-layer')
     const dialogueButton = page.locator('.battle-trainer-dialogue-box')
     const calls = () => page.evaluate(() => window.__dialogueCalls)

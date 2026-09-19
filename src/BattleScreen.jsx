@@ -1979,6 +1979,7 @@ function BattleScreen({
   battleRewards = null,
   initialBattle = null,
   skipIntro = false,
+  startWithDialogue = false,
   hideResult = false,
   onComplete,
   online = null,
@@ -1994,7 +1995,19 @@ function BattleScreen({
   const [pendingMoveIndex, setPendingMoveIndex] = useState(null)
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
-  const [trainerDialogue, setTrainerDialogue] = useState(null)
+  const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
+  // Seed the scene before the first render so an automatic round transition
+  // cannot briefly expose battle commands before the opponent speaks.
+  const [trainerDialogue, setTrainerDialogue] = useState(() => (
+    !online && skipIntro && startWithDialogue
+      ? getTrainerDialogue(opponentTrainer, TRAINER_DIALOGUE_EVENTS.START, {
+        turn: battle.turn,
+        aceName: opponentTrainer.ace?.name,
+        activeName: getActivePokemon(battle, 'opponent').name,
+        specialty: opponentTrainer.specialties?.[0],
+      })
+      : null
+  ))
   const [moveAssetsReady, setMoveAssetsReady] = useState(false)
   const [hoveredPokemonSide, setHoveredPokemonSide] = useState(null)
   const [focusedPokemonSide, setFocusedPokemonSide] = useState(null)
@@ -2012,7 +2025,7 @@ function BattleScreen({
   const remotePlayingRef = useRef(false)
   const [onlineSubmitting, setOnlineSubmitting] = useState(false)
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
-  const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
+
   const activeTrainerDialogue = trainerDialogue
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
@@ -2053,6 +2066,14 @@ function BattleScreen({
     let idleHandle = null
     const battleRoster = [...battle.player.team, ...battle.opponent.team]
     battleAudioRef.current?.preload(battleRoster)
+    if (!online && skipIntro && startWithDialogue) {
+      battleAudioRef.current?.start({
+        player: getActivePokemon(battle, 'player'),
+        opponent: getActivePokemon(battle, 'opponent'),
+        playerPokemon: getActivePokemonList(battle, 'player'),
+        opponentPokemon: getActivePokemonList(battle, 'opponent'),
+      })
+    }
     const activePokemon = [
       ...getActivePokemonList(battle, 'player'),
       ...getActivePokemonList(battle, 'opponent'),

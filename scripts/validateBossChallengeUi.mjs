@@ -30,11 +30,75 @@ const server = await createServer({ root, configFile: false, logLevel: 'error',
 await server.listen()
 const browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
 const errors = []
+const roundTwoSpeakers = {
+  뮤츠: ['비주기'],
+  칠색조: ['엔테이', '스이쿤', '라이코'],
+  루기아: ['파이어', '프리저', '썬더'],
+}
+async function verifyRoundOpening(page, bossName, round, viewport) {
+  const expectedPortraits = round === 2 ? roundTwoSpeakers[bossName] : [bossName]
+  const speaker = expectedPortraits.join(' / ')
+  const dialogue = page.locator('.battle-trainer-dialogue-layer')
+  await dialogue.waitFor({ state: 'visible' })
+  // Freeze the three-second timer while external portraits load and screenshots settle.
+  await page.clock.runFor(450)
+  assert.equal(await page.locator('#battle-trainer-dialogue-speaker').innerText(), speaker)
+  assert((await page.locator('#battle-trainer-dialogue-message').innerText()).trim().length > 0)
+  assert.equal(await page.locator('.battle-intro-overlay, .battle-result-overlay').count(), 0)
+  assert.equal(await page.getByRole('button', { name: /^(다음 라운드|배틀 개시)$/ }).count(), 0)
+  assert.equal(await page.locator('.battle-command-buttons button:disabled').count(), 4, `${speaker}: commands lock during the opening scene`)
+  assert.equal(await page.evaluate(() => window.__bossBattle().turn), 1)
+  const portraits = page.locator('.battle-trainer-dialogue-sprite img')
+  assert.equal(await portraits.count(), expectedPortraits.length)
+  const expectedSpeciesIds = round === 2 ? { 칠색조: [244, 245, 243], 루기아: [146, 144, 145] }[bossName] : [{ 뮤츠: 150, 칠색조: 250, 루기아: 249 }[bossName]]
+  const portraitNames = expectedSpeciesIds ? await page.evaluate(async ids => {
+    const { getSpeciesProfile } = await import('/src/data/trainingData.js')
+    return ids.map(id => getSpeciesProfile(id).name)
+  }, expectedSpeciesIds) : expectedPortraits
+  assert.deepEqual(await portraits.evaluateAll(images => images.map(image => image.closest('[role="img"]').getAttribute('aria-label'))), portraitNames.map(name => `${name} 트레이너`))
+  if (speaker === '비주기') assert.match(await portraits.first().getAttribute('src'), /giovanni/)
+  else assert(await page.evaluate(() => {
+    const members = window.__bossBattle().opponentMeta.portraitMembers
+    const images = [...document.querySelectorAll('.battle-trainer-dialogue-sprite img')]
+    return images.every((image, index) => members[index].spriteSources.some(source => image.src === new URL(source, location.href).href))
+  }), `${speaker}: portraits use the current round's Pokemon sprites`)
+  let portraitsLoaded = false
+  for (let attempt = 0; attempt < 100 && !portraitsLoaded; attempt++) {
+    portraitsLoaded = await portraits.evaluateAll(images => images.length > 0 && images.every(image => image.complete && image.naturalWidth > 0))
+    if (!portraitsLoaded) await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert(portraitsLoaded, `${speaker}: all dialogue portraits load`)
+  await page.screenshot({ path: fileURLToPath(new URL(`dialogue-${bossName}-${round}-${viewport.width}.png`, output)) })
+  const automatic = bossName === '뮤츠' && round === 2 && viewport.width > 1000
+  if (automatic) {
+    await page.clock.runFor(3000)
+    await dialogue.waitFor({ state: 'hidden' })
+  } else {
+    await page.locator('.battle-trainer-dialogue-box').click()
+    await dialogue.waitFor({ state: 'hidden' })
+  }
+  assert.equal(await page.locator('.battle-command-buttons button:enabled').count(), 4, `${speaker}: commands unlock after the scene`)
+  assert.equal(await page.evaluate(() => window.__bossRun().round), round, 'closing a dialogue must not advance another round')
+  // A later turn updates this same battle instance; it must not replay the opening.
+  await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), turn: 2 }))
+  await page.clock.runFor(1)
+  assert.equal(await page.evaluate(() => window.__bossBattle().turn), 2)
+  assert.equal(await dialogue.count(), 0, `${speaker}: later turns do not replay the opening`)
+  assert.equal(await page.locator('.battle-command-buttons button:enabled').count(), 4)
+  if (!automatic && bossName === '칠색조' && round === 2 && viewport.width > 1000) {
+    await page.clock.runFor(3100)
+    assert.equal(await dialogue.count(), 0, 'the manually dismissed scene stays closed after its original timer')
+    assert.equal(await page.evaluate(() => window.__bossRun().round), round)
+    assert.equal(await page.locator('.battle-command-buttons button:enabled').count(), 4)
+  }
+  await page.clock.resume()
+}
 try {
   const html = await server.transformIndexHtml('/boss-ui.html', '<html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/boss-ui-entry.jsx"></script></body></html>')
   for (const viewport of [{ width: 1440, height: 900 }, { width: 844, height: 390 }]) {
     const page = await browser.newPage({ viewport, hasTouch: viewport.width < 1000, isMobile: viewport.width < 1000 })
     page.on('pageerror', error => errors.push(error.message))
+    await page.clock.install()
     await page.route('**/boss-ui.html', route => route.fulfill({ contentType: 'text/html', body: html }))
     await page.goto('http://127.0.0.1:5297/boss-ui.html')
     await page.getByRole('heading', { name: '보스전', exact: true }).waitFor()
@@ -78,19 +142,20 @@ try {
       assert.equal(await page.evaluate(() => window.__bossBattle().player.team.length), 6)
       assert.equal(await page.evaluate(() => window.__bossBattle().player.activeIndexes.length), 2)
       // Inject terminal battle state to verify automatic resolution, not combat outcomes.
+      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100))
       await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
       assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
-      await page.waitForFunction(() => window.__bossRun()?.round === 2 && window.__bossRun()?.phase === 'battle')
+      await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'visible' })
+      assert.equal(await page.evaluate(() => window.__bossRun().round), 2)
       assert.equal(await page.evaluate(() => window.__bossBattle().opponent.team.length), name === '뮤츠' ? 6 : 3)
-      assert.equal(await page.locator('.battle-intro-overlay, .battle-result-overlay').count(), 0)
+      await verifyRoundOpening(page, name, 2, viewport)
+      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100))
       await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
       assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
-      await page.waitForFunction(() => window.__bossBattle()?.raid?.phase === 3)
+      await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'visible' })
+      assert.equal(await page.evaluate(() => window.__bossBattle().raid.phase), 3)
+      await verifyRoundOpening(page, name, 3, viewport)
       if (name === '칠색조') {
-        assert.equal(await page.getByRole('button', { name: '배틀 개시' }).count(), 0)
-        const dialogue = page.locator('.battle-trainer-dialogue-box')
-        if (await dialogue.count()) await dialogue.click()
-        await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'hidden' })
         await page.evaluate(async () => {
           const { beginRaidDamageRoot, applyBattleHpLoss, finishRaidDamageRoot } = await import('/src/data/raidPolicy.js')
           const battle = structuredClone(window.__bossBattle())
@@ -115,7 +180,8 @@ try {
         await page.locator('.battle-move-button').nth(targetMove).click()
         const summonName = await page.evaluate(() => window.__bossBattle().opponent.team[1].name)
         await page.locator('.battle-target-card').filter({ hasText: summonName }).click({ timeout: 60000 })
-        await page.waitForFunction(() => window.__bossBattle().turn > 1, { timeout: 60000 })
+        await page.waitForFunction(() => window.__bossBattle().turn > 2, null, { timeout: 60000 })
+        assert.equal(await page.locator('.battle-trainer-dialogue-layer').count(), 0, 'an actual resolved battle turn must not replay the opening')
       }
       await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
       await page.getByRole('heading', { name: `${name} 격파 성공!` }).waitFor()
@@ -126,7 +192,7 @@ try {
     await page.evaluate(() => window.__completeBossRound({ winner: 'opponent' }))
     await page.getByRole('heading', { name: '도전 종료' }).waitFor()
     assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
-    console.log(`PASS ${viewport.width}x${viewport.height}: selection, all three round journeys, Ho-Oh layout, defeat`)
+    console.log(`PASS ${viewport.width}x${viewport.height}: selection, all three automatic round journeys with opponent dialogue, locked/unlocked commands, Ho-Oh layout, defeat`)
     await page.close()
   }
   assert.deepEqual(errors, [])
