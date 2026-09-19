@@ -8,7 +8,7 @@ import { BATTLE_TEAM_SIZE } from './data/teamData'
 import { STAT_META, getSpeciesProfile, typeClassName } from './data/trainingData'
 import { getBattleItem } from './data/shopData'
 
-function PokemonDetails({ id, pokemon, anchor, onEnter, onLeave, tooltipRef }) {
+function PokemonDetails({ id, pokemon, anchor, onEnter, onLeave, tooltipRef, showDynamax }) {
   const [position, setPosition] = useState(null)
   const item = getBattleItem(pokemon.heldItemId)
   useLayoutEffect(() => {
@@ -71,6 +71,7 @@ function PokemonDetails({ id, pokemon, anchor, onEnter, onLeave, tooltipRef }) {
       <div><dt>성격</dt><dd>{pokemon.nature}</dd></div>
       <div><dt>지닌 도구</dt><dd>{item && <BattleItemSprite item={item} size={20} />}{item?.name ?? '없음'}</dd></div>
       <div><dt>테라타입</dt><dd>{pokemon.teraType}</dd></div>
+      {showDynamax && <div><dt>다이맥스</dt><dd>{pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스'}</dd></div>}
     </dl>
     <section className="ranked-tooltip-stats" aria-label="레벨 50 기준 능력치">
       {STAT_META.map(({ key, shortLabel }) => <div key={key}><span>{shortLabel}</span><strong>{pokemon.stats[key]}</strong></div>)}
@@ -85,7 +86,7 @@ function PokemonDetails({ id, pokemon, anchor, onEnter, onLeave, tooltipRef }) {
 
 // Only the player's registered roster uses this inspector. Opponent previews
 // keep using the public species cards from RankedBattleScreen.
-export default function RankedTeamRoster({ pokemon: roster }) {
+export default function RankedTeamRoster({ pokemon: roster, className = '', renderCard, showDynamax = false }) {
   const id = useId()
   const [activeId, setActiveId] = useState(null)
   const anchors = useRef(new Map())
@@ -122,7 +123,7 @@ export default function RankedTeamRoster({ pokemon: roster }) {
     }
   }, [activeId, active, anchor])
 
-  return <div className="ranked-six-grid" aria-label="선택한 팀 포켓몬">
+  return <div className={`ranked-six-grid ${className}`} aria-label="선택한 팀 포켓몬">
     {Array.from({ length: BATTLE_TEAM_SIZE }, (_, index) => {
       const pokemon = roster[index]
       if (!pokemon) return <div className="ranked-pokemon-card empty" key={`empty-${index}`}><span>+</span><small>팀 편성 필요</small></div>
@@ -134,12 +135,12 @@ export default function RankedTeamRoster({ pokemon: roster }) {
         onPointerLeave={event => { if (event.pointerType !== 'touch') scheduleClose() }}
         onPointerCancel={close} onFocus={() => open(pokemon)}
         onBlur={event => { if (!tooltipPointerInside.current && !tooltipRef.current?.contains(event.relatedTarget)) scheduleClose() }} onClick={() => open(pokemon)}>
-        <span className="ranked-pokemon-number">{String(index + 1).padStart(2, '0')}<Info size={13} aria-hidden="true" /></span>
+        {renderCard ? renderCard(pokemon, index, profile) : <><span className="ranked-pokemon-number">{String(index + 1).padStart(2, '0')}<Info size={13} aria-hidden="true" /></span>
         <SpriteImage src={pokemon.icon ?? profile?.icon} fallbackSrc={pokemon.iconFallback ?? profile?.iconFallback} alt="" draggable="false" />
-        <strong>{pokemon.name ?? profile?.name}</strong><small>{(pokemon.types ?? profile?.types ?? []).join(' · ')}</small>
+        <strong>{pokemon.name ?? profile?.name}</strong><small>{(pokemon.types ?? profile?.types ?? []).join(' · ')}</small></>}
       </button>
     })}
-    {preview && anchor && <PokemonDetails key={activeId} id={id} pokemon={preview} anchor={anchor} tooltipRef={tooltipRef}
+    {preview && anchor && <PokemonDetails key={activeId} id={id} showDynamax={showDynamax} pokemon={preview} anchor={anchor} tooltipRef={tooltipRef}
       onEnter={() => { tooltipPointerInside.current = true; keepOpen() }}
       onLeave={event => {
         // A touch pointer leaves on finger-up before the compatibility blur.

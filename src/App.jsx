@@ -20,6 +20,7 @@ import {
 import BattleSelectScreen from './BattleSelectScreen'
 import InstallAppButton from './InstallAppButton'
 import BattleHub from './BattleHub'
+import RaidScreen from './RaidScreen'
 import RankedBattleScreen from './RankedBattleScreen'
 import BattleRoomsScreen from './BattleRoomsScreen'
 import BattleRoomsTestLobby from './BattleRoomsTestLobby'
@@ -384,6 +385,8 @@ export function GameApp({
   const [competition, setCompetition] = useState(null)
   const [battleMatch, setBattleMatch] = useState(null)
   const [rankedBattleActive, setRankedBattleActive] = useState(false)
+  const [bossBattleActive, setBossBattleActive] = useState(false)
+  const [selectedBossId, setSelectedBossId] = useState('mewtwo')
   const [factoryRun, setFactoryRun] = useState(null)
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
@@ -399,7 +402,7 @@ export function GameApp({
   const lobbyPokemon = lobbyParty.find((entry) => entry.captureId === lobbyCaptureId) ?? lobbyParty[0] ?? null
   const soundEnabled = settings.audio.enabled
   const factoryBattleVisible = screen === 'factory' && factoryRun?.phase === 'battle'
-  const battleMusicActive = screen === 'battle' || rankedBattleActive || factoryBattleVisible
+  const battleMusicActive = screen === 'battle' || rankedBattleActive || factoryBattleVisible || bossBattleActive
   const isGuest = Boolean(user.isAnonymous || user.isLocalGuest)
   const accountTrainerName = user.displayName?.trim()
     || user.email?.split('@')[0]
@@ -797,6 +800,11 @@ export function GameApp({
     setScreen('box')
   }
 
+  const openBoxFromBoss = () => {
+    setBoxReturnScreen('raid')
+    setScreen('box')
+  }
+
   const returnFromBox = () => {
     setScreen(boxReturnScreen)
   }
@@ -1181,7 +1189,7 @@ export function GameApp({
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'rooms' ? ' rooms-view ranked-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'rooms' ? ' rooms-view ranked-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'raid' && !bossBattleActive ? ' raid-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -1316,7 +1324,13 @@ export function GameApp({
       </main>
       ) : screen === 'battle-hub' ? (
         <BattleHub user={user} onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
-          onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')} />
+          onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')} onSelectRaid={() => setScreen('raid')} />
+      ) : screen === 'raid' ? (
+        <RaidScreen boxPokemon={boxPokemon} teams={teams} activeTeamId={activeTeam?.id}
+          onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromBoss} onBack={() => setScreen('battle-hub')}
+          selectedBossId={selectedBossId} onSelectBoss={setSelectedBossId} playerName={trainerName}
+          soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio}
+          onToggleSound={toggleSound} onOpenSettings={() => openSettings()} onBattleActiveChange={setBossBattleActive} />
       ) : screen === 'rooms' ? (
         <BattleRoomsScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromRooms} onBack={() => setScreen('battle-hub')}
@@ -1414,7 +1428,7 @@ export function GameApp({
           inventory={itemInventory}
           onBack={returnFromBox}
           pokemonUsage={pokemonUsage}
-          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : boxReturnScreen === 'rooms' ? '대전방' : '로비'}
+          backLabel={boxReturnScreen === 'battle-select' ? 'AI 대전' : boxReturnScreen === 'ranked' ? '레이팅 배틀' : boxReturnScreen === 'rooms' ? '대전방' : boxReturnScreen === 'raid' ? '보스전' : '로비'}
           onEquipItem={equipBattleItem}
           onSetTeraType={setPokemonTeraType}
           onSetDynamaxMode={setPokemonDynamaxMode}

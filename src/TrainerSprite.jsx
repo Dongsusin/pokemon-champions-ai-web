@@ -16,6 +16,12 @@ function TrainerSprite({ trainer, isPlayer = false, playerGender = 'male', class
 
   const source = candidates[sourceIndex]
 
+  if (!isPlayer && trainer?.portraitMembers?.length) return (
+    <span className={['trainer-sprite-frame', 'trainer-portrait-group', className].filter(Boolean).join(' ')} role="img" aria-label={alt ?? trainer.name}>
+      {trainer.portraitMembers.map((member, index) => <TrainerSprite key={index} trainer={member} />)}
+    </span>
+  )
+
   return (
     <span
       className={['trainer-sprite-frame', trainer?.id === 'factory-clown' && 'factory-trainer-portrait', className].filter(Boolean).join(' ')}

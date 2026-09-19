@@ -62,6 +62,8 @@ import {
   STATUS_MOVE_EFFECTS,
 } from './moveSupportData.js'
 import { canUseZMove, normalizeZCrystalId, resolveZMove } from './zMoveData.js'
+import { applyBattleHpLoss, previewBattleHpLoss, beginRaidDamageRoot, finishRaidDamageRoot, isRaidBoss, raidBlocksWeather, raidEvent, raidMoveImmunity } from './raidPolicy.js'
+import { stampRaidPresentationLog } from './raidPresentation.js'
 
 const TYPE_CHART = {
   노말: { 바위: 0.5, 고스트: 0, 강철: 0.5 },
@@ -917,11 +919,11 @@ function applyPendingDifficultyBoost(pokemon) {
 }
 
 function appendLog(state, message, tone = 'normal') {
-  state.log.push({
+  state.log.push(stampRaidPresentationLog(state, {
     id: `${state.turn}-${state.log.length}-${message}`,
     message,
     tone,
-  })
+  }))
   if (state.log.length > 80) state.log.splice(0, state.log.length - 80)
 }
 
@@ -1463,6 +1465,7 @@ function environmentDefinition(kind, environmentId) {
 }
 
 function setTemporaryEnvironment(state, kind, environmentId, sourceName, sourcePokemon, options = {}) {
+  if (raidBlocksWeather(state, kind)) return false
   const environment = environmentDefinition(kind, environmentId)
   if (!environment) return false
   const environmentState = ensureEnvironmentState(state)
@@ -1508,6 +1511,7 @@ function setTemporaryEnvironment(state, kind, environmentId, sourceName, sourceP
 }
 
 function resetBattleEnvironment(state, kind, sourceName = '') {
+  if (raidBlocksWeather(state, kind)) return false
   const environmentState = ensureEnvironmentState(state)
   const baseKey = kind === 'weather' ? 'baseWeather' : 'baseTerrain'
   const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
@@ -1548,6 +1552,7 @@ function resetBattleEnvironment(state, kind, sourceName = '') {
 }
 
 function clearBattleEnvironment(state, kind, sourceName) {
+  if (raidBlocksWeather(state, kind)) return false
   const environmentState = ensureEnvironmentState(state)
   const environmentId = kind === 'weather' ? 'clear' : 'neutral'
   const environment = environmentDefinition(kind, environmentId)
@@ -1571,6 +1576,7 @@ function clearBattleEnvironment(state, kind, sourceName) {
 }
 
 function refreshStrongWeatherSource(state) {
+  if (state.raid?.weatherLock) return false
   const environmentState = ensureEnvironmentState(state)
   const weatherId = state.rules?.weather?.id
   if (!STRONG_WEATHER_IDS.has(weatherId)) return false
@@ -1597,6 +1603,7 @@ function advanceEnvironmentTimers(state, timeline = null) {
   const environmentState = ensureEnvironmentState(state)
 
   ;['weather', 'terrain'].forEach((kind) => {
+    if (kind === 'weather' && state.raid?.weatherLock) return
     const turnsKey = kind === 'weather' ? 'weatherTurns' : 'terrainTurns'
     if (!Number.isFinite(environmentState[turnsKey])) return
     environmentState[turnsKey] -= 1
@@ -1668,6 +1675,7 @@ function cloneSide(side) {
 function cloneBattle(state) {
   return {
     ...state,
+    ...(state.raid ? { raid: structuredClone(state.raid) } : {}),
     rules: cloneBattleRules(state.rules),
     environment: state.environment ? {
       ...state.environment,
@@ -1689,7 +1697,19 @@ function cloneBattle(state) {
   }
 }
 
+const RAID_CUE_PHASES = new Set(['announce', 'impact', 'gimmick', 'form', 'status', 'resolve', 'switch', 'switch-out', 'faint', 'residual'])
+const RAID_CUE_FIELDS = ['sideId', 'targetSideId', 'actorSlot', 'targetSlot', 'actorName', 'actorSpeciesId', 'actorOriginalSpeciesId', 'targetName', 'targetSpeciesId', 'moveId', 'moveName', 'moveType', 'moveCategory', 'movePower', 'moveTarget', 'movePriority', 'moveMultihit', 'moveDrain', 'moveRecoil', 'moveStatus', 'moveSelfdestruct', 'moveFlags', 'moveDescription', 'moveGeneration', 'animationType', 'animationVariant', 'animationVariantKey', 'animationReferenceKey', 'gimmickId', 'mechanicId', 'mechanicLabel', 'mechanicType', 'mechanicMode', 'actorPreviousName', 'spriteBeforeFront', 'spriteBeforeBack', 'spriteBeforeFrontFallback', 'spriteBeforeBackFallback', 'spriteAfterFront', 'spriteAfterBack', 'spriteAfterFrontFallback', 'spriteAfterBackFallback', 'formSourceName', 'result', 'damage', 'critical', 'effectiveness', 'hitIndex', 'hitCount']
+
 function pushTimelineStep(timeline, state, step) {
+  if (state.raid && RAID_CUE_PHASES.has(step.phase)) {
+    // Reuse actual engine cues without serializing a full timeline snapshot
+    // per animation. Public events contain no owner IDs or pending commands.
+    const targetsActor = step.phase === 'faint' || step.phase === 'residual'
+    const actor = getActivePokemon(state, (targetsActor ? step.targetSideId : null) ?? step.sideId ?? 'player', (targetsActor ? step.targetSlot : null) ?? step.actorSlot ?? 0)
+    const details = Object.fromEntries(RAID_CUE_FIELDS.filter(key => step[key] !== undefined).map(key => [key, step[key]]))
+    const target = step.targetSideId ? getActivePokemon(state, step.targetSideId, step.targetSlot ?? 0) : null
+    raidEvent(state, 'battle-cue', step.message ?? '', { ...details, cuePhase: step.phase, actorId: actor?.battleId ?? null, targetActorId: target?.battleId ?? null }, { log: false })
+  }
   if (!timeline) return
   timeline.push({
     id: `${state.turn}-${timeline.length}-${step.phase}`,
@@ -1825,6 +1845,8 @@ function accuracyStageMultiplier(stage) {
 function isStatusMove(move) {
   return move?.categoryId === 'status' || move?.category === '변화'
 }
+
+export function getEffectiveBattleWeatherId(state) { return effectiveWeatherId(state) }
 
 function goodAsGoldBlocksMove(attacker, defender, move) {
   // Side hazards and field effects do not hit the Pokemon holding the ability.
@@ -4521,7 +4543,7 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
       appendLog(state, '그러나 대타출동은 실패했다!', 'muted')
       return true
     }
-    attacker.hp -= cost
+    applyBattleHpLoss(state, attacker, cost)
     attacker.substituteHp = cost
     appendLog(state, `${attacker.name}의 대타가 나타났다!`, 'status')
     return true
@@ -4571,9 +4593,12 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
     return true
   }
   if (move.id === 'painsplit') {
+    if (isRaidBoss(state, attacker) || isRaidBoss(state, defender)) { raidEvent(state, 'boss-immunity', '보스와 HP를 교환할 수 없다.'); return true }
     const sharedHp = Math.floor((attacker.hp + defender.hp) / 2)
-    attacker.hp = Math.min(attacker.maxHp, sharedHp)
-    defender.hp = Math.min(defender.maxHp, sharedHp)
+    for (const pokemon of [attacker, defender]) {
+      if (sharedHp < pokemon.hp) applyBattleHpLoss(state, pokemon, pokemon.hp - sharedHp)
+      else pokemon.hp = Math.min(pokemon.maxHp, sharedHp)
+    }
     appendLog(state, '서로의 HP를 합쳐 똑같이 나눴다!', 'status')
     return true
   }
@@ -5262,6 +5287,18 @@ function confusionSelfDamage(state, pokemon, random) {
 }
 
 function canPokemonAct(state, pokemon, random, move) {
+  if (!isRaidBoss(state, pokemon)) return canPokemonActOnce(state, pokemon, random, move)
+  const previous = state.raid.actorTurnStatus
+  if (state.raid.executingBonus && previous?.turn === state.turn) {
+    if (!previous.allowed || pokemon.flinched || ['sleep', 'freeze'].includes(pokemon.status?.id)) return false
+    return true
+  }
+  const allowed = canPokemonActOnce(state, pokemon, random, move)
+  state.raid.actorTurnStatus = { turn: state.turn, allowed }
+  return allowed
+}
+
+function canPokemonActOnce(state, pokemon, random, move) {
   if (pokemon.commanding) return false
 
   if (pokemon.skyDropSourceBattleId) {
@@ -5327,7 +5364,7 @@ function canPokemonAct(state, pokemon, random, move) {
     } else if (random() < 1 / 3) {
       appendLog(state, `${pokemon.name}은(는) 혼란에 빠져 있다!`, 'status')
       const damage = Math.min(pokemon.hp, confusionSelfDamage(state, pokemon, random))
-      pokemon.hp = Math.max(0, pokemon.hp - damage)
+      applyBattleHpLoss(state, pokemon, damage)
       appendLog(state, `${pokemon.name}은(는) 영문도 모른 채 자신을 공격했다!`, 'damage')
       return false
     } else {
@@ -5402,7 +5439,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
     moves: pokemon.moves.map((move) => move.name),
   })
   const nextStats = statObject(transformed)
-  const nextBaseMaxHp = Math.max(
+  const nextBaseMaxHp = options.maxHp ?? Math.max(
     1,
     Math.floor(nextStats.hp * (pokemon.difficultyHpMultiplier ?? 1)),
   )
@@ -5862,13 +5899,7 @@ function resolveBattleMechanicForm(pokemon, mechanicId, requestedFormId = null) 
   return candidates[0]
 }
 
-function transformPokemon(state, pokemon, formId, mechanicId) {
-  const form = mechanicId === 'ultra'
-    ? getSpeciesProfile(formId)
-    : resolveBattleMechanicForm(pokemon, mechanicId, formId)
-  if (!form) return false
-
-  if (!changeBattleForm(state, pokemon, form, MECHANIC_LABELS[mechanicId], { log: false, animate: false })) return false
+function refreshPermanentFormAbility(state, pokemon) {
   // A permanent battle form replaces the ability that will return after
   // suppression or switching. Do not restore the pre-Mega ability from an
   // old Gastro Acid, Neutralizing Gas, or Trace snapshot.
@@ -5877,6 +5908,22 @@ function transformPokemon(state, pokemon, formId, mechanicId) {
   pokemon.tracedAbilityBase = null
   if (pokemon.abilitySuppressed && !ABILITY_SUPPRESSION_IMMUNE_NAMES.has(pokemon.ability)) pokemon.ability = ''
   refreshNeutralizingGas(state, { reactivate: false })
+}
+
+function changeRaidBossMegaForm(state, pokemon, form) {
+  if (!changeBattleForm(state, pokemon, form, '메가진화', { maxHp: pokemon.maxHp })) return false
+  refreshPermanentFormAbility(state, pokemon)
+  return true
+}
+
+function transformPokemon(state, pokemon, formId, mechanicId) {
+  const form = mechanicId === 'ultra'
+    ? getSpeciesProfile(formId)
+    : resolveBattleMechanicForm(pokemon, mechanicId, formId)
+  if (!form) return false
+
+  if (!changeBattleForm(state, pokemon, form, MECHANIC_LABELS[mechanicId], { log: false, animate: false })) return false
+  refreshPermanentFormAbility(state, pokemon)
   pokemon.megaActive = mechanicId === 'mega'
   pokemon.primalActive = mechanicId === 'primal'
   pokemon.ultraActive = mechanicId === 'ultra'
@@ -5946,22 +5993,28 @@ function pokemonAllowsDynamax(pokemon) {
     && (!pokemon.illusionSnapshot || speciesAllowsDynamax(pokemon.illusionSpeciesId))
 }
 
+function mechanicUsage(state, side, pokemon) {
+  if (!state.raid || !pokemon?.raidOwnerId) return side.usedMechanics
+  return state.raid.usedMechanicsByOwner[pokemon.raidOwnerId] ??= { tera: false, dynamax: false, mega: false, zmove: false, primal: false }
+}
+
 export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot = null) {
   if (!state || state.winner) return []
   if (!state.rules?.pvp && sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'easy') return []
   const side = getSide(state, sideId)
   const pokemon = getActivePokemon(state, sideId, activeSlot)
   if (!pokemon || pokemon.fainted) return []
+  if (state.raid && (sideId === 'opponent' || pokemon.raidNpc || Object.values(mechanicUsage(state, side, pokemon)).some(Boolean))) return []
   if (pokemon.usedBattleMechanicId) return []
   const configured = sideId === 'opponent' ? inferConfiguredMechanics(pokemon) : []
   const available = []
   const allow = (mechanicId) => state.rules?.pvp || sideId === 'player' || configured.includes(mechanicId)
 
-  if (!side.usedMechanics.tera && allow('tera')) {
+  if (!mechanicUsage(state, side, pokemon).tera && allow('tera')) {
     available.push({ id: 'tera', label: `테라스탈 · ${getBattleTeraType(pokemon)}`, shortLabel: 'TERA' })
   }
 
-  if (!side.usedMechanics.dynamax && allow('dynamax') && pokemonAllowsDynamax(pokemon)) {
+  if (!mechanicUsage(state, side, pokemon).dynamax && allow('dynamax') && pokemonAllowsDynamax(pokemon)) {
     available.push({
       id: 'dynamax',
       label: pokemon.dynamaxMode === 'gigantamax' ? '거다이맥스' : '다이맥스',
@@ -5981,13 +6034,13 @@ export function getAvailableBattleMechanics(state, sideId = 'player', activeSlot
   const hasZCrystal = pokemon.heldItemId?.includes('-z') || pokemon.heldItemId?.includes('ium-z')
   const hasCompatibleZMove = hasZCrystal && hasCompatibleBattleZMove(pokemon)
 
-  if (!side.usedMechanics.mega && allow('mega') && hasMegaForm && hasMegaStone) {
+  if (!mechanicUsage(state, side, pokemon).mega && allow('mega') && hasMegaForm && hasMegaStone) {
     available.push({ id: 'mega', label: '메가진화', shortLabel: 'MEGA' })
   }
-  if (!side.usedMechanics.primal && allow('primal') && hasPrimalForm && hasPrimalOrb) {
+  if (!mechanicUsage(state, side, pokemon).primal && allow('primal') && hasPrimalForm && hasPrimalOrb) {
     available.push({ id: 'primal', label: '원시회귀', shortLabel: 'PRIMAL' })
   }
-  if (!side.usedMechanics.zmove && allow('zmove') && hasCompatibleZMove) {
+  if (!mechanicUsage(state, side, pokemon).zmove && allow('zmove') && hasCompatibleZMove) {
     available.push({ id: 'zmove', label: 'Z기술', shortLabel: 'Z-MOVE' })
   }
 
@@ -6042,7 +6095,7 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
   let activated = false
 
   if (mechanicId === 'tera') {
-    side.usedMechanics.tera = true
+    mechanicUsage(state, side, pokemon).tera = true
     const ogerponTeraRule = pokemon.battleBaseSpeciesId === 1017
       ? OGERPON_TERA_FORM_RULES[currentSpeciesSlug(pokemon)] ?? OGERPON_TERA_FORM_RULES.ogerpon
       : null
@@ -6096,7 +6149,7 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
     } else {
       pokemon.name = `다이맥스 ${originalName}`
     }
-    side.usedMechanics.dynamax = true
+    mechanicUsage(state, side, pokemon).dynamax = true
     pokemon.dynamaxActive = true
     pokemon.dynamaxTurns = 3
     if (pokemon.maxHp > 1) {
@@ -6111,14 +6164,14 @@ function activateMechanic(state, sideId, mechanicId, activeSlot = null) {
     activated = true
   } else if (mechanicId === 'mega' || mechanicId === 'primal') {
     if (transformPokemon(state, pokemon, pokemon.gimmickFormId, mechanicId)) {
-      side.usedMechanics[mechanicId] = true
+      mechanicUsage(state, side, pokemon)[mechanicId] = true
       appendLog(state, `${trainerName}의 ${pokemon.name}! ${MECHANIC_LABELS[mechanicId]} 성공!`, 'gimmick')
       activateEntryAbility(state, sideId, activeSlot)
       activated = true
     }
   } else if (mechanicId === 'zmove') {
     activateUltraBurst(state, pokemon)
-    side.usedMechanics.zmove = true
+    mechanicUsage(state, side, pokemon).zmove = true
     appendLog(state, `${trainerName}와 ${pokemon.name}의 전력! Z파워가 기술에 모인다!`, 'gimmick')
     activated = true
   }
@@ -6184,6 +6237,10 @@ function encoredMoveIndex(pokemon, gimmick = null) {
 // Selection restrictions are separate from charge/recharge turn commitments:
 // Encore, Disable and Choice items restrict moves but never prohibit switching.
 export function getBattleMoveSelectionState(state, sideId = 'player', moveIndex = 0, activeSlot = 0, gimmick = null) {
+  if (state?.raid && !state.raid.campaign) {
+    const move = getActivePokemon(state, sideId, activeSlot)?.moves?.[moveIndex]
+    if (['batonpass', 'teleport', 'chillyreception', 'shedtail', 'revivalblessing', 'healingwish', 'lunardance'].includes(move?.id)) return { disabled: true, reason: '협동 보스전에는 교대할 대기 포켓몬이 없습니다.' }
+  }
   const pokemon = state && getActivePokemon(state, sideId, activeSlot)
   const blocked = reason => ({ disabled: true, reason })
   if (!isAvailableFieldPokemon(pokemon)) return blocked('행동할 수 있는 포켓몬이 없습니다.')
@@ -6287,6 +6344,7 @@ function battleMoveTargetOptions(state, sideId, activeSlot, move, { includeUnava
   const oppositeSideId = getOtherSide(state, sideId).id
   const foes = getActivePokemonList(state, oppositeSideId)
   const adjacent = (candidateSideId, slot) => {
+    if (state.raid) return true
     if (move.target === 'any' || move.flags?.includes('distance') || state.rules?.format?.rotation) return true
     if (Math.max(allies.length, foes.length) < 3) return true
     return candidateSideId === sideId
@@ -6547,6 +6605,12 @@ function fixedDamageResult(state, attacker, defender, move, random) {
     }
   }
   return null
+}
+
+function raidSurvivalDamage(state, defender, rawDamage, move, random) {
+  const limited = previewBattleHpLoss(state, defender, rawDamage)
+  const survived = applySurvivalEffects(state, defender, limited, move, random)
+  return survived < limited ? survived : rawDamage
 }
 
 function applySurvivalEffects(state, defender, requestedDamage, move, random) {
@@ -7069,8 +7133,7 @@ function applyUniqueDamagingMoveEffects(state, attacker, defender, move, random,
 
 function loseHp(state, pokemon, amount, message, tone = 'damage') {
   if (!pokemon || pokemon.hp <= 0) return 0
-  const damage = Math.min(pokemon.hp, Math.max(1, Math.floor(amount)))
-  pokemon.hp = Math.max(0, pokemon.hp - damage)
+  const damage = applyBattleHpLoss(state, pokemon, Math.max(1, Math.floor(amount)))
   appendLog(state, message.replace('{damage}', damage), tone)
   return damage
 }
@@ -7127,7 +7190,7 @@ function applyMoveRecoil(state, attacker, move, damageDealt) {
 
 function applySelfDestruct(state, attacker, move, didHit) {
   if (!move.selfdestruct || (move.selfdestruct === 'ifHit' && !didHit) || attacker.hp <= 0) return false
-  attacker.hp = 0
+  applyBattleHpLoss(state, attacker, attacker.hp)
   appendLog(state, `${attacker.name}은(는) 모든 힘을 다 써버렸다!`, 'damage')
   return true
 }
@@ -7221,6 +7284,7 @@ function applyBatonPassSnapshot(pokemon, snapshot) {
 }
 
 function requestBattleSwitch(state, sideId, actorSlot, details, timeline = null) {
+  if (state.raid && !state.raid.campaign) return false
   const actor = getActivePokemon(state, sideId, actorSlot)
   if (!actor || actor.hp <= 0 || actor.commanding || actor.commandedByBattleId
     || details.kind !== 'revival' && availableBenchIndexes(getSide(state, sideId)).length === 0) return false
@@ -7486,6 +7550,7 @@ function resolvePledgeCombination(side, move) {
 }
 
 function specialMoveFailureReason(state, attacker, defender, move, { isChargeContinuation = false } = {}) {
+  if (raidMoveImmunity(state, defender, move)) return '보스 보호 효과로 이 기술의 강제 처치·퇴장·HP 교환 효과는 통하지 않는다!'
   if (move.id === 'noretreat' && attacker.noRetreatActive) {
     return '이미 배수의진을 펼쳐 다시 사용할 수 없다!'
   }
@@ -7629,7 +7694,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       ?? (!requestedSideId ? options.find((option) => option.sideId === defaultSideId) : null)
     if (selected && (selected.target.fainted || selected.target.hp <= 0)) {
       if (selected.sideId !== sideId) {
-        const candidates = options.filter((option) => option.sideId === selected.sideId)
+        const candidates = options.filter((option) => option.sideId === selected.sideId && (!state.raid || !action.raidTargetActorIds || action.raidTargetActorIds.includes(option.target.battleId)))
         if (candidates.length) selected = candidates.length === 1 ? candidates[0] : candidates[Math.floor(random() * candidates.length)]
       } else if (targetingMove.target === 'adjacentAllyOrSelf') {
         selected = options.find((option) => option.sideId === sideId && option.slot === actorSlot) ?? selected
@@ -7825,7 +7890,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       : '선택한 배틀 기믹은 더 이상 사용할 수 없다!'
     appendLog(state, message, 'muted')
   }
-  const mechanicWasUsed = resolvedGimmick ? side.usedMechanics[resolvedGimmick] : false
+  const mechanicWasUsed = resolvedGimmick ? mechanicUsage(state, side, attacker)[resolvedGimmick] : false
   const mechanicBefore = resolvedGimmick ? mechanicPokemonSnapshot(attacker) : null
   const previewEnvironmentMove = resolveEnvironmentMove(state, attacker, defender, moveSlot)
   const requestedZMove = resolvedGimmick === 'zmove'
@@ -7903,7 +7968,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     attacker.moveFailedThisTurn = true
     return
   }
-  if (resolvedGimmick && !mechanicWasUsed && side.usedMechanics[resolvedGimmick]) {
+  if (resolvedGimmick && !mechanicWasUsed && mechanicUsage(state, side, attacker)[resolvedGimmick]) {
     pushMechanicTimeline(state, sideId, actorSlot, resolvedGimmick, mechanicBefore, timeline, actionOrder, move)
   }
 
@@ -8235,6 +8300,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       const listeners = [...getActivePokemonList(state, 'player'), ...getActivePokemonList(state, 'opponent')]
       for (const listener of listeners) {
         if (!isAvailableFieldPokemon(listener)) continue
+        if (isRaidBoss(state, listener)) { raidEvent(state, 'boss-immunity', '보스에게 멸망의노래는 통하지 않는다.'); continue }
         if (listener.ability === '방음' && !moveIgnoresAbility(move, listener)) {
           appendLog(state, `${listener.name}의 방음! 멸망의노래를 듣지 않았다!`, 'ability')
         } else if (listener.perishCount == null) listener.perishCount = 4
@@ -8700,7 +8766,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         ? Math.max(0, Math.floor(hitResult.damage))
         : formShield
         ? formShield.damage
-        : applySurvivalEffects(state, defender, hitResult.damage, hitMove, random)
+        : isRaidBoss(state, defender) ? Math.max(0, Math.floor(hitResult.damage)) : applySurvivalEffects(state, defender, hitResult.damage, hitMove, random)
       let adjustedHitDamage = requestedHitDamage
       const resistBerryType = TYPE_RESIST_BERRY_TYPES[defender.heldItemId]
       if (
@@ -8716,16 +8782,18 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         applyCheekPouch(state, defender)
       }
       const defenderHpBeforeHit = defender.hp
+      // Raid caps follow resistance berries and precede last-HP survival items.
+      // A hit stopped at 75% must not consume a full-HP Focus Sash.
+      if (!substituteBlocks && isRaidBoss(state, defender)) adjustedHitDamage = raidSurvivalDamage(state, defender, adjustedHitDamage, hitMove, random)
       const hitDamage = substituteBlocks
         ? Math.min(defender.substituteHp, adjustedHitDamage)
-        : Math.min(defender.hp, adjustedHitDamage)
+        : applyBattleHpLoss(state, defender, adjustedHitDamage)
       if (substituteBlocks) {
         defender.substituteHp = Math.max(0, defender.substituteHp - hitDamage)
         hitSubstitute = true
         substituteLandedHits += 1
         if (defender.substituteHp === 0) appendLog(state, `${defender.name}의 대타는 사라졌다!`, 'status')
       } else {
-        defender.hp = Math.max(0, defender.hp - hitDamage)
         directDamage += hitDamage
         directLandedHits += 1
         lastDirectHitDamage = hitDamage
@@ -9038,8 +9106,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         appendLog(state, `${attacker.name}은(는) 다이맥스 상태라 길동무를 무시했다!`, 'status')
       } else if (spreading) spreadSummary.destinyBondSource = defender.name
       else {
-        attacker.hp = 0
-        appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
+        if (isRaidBoss(state, attacker)) raidEvent(state, 'boss-immunity', '보스에게 길동무의 강제 처치는 통하지 않는다.')
+        else { applyBattleHpLoss(state, attacker, attacker.hp); appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status') }
       }
     }
 
@@ -9093,8 +9161,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     attacker.micleActive = false
     applyMindBlownRecoil(state, attacker, preparedMove)
     if (spreadSummary.destinyBondSource && attacker.hp > 0) {
-      attacker.hp = 0
-      appendLog(state, `${spreadSummary.destinyBondSource}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status')
+      if (isRaidBoss(state, attacker)) raidEvent(state, 'boss-immunity', '보스에게 길동무의 강제 처치는 통하지 않는다.')
+      else { applyBattleHpLoss(state, attacker, attacker.hp); appendLog(state, `${spreadSummary.destinyBondSource}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status') }
     }
     applySelfDestruct(state, attacker, preparedMove, spreadSummary.damage > 0)
     if (state.log.length > postEffectLogLength) pushTimelineStep(timeline, state, {
@@ -9144,12 +9212,11 @@ function resolveFutureMoves(state, timeline, random) {
       // Substitute absorbs damage before the holder's HP or survival items.
       const damage = substituteBlocks
         ? Math.min(defender.substituteHp, Math.max(0, Math.floor(result.damage)))
-        : applySurvivalEffects(state, defender, result.damage, move, random)
+        : applyBattleHpLoss(state, defender, isRaidBoss(state, defender) ? raidSurvivalDamage(state, defender, result.damage, move, random) : applySurvivalEffects(state, defender, result.damage, move, random))
       if (substituteBlocks) {
         defender.substituteHp -= damage
         if (defender.substituteHp === 0) appendLog(state, `${defender.name}의 대타는 사라졌다!`, 'status')
       } else {
-        defender.hp = Math.max(0, defender.hp - damage)
         defender.lastDamageTaken = damage
         defender.lastDamageCategory = move.categoryId
         defender.lastAttackerBattleId = attacker.battleId
@@ -9638,7 +9705,7 @@ function applyEntryHazards(state, side, pokemon) {
     if (pokemon.hp <= 0) return
     const effectiveness = getBattleTypeEffectiveness(state, type, pokemon.types)
     const damage = Math.max(1, Math.floor(pokemon.maxHp * effectiveness / 8))
-    pokemon.hp = Math.max(0, pokemon.hp - damage)
+    applyBattleHpLoss(state, pokemon, damage)
     appendLog(state, `${pokemon.name}은(는) ${name}에 데미지를 입었다!`, 'damage')
   })
 
@@ -9831,7 +9898,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
       && !hasActiveHeldItem(pokemon, 'safety-goggles')
     ) {
       const weatherDamage = Math.max(1, Math.floor(baseMaxHp(pokemon) / 16))
-      pokemon.hp = Math.max(0, pokemon.hp - weatherDamage)
+      applyBattleHpLoss(state, pokemon, weatherDamage)
       appendLog(state, `${pokemon.name}은(는) 모래바람에 시달렸다.`, 'damage')
     }
 
@@ -9853,7 +9920,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
       && ['건조피부', '선파워'].includes(pokemon.ability)
     ) {
       const weatherDamage = Math.max(1, Math.floor(baseMaxHp(pokemon) / 8))
-      pokemon.hp = Math.max(0, pokemon.hp - weatherDamage)
+      applyBattleHpLoss(state, pokemon, weatherDamage)
       appendLog(state, `${pokemon.name}은(는) 강한 햇살에 HP가 줄었다.`, 'ability')
     }
   }
@@ -9878,7 +9945,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
       && pokemon.ability !== '매직가드'
     ) {
       const residualDamage = Math.max(1, Math.floor(baseMaxHp(pokemon) / 6))
-      pokemon.hp = Math.max(0, pokemon.hp - residualDamage)
+      applyBattleHpLoss(state, pokemon, residualDamage)
       appendLog(state, `${pokemon.name}은(는) ${side.gmaxResidual.moveName}의 여파로 데미지를 입었다!`, 'damage')
     }
 
@@ -10006,7 +10073,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     if (pokemon.hp > 0 && pokemon.trappedTurns > 0) {
       if (pokemon.trapDamages && pokemon.ability !== '매직가드') {
         const trapDamage = Math.max(1, Math.floor(baseMaxHp(pokemon) / (pokemon.trapDamageDivisor === 6 ? 6 : 8)))
-        pokemon.hp = Math.max(0, pokemon.hp - trapDamage)
+        applyBattleHpLoss(state, pokemon, trapDamage)
         appendLog(state, `${pokemon.name}은(는) ${pokemon.trapSourceName}에 시달렸다!`, 'damage')
       }
       pokemon.trappedTurns -= 1
@@ -10024,7 +10091,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     if (pokemon.hp > 0 && pokemon.saltCureActive && pokemon.ability !== '매직가드') {
       const saltCureDenominator = pokemon.types.some((type) => ['물', '강철'].includes(type)) ? 4 : 8
       const saltCureDamage = Math.max(1, Math.floor(baseMaxHp(pokemon) / saltCureDenominator))
-      pokemon.hp = Math.max(0, pokemon.hp - saltCureDamage)
+      applyBattleHpLoss(state, pokemon, saltCureDamage)
       appendLog(state, `${pokemon.name}은(는) 소금절이의 데미지를 입었다!`, 'damage')
     }
   }
@@ -10120,7 +10187,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
     if (pokemon.hp > 0 && pokemon.perishCount != null) {
       pokemon.perishCount -= 1
       if (pokemon.perishCount <= 0) {
-        pokemon.hp = 0
+        if (!isRaidBoss(state, pokemon)) applyBattleHpLoss(state, pokemon, pokemon.hp)
         pokemon.perishCount = null
         appendLog(state, `${pokemon.name}의 멸망 카운트가 0이 되었다!`, 'damage')
       } else {
@@ -10565,6 +10632,10 @@ function battleActionPhase(state, entry) {
 }
 
 function compareBattleActions(state, first, second) {
+  if (state.raid) {
+    const bonusDifference = Number(Boolean(first.action.raidBonus)) - Number(Boolean(second.action.raidBonus))
+    if (bonusDifference) return bonusDifference
+  }
   const phaseDifference = battleActionPhase(state, first) - battleActionPhase(state, second)
   if (phaseDifference) return phaseDifference
   if (first.action.type !== 'mechanic') {
@@ -10653,12 +10724,18 @@ function applyPendingTurnOrderChanges(state, actions, completedIndex) {
     if (!orderBias) return
     pokemon.nextTurnOrderBias = 0
     const pendingIndex = actions.findIndex((entry, index) => (
-      index > completedIndex && entry.action.type === 'move' && entry.actorBattleId === pokemon.battleId
+      index > completedIndex && entry.action.type === 'move' && !entry.action.raidBonus && entry.actorBattleId === pokemon.battleId
     ))
     if (pendingIndex < 0) return
     const [pendingAction] = actions.splice(pendingIndex, 1)
     if (orderBias > 0) actions.splice(completedIndex + 1, 0, pendingAction)
-    else actions.push(pendingAction)
+    else {
+      // Quash can delay an ordinary action, but the raid's extra action must
+      // remain after every ordinary action (including the boss's own first).
+      const bonusIndex = actions.findIndex((entry, index) => index > completedIndex && entry.action.raidBonus)
+      if (bonusIndex >= 0) actions.splice(bonusIndex, 0, pendingAction)
+      else actions.push(pendingAction)
+    }
   })
 }
 
@@ -11877,7 +11954,10 @@ const AI_HARD_CONTINUATION_PLAN_COUNT = 4
 const AI_HARD_ROBUST_ROOT_PLAN_COUNT = 4
 
 function aiSearchSettings(state, sideId) {
-  const hard = sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'hard'
+  // Boss challenges use the strongest search without the optional stat handicap.
+  const hard = sideId === 'opponent' && (
+    state.rules?.aiDifficulty?.id === 'hard' || state.rules?.aiDecisionLevel === 'hard'
+  )
   const multiBattle = (state.rules?.format?.activeSlots ?? 1) > 1
   return {
     hard,
@@ -12473,7 +12553,7 @@ function rankSideDecisions(
   const moveEntries = forcedAction
     ? [{ move: attacker.moves[forcedAction.moveIndex], moveIndex: forcedAction.moveIndex }]
     : attacker.moves.map((move, moveIndex) => ({ move, moveIndex }))
-  const noiseRange = sideId === 'opponent'
+  const noiseRange = sideId === 'opponent' && !aiSearchSettings(state, sideId).hard
     ? AI_TIER_NOISE[String(state.opponentMeta?.tier ?? 'S').toUpperCase()] ?? 1.4
     : 0
   const candidates = []
@@ -12981,7 +13061,7 @@ function chooseAiActions(state, random) {
   return chooseAiActionsForSide(state, 'opponent', random)
 }
 
-export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null, playerName = 'PLAYER_01', random = Math.random }) {
+export function createBattle({ playerPokemon, opponent, opponentTeam, rules = null, playerName = 'PLAYER_01', playerHealth = null, random = Math.random }) {
   const battleRules = rules ?? {
     weather: { id: 'clear', label: '맑음' },
     terrain: { id: 'neutral', label: '일반 필드' },
@@ -12995,16 +13075,34 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   const activeSlots = Math.max(1, Math.min(
     resolvedRules.format.activeSlots ?? 1,
     playerPokemon.length,
-    opponentTeam.pokemon.length,
+    resolvedRules.raid ? playerPokemon.length : opponentTeam.pokemon.length,
   ))
   const player = createSide('player', playerName, playerPokemon, [], '', activeSlots)
+  if (playerHealth) {
+    const healthById = new Map(playerHealth.map(pokemon => [pokemon.captureId, pokemon]))
+    for (const pokemon of player.team) {
+      const previous = healthById.get(pokemon.captureId)
+      if (!previous || !Number.isFinite(previous.hp) || !Number.isFinite(previous.maxHp) || previous.maxHp <= 0) {
+        throw new Error('이전 배틀의 포켓몬 체력 정보를 확인할 수 없습니다.')
+      }
+      // Revert temporary HP multipliers (Dynamax) without healing between rounds.
+      pokemon.hp = previous.fainted || previous.hp <= 0 ? 0
+        : Math.min(pokemon.maxHp, Math.max(1, Math.ceil(previous.hp * pokemon.maxHp / previous.maxHp)))
+      pokemon.fainted = pokemon.hp === 0
+    }
+    // Choose living leads before opening logs, Illusion, and entry abilities run.
+    player.faintCount = player.team.filter(pokemon => pokemon.fainted).length
+    player.activeIndexes = player.team.flatMap((pokemon, index) => pokemon.fainted ? [] : [index]).slice(0, activeSlots)
+    if (!player.activeIndexes.length) throw new Error('출전할 수 있는 포켓몬이 없습니다.')
+    player.activeIndex = player.activeIndexes[0]
+  }
   const opponentSide = createSide(
     'opponent',
     opponent.name,
     opponentTeam.pokemon,
     opponentTeam.battleGimmicks,
     resolvedRules.pvp ? '' : opponentTeam.strategy?.lead,
-    activeSlots,
+    resolvedRules.raid ? Math.min(activeSlots, opponentTeam.pokemon.length) : activeSlots,
   )
   if (!resolvedRules.pvp) applyOpponentAiDifficulty(opponentSide, resolvedRules.aiDifficulty)
   const state = {
@@ -13054,7 +13152,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
   getActivePokemonList(state, 'opponent').forEach((pokemon) => activateIllusion(state, 'opponent', pokemon))
   getActivePokemonList(state, 'player').forEach((pokemon) => activateIllusion(state, 'player', pokemon))
 
-  appendLog(state, resolvedRules.pvp ? `${player.name} vs ${opponent.name}, 레이팅 배틀 시작!` : `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
+  appendLog(state, resolvedRules.raid ? `${opponent.name}에 함께 도전합니다!` : resolvedRules.pvp ? `${player.name} vs ${opponent.name}, 레이팅 배틀 시작!` : `${opponent.name}이(가) 승부를 걸어왔다!`, 'opponent')
   appendLog(state, `${resolvedRules.weather.label} · ${resolvedRules.terrain.label} · ${resolvedRules.format.label}`, 'field')
   if (!resolvedRules.pvp && resolvedRules.aiDifficulty.id === 'easy') {
     appendLog(state, '이지 난이도: 상대 포켓몬은 지닌 도구와 배틀 기믹을 사용하지 않는다.', 'field')
@@ -13189,11 +13287,21 @@ function finishBattleResolution(state, timeline) {
 function continueBattleTurn(nextState, random, timeline) {
   const { actions } = nextState.pendingTurn
   for (let actionOrder = nextState.pendingTurn.nextActionIndex; actionOrder < actions.length; actionOrder += 1) {
-    const { sideId, action, actorBattleId } = actions[actionOrder]
+    let { sideId, action, actorBattleId } = actions[actionOrder]
     nextState.pendingTurn.nextActionIndex = actionOrder + 1
     if (nextState.winner) break
     const actor = getActivePokemon(nextState, sideId, action.actorSlot)
     if (!actor || actor.battleId !== actorBattleId || actor.fainted || actor.hp <= 0 || actor.revivedThisTurn) continue
+    if (actor.activeFromTurn > nextState.turn) continue
+    if (action.raidBonus) {
+      const current = chooseRaidEngineAction(nextState, sideId, action.actorSlot, random)
+      if (!current) continue
+      action = { ...current, raidBonus: true }
+      actions[actionOrder].action = action
+    }
+    beginRaidDamageRoot(nextState, `${nextState.turn}:${actionOrder}:${actorBattleId}`)
+    const raidMechanicsBefore = nextState.raid?.firedMechanics.length ?? 0
+    if (nextState.raid) nextState.raid.executingBonus = Boolean(action.raidBonus)
     const actingSide = getSide(nextState, sideId)
     if (nextState.rules?.format?.rotation) {
       actingSide.rotationSlot = action.actorSlot ?? actingSide.rotationSlot
@@ -13209,8 +13317,33 @@ function continueBattleTurn(nextState, random, timeline) {
       applyPendingTurnOrderChanges(nextState, actions, actionOrder)
     }
     resolvePendingEjectPacks(nextState, timeline, actionOrder)
+    finishRaidDamageRoot(nextState, {
+      onSummon: (slot) => { const summoned = getActivePokemon(nextState, 'opponent', slot); activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, summoned) },
+      onMega: (boss, form) => changeRaidBossMegaForm(nextState, boss, form),
+      onWeather: () => refreshEnvironmentDependentAbilities(nextState, 'weather'),
+      onPurge: () => { updateMagicRoomSuppression(nextState, false); refreshEnvironmentDependentAbilities(nextState, 'weather'); refreshEnvironmentDependentAbilities(nextState, 'terrain') },
+    })
+    if (nextState.raid && nextState.raid.firedMechanics.length !== raidMechanicsBefore) {
+      const pending = actions.slice(actionOrder + 1).sort((a, b) => Number(Boolean(a.action.raidBonus)) - Number(Boolean(b.action.raidBonus)) || compareBattleActions(nextState, a, b))
+      actions.splice(actionOrder + 1, pending.length, ...pending)
+    }
+    if (nextState.raid?.enraged && nextState.raid.enrageTurn <= nextState.turn
+      && nextState.raid.bonusScheduledTurn !== nextState.turn) {
+      const bossSlot = nextState.opponent.activeIndexes.findIndex((index) => isRaidBoss(nextState, nextState.opponent.team[index]))
+      const boss = getActivePokemon(nextState, 'opponent', bossSlot)
+      if (boss?.hp > 0) {
+        nextState.raid.bonusScheduledTurn = nextState.turn
+        const bonus = chooseRaidEngineAction(nextState, 'opponent', bossSlot, random)
+        if (bonus) actions.push({ sideId: 'opponent', actorBattleId: boss.battleId, action: { ...bonus, raidBonus: true }, tieBreaker: 0 })
+      }
+    }
     markActiveFaints(nextState, timeline, actionOrder)
     refreshNeutralizingGas(nextState)
+    if (nextState.raid?.phase === 2 && nextState.opponent.team.find((pokemon) => isRaidBoss(nextState, pokemon))?.hp <= 0) {
+      nextState.winner = remainingCount(nextState.player) > 0 ? 'player' : 'opponent'
+      nextState.phase = 'complete'
+      break
+    }
     if (remainingCount(nextState.player) === 0 || remainingCount(nextState.opponent) === 0) {
       settleFaints(nextState, timeline)
       break
@@ -13219,14 +13352,25 @@ function continueBattleTurn(nextState, random, timeline) {
   }
 
   if (!nextState.winner) {
+    beginRaidDamageRoot(nextState, `${nextState.turn}:residual`, 'residual')
     resolveFutureMoves(nextState, timeline, random)
     markActiveFaints(nextState, timeline)
 
     runResidualEffects(nextState, timeline, random)
+    finishRaidDamageRoot(nextState, {
+      onSummon: (slot) => { activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, getActivePokemon(nextState, 'opponent', slot)) },
+      onMega: (boss, form) => changeRaidBossMegaForm(nextState, boss, form),
+      onWeather: () => refreshEnvironmentDependentAbilities(nextState, 'weather'),
+      onPurge: () => { updateMagicRoomSuppression(nextState, false); refreshEnvironmentDependentAbilities(nextState, 'weather'); refreshEnvironmentDependentAbilities(nextState, 'terrain') },
+    })
     advanceSideConditionTimers(nextState)
     advanceEnvironmentTimers(nextState, timeline)
   }
   if (!nextState.winner) settleFaints(nextState, timeline)
+  if (nextState.raid?.phase === 2 && nextState.opponent.team.find((pokemon) => isRaidBoss(nextState, pokemon))?.hp <= 0) {
+    nextState.winner = remainingCount(nextState.player) > 0 ? 'player' : 'opponent'
+    nextState.phase = 'complete'
+  }
   nextState.pendingTurn = null
   if (nextState.winner) {
     nextState.pendingSwitches = []
@@ -13241,6 +13385,38 @@ function continueBattleTurn(nextState, random, timeline) {
   }
   nextState.turn += 1
   return finishBattleResolution(nextState, timeline)
+}
+
+// Bounded one-ply policy: at most four moves x six targets. It sees the current
+// board only; submitted ally commands and future boss commands are not inputs.
+export function chooseRaidEngineAction(state, sideId, actorSlot, random = Math.random) {
+  const actor = getActivePokemon(state, sideId, actorSlot)
+  if (!isAvailableFieldPokemon(actor) || actor.activeFromTurn > state.turn) return null
+  const forced = getForcedBattleAction(state, sideId, actorSlot)
+  if (forced) return { ...forced, actorSlot }
+  const candidates = []
+  actor.moves.forEach((move, moveIndex) => {
+    if (getBattleMoveSelectionState(state, sideId, moveIndex, actorSlot).disabled) return
+    let targets = getBattleMoveTargets(state, sideId, moveIndex, actorSlot)
+    if (!targets.length) {
+      const targetSideId = ['self', 'allies', 'allySide', 'allyTeam'].includes(move.target) ? sideId : getOtherSide(state, sideId).id
+      targets = getActivePokemonList(state, targetSideId).flatMap((target, slot) => isAvailableFieldPokemon(target) ? [{ sideId: targetSideId, slot, target }] : []).slice(0, 1)
+    }
+    targets.forEach(({ sideId: targetSideId, slot, target }) => {
+      if (raidMoveImmunity(state, target, move)) return
+      const friendly = targetSideId === sideId
+      if (friendly && !isStatusMove(move) && move.id !== 'pollenpuff') return
+      if (!friendly && ALLY_SUPPORT_MOVE_IDS.has(move.id)) return
+      let score = evaluateAiMove(state, actor, target, move, null).score
+      if (move.target === 'allies' && isHealingMove(move)) {
+        score = getActivePokemonList(state, sideId).reduce((sum, ally) => sum + (ally.hp > 0 ? (1 - ally.hp / ally.maxHp) * 150 : 0), 0) - 12
+      }
+      if (move.target === 'allAdjacent') score -= getActivePokemonList(state, sideId).filter((ally) => ally !== actor && isAvailableFieldPokemon(ally)).reduce((sum, ally) => sum + Math.max(0, evaluateAiMove(state, actor, ally, move, null).estimatedDamage ?? 0), 0)
+      candidates.push({ score: Number.isFinite(score) ? score + random() : -1e9, action: { type: 'move', actorSlot, moveIndex, targetSideId, targetSlot: slot } })
+    })
+  })
+  candidates.sort((a, b) => b.score - a.score)
+  return candidates[0]?.action ?? getBattleStruggleAction(state, sideId, actorSlot)
 }
 
 export function createBattleTurnTimeline(state, playerAction, random = Math.random, opponentActions = null) {

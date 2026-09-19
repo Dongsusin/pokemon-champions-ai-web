@@ -69,6 +69,7 @@ import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/bat
 import { getTrainer } from './data/trainerTeams'
 import { getTrainerDialogue, TRAINER_DIALOGUE_EVENTS } from './data/trainerDialogues'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
+import { isBossShielded, isRaidBoss } from './data/raidPolicy'
 
 function animationClassToken(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
@@ -1347,12 +1348,18 @@ function BattleTeraBadge({ pokemon }) {
   )
 }
 
-function BattleStatusPanel({ pokemon, side, trainerName, publicView = false }) {
+function BattleStatusPanel({ pokemon, side, trainerName, publicView = false, isBoss = false, isInvulnerable = false }) {
+  const shielded = isBoss && isInvulnerable
   return (
-    <section className={`battle-hp-panel side-${side}`}>
+    <section className={`battle-hp-panel side-${side}${isBoss ? ' is-boss' : ''}${shielded ? ' is-invulnerable' : ''}`}>
       <header>
         <div>
           <strong>{pokemon.name}</strong>
+          {shielded && <span className="boss-invulnerability-badge" role="status"
+            title="부활한 포켓몬을 쓰러뜨리면 무적이 해제됩니다."
+            aria-label="무적: 부활한 포켓몬을 쓰러뜨리면 해제">
+            <Shield size={10} aria-hidden="true" />무적
+          </span>}
           {pokemon.dynamaxActive && <span className="dynamax-state">MAX</span>}
           {pokemon.megaActive && <span className="mega-state">MEGA</span>}
           {pokemon.primalActive && <span className="primal-state">PRIMAL</span>}
@@ -1366,13 +1373,22 @@ function BattleStatusPanel({ pokemon, side, trainerName, publicView = false }) {
         {((side === 'player' && !publicView) || pokemon.teraActive) && <BattleTeraBadge pokemon={pokemon} />}
       </div>
       <div className="battle-hp-meter-row">
-        <small>HP</small>
-        <span className={`battle-hp-meter tone-${hpTone(pokemon)}`}>
+        <small>{isBoss ? 'BOSS' : 'HP'}</small>
+        <span className={`battle-hp-meter tone-${hpTone(pokemon)}`}
+          role={isBoss ? 'meter' : undefined}
+          aria-label={isBoss ? `${pokemon.name} 보스 체력` : undefined}
+          aria-valuemin={isBoss ? 0 : undefined} aria-valuemax={isBoss ? 100 : undefined}
+          aria-valuenow={isBoss ? Math.ceil(hpRatio(pokemon)) : undefined}
+          aria-valuetext={isBoss ? `${Math.ceil(hpRatio(pokemon))}%, 25%씩 4구간${shielded ? ', 무적' : ''}` : undefined}>
           <i style={{ width: `${hpRatio(pokemon)}%` }} />
+          {isBoss && <span className="boss-hp-segments" aria-hidden="true">
+            {[25, 50, 75].map(percent => <b key={percent} style={{ left: `${percent}%` }} />)}
+          </span>}
         </span>
       </div>
       <footer>
         {publicView ? <><span>{trainerName}</span><b>{Math.ceil(hpRatio(pokemon))}%</b></> : side === 'player' ? <b>{pokemon.hp} / {pokemon.maxHp}</b> : <span>{trainerName}</span>}
+        {isBoss && !publicView && <b>{Math.ceil(hpRatio(pokemon))}%</b>}
         {pokemon.status && <em className={`status-${pokemon.status.id}`}>{pokemon.status.label}</em>}
       </footer>
     </section>
@@ -1712,12 +1728,14 @@ function MoveTargetMenu({
             : null
           const presentation = effectivenessPresentation(multiplier)
           const healsTarget = targetMove.healsTarget || ['healpulse', 'floralhealing'].includes(targetMove.id)
+          const shielded = targetSideId === 'opponent' && isRaidBoss(battle, target) && isBossShielded(battle)
+          const blockedDamage = shielded && moveDealsDirectDamage(targetMove)
 
           return (
             <button
               className={`battle-target-card effectiveness-${presentation.tone}`}
               type="button"
-              aria-label={`${targetSideId === 'player' ? '아군' : '상대'} ${target.name}을 기술 대상으로 선택`}
+              aria-label={`${targetSideId === 'player' ? '아군' : '상대'} ${target.name}을 기술 대상으로 선택${shielded ? ', 무적 상태' : ''}`}
               key={target.battleId}
               onPointerEnter={onPreview}
               onClick={() => onSelect(slot, targetSideId)}
@@ -1739,10 +1757,10 @@ function MoveTargetMenu({
                 </span>
                 <em>HP {Math.round(hpRatio(target))}%</em>
               </span>
-              <span className={`battle-target-effectiveness effectiveness-${presentation.tone}`}>
-                <small>{healsTarget ? '효과' : '상성'}</small>
-                <strong>{healsTarget ? '회복' : presentation.value}</strong>
-                <em>{healsTarget ? 'HP 회복' : presentation.label}</em>
+              <span className={`battle-target-effectiveness effectiveness-${presentation.tone}${blockedDamage ? ' is-shielded' : ''}`}>
+                <small>{blockedDamage ? '보호' : healsTarget ? '효과' : '상성'}</small>
+                <strong>{blockedDamage ? <><Shield size={11} aria-hidden="true" />무적</> : healsTarget ? '회복' : presentation.value}</strong>
+                <em>{blockedDamage ? '부활 포켓몬 처치 후 해제' : healsTarget ? 'HP 회복' : presentation.label}</em>
               </span>
             </button>
           )
@@ -1848,7 +1866,7 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
         <strong>VS</strong>
         <small>{rules.teamRule.shortLabel} · {rules.format.label}</small>
         <span>{rules.weather.label} · {rules.terrain.label}</span>
-        <em>{rules.gimmickRestriction.label} · AI {getAiBattleDifficultyLabel(rules.aiDifficulty)}</em>
+        <em>{rules.gimmickRestriction.label} · AI {getAiBattleDifficultyLabel(rules.aiDifficulty, rules.aiDecisionLevel)}</em>
       </div>
       <article className="battle-intro-trainer opponent">
         <TrainerSprite trainer={opponent} className="battle-intro-trainer-sprite" />
@@ -1936,13 +1954,18 @@ function BattleScreen({
   onOpenSettings,
   onResolved,
   battleRewards = null,
+  battleBackground = null,
+  initialBattle = null,
+  skipIntro = false,
+  startWithDialogue = false,
+  hideResult = false,
   onComplete,
   online = null,
 }) {
   const spectating = online?.spectator === true
-  const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
+  const [battle, setBattle] = useState(() => online?.state ?? initialBattle ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
   const [isRuleHudOpen, setIsRuleHudOpen] = useState(false)
-  const [introVisible, setIntroVisible] = useState(!online)
+  const [introVisible, setIntroVisible] = useState(!online && !skipIntro)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
   const [queuedActions, setQueuedActions] = useState([])
@@ -1951,7 +1974,19 @@ function BattleScreen({
   const [pendingMoveIndex, setPendingMoveIndex] = useState(null)
   const [turnCue, setTurnCue] = useState(null)
   const [isTurnAnimating, setIsTurnAnimating] = useState(false)
-  const [trainerDialogue, setTrainerDialogue] = useState(null)
+  const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
+  // Seed the scene before the first render so an automatic round transition
+  // cannot briefly expose battle commands before the opponent speaks.
+  const [trainerDialogue, setTrainerDialogue] = useState(() => (
+    !online && skipIntro && startWithDialogue
+      ? getTrainerDialogue(opponentTrainer, TRAINER_DIALOGUE_EVENTS.START, {
+        turn: battle.turn,
+        aceName: opponentTrainer.ace?.name,
+        activeName: getActivePokemon(battle, 'opponent').name,
+        specialty: opponentTrainer.specialties?.[0],
+      })
+      : null
+  ))
   const [moveAssetsReady, setMoveAssetsReady] = useState(false)
   const [hoveredPokemonSide, setHoveredPokemonSide] = useState(null)
   const [focusedPokemonSide, setFocusedPokemonSide] = useState(null)
@@ -1970,7 +2005,7 @@ function BattleScreen({
   const remotePlayingRef = useRef(false)
   const [onlineSubmitting, setOnlineSubmitting] = useState(false)
   if (!battleAudioRef.current) battleAudioRef.current = createBattleAudio(soundEnabled, audioSettings)
-  const opponentTrainer = useMemo(() => getTrainer(opponent.name) ?? opponent, [opponent])
+
   const activeTrainerDialogue = trainerDialogue
   const playerActive = getActivePokemon(battle, 'player')
   const opponentActive = getActivePokemon(battle, 'opponent')
@@ -1981,8 +2016,8 @@ function BattleScreen({
   useEffect(() => {
     if (online || !summary.winner || isTurnAnimating || resultReportedRef.current) return
     resultReportedRef.current = true
-    onResolved?.(summary)
-  }, [summary, isTurnAnimating, onResolved, Boolean(online)])
+    onResolved?.(summary, battle)
+  }, [summary, battle, isTurnAnimating, onResolved, Boolean(online)])
   const currentLogEntry = battle.log.at(-1)
   const currentBattleMessage = turnCue?.message ?? currentLogEntry?.message ?? '배틀을 준비하고 있습니다.'
   const currentBattleTone = turnCue ? cueTone(turnCue) : currentLogEntry?.tone ?? 'neutral'
@@ -2011,14 +2046,22 @@ function BattleScreen({
     let idleHandle = null
     const battleRoster = [...battle.player.team, ...battle.opponent.team]
     battleAudioRef.current?.preload(battleRoster)
+    if (!online && skipIntro && startWithDialogue) {
+      battleAudioRef.current?.start({
+        player: getActivePokemon(battle, 'player'),
+        opponent: getActivePokemon(battle, 'opponent'),
+        playerPokemon: getActivePokemonList(battle, 'player'),
+        opponentPokemon: getActivePokemonList(battle, 'opponent'),
+      })
+    }
     const activePokemon = [
       ...getActivePokemonList(battle, 'player'),
       ...getActivePokemonList(battle, 'opponent'),
     ]
-    const criticalAssets = activePokemon.flatMap((pokemon) => [
+    const criticalAssets = [battleBackground?.src, ...activePokemon.flatMap((pokemon) => [
       ...getBattleSpriteAssets(pokemon),
       ...pokemon.moves.flatMap(getMoveAnimationAssets),
-    ])
+    ])].filter(Boolean)
     const allAssets = battleRoster.flatMap((pokemon) => [
         ...getBattleSpriteAssets(pokemon),
         ...pokemon.moves.flatMap(getMoveAnimationAssets),
@@ -2400,7 +2443,7 @@ function BattleScreen({
       winner: forcedWinner ?? summary.winner,
       playerRemaining: forcedWinner === 'opponent' ? 0 : summary.playerRemaining,
       forfeited: forcedWinner === 'opponent' && !summary.winner,
-    })
+    }, battle)
   }
 
   const requestForfeit = () => {
@@ -2524,6 +2567,7 @@ function BattleScreen({
     <main
       className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${activeTrainerDialogue ? ' has-trainer-dialogue' : ''}${spectating ? ' is-spectating' : ''}`}
       style={{ '--battle-hp-duration': `${hpBarDuration}ms` }}
+      data-battle-background={battleBackground?.id}
     >
       <header className="battle-game-header">
         <div className="battle-title-lockup">
@@ -2576,8 +2620,10 @@ function BattleScreen({
               {!online && <BattleRuleBadge
                 id="difficulty"
                 category="AI"
-                label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty)}
-                description={getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
+                label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty, battle.rules.aiDecisionLevel)}
+                description={battle.rules.aiDecisionLevel === 'hard' && battle.rules.aiDifficulty.id === 'normal'
+                  ? '전용 편성과 강화된 전술로 상대의 교대와 기술·기믹 사용을 예측합니다.'
+                  : getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
               />}
             </div>
           </div>
@@ -2608,14 +2654,16 @@ function BattleScreen({
       </header>
 
       <section
-        className={`battle-arena phase-${visualTurnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
+        className={`battle-arena phase-${visualTurnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${battle.raid?.campaign && opponentActivePokemon.length > 1 ? ' boss-summons' : ''}`}
         onPointerDown={(event) => {
           if (event.pointerType !== 'mouse') setPinnedPokemonSide(null)
         }}
       >
         {opponentActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('opponent', pokemon, visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
-            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} publicView={spectating} />
+            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} publicView={spectating}
+              isBoss={Boolean(battle.raid?.campaign && isRaidBoss(battle, pokemon))}
+              isInvulnerable={isRaidBoss(battle, pokemon) && isBossShielded(battle)} />
             {slot === 0 && <PartyIndicators side={battle.opponent} />}
           </div>
         ))}
@@ -2650,7 +2698,11 @@ function BattleScreen({
         ))}
 
         <div className={battleCameraClassName(visualTurnCue)} style={battleStageStyle(visualTurnCue, attackAnimationMode)}>
-          <div className="battle-environment-backdrop" />
+          {/* Only scenery stays fixed; live rules still drive every field/weather effect. */}
+          <div
+            className="battle-environment-backdrop"
+            style={battleBackground ? { backgroundImage: `url("${battleBackground.src}")` } : undefined}
+          />
           <BattleFieldEffects
             key={`terrain-${battle.rules.terrain.id}`}
             terrainId={battle.rules.terrain.id}
@@ -2865,6 +2917,7 @@ function BattleScreen({
       )}
 
       {battle.winner
+        && !hideResult
         && !online
         && !introVisible
         && !isTurnAnimating
