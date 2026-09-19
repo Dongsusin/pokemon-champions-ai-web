@@ -134,6 +134,7 @@
     "validate:trainer-nicknames-ui": "node scripts/validateTrainerNicknameAuth.mjs && node scripts/validateTrainerNicknameUi.mjs",
     "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
     "validate:battle-retention": "node scripts/validateBattleRetention.mjs",
+    "boss:test": "node scripts/startBossChallengeTest.mjs",
     "validate:boss-challenge": "node scripts/validateBossChallenge.mjs",
     "validate:boss-challenge-ui": "node scripts/validateBossChallengeUi.mjs",
     "validate:raid-mechanics": "node scripts/validateRaidMechanics.mjs",
