@@ -39,7 +39,7 @@ try {
     await page.goto('http://127.0.0.1:5297/boss-ui.html')
     await page.getByRole('heading', { name: '보스전', exact: true }).waitFor()
     assert.equal(await page.getByText('방 만들기', { exact: true }).count(), 0)
-    const start = page.locator('footer button')
+    const start = page.locator('.boss-start-footer button')
     assert(await start.isDisabled())
     await page.locator('.boss-team-switcher button').first().click()
     assert.equal(await page.locator('.boss-party-roster > .ranked-pokemon-card').count(), 6)
@@ -114,7 +114,7 @@ try {
         await page.getByRole('button', { name: /싸운다/ }).click()
         await page.locator('.battle-move-button').nth(targetMove).click()
         const summonName = await page.evaluate(() => window.__bossBattle().opponent.team[1].name)
-        await page.locator('.battle-target-card').filter({ hasText: summonName }).click()
+        await page.locator('.battle-target-card').filter({ hasText: summonName }).click({ timeout: 60000 })
         await page.waitForFunction(() => window.__bossBattle().turn > 1, { timeout: 60000 })
       }
       await page.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))

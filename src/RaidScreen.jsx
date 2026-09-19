@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Boxes, Crown, Gem, Maximize2, Package, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Boxes, Check, Crown, Gem, ShieldCheck, Maximize2, Package, Play, RotateCcw } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import PokemonSprite from './PokemonSprite'
+import SpriteImage from './SpriteImage'
 import RankedTeamRoster from './RankedTeamRoster'
 import './ranked.css'
 import { BOSS_CHALLENGES, createBossChallengeBattle } from './data/bossChallenge'
@@ -51,7 +52,7 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
     audioSettings={audioSettings} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} onComplete={complete} />
 
   return <main className="boss-challenge">
-    <header className="boss-page-header"><button type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 모드</button><div><span>BOSS CHALLENGE</span><h1>보스전</h1></div><span className="boss-round-badge">3 ROUNDS</span></header>
+    <header className="boss-page-header"><button type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 모드</button><div><span>BOSS CHALLENGE</span><h1>보스전</h1></div><div className="boss-ready-badge"><ShieldCheck size={22} /><span><small>{teamReady ? '출전 준비 완료' : '팀 편성 필요'}</small><strong>{party.length}/6</strong></span></div></header>
     {run ? <section className="boss-challenge-result">
       <Crown size={44} /><h1>{run.phase === 'won' ? `${boss.name} 격파 성공!` : '도전 종료'}</h1>
       <p>{`${boss.name} 보스전 · ${run.round} / 3 라운드`}</p>
@@ -60,21 +61,20 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
     </section> : <>
       <div className="boss-selection-workspace">
       <section className="boss-challenge-party" aria-label="저장된 출전 팀">
-        <header><h2>{team?.name ?? '출전 팀'} <span>{party.length} / 6</span></h2>
-          <button type="button" onClick={onOpenBox}><Boxes size={18} /> 팀 편성</button></header>
+        <header><div><small>CURRENT BATTLE PARTY</small><h2>{team?.name ?? '출전 팀'}</h2></div><strong>{party.length}<small>/6</small></strong></header>
         <nav className="boss-team-switcher" aria-label="출전 팀 변경">{teams.map((entry, index) => <button
           type="button" key={entry.id} aria-pressed={entry.id === team?.id} onClick={() => onSelectTeam?.(entry.id)}>
-          <strong>{entry.name || `팀 ${index + 1}`}</strong><small>{entry.pokemonIds.filter(id => boxPokemon.some(p => p.captureId === id)).length} / 6</small>
+          <span><small>TEAM</small><strong>{index + 1}</strong></span><small>{entry.pokemonIds.filter(id => boxPokemon.some(p => p.captureId === id)).length} / 6</small>
         </button>)}</nav>
 
         <RankedTeamRoster pokemon={party} className="boss-party-roster" renderCard={(pokemon, index, profile) => {
           const teraType = pokemon.teraType ?? profile.types[0]
           const gigantamax = pokemon.dynamaxMode === 'gigantamax'
           return <>
-            <PokemonSprite animatedSrc={pokemon.spriteFront || profile.spriteFront} fallbackSrc={pokemon.spriteFrontFallback || profile.spriteFrontFallback} alt={pokemon.name} />
+            <small className="boss-slot-number">{String(index + 1).padStart(2, '0')}</small><SpriteImage className="boss-party-icon" src={pokemon.icon ?? profile.icon} fallbackSrc={pokemon.iconFallback ?? profile.iconFallback} alt="" />
             <span className="boss-party-copy">
-              <small>{index + 1}번{index < 2 ? ' · 선봉' : ''}</small>
-              <strong>{pokemon.name}</strong>
+
+              <strong>{pokemon.name}</strong><small>Lv.{pokemon.level ?? 50} · {(pokemon.types ?? profile.types).join(' / ')}</small>
               <span className="boss-party-loadout">
                 <span><Package size={11} />{getBattleItem(pokemon.heldItemId)?.name ?? '도구 없음'}</span>
                 <span className={`type-${typeClassName(teraType)}`}><Gem size={11} />테라 {teraType}</span>
@@ -83,17 +83,17 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
             </span>
           </>
         }} />
-        {!teamReady && <p role="status">팀 편성에서 포켓몬 6마리를 등록해주세요.</p>}
+<footer className="boss-team-footer"><span><Check size={14} />{teamReady ? '6마리 출전 등록 완료' : '포켓몬 6마리를 편성하세요'}</span><button type="button" onClick={onOpenBox}><Boxes size={16} /> 팀 편성</button></footer>
       </section>
-      <section className="boss-selection-panel"><header><h2>도전할 보스</h2><Crown size={20} /></header><section className="boss-challenge-choices" aria-label="보스 선택">{BOSS_CHALLENGES.map(candidate => {
+      <section className="boss-selection-panel"><header><div><small>SELECT BOSS CHALLENGE</small><h2>도전할 보스를 선택하세요</h2></div><span className="boss-round-badge"><Crown size={18} /> 3 ROUNDS</span></header><section className="boss-challenge-choices" aria-label="보스 선택">{BOSS_CHALLENGES.map(candidate => {
         const profile = getSpeciesProfile(candidate.speciesId)
         return <button type="button" aria-pressed={candidate.id === bossId} key={candidate.id} onClick={() => setBossId(candidate.id)}>
           <PokemonSprite animatedSrc={profile.spriteFront} fallbackSrc={profile.spriteFrontFallback} alt={candidate.name} />
-          <strong>{candidate.name}</strong><small>{candidate.subtitle}</small>
+          <span className="boss-choice-copy"><small>BOSS CHALLENGE</small><strong>{candidate.name}</strong><small>{candidate.subtitle}</small></span><span className="boss-choice-status">{candidate.id === bossId ? <><Check size={18} /> 선택됨</> : '선택'}</span>
         </button>
       })}</section>
       {error && <p role="alert">{error}</p>}
-      <footer><button type="button" className="boss-primary" disabled={!teamReady} onClick={() => {
+      <footer className="boss-start-footer"><span><Crown size={26} /><span><small>SELECTED BOSS</small><strong>{boss.name} · 3라운드 연속 배틀</strong></span></span><button type="button" className="boss-primary" disabled={!teamReady} onClick={() => {
         if (current.current) return
         startRound(party, 1, bossId)
       }}><Play size={18} /> {boss.name}에게 도전</button></footer></section></div>
