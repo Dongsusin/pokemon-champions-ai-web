@@ -1907,7 +1907,7 @@ function BattleIntro({ opponent, opponentTeam, playerTeam, playerGender, rules, 
         <strong>VS</strong>
         <small>{rules.teamRule.shortLabel} · {rules.format.label}</small>
         <span>{rules.weather.label} · {rules.terrain.label}</span>
-        <em>{rules.gimmickRestriction.label} · AI {getAiBattleDifficultyLabel(rules.aiDifficulty)}</em>
+        <em>{rules.gimmickRestriction.label} · AI {getAiBattleDifficultyLabel(rules.aiDifficulty, rules.aiDecisionLevel)}</em>
       </div>
       <article className="battle-intro-trainer opponent">
         <TrainerSprite trainer={opponent} className="battle-intro-trainer-sprite" />
@@ -2630,8 +2630,10 @@ function BattleScreen({
             {!online && <BattleRuleBadge
               id="difficulty"
               category="AI"
-              label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty)}
-              description={getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
+              label={getAiBattleDifficultyLabel(battle.rules.aiDifficulty, battle.rules.aiDecisionLevel)}
+              description={battle.rules.aiDecisionLevel === 'hard' && battle.rules.aiDifficulty.id === 'normal'
+                ? '전용 편성과 강화된 전술로 상대의 교대와 기술·기믹 사용을 예측합니다.'
+                : getBattleRuleDescription('difficulty', battle.rules.aiDifficulty)}
             />}
           </div>
           <div className="battle-header-actions">

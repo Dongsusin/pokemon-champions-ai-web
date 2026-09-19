@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { writeSync } from 'node:fs'
 import { BOSS_CHALLENGES, createBossChallengeBattle, createBossOpponent } from '../src/data/bossChallenge.js'
 import { applyBattleHpLoss, beginRaidDamageRoot, finishRaidDamageRoot, isBossShielded, previewBattleHpLoss } from '../src/data/raidPolicy.js'
 import { createBattle, createBattlePreviewPokemon, playBattleTurnWithActions, getBattleMoveTargets, getEffectiveBattleWeatherId, getBattleMoveSelectionState, chooseAiActionsForSide, resumeBattleTurnTimeline } from '../src/data/battleEngine.js'
@@ -7,7 +8,15 @@ import { getMoveById } from '../src/data/trainingData.js'
 import { createRaidHttpHandler } from '../server/raidHttp.js'
 
 const party = [6, 9, 3, 25, 94, 149].map((speciesId, i) => createBossOpponent({ speciesId }, `owned-${i}`))
-const make = (bossId = 'mewtwo', random = () => 0.1) => createBossChallengeBattle({ bossId, round: 3, party, random })
+function make(bossId = 'mewtwo', random = () => 0.1) {
+  const state = createBossChallengeBattle({ bossId, round: 3, party, random })
+  // Isolate HP-gate mechanics from passive item healing/recoil. The unmodified
+  // curated loadouts are exercised by initialization and all-nine battle tests.
+  for (const pokemon of [...state.opponent.team, ...state.raid.summonPool]) {
+    Object.assign(pokemon, { heldItemId: '', heldItemName: '', hadHeldItem: false })
+  }
+  return state
+}
 const boss = state => state.opponent.team[0]
 function hit(state, amount = 1e6) {
   beginRaidDamageRoot(state, `test-${state.raid.firedMechanics.length}`)
@@ -35,6 +44,19 @@ test('all nine encounters use six owned Pokemon and the requested formats/roster
       assert.equal(state.rules.format.id, round === 1 ? 'double' : 'single')
       assert.equal(state.player.activeIndexes.length, round === 1 ? 2 : 1)
       assert.equal(Boolean(state.raid), round === 3)
+      for (const [index, configured] of challenge.rounds[round - 1].pokemon.entries()) {
+        const pokemon = state.opponent.team.find(entry => entry.captureId === `boss-${round}-${index}`)
+        assert(pokemon, `${challenge.id}/${round}: configured roster member ${index} is present`)
+        assert.deepEqual(pokemon.moves.map(move => move.id), configured.moves)
+        assert.equal(pokemon.neutralizedAbility ?? pokemon.ability, configured.ability)
+        assert.equal(pokemon.heldItemId, configured.heldItemId)
+        assert.equal(pokemon.nature, configured.nature ?? '노력')
+        assert.equal(pokemon.teraType, configured.teraType)
+        assert.deepEqual(pokemon.battleMechanics, configured.battleMechanics ?? [])
+        if (configured.trainingPoints) assert.deepEqual(pokemon.trainingPoints, configured.trainingPoints)
+        const gimmick = challenge.rounds[round - 1].battleGimmicks.find(entry => entry.pokemonSpeciesId === configured.speciesId)
+        assert.equal(pokemon.gimmickFormId, gimmick?.targetFormId ?? null)
+      }
       assert(state.player.team.every(p => p.hp === p.maxHp && p.moves.every(m => m.currentPp === m.maxPp)))
       if (round === 3) {
         const baseline = createBattlePreviewPokemon(createBossOpponent(challenge.rounds[2].pokemon[0], 'baseline'))
@@ -396,6 +418,11 @@ test('retired matchmaking rejects room operations before calling the legacy serv
 
 test('all nine actual engine encounters resolve with bench replacements and legal AI actions', () => {
   for (const challenge of BOSS_CHALLENGES) for (let round = 1; round <= 3; round++) {
+    const started = performance.now()
+    let maxAiMs = 0
+    let totalAiMs = 0
+    let decisions = 0
+    writeSync(1, `# START boss battle ${challenge.id}/${round}\n`)
     let state = createBossChallengeBattle({ bossId: challenge.id, round, party, random: () => .25 })
     let steps = 0
     while (!state.winner && steps++ < 180) {
@@ -405,11 +432,17 @@ test('all nine actual engine encounters resolve with bench replacements and lega
         state = resumeBattleTurnTimeline(state, index, () => .25).state
       } else {
         const actions = chooseAiActionsForSide(state, 'player', () => .25)
+        const decisionStarted = performance.now()
         const opponents = chooseAiActionsForSide(state, 'opponent', () => .25)
+        const aiMs = performance.now() - decisionStarted
+        maxAiMs = Math.max(maxAiMs, aiMs)
+        totalAiMs += aiMs
+        decisions += 1
         state = playBattleTurnWithActions(state, actions, opponents, () => .25)
       }
       for (const p of [...state.player.team, ...state.opponent.team]) assert(Number.isFinite(p.hp) && p.hp >= 0 && p.hp <= p.maxHp)
     }
+    writeSync(1, `# DONE boss battle ${challenge.id}/${round}: winner=${state.winner ?? 'none'} turns=${state.turn - 1} steps=${steps} elapsed=${((performance.now() - started) / 1000).toFixed(1)}s AI mean=${Math.round(totalAiMs / Math.max(1, decisions))}ms max=${Math.round(maxAiMs)}ms\n`)
     assert(state.winner, `${challenge.id} round ${round} must reach a terminal result`)
   }
 })

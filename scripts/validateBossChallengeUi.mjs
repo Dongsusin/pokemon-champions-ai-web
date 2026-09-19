@@ -94,7 +94,12 @@ async function verifyRoundOpening(page, bossName, round, viewport) {
   await page.clock.resume()
 }
 
+async function assertTacticalDifficultyLabel(page) {
+  assert.equal(await page.locator('.rule-difficulty > strong').innerText(), '전술 하드')
+  assert((await page.locator('#battle-rule-difficulty-tooltip').textContent()).includes('전용 편성과 강화된 전술'))
+}
 async function assertHealthyRound(page, round = 1) {
+  await assertTacticalDifficultyLabel(page)
   const state = await page.evaluate(() => {
     const battle = window.__bossBattle()
     return { round: window.__bossRun().round, teamSize: battle.player.team.length,
@@ -124,6 +129,7 @@ async function finishWoundedRound(page, round) {
   }, round)
 }
 async function assertCarriedHealth(page, expected, round) {
+  await assertTacticalDifficultyLabel(page)
   const state = await page.evaluate(() => {
     const battle = window.__bossBattle()
     const lead = battle.player.team[battle.player.activeIndexes[0]]
@@ -151,11 +157,14 @@ async function verifyHoOhRevivalWaves(page, viewport) {
       applyBattleHpLoss(battle, primary, 99999)
       finishRaidDamageRoot(battle)
     }
-    // Deterministic attacks isolate the shield UI from accuracy and opponent damage.
+    // Isolate the shield UI from accuracy, opponent damage, and passive item recovery.
     battle.player.team[battle.player.activeIndexes[0]].moves[0] = {
       ...getMoveById('tackle'), currentPp: 20, maxPp: 20, power: 200, accuracy: 100,
     }
-    for (const pokemon of battle.opponent.team) pokemon.moves = [{ ...getMoveById('splash'), currentPp: 40, maxPp: 40 }]
+    for (const pokemon of battle.opponent.team) {
+      pokemon.moves = [{ ...getMoveById('splash'), currentPp: 40, maxPp: 40 }]
+      Object.assign(pokemon, { heldItemId: '', heldItemName: '', hadHeldItem: false })
+    }
     window.__setBossBattleFixture(battle)
     const support = battle.opponent.team[battle.opponent.activeIndexes[1]]
     return {

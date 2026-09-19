@@ -1,6 +1,8 @@
 import { createBattle, createBattlePreviewPokemon } from './battleEngine.js'
 import { getLearnableMoves, getSpeciesProfile, normalizePokemon } from './trainingData.js'
+import { getBattleItem } from './shopData.js'
 import { RAID_BOSSES } from './raidRules.js'
+import { BOSS_CHALLENGE_LOADOUTS } from './bossChallengeLoadouts.js'
 
 const roster = (ids, trainer) => ids.map(speciesId => ({ speciesId, trainer }))
 export const BOSS_CHALLENGES = RAID_BOSSES.map(boss => ({
@@ -22,6 +24,9 @@ export const BOSS_CHALLENGES = RAID_BOSSES.map(boss => ({
   // Story scenery is presentation metadata, independent of terrain and weather rules.
   rounds: boss.rounds.map((encounter, index) => ({
     ...encounter,
+    pokemon: encounter.pokemon.map((entry, slot) => ({ ...entry, ...BOSS_CHALLENGE_LOADOUTS[boss.id][index].pokemon[slot] })),
+    battleGimmicks: BOSS_CHALLENGE_LOADOUTS[boss.id][index].battleGimmicks ?? [],
+    strategy: BOSS_CHALLENGE_LOADOUTS[boss.id][index].strategy ?? {},
     background: {
       id: `${boss.id}-round-${index + 1}`,
       src: `/assets/boss-backgrounds/${boss.id}-round-${index + 1}.webp`,
@@ -49,7 +54,12 @@ export function createBossOpponent(entry, captureId) {
     if (!move) throw new Error(`${profile.name}: 사용할 수 없는 기술 ${id}`)
     return move.name
   }) : selected.map(m => m.name)
-  return normalizePokemon({ speciesId: profile.id, captureId, moves, ability: profile.abilities[0], nature: '노력' })
+  const item = getBattleItem(entry.heldItemId)
+  if (entry.heldItemId && !item) throw new Error(`${profile.name}: 사용할 수 없는 도구 ${entry.heldItemId}`)
+  if (entry.ability && !profile.abilities.includes(entry.ability)) throw new Error(`${profile.name}: 사용할 수 없는 특성 ${entry.ability}`)
+  return normalizePokemon({ ...entry, speciesId: profile.id, captureId, moves,
+    ability: entry.ability ?? profile.abilities[0], nature: entry.nature ?? '노력',
+    heldItemId: item?.id ?? '', heldItemName: item?.name ?? '' })
 }
 
 export function createBossChallengeBattle({ bossId, round, party, playerName, previousPlayerTeam = null, random = Math.random }) {
@@ -71,7 +81,7 @@ export function createBossChallengeBattle({ bossId, round, party, playerName, pr
     weather: { id: 'clear', label: '맑음' }, terrain: { id: 'neutral', label: '일반 필드' },
     format: { id: encounter.format, label: slots === 2 ? '더블배틀' : '싱글배틀', activeSlots: slots, actionSlots: slots },
     teamRule: { id: 'full', label: `6대${encounter.pokemon.length}`, battleSize: 6 },
-    gimmickRestriction: { id: null, label: '제한 없음' }, aiDifficulty: { id: 'normal' },
+    gimmickRestriction: { id: null, label: '제한 없음' }, aiDifficulty: { id: 'normal' }, aiDecisionLevel: 'hard',
   }
   const portraitMembers = encounter.trainers?.map(name => ({ name })) ?? (
     round > 1 && encounter.name !== '비주기' ? encounter.pokemon.map(entry => {
@@ -81,7 +91,8 @@ export function createBossChallengeBattle({ bossId, round, party, playerName, pr
   )
   const battle = createBattle({ playerPokemon: structuredClone(party), playerName, playerHealth,
     opponent: { id: `boss-${bossId}-${round}`, name: encounter.name, portraitMembers, tier: 'S', specialties: [] },
-    opponentTeam: { pokemon: encounter.pokemon.map((p, i) => createBossOpponent(p, `boss-${round}-${i}`)), battleGimmicks: [], strategy: {} }, rules, random })
+    opponentTeam: { pokemon: encounter.pokemon.map((p, i) => createBossOpponent(p, `boss-${round}-${i}`)),
+      battleGimmicks: encounter.battleGimmicks, strategy: encounter.strategy }, rules, random })
   if (round === 3) {
     const order = [0, 1, 2]
     for (let i = order.length - 1; i > 0; i--) {

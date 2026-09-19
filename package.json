@@ -136,6 +136,7 @@
     "validate:battle-retention": "node scripts/validateBattleRetention.mjs",
     "boss:test": "node scripts/startBossChallengeTest.mjs",
     "validate:boss-challenge": "node scripts/validateBossChallenge.mjs",
+    "validate:boss-challenge-ai": "node scripts/validateBossChallengeAi.mjs",
     "validate:boss-challenge-ui": "node scripts/validateBossChallengeUi.mjs",
     "validate:boss-challenge-layout": "node scripts/validateBossChallengeLayout.mjs",
     "validate:boss-backgrounds": "node scripts/validateBossBackgroundMechanics.mjs && node scripts/validateBossBackgroundUi.mjs",

@@ -11807,7 +11807,10 @@ const AI_HARD_CONTINUATION_PLAN_COUNT = 4
 const AI_HARD_ROBUST_ROOT_PLAN_COUNT = 4
 
 function aiSearchSettings(state, sideId) {
-  const hard = sideId === 'opponent' && state.rules?.aiDifficulty?.id === 'hard'
+  // Boss challenges use the strongest search without the optional stat handicap.
+  const hard = sideId === 'opponent' && (
+    state.rules?.aiDifficulty?.id === 'hard' || state.rules?.aiDecisionLevel === 'hard'
+  )
   const multiBattle = (state.rules?.format?.activeSlots ?? 1) > 1
   return {
     hard,
@@ -12402,7 +12405,7 @@ function rankSideDecisions(
   const moveEntries = forcedAction
     ? [{ move: attacker.moves[forcedAction.moveIndex], moveIndex: forcedAction.moveIndex }]
     : attacker.moves.map((move, moveIndex) => ({ move, moveIndex }))
-  const noiseRange = sideId === 'opponent'
+  const noiseRange = sideId === 'opponent' && !aiSearchSettings(state, sideId).hard
     ? AI_TIER_NOISE[String(state.opponentMeta?.tier ?? 'S').toUpperCase()] ?? 1.4
     : 0
   const candidates = []

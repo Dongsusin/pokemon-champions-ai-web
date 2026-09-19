@@ -104,8 +104,9 @@ export function normalizeAiBattleDifficulty(value = 'normal') {
   }
 }
 
-export function getAiBattleDifficultyLabel(value) {
+export function getAiBattleDifficultyLabel(value, decisionLevel = null) {
   const difficulty = normalizeAiBattleDifficulty(value)
+  if (difficulty.id === 'normal' && decisionLevel === 'hard') return '전술 하드'
   return difficulty.id === 'hard'
     ? `${difficulty.label} · +${difficulty.boostStage}단계`
     : difficulty.label
