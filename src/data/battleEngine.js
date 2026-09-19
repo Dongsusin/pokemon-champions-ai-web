@@ -3582,7 +3582,6 @@ function applyVolatileEffect(
   }
 
   if (volatileStatus === 'endure') {
-    target.protected = true
     target.protectMode = 'endure'
     appendLog(state, `${target.name}은(는) 공격을 버틸 태세다!`, 'status')
     return true
@@ -5045,13 +5044,13 @@ function resolveCalledMove(state, attacker, defender, move, random, previousBatt
 }
 
 function applyStatusMove(state, attacker, defender, move, random, context = {}) {
-  if (PROTECT_MOVE_IDS.has(move.id)) {
+  if (PROTECT_MOVE_IDS.has(move.id) || move.id === 'endure') {
     const successRate = 1 / Math.max(1, 3 ** attacker.protectChain)
     if (random() <= successRate) {
-      attacker.protected = true
+      attacker.protected = move.id !== 'endure'
       attacker.protectMode = move.id
       attacker.protectChain += 1
-      appendLog(state, `${attacker.name}은(는) 몸을 지키고 있다!`, 'status')
+      appendLog(state, move.id === 'endure' ? `${attacker.name}은(는) 공격을 버틸 태세다!` : `${attacker.name}은(는) 몸을 지키고 있다!`, 'status')
     } else {
       attacker.protectMode = null
       attacker.protectChain = 0
@@ -10478,9 +10477,21 @@ function settleFaints(state, timeline = null) {
     .map((pokemon, slot) => (pokemon.fainted ? slot : -1))
     .filter((slot) => slot >= 0)
   opponentFaintedSlots.forEach((slot) => {
-    const nextIndex = chooseAiReplacementIndex(state, 'opponent', slot)
-    if (nextIndex != null) performSwitch(state, 'opponent', nextIndex, true, timeline, null, slot)
+    // Forced replacements cannot decline entry, even if hazards will KO them.
+    // Resolve each hazard KO now rather than leaving an empty field for a turn.
+    for (let attempts = 0; attempts < state.opponent.team.length; attempts += 1) {
+      const nextIndex = chooseAiReplacementIndex(state, 'opponent', slot)
+      if (nextIndex == null || !performSwitch(state, 'opponent', nextIndex, true, timeline, null, slot)) break
+      markPokemonFaint(state, 'opponent', slot, timeline)
+      const entered = getActivePokemon(state, 'opponent', slot)
+      if (entered.hp > 0 && !entered.fainted) break
+    }
   })
+
+  if (remainingCount(state.opponent) === 0) {
+    settleFaints(state, timeline)
+    return
+  }
 
   const playerFaintedSlots = getActivePokemonList(state, 'player')
     .map((pokemon, slot) => (pokemon.fainted ? slot : -1))
@@ -12208,8 +12219,9 @@ function aiReplacementCandidates(state, sideId, activeSlot = 0) {
 }
 
 export function chooseAiReplacementIndex(state, sideId = 'opponent', activeSlot = 0) {
-  return aiReplacementCandidates(state, sideId, activeSlot)
-    .find((candidate) => Number.isFinite(candidate.score))?.targetIndex ?? null
+  const candidates = aiReplacementCandidates(state, sideId, activeSlot)
+  return candidates.find((candidate) => Number.isFinite(candidate.score))?.targetIndex
+    ?? candidates[0]?.targetIndex ?? null
 }
 
 function chooseStrategicSwitches(
