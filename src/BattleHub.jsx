@@ -52,13 +52,6 @@ export default function BattleHub({ user, onBack, onSelectAi, onSelectRanked, on
       action: '팩토리에 도전', onSelect: onSelectFactory, background: 'electric', visualLabel: 'RENT · BATTLE · EXCHANGE',
       art: [{ pokemon: 376 }, { trainer: { id: 'factory-clown', name: '팩토리 삐에로' } }, { pokemon: 254 }],
     },
-    {
-      id: 'rooms', Icon: UsersRound, label: 'FRIENDLY COMPETITION', title: '대전방', subtitle: '함께 모여 만드는 우리만의 대회',
-      description: '친구들과 한 방에 모여 토너먼트 또는 리그전을 즐기세요. 비밀번호로 방을 보호하고, 먼저 경기가 끝났다면 다른 참가자의 대전을 관전할 수 있습니다.',
-      facts: [['참가 인원', '2~4명'], ['대회 방식', '토너먼트 · 리그'], ['방 설정', '비밀번호 지원']],
-      action: '방 찾기 · 만들기', onSelect: onSelectRooms, background: 'misty', visualLabel: 'BATTLE WITH FRIENDS',
-      art: [{ gender: 'male' }, { pokemon: 25 }, { gender: 'female' }],
-    },
     ...(onSelectRaid ? [{
       id: 'raid', Icon: Crown, label: 'BOSS CHALLENGE', title: '보스전', subtitle: '6마리의 팀으로 전설에 도전',
       description: '로켓단과 전설의 포켓몬을 넘어, 3라운드 보스전을 돌파하세요.',
@@ -66,6 +59,13 @@ export default function BattleHub({ user, onBack, onSelectAi, onSelectRanked, on
       action: '보스전에 도전', onSelect: onSelectRaid, background: 'psychic', visualLabel: 'CHALLENGE THE LEGENDS',
       art: [{ pokemon: 249 }, { pokemon: 150 }, { pokemon: 250 }],
     }] : []),
+    {
+      id: 'rooms', Icon: UsersRound, label: 'FRIENDLY COMPETITION', title: '대전방', subtitle: '함께 모여 만드는 우리만의 대회',
+      description: '친구들과 한 방에 모여 토너먼트 또는 리그전을 즐기세요. 비밀번호로 방을 보호하고, 먼저 경기가 끝났다면 다른 참가자의 대전을 관전할 수 있습니다.',
+      facts: [['참가 인원', '2~4명'], ['대회 방식', '토너먼트 · 리그'], ['방 설정', '비밀번호 지원']],
+      action: '방 찾기 · 만들기', onSelect: onSelectRooms, background: 'misty', visualLabel: 'BATTLE WITH FRIENDS',
+      art: [{ gender: 'male' }, { pokemon: 25 }, { gender: 'female' }],
+    },
   ]
   // A remembered raid selection must never expose a disabled mode.
   const selected = modes.find(mode => mode.id === selectedId) ?? modes[0]
