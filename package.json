@@ -137,6 +137,7 @@
     "boss:test": "node scripts/startBossChallengeTest.mjs",
     "validate:boss-challenge": "node scripts/validateBossChallenge.mjs",
     "validate:boss-challenge-ui": "node scripts/validateBossChallengeUi.mjs",
+    "validate:boss-challenge-layout": "node scripts/validateBossChallengeLayout.mjs",
     "validate:raid-mechanics": "node scripts/validateRaidMechanics.mjs",
     "validate:raid-trainers": "node scripts/validateRaidTrainers.mjs",
     "validate:raid-journeys": "node scripts/validateRaidJourneys.mjs",
