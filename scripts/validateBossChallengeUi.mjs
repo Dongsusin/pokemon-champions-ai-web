@@ -94,24 +94,26 @@ async function verifyRoundOpening(page, bossName, round, viewport) {
   await page.clock.resume()
 }
 
-
-async function assertHealthyFirstRound(page) {
+async function assertHealthyRound(page, round = 1) {
   const state = await page.evaluate(() => {
     const battle = window.__bossBattle()
     return { round: window.__bossRun().round, teamSize: battle.player.team.length,
       healthy: battle.player.team.every(pokemon => pokemon.hp === pokemon.maxHp && !pokemon.fainted),
+      faintedCount: battle.player.team.filter(pokemon => pokemon.fainted || pokemon.hp <= 0).length,
       activeIndexes: battle.player.activeIndexes }
   })
-  assert.deepEqual(state, { round: 1, teamSize: 6, healthy: true, activeIndexes: [0, 1] }, 'a new challenge heals all six Pokemon before round 1')
+  assert.deepEqual(state, { round, teamSize: 6, healthy: true, faintedCount: 0, activeIndexes: round === 1 ? [0, 1] : [0] }, `round ${round} heals all six Pokemon and restores the original lead`)
 }
 async function finishWoundedRound(page, round) {
   return page.evaluate(round => {
     const battle = structuredClone(window.__bossBattle())
     const party = battle.player.team
-    // Keep a fainted lead, a wounded survivor, and a wounded bench member.
-    // Round 2 adds a new faint and more damage without reviving round 1's lead.
-    party[round - 1].hp = 0
-    party[round - 1].fainted = true
+    // Each round starts with a newly wounded roster: one faint in round 1,
+    // then two fresh faints in the fully healed round 2 plus surviving damage.
+    for (let index = 0; index < round; index++) {
+      party[index].hp = 0
+      party[index].fainted = true
+    }
     if (round === 1) party[1].hp = Math.ceil(party[1].maxHp * .6)
     party[2].hp = Math.ceil(party[2].maxHp * (round === 1 ? .85 : .6))
     party[4].hp = party[4].maxHp - round * 13
@@ -307,17 +309,17 @@ try {
       })
       assert.equal(await portrait.locator('img').count(), name === '뮤츠' ? 1 : 2)
       await page.screenshot({ path: fileURLToPath(new URL(`trainers-${name}-${viewport.width}.png`, output)) })
-      await assertHealthyFirstRound(page)
+      await assertHealthyRound(page)
       // Carry the resolved roster through the actual BattleScreen completion callback.
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100))
-      const afterRoundOne = await finishWoundedRound(page, 1)
+      await finishWoundedRound(page, 1)
       assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
       await page.locator('.battle-trainer-dialogue-layer').waitFor({ state: 'visible' })
       assert.equal(await page.evaluate(() => window.__bossRun().round), 2)
       assert.equal(await page.evaluate(() => window.__bossBattle().opponent.team.length), name === '뮤츠' ? 6 : 3)
-      await assertCarriedHealth(page, afterRoundOne, 2)
+      await assertHealthyRound(page, 2)
       await verifyRoundOpening(page, name, 2, viewport)
-      if (name === '뮤츠') await page.screenshot({ path: fileURLToPath(new URL(`carryover-round-2-${viewport.width}.png`, output)) })
+      if (name === '뮤츠') await page.screenshot({ path: fileURLToPath(new URL(`healed-round-2-${viewport.width}.png`, output)) })
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100))
       const afterRoundTwo = await finishWoundedRound(page, 2)
       assert.equal(await page.getByRole('button', { name: '다음 라운드' }).count(), 0)
@@ -334,7 +336,7 @@ try {
     }
     await start.click()
     await page.waitForFunction(() => window.__bossRun()?.phase === 'battle')
-    await assertHealthyFirstRound(page)
+    await assertHealthyRound(page)
     await page.evaluate(() => {
       const battle = structuredClone(window.__bossBattle())
       for (const pokemon of battle.player.team) { pokemon.hp = 0; pokemon.fainted = true }
@@ -345,8 +347,8 @@ try {
     await page.getByRole('button', { name: '다시 준비하기' }).click()
     await start.click()
     await page.waitForFunction(() => window.__bossRun()?.phase === 'battle')
-    await assertHealthyFirstRound(page)
-    console.log(`PASS ${viewport.width}x${viewport.height}: healthy starts/retry, HP and faint carryover through both automatic transitions, living leads, all opponent dialogues, sequential Ho-Oh shields/target selection, defeat`)
+    await assertHealthyRound(page)
+    console.log(`PASS ${viewport.width}x${viewport.height}: healthy starts/retry, full healing at 1→2, HP and faint carryover at 2→3, living leads, all opponent dialogues, sequential Ho-Oh shields/target selection, defeat`)
     await page.close()
   }
   assert.deepEqual(errors, [])

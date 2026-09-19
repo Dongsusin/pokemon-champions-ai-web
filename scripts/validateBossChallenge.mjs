@@ -47,7 +47,7 @@ test('all nine encounters use six owned Pokemon and the requested formats/roster
   assert.throws(() => createBossChallengeBattle({ bossId: 'mewtwo', round: 1, party: Array(6).fill(party[0]) }))
 })
 
-test('boss HP carryover preserves wounds and fainted teammates through both transitions by capture ID', () => {
+test('boss HP carryover heals between rounds one and two, then preserves wounds and faints into round three by capture ID', () => {
   const duplicateParty = [6, 6, 3, 25, 94, 149].map((speciesId, index) => createBossOpponent({ speciesId }, `carry-${index}`))
   const savedParty = structuredClone(duplicateParty)
   for (const challenge of BOSS_CHALLENGES) {
@@ -63,12 +63,11 @@ test('boss HP carryover preserves wounds and fainted teammates through both tran
     const previousPlayerTeam = [...first.player.team].reverse()
     const previousSnapshot = structuredClone(previousPlayerTeam)
     const second = createBossChallengeBattle({ bossId: challenge.id, round: 2, party: duplicateParty, previousPlayerTeam })
-    assert.deepEqual(second.player.activeIndexes, [1])
-    assert.equal(second.player.faintCount, 2)
+    assert.deepEqual(second.player.activeIndexes, [0])
+    assert.equal(second.player.faintCount, 0)
     for (const pokemon of second.player.team) {
-      const previous = previousPlayerTeam.find(entry => entry.captureId === pokemon.captureId)
-      assert.equal(pokemon.hp, previous.hp)
-      assert.equal(pokemon.fainted, previous.fainted)
+      assert.equal(pokemon.hp, pokemon.maxHp, 'round two starts fully healed')
+      assert.equal(pokemon.fainted, false, 'round one knockouts are restored before round two')
       assert.equal(pokemon.status, null)
       assert(pokemon.moves.every(move => move.currentPp === move.maxPp))
       assert.equal(pokemon.teraActive, false)
@@ -76,32 +75,48 @@ test('boss HP carryover preserves wounds and fainted teammates through both tran
     }
     assert(Object.values(second.player.usedMechanics).every(used => !used))
     assert.deepEqual(previousPlayerTeam, previousSnapshot, 'creating a round cannot mutate the finished battle')
-    second.player.team[1].hp = 0
-    second.player.team[1].fainted = true
-    second.player.team[2].hp = 1
-    second.player.team[4].hp -= 5
-    const third = createBossChallengeBattle({ bossId: challenge.id, round: 3, party: duplicateParty, previousPlayerTeam: second.player.team })
-    assert.deepEqual(third.player.activeIndexes, [2])
-    assert.equal(third.player.faintCount, 3)
-    assert.deepEqual(third.player.team.map(({ hp, fainted }) => ({ hp, fainted })), second.player.team.map(({ hp, fainted }) => ({ hp, fainted })))
-    assert.equal(third.player.team[2].hp, 1, 'a living teammate at 1 HP must remain selectable')
+    second.player.team.forEach((pokemon, index) => {
+      pokemon.hp = index === 0 || index === 3 ? 0 : index === 1 ? 1 : pokemon.maxHp - 23
+      pokemon.fainted = pokemon.hp === 0
+      pokemon.status = { id: 'poison', label: '독' }
+      pokemon.moves.forEach(move => { move.currentPp = 0 })
+      pokemon.teraActive = true
+      pokemon.usedBattleMechanicId = 'tera'
+    })
+    const secondFinishedTeam = [...second.player.team].reverse()
+    const secondSnapshot = structuredClone(secondFinishedTeam)
+    const third = createBossChallengeBattle({ bossId: challenge.id, round: 3, party: duplicateParty, previousPlayerTeam: secondFinishedTeam })
+    assert.deepEqual(third.player.activeIndexes, [1])
+    assert.equal(third.player.faintCount, 2)
+    for (const pokemon of third.player.team) {
+      const previous = secondFinishedTeam.find(entry => entry.captureId === pokemon.captureId)
+      assert.equal(pokemon.hp, previous.hp)
+      assert.equal(pokemon.fainted, previous.fainted)
+      assert.equal(pokemon.status, null)
+      assert(pokemon.moves.every(move => move.currentPp === move.maxPp))
+      assert.equal(pokemon.teraActive, false)
+      assert.equal(pokemon.usedBattleMechanicId, null)
+    }
+    assert(Object.values(third.player.usedMechanics).every(used => !used))
+    assert.equal(third.player.team[1].hp, 1, 'a living teammate at 1 HP must remain selectable')
+    assert.deepEqual(secondFinishedTeam, secondSnapshot)
   }
   assert.deepEqual(duplicateParty, savedParty, 'the saved team must remain untouched')
 })
 
-test('boss HP carryover is ignored for a fresh first round or retry', () => {
+test('boss HP carryover is ignored at the start of rounds one and two, including a fresh retry', () => {
   const finished = make().player.team
   finished.forEach(pokemon => { pokemon.hp = 0; pokemon.fainted = true })
-  for (const challenge of BOSS_CHALLENGES) {
-    const retry = createBossChallengeBattle({ bossId: challenge.id, round: 1, party, previousPlayerTeam: finished })
+  for (const challenge of BOSS_CHALLENGES) for (const round of [1, 2]) {
+    const retry = createBossChallengeBattle({ bossId: challenge.id, round, party, previousPlayerTeam: finished })
     assert(retry.player.team.every(pokemon => pokemon.hp === pokemon.maxHp && !pokemon.fainted))
-    assert.deepEqual(retry.player.activeIndexes, [0, 1])
+    assert.deepEqual(retry.player.activeIndexes, round === 1 ? [0, 1] : [0])
     assert.equal(retry.player.faintCount, 0)
   }
 })
 
 test('boss HP carryover normalizes active Dynamax HP without healing, reviving, or changing saved forms', () => {
-  const previousPlayerTeam = createBossChallengeBattle({ bossId: 'mewtwo', round: 1, party }).player.team
+  const previousPlayerTeam = createBossChallengeBattle({ bossId: 'mewtwo', round: 2, party }).player.team
   previousPlayerTeam.forEach((pokemon, index) => {
     pokemon.dynamaxActive = true
     pokemon.maxHp *= 2
@@ -109,7 +124,7 @@ test('boss HP carryover normalizes active Dynamax HP without healing, reviving, 
     pokemon.fainted = pokemon.hp === 0
   })
   const previousSnapshot = structuredClone(previousPlayerTeam)
-  const next = createBossChallengeBattle({ bossId: 'mewtwo', round: 2, party, previousPlayerTeam })
+  const next = createBossChallengeBattle({ bossId: 'mewtwo', round: 3, party, previousPlayerTeam })
   assert.deepEqual(next.player.team.map(pokemon => pokemon.hp), [76, 0, 1, 20, 20, 20])
   next.player.team.forEach((pokemon, index) => {
     assert.equal(pokemon.maxHp, previousPlayerTeam[index].originalMaxHp)
@@ -122,11 +137,11 @@ test('boss HP carryover normalizes active Dynamax HP without healing, reviving, 
 
 test('boss HP carryover selects the living lead before entry abilities run', () => {
   const entryParty = [373, 382, 3, 25, 94, 149].map((speciesId, index) => createBossOpponent({ speciesId }, `entry-${index}`))
-  const previousPlayerTeam = createBossChallengeBattle({ bossId: 'hooh', round: 1, party: entryParty }).player.team
+  const previousPlayerTeam = createBossChallengeBattle({ bossId: 'hooh', round: 2, party: entryParty }).player.team
   previousPlayerTeam[0].hp = 0
   previousPlayerTeam[0].fainted = true
   previousPlayerTeam[1].hp = 41
-  const next = createBossChallengeBattle({ bossId: 'hooh', round: 2, party: entryParty, previousPlayerTeam })
+  const next = createBossChallengeBattle({ bossId: 'hooh', round: 3, party: entryParty, previousPlayerTeam })
   assert.deepEqual(next.player.activeIndexes, [1])
   assert.equal(next.player.team[1].hp, 41)
   assert.equal(getEffectiveBattleWeatherId(next), 'rain', 'the living Kyogre must activate Drizzle')
@@ -137,9 +152,9 @@ test('boss HP carryover selects the living lead before entry abilities run', () 
 test('boss HP carryover initializes Supreme Overlord from teammates already fainted', () => {
   const entryParty = [6, 9, 983, 25, 94, 149].map((speciesId, index) => createBossOpponent({ speciesId }, `fallen-${index}`))
   entryParty[2].ability = '총대장'
-  const previousPlayerTeam = createBossChallengeBattle({ bossId: 'hooh', round: 1, party: entryParty }).player.team
+  const previousPlayerTeam = createBossChallengeBattle({ bossId: 'hooh', round: 2, party: entryParty }).player.team
   previousPlayerTeam.slice(0, 2).forEach(pokemon => { pokemon.hp = 0; pokemon.fainted = true })
-  const next = createBossChallengeBattle({ bossId: 'hooh', round: 2, party: entryParty, previousPlayerTeam })
+  const next = createBossChallengeBattle({ bossId: 'hooh', round: 3, party: entryParty, previousPlayerTeam })
   assert.deepEqual(next.player.activeIndexes, [2])
   assert.equal(next.player.faintCount, 2)
   assert.equal(next.player.team[2].supremeOverlordFallen, 2)
@@ -147,7 +162,7 @@ test('boss HP carryover initializes Supreme Overlord from teammates already fain
 })
 
 test('boss HP carryover rejects incomplete, foreign, duplicate, invalid, and entirely fainted teams', () => {
-  const previous = make().player.team
+  const previous = createBossChallengeBattle({ bossId: 'mewtwo', round: 2, party }).player.team
   const invalidTeams = [
     previous.slice(0, 5),
     previous.map((pokemon, index) => index === 5 ? { ...pokemon, captureId: 'foreign' } : pokemon),
@@ -157,7 +172,7 @@ test('boss HP carryover rejects incomplete, foreign, duplicate, invalid, and ent
     previous.map(pokemon => ({ ...pokemon, hp: 0, fainted: true })),
   ]
   for (const previousPlayerTeam of invalidTeams) {
-    assert.throws(() => createBossChallengeBattle({ bossId: 'mewtwo', round: 2, party, previousPlayerTeam }))
+    assert.throws(() => createBossChallengeBattle({ bossId: 'mewtwo', round: 3, party, previousPlayerTeam }))
   }
 })
 

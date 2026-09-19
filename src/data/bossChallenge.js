@@ -58,7 +58,7 @@ export function createBossChallengeBattle({ bossId, round, party, playerName, pr
   if (!encounter || party?.length !== 6 || new Set(party.map(p => p.captureId)).size !== 6) {
     throw new Error('서로 다른 보유 포켓몬 6마리와 올바른 라운드를 선택해주세요.')
   }
-  const playerHealth = round > 1 && previousPlayerTeam ? previousPlayerTeam.map(({ captureId, hp, maxHp, fainted }) => (
+  const playerHealth = round === 3 && previousPlayerTeam ? previousPlayerTeam.map(({ captureId, hp, maxHp, fainted }) => (
     { captureId, hp, maxHp, fainted }
   )) : null
   if (playerHealth && (playerHealth.length !== party.length
