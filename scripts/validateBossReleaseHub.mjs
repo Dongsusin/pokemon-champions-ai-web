@@ -66,7 +66,10 @@ try {
           const overview = document.querySelector('.battle-hub-overview')
           const action = document.querySelector('.battle-hub-enter'), a = rect(action)
           const target = document.elementFromPoint(a.x + a.width / 2, a.y + a.height / 2)
+          const header = document.querySelector('.battle-hub-header')
+          const queue = header.querySelector('.ranked-queue-counts'), position = header.querySelector('.battle-hub-position')
           return { viewport: { width: innerWidth, height: innerHeight }, scroll: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }, boxes, tabOverflow,
+            headerStatus: { queue: rect(queue), position: rect(position), gap: parseFloat(getComputedStyle(header).columnGap), queueBeforePosition: queue.nextElementSibling === position },
             overview: { ...rect(overview), clientWidth: overview.clientWidth, scrollWidth: overview.scrollWidth }, actionHit: action.contains(target),
             visibleImages: [...document.querySelectorAll('.battle-hub-art img')].map(img => ({ src: img.currentSrc, loaded: img.complete && img.naturalWidth > 0 })) }
         })
@@ -84,6 +87,16 @@ try {
         const bySelector = Object.fromEntries(layout.boxes.map(box => [box.selector, box]))
         const feature = bySelector['.battle-hub-feature'], dock = bySelector['.battle-hub-dock'], header = bySelector['.battle-hub-header']
         assert(header.bottom <= feature.y + 1 && feature.bottom <= dock.y + 1, `${device.id}/${mode.id}: header/feature/tabs overlap`)
+        const { queue, position, gap, queueBeforePosition } = layout.headerStatus
+        assert(queueBeforePosition, `${device.id}/${mode.id}: queue precedes the mode position`)
+        assert(queue.width > 0 && queue.height > 0 && queue.y >= header.y - 1 && queue.bottom <= header.bottom + 1, `${device.id}/${mode.id}: queue card remains in the header`)
+        if (position.width > 0) {
+          assert(Math.abs(position.right - header.right) <= 1, `${device.id}/${mode.id}: mode position is right aligned`)
+          assert(Math.abs(position.x - queue.right - gap) <= 1, `${device.id}/${mode.id}: queue sits directly before mode position with only the header gap`)
+        } else {
+          assert.equal(device.id, 'mobile', 'Only compact layout hides the mode position')
+          assert(Math.abs(queue.right - header.right) <= 1, `${device.id}/${mode.id}: compact queue is right aligned`)
+        }
         await page.screenshot({ path: new URL(`${device.id}-${mode.id}-hub.png`, output).pathname.replace(/^\/(.:)/, '$1') })
         await frame.locator('.battle-hub-enter').click()
         await frame.locator(mode.screen).waitFor()

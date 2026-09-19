@@ -1338,7 +1338,7 @@ export function GameApp({
       ) : screen === 'raid' ? (
         <RaidScreen boxPokemon={boxPokemon} teams={teams} activeTeamId={activeTeam?.id}
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromBoss} onBack={() => setScreen('battle-hub')}
-          selectedBossId={selectedBossId} onSelectBoss={setSelectedBossId} playerName={trainerName}
+          selectedBossId={selectedBossId} onSelectBoss={setSelectedBossId} onExit={returnToLobby} playerName={trainerName}
           soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio}
           onToggleSound={toggleSound} onOpenSettings={() => openSettings()} onBattleActiveChange={setBossBattleActive} />
       ) : screen === 'rooms' ? (

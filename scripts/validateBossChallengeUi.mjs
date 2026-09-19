@@ -14,19 +14,44 @@ const gameEntry = await fs.readFile(new URL('../src/gameEntry.jsx', import.meta.
 const styles = [...gameEntry.matchAll(/import ['"]\.\/([^'"]+\.css)['"]/g)].map(match => `import '/src/${match[1]}';`).join('\n')
 const entry = `import React,{useState} from 'react';import{createRoot}from'react-dom/client';
 import RaidScreen from '/src/RaidScreen.jsx';import {createBossOpponent} from '/src/data/bossChallenge.js';
+import {GameApp} from '/src/App.jsx';import {createSavedTeams} from '/src/data/teamData.js';
 import '/src/mobileViewport.js';
 ${styles}
-const party=[6,9,3,25,94,149,150].map((speciesId,i)=>createBossOpponent({speciesId},'ui-'+i));
+const party=[6,9,3,25,94,149,150].map((speciesId,i)=>({...createBossOpponent({speciesId},'ui-'+i),directDrawCount:1}));
 const teams=[{id:'team-1',name:'팀 1',pokemonIds:party.slice(0,6).map(p=>p.captureId)},{id:'team-2',name:'팀 2',pokemonIds:[]}];
-function App(){const[active,setActive]=useState(false);const[teamId,setTeamId]=useState('team-2');return <div className={'app-shell'+(active?' battle-view':' raid-view')}><RaidScreen boxPokemon={party} teams={teams} activeTeamId={teamId} onSelectTeam={setTeamId} onOpenBox={()=>{}} onBack={()=>{}} onBattleActiveChange={setActive} soundEnabled={false} gameSettings={{attackAnimation:'skip',hpBarSpeed:'instant'}} /></div>};
-createRoot(document.getElementById('root')).render(<App/>);`
+function App(){
+  const[active,setActive]=useState(false),[teamId,setTeamId]=useState('team-2'),[screen,setScreen]=useState('boss'),[exits,setExits]=useState(0);
+  window.__bossUiState=()=>({active,screen,exits});
+  const exit=()=>{setExits(value=>value+1);setScreen('lobby')};
+  return <div className={'app-shell'+(active?' battle-view':screen==='boss'?' raid-view':'')}>
+    {screen==='boss'?<RaidScreen boxPokemon={party} teams={teams} activeTeamId={teamId} onSelectTeam={setTeamId} onOpenBox={()=>{}} onBack={exit} onExit={exit} onBattleActiveChange={setActive} soundEnabled={false} gameSettings={{attackAnimation:'skip',hpBarSpeed:'instant'}} />:
+      <main className="lobby-layout"><h1>플레이 메뉴</h1><button type="button" onClick={()=>setScreen('boss')}>보스전 입장</button></main>}
+  </div>
+};
+const fullGame=new URLSearchParams(location.search).has('fullgame');
+if(fullGame){
+  const owned=party.map(p=>({...p,captureId:'dex-'+p.speciesId})),ids=owned.map(p=>p.captureId),team=ids.slice(0,6);
+  localStorage.setItem('champions-dex-v2',JSON.stringify(owned));
+  localStorage.setItem('champions-teams-v1',JSON.stringify({version:1,activeTeamId:'team-1',teams:createSavedTeams(team,ids)}));
+  localStorage.setItem('champions-team-v2',JSON.stringify(team));
+  localStorage.setItem('champions-vp-v1','100000');
+  localStorage.setItem('champions-draw-tutorial-v1','complete');
+  localStorage.setItem('champions-settings-v1',JSON.stringify({game:{textScale:1,attackAnimation:'skip',hpBarSpeed:'instant'},audio:{enabled:false}}));
+}
+createRoot(document.getElementById('root')).render(fullGame?<GameApp user={{uid:'boss-exit-ui',displayName:'보스전 테스트',isLocalGuest:true,isAnonymous:true,providerData:[]}} autoLogin={false} onPlayerDataChanged={()=>{}} onSyncBeforeRanked={async()=>false} onSignOut={()=>{}}/>:<App/>);`
 // Compile the JSX fixture before returning a virtual module: Vite intentionally
 // skips its usual esbuild transform for null-prefixed module IDs.
 const compiledEntry = (await transformWithEsbuild(entry, 'boss-ui-entry.jsx', { loader: 'jsx', jsx: 'automatic' })).code
 const server = await createServer({ root, configFile: false, logLevel: 'error', cacheDir: 'scripts/.cache/boss-ui-vite',
   plugins: [(await import('@vitejs/plugin-react')).default(), { name: 'boss-ui-fixture', enforce: 'pre',
-    resolveId(id) { if (id === './gameEntry.jsx' || id.replaceAll('\\', '/').endsWith('/src/gameEntry.jsx')) return '\0boss-ui-entry' },
-    load(id) { if (id === '\0boss-ui-entry') return compiledEntry },
+    resolveId(id) {
+      if (id === './gameEntry.jsx' || id.replaceAll('\\', '/').endsWith('/src/gameEntry.jsx')) return '\0boss-ui-entry'
+      if (/\/auth\/firebaseClient(?:\.js)?$/.test(id) || id === './firebaseClient' || id === './firebaseClient.js') return '\0boss-ui-offline-auth'
+    },
+    load(id) {
+      if (id === '\0boss-ui-entry') return compiledEntry
+      if (id === '\0boss-ui-offline-auth') return 'export const firebaseAuth=null;export const firebaseDb=null;export const isFirebaseConfigured=false;export const missingFirebaseEnvironmentVariables=[];'
+    },
     transform(code, id) {
       if (id.endsWith('/src/RaidScreen.jsx')) return code.replace('  const active = run?.phase', '  window.__bossRun = () => run; window.__completeBossRound = complete;\n  const active = run?.phase')
       if (id.endsWith('/src/BattleScreen.jsx')) return code.replace('  const [introVisible,', '  window.__bossBattle = () => battle; window.__setBossBattleFixture = setBattle;\n  const [introVisible,')
@@ -39,6 +64,51 @@ const roundTwoSpeakers = {
   뮤츠: ['비주기'],
   칠색조: ['엔테이', '스이쿤', '라이코'],
   루기아: ['파이어', '프리저', '썬더'],
+}
+async function watchResultPanels(frame) {
+  await frame.evaluate(() => {
+    window.__bossResultPanels = []
+    window.__bossResultObserver?.disconnect()
+    const selector = '.boss-challenge-result, .battle-result-overlay'
+    window.__bossResultObserver = new MutationObserver(records => {
+      for (const record of records) for (const node of record.addedNodes) {
+        if (node.nodeType === 1 && (node.matches(selector) || node.querySelector(selector))) window.__bossResultPanels.push(node.textContent)
+      }
+    })
+    window.__bossResultObserver.observe(document.body, { childList: true, subtree: true })
+  })
+}
+async function assertMainLobby(frame, label, exits) {
+  await frame.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor({ timeout: 5000 })
+  assert.equal(await frame.locator('.boss-challenge, .battle-game-screen, .battle-hub, .boss-challenge-result, .battle-result-overlay').count(), 0, `${label}: return directly to the main lobby`)
+  assert.equal(await frame.locator('.app-shell.battle-view, .app-shell.raid-view').count(), 0, `${label}: clear battle layout state on exit`)
+  assert.deepEqual(await frame.evaluate(() => window.__bossResultPanels), [], `${label}: a result panel must never be mounted, even briefly`)
+  if (exits !== undefined) assert.deepEqual(await frame.evaluate(() => window.__bossUiState()), { active: false, screen: 'lobby', exits }, `${label}: notify the parent of exactly one terminal exit`)
+}
+async function freezeEnding(frame, page) {
+  // With the game clock stopped, lobby arrival proves there is no result timer
+  // or delayed transition to advance before the player can use the lobby.
+  await page.clock.pauseAt(new Date(await frame.evaluate(() => Date.now()) + 100))
+}
+async function openFullGameBoss(frame, name) {
+  await frame.getByRole('button', { name: /시작하기/ }).click()
+  await frame.getByRole('tab', { name: '보스전', exact: true }).click()
+  await frame.getByRole('button', { name: '보스전에 도전', exact: true }).click()
+  await frame.locator('.boss-selection-workspace').waitFor()
+  assert.equal(await frame.evaluate(() => window.__bossRun()), null, 're-entering the actual GameApp creates a fresh challenge')
+  await frame.locator('.boss-challenge-choices > button').filter({ has: frame.getByText(name, { exact: true }) }).click()
+  await frame.locator('.boss-start-footer button').click()
+  await frame.waitForFunction(() => window.__bossRun()?.round === 1 && window.__bossRun()?.phase === 'battle')
+  await assertHealthyRound(frame)
+}
+async function forfeitThroughUi(frame) {
+  const intro = frame.getByRole('button', { name: '배틀 개시', exact: true })
+  if (await intro.count()) await intro.click()
+  const dialogue = frame.locator('.battle-trainer-dialogue-box')
+  if (await dialogue.count()) await dialogue.click()
+  await frame.locator('.battle-command-buttons .surrender').click()
+  await frame.getByRole('dialog', { name: '대전 기권 확인', exact: true }).waitFor()
+  await frame.getByRole('button', { name: '기권하기', exact: true }).click()
 }
 async function verifyRoundOpening(frame, page, bossName, round, viewport) {
   const expectedPortraits = round === 2 ? roundTwoSpeakers[bossName] : [bossName]
@@ -280,8 +350,8 @@ async function verifyHoOhRevivalWaves(frame, page, viewport) {
 
 try {
   const html = await server.transformIndexHtml('/boss-ui.html', '<html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>')
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 844, height: 390 }]) {
-    const page = await browser.newPage({ viewport, hasTouch: viewport.width < 1000, isMobile: viewport.width < 1000 })
+  for (const viewport of process.argv.includes('--full-game-only') ? [] : [{ width: 1440, height: 900 }, { width: 844, height: 390 }]) {
+    const page = await browser.newPage({ viewport, hasTouch: viewport.width < 1000, isMobile: viewport.width < 1000, reducedMotion: 'reduce' })
     page.on('pageerror', error => { errors.push(error.message); console.error(`Browser error: ${error.message}`) })
     await page.clock.install()
     await page.route('**/boss-ui.html', route => route.fulfill({ contentType: 'text/html', body: html }))
@@ -293,6 +363,21 @@ try {
       await page.screenshot({ path: fileURLToPath(new URL(`startup-failure-${viewport.width}.png`, output)) })
       throw error
     })
+    await watchResultPanels(frame)
+    let exits = 0
+    const reenter = async () => {
+      await page.clock.resume()
+      const enter = frame.getByRole('button', { name: '보스전 입장', exact: true })
+      if (viewport.width < 1000) await enter.tap()
+      else await enter.click()
+      await frame.locator('.boss-selection-workspace').waitFor()
+      // The fixture's small lobby button can occupy the next screen's roster
+      // coordinates. Clear the synthetic mouse hover before choosing a boss.
+      await page.mouse.move(0, 0)
+      await page.keyboard.press('Escape')
+      await frame.getByRole('tooltip').waitFor({ state: 'hidden' })
+      assert.equal(await frame.evaluate(() => window.__bossRun()), null, 're-entry must not resume the completed run')
+    }
     assert.equal(await frame.getByText('방 만들기', { exact: true }).count(), 0)
     const start = frame.locator('.boss-start-footer button')
     assert(await start.isDisabled())
@@ -305,7 +390,10 @@ try {
     else await firstCard.hover()
     const tooltip = frame.getByRole('tooltip')
     await tooltip.waitFor({ state: 'visible' })
-    for (const label of ['지닌 도구', '테라타입', '다이맥스', '특성', '성격', '배틀 기술']) assert((await tooltip.innerText()).includes(label))
+    const tooltipLabels = ['지닌 도구', '테라타입', '다이맥스', '특성', '성격', '배틀 기술']
+    await frame.waitForFunction(labels => labels.every(label => document.querySelector('.ranked-pokemon-tooltip')?.innerText.includes(label)), tooltipLabels)
+    const tooltipText = await tooltip.innerText()
+    for (const label of tooltipLabels) assert(tooltipText.includes(label), `Missing tooltip label ${label}: ${tooltipText}`)
     const tipBounds = await tooltip.boundingBox()
     assert(tipBounds.x >= 0 && tipBounds.y >= 0 && tipBounds.x + tipBounds.width <= viewport.width && tipBounds.y + tipBounds.height <= viewport.height)
     await page.keyboard.press('Escape')
@@ -351,25 +439,75 @@ try {
       if (name === '뮤츠') await page.screenshot({ path: fileURLToPath(new URL(`carryover-round-3-${viewport.width}.png`, output)) })
       assert.equal(await frame.locator('.boss-invulnerability-badge').count(), 0, 'a full-health final boss starts without a shield')
       if (name === '칠색조') await verifyHoOhRevivalWaves(frame, page, viewport)
+      await freezeEnding(frame, page)
       await frame.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
-      await frame.getByRole('heading', { name: `${name} 격파 성공!` }).waitFor()
-      await frame.getByRole('button', { name: '다시 준비하기' }).click()
+      await assertMainLobby(frame, `${name} victory`, ++exits)
+      await page.screenshot({ path: fileURLToPath(new URL(`victory-lobby-${name}-${viewport.width}.png`, output)) })
+      await reenter()
     }
     await start.click()
     await frame.waitForFunction(() => window.__bossRun()?.phase === 'battle')
     await assertHealthyRound(frame)
+    await freezeEnding(frame, page)
     await frame.evaluate(() => {
       const battle = structuredClone(window.__bossBattle())
       for (const pokemon of battle.player.team) { pokemon.hp = 0; pokemon.fainted = true }
       window.__setBossBattleFixture({ ...battle, winner: 'opponent' })
     })
-    await frame.getByRole('heading', { name: '도전 종료' }).waitFor()
-    assert.equal(await frame.getByRole('button', { name: '다음 라운드' }).count(), 0)
-    await frame.getByRole('button', { name: '다시 준비하기' }).click()
+    await assertMainLobby(frame, 'defeat', ++exits)
+    await reenter()
     await start.click()
     await frame.waitForFunction(() => window.__bossRun()?.phase === 'battle')
     await assertHealthyRound(frame)
-    console.log(`PASS ${viewport.width}x${viewport.height}: healthy starts/retry, full healing at 1→2, HP and faint carryover at 2→3, living leads, all opponent dialogues, sequential Ho-Oh shields/target selection, defeat`)
+    await freezeEnding(frame, page)
+    await forfeitThroughUi(frame)
+    await assertMainLobby(frame, 'confirmed forfeit', ++exits)
+    await reenter()
+    await start.click()
+    await frame.waitForFunction(() => window.__bossRun()?.phase === 'battle')
+    await assertHealthyRound(frame)
+    console.log(`PASS ${viewport.width}x${viewport.height}: health carryover, dialogues, Ho-Oh shields; all three victories, defeat and confirmed forfeit return immediately to the lobby without any result panel; healthy round-one re-entry`)
+    await page.close()
+  }
+  // Exercise the real App routing as well as the focused RaidScreen fixture.
+  // Only local account startup/data are seeded; GameApp owns the actual lobby,
+  // mode hub, RaidScreen onExit callback, and battle-layout state here.
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 844, height: 390 }]) {
+    const page = await browser.newPage({ viewport, hasTouch: viewport.width < 1000, isMobile: viewport.width < 1000, reducedMotion: 'reduce' })
+    page.on('pageerror', error => { errors.push(error.message); console.error(`Browser error: ${error.message}`) })
+    await page.clock.install()
+    await page.route('**/api/**', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'LOCAL_PREVIEW_OFFLINE', message: 'Local UI validation' } }) }))
+    await page.route('**/boss-ui.html*', route => route.fulfill({ contentType: 'text/html', body: html }))
+    await page.goto('http://127.0.0.1:5297/boss-ui.html?fullgame=1')
+    const frame = await (await page.locator('iframe[data-game-frame]').elementHandle()).contentFrame()
+    await frame.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
+    await watchResultPanels(frame)
+    for (const name of ['뮤츠', '칠색조', '루기아']) {
+      await openFullGameBoss(frame, name)
+      await freezeEnding(frame, page)
+      for (let round = 1; round <= 3; round++) {
+        await frame.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'player' }))
+        if (round < 3) {
+          await frame.waitForFunction(next => window.__bossRun()?.round === next && window.__bossRun()?.phase === 'battle', round + 1)
+          assert.equal(await frame.getByRole('heading', { name: '플레이 메뉴', exact: true }).count(), 0, 'an intermediate victory must continue the challenge')
+        } else await assertMainLobby(frame, `actual GameApp ${name} victory`)
+      }
+      await page.clock.resume()
+    }
+    await openFullGameBoss(frame, '뮤츠')
+    await freezeEnding(frame, page)
+    await frame.evaluate(() => window.__setBossBattleFixture({ ...window.__bossBattle(), winner: 'opponent' }))
+    await assertMainLobby(frame, 'actual GameApp defeat')
+    await page.clock.resume()
+    await openFullGameBoss(frame, '칠색조')
+    await freezeEnding(frame, page)
+    await forfeitThroughUi(frame)
+    await assertMainLobby(frame, 'actual GameApp confirmed forfeit')
+    await page.screenshot({ path: fileURLToPath(new URL(`actual-game-lobby-${viewport.width}.png`, output)) })
+    await page.clock.resume()
+    await openFullGameBoss(frame, '루기아')
+    await assertHealthyRound(frame)
+    console.log(`PASS actual GameApp ${viewport.width}x${viewport.height}: three final victories, defeat and confirmed forfeit return to the main lobby; intermediate wins continue; reopening starts a healthy round one`)
     await page.close()
   }
   assert.deepEqual(errors, [])

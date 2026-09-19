@@ -78,8 +78,6 @@ button[aria-pressed=true] .boss-choice-status { background: #dfff50; color: #172
 .boss-start-footer small { font-size: 8px; letter-spacing: .12em; color: #92abc9; }
 .boss-start-footer strong { font-size: 13px; color: #edf7ff; }
 .boss-challenge .boss-primary { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 1px solid #efffa9; border-radius: 15px; padding: 9px 20px; background: linear-gradient(135deg,#e7ff57,#b6eb32); color: #1b2a1b; font-weight: 800; font-size: 13px; }
-.boss-challenge-result { text-align: center; margin: auto; }
-.boss-challenge-result button { padding: 12px 20px; border: 1px solid #7188bb; border-radius: 12px; background: #253659; }
 @media (max-width: 1100px) { .boss-challenge { padding: 12px; } .boss-selection-workspace { grid-template-columns: minmax(310px,.85fr) minmax(0,1.15fr); gap: 12px; } .boss-challenge-choices > button { grid-template-columns: 65px minmax(0,1fr) auto; gap: 10px; padding: 10px; } .boss-challenge-choices .pokemon-sprite-frame { width: 65px; height: 65px; } .boss-choice-copy > strong { font-size: 21px; } .boss-start-footer strong { font-size: 10px; } }
 @media (max-height: 600px) and (min-width: 651px) {
  .boss-challenge { gap: 7px; padding: 8px 12px; } .boss-page-header h1 { font-size: 22px; } .boss-page-header > button { padding: 7px 10px; font-size: 11px; } .boss-ready-badge { padding: 4px 10px; min-width: 110px; } .boss-ready-badge strong { font-size: 14px; }

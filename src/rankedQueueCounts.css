@@ -6,7 +6,7 @@
 .ranked-queue-counts-formats { display: flex; flex-wrap: wrap; justify-content: flex-end; column-gap: 16px; color: #a9bed4; font-size: 11px; }
 .ranked-queue-counts-formats > span { white-space: nowrap; }
 .ranked-queue-counts-formats b { margin-left: 4px; color: #eef8ff; font-variant-numeric: tabular-nums; }
-.battle-hub-heading:has(.ranked-queue-counts) > .battle-hub-position { margin-left: 0; }
+.battle-hub-header:has(.ranked-queue-counts) > .battle-hub-position { margin-left: 0; }
 @media (max-width: 900px) {
   .ranked-queue-counts { padding: 7px 10px; gap: 2px; }
   .ranked-queue-counts-heading { gap: 5px; font-size: 10px; }
@@ -25,7 +25,7 @@
   :root[data-game-text-scale="2"] .ranked-queue-counts-heading > b { font-size: 8px; }
 }
 @media (max-width: 600px) and (orientation: portrait) {
-  .battle-hub-heading:has(.ranked-queue-counts) { flex-wrap: wrap; }
+  .battle-hub-header:has(.ranked-queue-counts) { flex-wrap: wrap; }
   .ranked-queue-counts { flex-basis: 100%; flex-direction: row; justify-content: space-between; }
-  .battle-hub-heading:has(.ranked-queue-counts) > .battle-hub-position { display: none; }
+  .battle-hub-header:has(.ranked-queue-counts) > .battle-hub-position { display: none; }
 }

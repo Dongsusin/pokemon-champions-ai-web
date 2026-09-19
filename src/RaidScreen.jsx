@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Boxes, Check, Crown, Gem, ShieldCheck, Package, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Boxes, Check, Crown, Gem, ShieldCheck, Package, Play } from 'lucide-react'
 import BattleScreen from './BattleScreen'
 import PokemonSprite from './PokemonSprite'
 import SpriteImage from './SpriteImage'
@@ -11,7 +11,7 @@ import { getBattleItem } from './data/shopData'
 import './bossChallenge.css'
 
 export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSelectTeam, onOpenBox,
-  selectedBossId, onSelectBoss, onBack, onBattleActiveChange, playerName = '트레이너',
+  selectedBossId, onSelectBoss, onBack, onExit, onBattleActiveChange, playerName = '트레이너',
   soundEnabled, gameSettings, audioSettings, onToggleSound, onOpenSettings }) {
   const [localBossId, setLocalBossId] = useState('mewtwo')
   const bossId = selectedBossId ?? localBossId
@@ -44,13 +44,15 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
     } catch (cause) { setError(cause.message) }
   }
   function complete(summary, finishedBattle) {
-    if (current.current !== run || run.phase !== 'battle') return
+    if (current.current !== run || run?.phase !== 'battle') return
     if (summary.winner === 'player' && run.round < 3) {
       startRound(run.party, run.round + 1, run.bossId, finishedBattle.player.team)
       return
     }
-    const next = { ...run, phase: summary.winner === 'player' ? 'won' : 'lost' }
-    current.current = next; setRun(next)
+    current.current = null
+    setRun(null)
+    onBattleActiveChange?.(false)
+    onExit?.()
   }
   if (active) return <BattleScreen key={`${run.bossId}-${run.round}`}
     initialBattle={run.battle} skipIntro={run.round > 1} startWithDialogue={run.round > 1} hideResult onResolved={complete}
@@ -63,12 +65,6 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
 
   return <main className="boss-challenge">
     <header className="boss-page-header"><button type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 모드</button><div><span>BOSS CHALLENGE</span><h1>보스전</h1></div><div className="boss-ready-badge"><ShieldCheck size={22} /><span><small>{teamReady ? '출전 준비 완료' : '팀 편성 필요'}</small><strong>{party.length}/6</strong></span></div></header>
-    {run ? <section className="boss-challenge-result">
-      <Crown size={44} /><h1>{run.phase === 'won' ? `${boss.name} 격파 성공!` : '도전 종료'}</h1>
-      <p>{`${boss.name} 보스전 · ${run.round} / 3 라운드`}</p>
-      {error && <p role="alert">{error}</p>}
-      <button type="button" onClick={() => { setRun(null); setError('') }}><RotateCcw size={18} /> 다시 준비하기</button>
-    </section> : <>
       <div className="boss-selection-workspace">
       <section className="boss-challenge-party" aria-label="저장된 출전 팀">
         <header><div><small>CURRENT BATTLE PARTY</small><h2>{team?.name ?? '출전 팀'}</h2></div><strong>{party.length}<small>/6</small></strong></header>
@@ -105,6 +101,5 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
         if (current.current) return
         startRound(party, 1, bossId)
       }}><Play size={18} /> {boss.name}에게 도전</button></footer></section></div>
-    </>}
   </main>
 }
