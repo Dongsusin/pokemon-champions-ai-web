@@ -15,9 +15,10 @@ import {
   rerollFactoryHeldItem,
 } from './data/battleFactory'
 import { getFactoryMode } from './data/battleFactoryChallenge'
+import { checkpointFactoryBattle } from './data/battleFactoryStorage.js'
 
 export default function BattleFactoryScreen({
-  run, onRunChange, onBack, user, soundEnabled = true, gameSettings = {},
+  run, onRunChange, onBack, user, restoreError = '', soundEnabled = true, gameSettings = {},
   playerGender = 'male', playerName, audioSettings = {}, onToggleSound, onOpenSettings, onVpReward,
   onFactoryBestFloor,
 }) {
@@ -49,15 +50,15 @@ export default function BattleFactoryScreen({
   }, [bestFloor, onFactoryBestFloor])
 
   useEffect(() => {
-    if (run) return
+    if (run || restoreError) return
     try {
       initialRun.current ??= createFactoryRun({ mode })
-      currentRun.current = initialRun.current
       onRunChange(initialRun.current)
+      currentRun.current = initialRun.current
     } catch (cause) {
       setError(cause.message || '대여 포켓몬을 준비하지 못했습니다.')
     }
-  }, [run, onRunChange])
+  }, [run, onRunChange, restoreError])
 
   function transition(update) {
     // A button from the previous render can still receive a queued second click.
@@ -65,21 +66,37 @@ export default function BattleFactoryScreen({
     try {
       const next = update(currentRun.current)
       // Guard repeated clicks and callbacks before React paints the next phase.
-      currentRun.current = next
       onRunChange(next)
+      currentRun.current = next
       setError('')
     } catch (cause) {
       setError(cause.message || '선택 내용을 다시 확인해주세요.')
     }
   }
 
-  if (!run) return <main className="battle-factory" aria-busy={!error}>
-    <p role="status">{error || '배틀팩토리의 대여 포켓몬을 준비하고 있습니다.'}</p>
-    {error && <button type="button" onClick={() => transition(() => createFactoryRun({ mode }))}>다시 준비하기</button>}
+  if (!run) return <main className="battle-factory" aria-busy={!error && !restoreError}>
+    <p role="status">{restoreError || error || '배틀팩토리의 대여 포켓몬을 준비하고 있습니다.'}</p>
+    {error && !restoreError && <button type="button" onClick={() => transition(() => createFactoryRun({ mode }))}>다시 준비하기</button>}
+    {(error || restoreError) && <button type="button" onClick={onBack}>배틀 선택</button>}
   </main>
 
-  if (active) return <BattleScreen
+  if (active) return <>
+    {error && <div role="alert" style={{ position: 'fixed', top: 80, left: '10%', right: '10%', zIndex: 100, background: '#562d36', color: 'white', padding: 12 }}>{error}</div>}
+    <BattleScreen
     key={run.battleId}
+    initialBattle={run.battleState ?? null}
+    skipIntro={Boolean(run.battleState)}
+    onCheckpoint={state => {
+      const next = checkpointFactoryBattle(currentRun.current, run.battleId, state)
+      if (next === currentRun.current) return
+      try {
+        onRunChange(next)
+        currentRun.current = next
+        setError('')
+      } catch {
+        setError('팩토리 진행을 저장하지 못했습니다. 저장 공간을 확인하고 페이지를 닫지 마세요.')
+      }
+    }}
     competitionLabel={`배틀팩토리 · ${run.floor}층`}
     playerPokemon={run.party}
     playerName={playerName}
@@ -101,7 +118,7 @@ export default function BattleFactoryScreen({
       })
       return next
     })}
-  />
+  /></>
 
   if (showRankings) return <BattleFactoryRankings ranking={ranking} mode={rankingMode} onSelectMode={setRankingMode}
     onBack={() => { setRankingMode(getFactoryMode(run?.mode ?? mode).id); setShowRankings(false) }} />

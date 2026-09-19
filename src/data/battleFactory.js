@@ -269,6 +269,7 @@ export function beginFactoryBattle(run) {
     phase: 'battle',
     party: clone([lead, ...run.party.filter((pokemon) => pokemon.captureId !== lead.captureId)]),
     battleId: `${run.id}:floor:${run.floor}`,
+    battleState: null,
   }
 }
 
@@ -297,6 +298,7 @@ export function resolveFactoryBattle(run, { battleId, winner, forfeited = false,
   return {
     ...run,
     phase: won ? 'exchange' : 'finished',
+    battleState: null,
     wins: run.wins + Number(won),
     // Losing ends the run, and its Tower Points end with it.
     towerPoints: won ? run.towerPoints + award : 0,
@@ -348,6 +350,7 @@ export function advanceFactoryFloor(run, exchange = null) {
     opponentTeam: createOpponentTeam(run, floor),
     previousOpponent: [],
     battleId: null,
+    battleState: null,
     lastExchange: exchange === null ? null : { ...exchange },
   }
 }

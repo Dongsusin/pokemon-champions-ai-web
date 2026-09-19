@@ -1956,6 +1956,7 @@ function BattleScreen({
   battleRewards = null,
   battleBackground = null,
   initialBattle = null,
+  onCheckpoint,
   skipIntro = false,
   startWithDialogue = false,
   hideResult = false,
@@ -1964,6 +1965,9 @@ function BattleScreen({
 }) {
   const spectating = online?.spectator === true
   const [battle, setBattle] = useState(() => online?.state ?? initialBattle ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
+  const checkpointRef = useRef(onCheckpoint)
+  checkpointRef.current = onCheckpoint
+  useEffect(() => { if (!online) checkpointRef.current?.(battle) }, [])
   const [isRuleHudOpen, setIsRuleHudOpen] = useState(false)
   const [introVisible, setIntroVisible] = useState(!online && !skipIntro)
   const [menu, setMenu] = useState('command')
@@ -2153,6 +2157,9 @@ function BattleScreen({
   }
 
   const playBattleResolution = (resolution) => {
+    // Save the resolved turn before its animation so closing the page midway
+    // cannot restore a partially applied attack or replay the previous turn.
+    if (!onlineRef.current) checkpointRef.current?.(resolution.state)
     turnLockedRef.current = true
     const playbackToken = playbackTokenRef.current + 1
     playbackTokenRef.current = playbackToken

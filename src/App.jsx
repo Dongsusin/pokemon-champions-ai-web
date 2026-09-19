@@ -25,6 +25,7 @@ import RankedBattleScreen from './RankedBattleScreen'
 import BattleRoomsScreen from './BattleRoomsScreen'
 import BattleRoomsTestLobby from './BattleRoomsTestLobby'
 import BattleFactoryScreen from './BattleFactoryScreen'
+import { loadFactoryRun, saveFactoryRun } from './data/battleFactoryStorage.js'
 import { isRankedLocalTest } from './rankedClient'
 import BattleScreen from './BattleScreen'
 import AchievementsScreen from './AchievementsScreen'
@@ -387,7 +388,16 @@ export function GameApp({
   const [rankedBattleActive, setRankedBattleActive] = useState(false)
   const [bossBattleActive, setBossBattleActive] = useState(false)
   const [selectedBossId, setSelectedBossId] = useState('mewtwo')
-  const [factoryRun, setFactoryRun] = useState(null)
+  const factoryRestoreError = useRef('')
+  const [factoryRun, setFactoryRun] = useState(() => {
+    try { return loadFactoryRun() }
+    catch { factoryRestoreError.current = '팩토리 저장 기록을 읽지 못했습니다. 기존 기록은 보존했습니다. 저장 공간을 확인한 후 다시 접속해주세요.'; return null }
+  })
+  const changeFactoryRun = useCallback(next => {
+    saveFactoryRun(next)
+    setFactoryRun(next)
+    onPlayerDataChanged?.()
+  }, [onPlayerDataChanged])
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
   const rankedRewardSyncPending = useRef(false)
@@ -1346,7 +1356,7 @@ export function GameApp({
           onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards}
           onRankedPoints={settleRankedAchievements} />
       ) : screen === 'factory' ? (
-        <BattleFactoryScreen user={user} run={factoryRun} onRunChange={setFactoryRun} onBack={() => setScreen('battle-hub')}
+        <BattleFactoryScreen user={user} run={factoryRun} restoreError={factoryRestoreError.current} onRunChange={changeFactoryRun} onBack={() => setScreen('battle-hub')}
           onVpReward={receiveFactoryVpReward} onFactoryBestFloor={settleFactoryAchievements}
           playerName={trainerName}
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}

@@ -1,4 +1,5 @@
 import { ACHIEVEMENT_STORAGE_KEY, normalizeAchievementState } from '../data/achievementData.js'
+import { FACTORY_RUN_STORAGE_KEY } from '../data/battleFactoryStorage.js'
 
 export const PLAYER_STORAGE_KEYS = [
   'champions-dex-v2',
@@ -11,6 +12,7 @@ export const PLAYER_STORAGE_KEYS = [
   'champions-draw-tutorial-v1',
   'champions-settings-v1',
   ACHIEVEMENT_STORAGE_KEY,
+  FACTORY_RUN_STORAGE_KEY,
 ]
 
 export const PLAYER_SYNC_STORAGE_KEY = 'champions-cloud-sync-v1'

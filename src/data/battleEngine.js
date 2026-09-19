@@ -8480,6 +8480,16 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
         })
         return
       }
+      // Most status moves ignore the type chart. Thunder Wave explicitly does
+      // not; use its structured metadata and the target's current battle types.
+      if (move.ignoreImmunity === false && defender !== attacker
+        && !['self', 'allySide', 'allyTeam', 'foeSide', 'all'].includes(move.target)
+        && getMoveTypeEffectiveness(state, attacker, defender, move) === 0) {
+        appendLog(state, `${defender.name}에게는 효과가 없다!`, 'status')
+        pushTimelineStep(timeline, state, { phase: 'resolve', ...moveStep, result: 'immune',
+          message: latestLogMessage(state, `${defender.name}에게는 효과가 없다!`) })
+        return
+      }
       const statusMoveImmunity = abilityImmunity(state, attacker, defender, move)
       if (!['self', 'allySide', 'allyTeam'].includes(move.target) && statusMoveImmunity) {
         appendLog(state, `${defender.name}의 ${statusMoveImmunity}! 기술을 무효화했다.`, 'ability')
@@ -11680,6 +11690,11 @@ function evaluateAiMove(state, attacker, defender, move, gimmick = null, context
   const projectedAttacker = resolved.attacker
   const targetHp = Math.max(1, Number(context.targetHp ?? defender.hp) || defender.hp)
   const priority = environmentMovePriority(state, projectedAttacker, resolvedMove)
+
+  if (isStatusMove(resolvedMove) && resolvedMove.ignoreImmunity === false
+    && getMoveTypeEffectiveness(state, projectedAttacker, defender, resolvedMove) === 0) {
+    return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, effectiveness: 0, priority, resolvedMove }
+  }
 
   if (resolvedMove.id === 'noretreat' && projectedAttacker.noRetreatActive) {
     return { score: -Infinity, estimatedDamage: 0, rawDamage: 0, priority, resolvedMove }

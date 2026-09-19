@@ -349,6 +349,20 @@ test('turn counters decrement once and field tenure increments once per turn', (
   assert.equal(after.activeTurnCount, before + 1)
 })
 
+test('Thunder Wave respects Ground immunity, current types, and Ring Target without blocking other paralysis', () => {
+  const prepare = () => battle([pokemon('pikachu', ['thunderwave'])], [pokemon('garchomp', ['swordsdance'])])
+  let state = prepare()
+  assert.equal(active(turn(state), 'opponent').status, null)
+  state = prepare()
+  active(state).types = ['물']
+  assert.equal(active(turn(state)).status?.id, 'paralysis')
+  state = prepare()
+  active(state).heldItemId = 'ring-target'
+  assert.equal(active(turn(state)).status?.id, 'paralysis')
+  state = battle([pokemon('serperior', ['glare'])], [pokemon('garchomp', ['swordsdance'])])
+  assert.equal(active(turn(state)).status?.id, 'paralysis')
+})
+
 if (failures.length) {
   console.error(`Status audit failed: ${failures.length}/${passed + failures.length} scenarios.`)
   process.exitCode = 1
