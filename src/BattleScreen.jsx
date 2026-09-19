@@ -1347,9 +1347,9 @@ function BattleTeraBadge({ pokemon }) {
   )
 }
 
-export function BattleStatusPanel({ pokemon, side, trainerName, publicView = false }) {
+export function BattleStatusPanel({ pokemon, side, trainerName, publicView = false, isBoss = false }) {
   return (
-    <section className={`battle-hp-panel side-${side}`}>
+    <section className={`battle-hp-panel side-${side}${isBoss ? ' is-boss' : ''}`}>
       <header>
         <div>
           <strong>{pokemon.name}</strong>
@@ -1366,13 +1366,22 @@ export function BattleStatusPanel({ pokemon, side, trainerName, publicView = fal
         {((side === 'player' && !publicView) || pokemon.teraActive) && <BattleTeraBadge pokemon={pokemon} />}
       </div>
       <div className="battle-hp-meter-row">
-        <small>HP</small>
-        <span className={`battle-hp-meter tone-${hpTone(pokemon)}`}>
+        <small>{isBoss ? 'BOSS' : 'HP'}</small>
+        <span className={`battle-hp-meter tone-${hpTone(pokemon)}`}
+          role={isBoss ? 'meter' : undefined}
+          aria-label={isBoss ? `${pokemon.name} 보스 체력` : undefined}
+          aria-valuemin={isBoss ? 0 : undefined} aria-valuemax={isBoss ? 100 : undefined}
+          aria-valuenow={isBoss ? Math.ceil(hpRatio(pokemon)) : undefined}
+          aria-valuetext={isBoss ? `${Math.ceil(hpRatio(pokemon))}%, 25%씩 4구간` : undefined}>
           <i style={{ width: `${hpRatio(pokemon)}%` }} />
+          {isBoss && <span className="boss-hp-segments" aria-hidden="true">
+            {[25, 50, 75].map(percent => <b key={percent} style={{ left: `${percent}%` }} />)}
+          </span>}
         </span>
       </div>
       <footer>
         {publicView ? <><span>{trainerName}</span><b>{Math.ceil(hpRatio(pokemon))}%</b></> : side === 'player' ? <b>{pokemon.hp} / {pokemon.maxHp}</b> : <span>{trainerName}</span>}
+        {isBoss && !publicView && <b>{Math.ceil(hpRatio(pokemon))}%</b>}
         {pokemon.status && <em className={`status-${pokemon.status.id}`}>{pokemon.status.label}</em>}
       </footer>
     </section>
@@ -2650,7 +2659,8 @@ function BattleScreen({
       >
         {opponentActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('opponent', pokemon, visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
-            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} publicView={spectating} />
+            <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} publicView={spectating}
+              isBoss={Boolean(battle.raid?.campaign && pokemon.battleId === battle.raid.primaryBossId)} />
             {slot === 0 && <PartyIndicators side={battle.opponent} />}
           </div>
         ))}
