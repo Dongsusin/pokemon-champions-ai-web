@@ -26,6 +26,15 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
   const boss = BOSS_CHALLENGES.find(b => b.id === (run?.bossId ?? bossId))
   const active = run?.phase === 'battle'
   useEffect(() => { onBattleActiveChange?.(active); return () => onBattleActiveChange?.(false) }, [active, onBattleActiveChange])
+  useEffect(() => {
+    // Warm every round during team selection so automatic transitions keep their scenery.
+    boss.rounds.forEach(encounter => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = encounter.background.src
+      image.decode?.().catch(() => {})
+    })
+  }, [boss])
 
   function startRound(party, round, id) {
     try {
@@ -45,6 +54,7 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
   }
   if (active) return <BattleScreen key={`${run.bossId}-${run.round}`}
     initialBattle={run.battle} skipIntro={run.round > 1} startWithDialogue={run.round > 1} hideResult onResolved={complete}
+    battleBackground={boss.rounds[run.round - 1].background}
     playerPokemon={run.party} playerName={playerName}
     opponent={run.battle.opponentMeta} opponentTeam={{ pokemon: run.battle.opponent.team }} rules={run.battle.rules}
     competitionLabel={`${boss.name} 보스전 · ROUND ${run.round} / 3`}

@@ -17,7 +17,17 @@ export const BOSS_CHALLENGES = RAID_BOSSES.map(boss => ({
   ],
 })).map(boss => ({ ...boss, rounds: [...boss.rounds,
   { name: boss.name, format: 'single', pokemon: [{ speciesId: boss.speciesId, moves: boss.moves }] },
-] }))
+] })).map(boss => ({
+  ...boss,
+  // Story scenery is presentation metadata, independent of terrain and weather rules.
+  rounds: boss.rounds.map((encounter, index) => ({
+    ...encounter,
+    background: {
+      id: `${boss.id}-round-${index + 1}`,
+      src: `/assets/boss-backgrounds/${boss.id}-round-${index + 1}.webp`,
+    },
+  })),
+}))
 
 export function createBossOpponent(entry, captureId) {
   const profile = getSpeciesProfile(entry.speciesId)

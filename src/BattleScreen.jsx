@@ -1977,6 +1977,7 @@ function BattleScreen({
   onOpenSettings,
   onResolved,
   battleRewards = null,
+  battleBackground = null,
   initialBattle = null,
   skipIntro = false,
   startWithDialogue = false,
@@ -2078,10 +2079,10 @@ function BattleScreen({
       ...getActivePokemonList(battle, 'player'),
       ...getActivePokemonList(battle, 'opponent'),
     ]
-    const criticalAssets = activePokemon.flatMap((pokemon) => [
+    const criticalAssets = [battleBackground?.src, ...activePokemon.flatMap((pokemon) => [
       ...getBattleSpriteAssets(pokemon),
       ...pokemon.moves.flatMap(getMoveAnimationAssets),
-    ])
+    ])].filter(Boolean)
     const allAssets = battleRoster.flatMap((pokemon) => [
         ...getBattleSpriteAssets(pokemon),
         ...pokemon.moves.flatMap(getMoveAnimationAssets),
@@ -2571,6 +2572,7 @@ function BattleScreen({
     <main
       className={`battle-game-screen cue-${visualTurnCue?.phase ?? 'command'} actor-${visualTurnCue?.sideId ?? 'none'} target-${visualTurnCue?.targetSideId ?? 'none'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${activeTrainerDialogue ? ' has-trainer-dialogue' : ''}${spectating ? ' is-spectating' : ''}`}
       style={{ '--battle-hp-duration': `${hpBarDuration}ms` }}
+      data-battle-background={battleBackground?.id}
     >
       <header className="battle-game-header">
         <div className="battle-title-lockup">
@@ -2683,7 +2685,11 @@ function BattleScreen({
         ))}
 
         <div className={battleCameraClassName(visualTurnCue)} style={battleStageStyle(visualTurnCue, attackAnimationMode)}>
-          <div className="battle-environment-backdrop" />
+          {/* Only scenery stays fixed; live rules still drive every field/weather effect. */}
+          <div
+            className="battle-environment-backdrop"
+            style={battleBackground ? { backgroundImage: `url("${battleBackground.src}")` } : undefined}
+          />
           <BattleFieldEffects
             key={`terrain-${battle.rules.terrain.id}`}
             terrainId={battle.rules.terrain.id}
