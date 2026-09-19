@@ -3,7 +3,8 @@
   "regions": ["icn1"],
   "git": {
     "deploymentEnabled": {
-      "codex/battle-factory": false
+      "codex/battle-factory": false,
+      "codex/fixed-aspect-frame": false
     }
   }
 }

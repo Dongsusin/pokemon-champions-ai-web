@@ -1,5 +1,6 @@
 import { loadGameSettings } from './gameSettings.js'
 import { applyGameTextScale } from './gameTextScale.js'
+import { isGameFrame } from './fixedGameViewport.js'
 
 const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1.0, viewport-fit=cover'
 
@@ -37,12 +38,11 @@ function isCompactTouchDevice() {
 
 export function syncMobileViewport() {
   const isTouchDevice = isCompactTouchDevice()
-  const layout = isTouchDevice
+  const layout = isGameFrame() ? (window.frameElement.dataset.layout ?? 'desktop') : isTouchDevice
     ? (landscapeQuery.matches ? 'landscape' : 'portrait')
     : 'desktop'
-  // Keep one CSS pixel equal to one device-independent pixel on phones. The
-  // old 1440x720 virtual desktop shrank every control, making 40px buttons
-  // roughly 20px wide on common landscape phones and difficult to tap.
+  // The host fits the complete 16:9 frame. Keep the child viewport native so
+  // touch coordinates, viewport CSS and body portals share one coordinate space.
   const viewport = DEFAULT_VIEWPORT
 
   const layoutChanged = document.documentElement.dataset.mobileLayout !== layout
@@ -81,6 +81,7 @@ scheduleMobileViewportSync()
 
 window.addEventListener('orientationchange', scheduleMobileViewportSync)
 window.addEventListener('resize', scheduleMobileViewportSync, { passive: true })
+window.addEventListener('champions:frame-layout', scheduleMobileViewportSync)
 window.addEventListener('pageshow', scheduleMobileViewportSync)
 window.visualViewport?.addEventListener('resize', scheduleMobileViewportSync, { passive: true })
 window.screen?.orientation?.addEventListener?.('change', scheduleMobileViewportSync)

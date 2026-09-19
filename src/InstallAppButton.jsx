@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronRight, Download, Share, SquarePlus, X } from 'lucide-react'
+import { getGameHostWindow } from './fixedGameViewport.js'
 
 const INSTALLED_QUERY = '(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)'
 
 function isStandalone() {
   if (typeof window === 'undefined') return false
   // iOS reports the home-screen launch on navigator instead of display-mode.
-  return window.matchMedia?.(INSTALLED_QUERY).matches || window.navigator.standalone === true
+  const host = getGameHostWindow()
+  return host.matchMedia?.(INSTALLED_QUERY).matches || host.navigator.standalone === true
 }
 
 function isAppleMobile() {
@@ -22,25 +24,26 @@ function isAppleMobile() {
 // the compact topbar icon and the full-width option used beside the login
 // buttons.
 export default function InstallAppButton({ variant = 'icon' }) {
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [deferredPrompt, setDeferredPrompt] = useState(() => getGameHostWindow().__championsInstallPrompt ?? null)
   const [installed, setInstalled] = useState(isStandalone)
   const [guideOpen, setGuideOpen] = useState(false)
   const appleGuide = isAppleMobile()
 
   useEffect(() => {
+    const host = getGameHostWindow()
     const capture = (event) => {
       event.preventDefault()
       setDeferredPrompt(event)
     }
     const markInstalled = () => { setInstalled(true); setDeferredPrompt(null); setGuideOpen(false) }
-    window.addEventListener('beforeinstallprompt', capture)
-    window.addEventListener('appinstalled', markInstalled)
-    const display = window.matchMedia?.(INSTALLED_QUERY)
+    host.addEventListener('beforeinstallprompt', capture)
+    host.addEventListener('appinstalled', markInstalled)
+    const display = host.matchMedia?.(INSTALLED_QUERY)
     const sync = () => setInstalled(isStandalone())
     display?.addEventListener?.('change', sync)
     return () => {
-      window.removeEventListener('beforeinstallprompt', capture)
-      window.removeEventListener('appinstalled', markInstalled)
+      host.removeEventListener('beforeinstallprompt', capture)
+      host.removeEventListener('appinstalled', markInstalled)
       display?.removeEventListener?.('change', sync)
     }
   }, [])
@@ -55,6 +58,7 @@ export default function InstallAppButton({ variant = 'icon' }) {
   const install = useCallback(async () => {
     if (!deferredPrompt) { setGuideOpen(true); return }
     deferredPrompt.prompt()
+    getGameHostWindow().__championsInstallPrompt = null
     const choice = await deferredPrompt.userChoice.catch(() => null)
     setDeferredPrompt(null)
     if (choice?.outcome === 'accepted') setInstalled(true)

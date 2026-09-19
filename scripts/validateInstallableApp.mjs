@@ -37,10 +37,40 @@ const server = http.createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
 const origin = `http://127.0.0.1:${server.address().port}`
 
+async function isolateNetwork(context) {
+  // PWA checks must never log in or call the production API. All game assets
+  // are served by the isolated production build above.
+  await context.route('**/*', route => new URL(route.request().url()).origin === origin
+    ? route.continue() : route.abort())
+}
+
+async function gameDocument(page) {
+  const element = await page.waitForSelector('iframe[data-game-frame]', { timeout: 30000 })
+  const frame = await element.contentFrame()
+  assert(frame, 'the game iframe did not create its document')
+  return frame
+}
+
 const report = { origin, checks: {}, failures: [] }
 const browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
 const context = await browser.newContext({ viewport: { width: 932, height: 430 }, isMobile: true, hasTouch: true,
   userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36' })
+await isolateNetwork(context)
+await context.addInitScript(() => {
+  if (window !== window.top) return
+  // A synthetic event checks the parent/child bridge without opening a native
+  // installation prompt or changing anything on the tester's machine.
+  window.__installTestCalls = 0
+  const observer = new MutationObserver(() => {
+    if (!document.querySelector('iframe[data-game-frame]')) return
+    observer.disconnect()
+    const event = new Event('beforeinstallprompt', { cancelable: true })
+    event.prompt = () => { window.__installTestCalls += 1 }
+    event.userChoice = Promise.resolve({ outcome: 'accepted' })
+    window.dispatchEvent(event)
+  })
+  observer.observe(document, { childList: true, subtree: true })
+})
 const page = await context.newPage()
 const failures = []
 const consoleErrors = []
@@ -53,6 +83,13 @@ page.on('requestfailed', request => {
 })
 try {
   await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  const onlineGame = await gameDocument(page)
+  await onlineGame.waitForSelector('.auth-login-card, .app-shell', { timeout: 30000 })
+  await onlineGame.locator('.install-app-option').click({ timeout: 10000 })
+  await onlineGame.waitForSelector('.install-app-option', { state: 'detached' })
+  const promptCalls = await page.evaluate(() => window.__installTestCalls)
+  assert.equal(promptCalls, 1, 'child install button did not invoke the retained parent prompt once')
+  report.checks.parentInstallPrompt = { synthetic: true, calls: promptCalls }
 
   // 1. The document links a manifest and it parses.
   const manifestHref = await page.getAttribute('link[rel="manifest"]', 'href')
@@ -91,26 +128,37 @@ try {
 
   // 4. Let the shell and its build files land in the cache, then relaunch with
   // the network cut to prove the installed app opens offline.
-  await page.waitForTimeout(2500)
+  const buildFiles = (await fs.readdir(path.join(dist, 'assets')))
+    .filter(file => /-[\w-]{8}\.(?:m?js|css)$/.test(file)).map(file => `/assets/${file}`)
+  await page.waitForFunction(async required => {
+    const cache = await caches.open('champions-arena-shell-cache-v1')
+    return (await Promise.all(required.map(url => cache.match(url)))).every(Boolean)
+  }, buildFiles, { timeout: 30000 })
   const cached = await page.evaluate(async () => {
     const out = {}
     for (const name of await caches.keys()) out[name] = (await (await caches.open(name)).keys()).length
     return out
   })
   report.checks.cacheEntries = cached
+  report.checks.precachedBuildFiles = buildFiles
   recording = true
   await context.setOffline(true)
   await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined)
-  await page.waitForTimeout(1500)
-  const offline = await page.evaluate(() => ({
+  const offlineGame = await gameDocument(page)
+  await offlineGame.waitForSelector('.auth-login-card, .app-shell', { timeout: 30000 })
+  const offline = await offlineGame.evaluate(() => ({
     title: document.title,
     hasRoot: Boolean(document.querySelector('#root')),
     rootChildren: document.querySelector('#root')?.childElementCount ?? 0,
     bodyText: document.body.innerText.slice(0, 120),
+    appReady: Boolean(document.querySelector('.auth-login-card, .app-shell')),
+    resourceError: Boolean(document.querySelector('.resource-loading-card.has-error')),
+    logicalViewport: { width: innerWidth, height: innerHeight },
   }))
   report.checks.offlineLaunch = { ...offline, consoleErrors, failedRequests: failedRequests.slice(0, 12) }
   if (!offline.hasRoot || !offline.title) failures.push('the document did not load from the cache while offline')
-  if (!offline.rootChildren) failures.push('the app rendered nothing while offline')
+  if (!offline.rootChildren || !offline.appReady || offline.resourceError) failures.push('the child game did not finish booting while offline')
+  if (failedRequests.some(request => /\/assets\/[^/]+-[\w-]{8}\.(?:m?js|css)/.test(request))) failures.push('a lazy build file failed to load while offline')
   await context.setOffline(false)
 
   // 5. The install affordance: iOS has no beforeinstallprompt, so there the
@@ -118,11 +166,13 @@ try {
   // game is already running as an installed app.
   const applePage = await browser.newPage({ viewport: { width: 932, height: 430 }, isMobile: true, hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' })
+  await isolateNetwork(applePage.context())
   try {
     await applePage.goto(origin, { waitUntil: 'domcontentloaded' })
-    await applePage.waitForSelector('.install-app-option', { timeout: 30000 })
-    const box = await applePage.locator('.install-app-option').boundingBox()
-    const blocker = await applePage.evaluate(() => {
+    const appleGame = await gameDocument(applePage)
+    await appleGame.waitForSelector('.install-app-option', { timeout: 30000 })
+    const box = await appleGame.locator('.install-app-option').boundingBox()
+    const blocker = await appleGame.evaluate(() => {
       const el = document.querySelector('.install-app-option')
       const r = el.getBoundingClientRect()
       const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
@@ -132,12 +182,24 @@ try {
         hit: hit ? (hit.className.toString().split(' ')[0] || hit.tagName) : 'none', covered: !(hit === el || el.contains(hit)) }
     })
     report.checks.installButtonBox = { box, ...blocker }
-    await applePage.locator('.install-app-option').click({ timeout: 8000 })
-    await applePage.waitForSelector('.install-guide', { timeout: 10000 })
-    const guide = (await applePage.locator('.install-guide').innerText()).replace(/\s+/g, ' ').trim()
+    await appleGame.locator('.install-app-option').click({ timeout: 8000 })
+    await appleGame.waitForSelector('.install-guide', { timeout: 10000 })
+    const guide = (await appleGame.locator('.install-guide').innerText()).replace(/\s+/g, ' ').trim()
     await applePage.screenshot({ path: path.join(dist, 'install-guide.png') })
     report.checks.installAffordance = { appleOption: true, guide: guide.slice(0, 120), screenshot: 'dist/install-guide.png' }
     if (!guide.includes('홈 화면에 추가')) failures.push('the iOS install guide does not mention the Add to Home Screen step')
+    await applePage.evaluate(() => window.dispatchEvent(new Event('appinstalled')))
+    await appleGame.waitForSelector('.install-app-option', { state: 'detached' })
+    await appleGame.waitForSelector('.install-guide', { state: 'detached' })
+    await applePage.addInitScript(() => {
+      if (window === window.top) Object.defineProperty(navigator, 'standalone', { configurable: true, value: true })
+    })
+    await applePage.reload({ waitUntil: 'domcontentloaded' })
+    const installedGame = await gameDocument(applePage)
+    await installedGame.waitForSelector('.auth-login-card, .app-shell', { timeout: 30000 })
+    assert.equal(await installedGame.locator('.install-app-option, .install-app-button').count(), 0,
+      'child game offered installation despite the parent standalone state')
+    report.checks.parentInstallState = { appInstalledEvent: true, standaloneSuppressesButton: true }
   } catch (error) {
     failures.push('install affordance: ' + error.message.split(String.fromCharCode(10))[0])
   } finally { await applePage.close() }

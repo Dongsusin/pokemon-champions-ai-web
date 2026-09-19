@@ -4,6 +4,45 @@ const RESOURCE_CACHE_NAME = 'champions-arena-resource-cache-v1'
 const SHELL_CACHE_NAME = 'champions-arena-shell-cache-v1'
 const SHELL_DOCUMENT = '/index.html'
 const KNOWN_CACHES = new Set([RESOURCE_CACHE_NAME, SHELL_CACHE_NAME])
+const MAX_SHELL_BUILD_FILES = 64
+
+function hashedBuildUrl(value, base) {
+  try {
+    // Vite's preload dependency table uses assets/... from the application
+    // root, while import() uses ./... relative to the importing module.
+    const url = new URL(value.startsWith('assets/') ? `/${value}` : value, base)
+    if (url.origin !== self.location.origin || url.search || url.hash) return null
+    return /^\/assets\/[^/]+-[\w-]{8}\.(?:m?js|css)$/.test(url.pathname) ? url.href : null
+  } catch { return null }
+}
+
+async function precacheBuildGraph(cache, roots) {
+  const visited = new Set()
+  const pending = [...roots]
+  while (pending.length && visited.size < MAX_SHELL_BUILD_FILES) {
+    const batch = []
+    while (pending.length && batch.length < 4 && visited.size < MAX_SHELL_BUILD_FILES) {
+      const url = pending.shift()
+      if (visited.has(url)) continue
+      visited.add(url)
+      batch.push(url)
+    }
+    await Promise.all(batch.map(async url => {
+      try {
+        const response = await fetch(new Request(url, { cache: 'reload' }))
+        if (!response.ok) return
+        await cache.put(url, response.clone())
+        // Follow only quoted, hashed JS/CSS build references. This captures
+        // lazy entry chunks without traversing the game's large media catalog.
+        const source = await response.text()
+        for (const [, value] of source.matchAll(/["'`]([^"'`\s]+\.(?:m?js|css))["'`]/g)) {
+          const dependency = hashedBuildUrl(value, url)
+          if (dependency && !visited.has(dependency)) pending.push(dependency)
+        }
+      } catch { /* The controlling worker can fill a missing file on demand. */ }
+    }))
+  }
+}
 
 // On the very first visit the document and its bundle are fetched before this
 // worker controls the page, so they would never reach the cache on their own.
@@ -15,11 +54,17 @@ async function precacheShell(cache) {
   await cache.put(SHELL_DOCUMENT, response.clone()).catch(() => undefined)
   const html = await response.text()
   const urls = new Set(['/resource-manifest.json', '/manifest.webmanifest'])
+  const buildRoots = new Set()
   for (const [, value] of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
     if (/^(?:https?:)?\/\//.test(value)) continue
-    if (/\.(?:js|mjs|css)$/.test(value)) urls.add(value)
+    const buildUrl = hashedBuildUrl(value, self.location.origin)
+    if (buildUrl) buildRoots.add(buildUrl)
+    else if (/\.(?:js|mjs|css)$/.test(value)) urls.add(value)
   }
-  await Promise.all([...urls].map(url => cache.add(new Request(url, { cache: 'reload' })).catch(() => undefined)))
+  await Promise.all([
+    precacheBuildGraph(cache, buildRoots),
+    ...[...urls].map(url => cache.add(new Request(url, { cache: 'reload' })).catch(() => undefined)),
+  ])
 }
 
 self.addEventListener('install', (event) => {

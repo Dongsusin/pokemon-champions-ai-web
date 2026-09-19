@@ -1,40 +1,15 @@
-import './mobileViewport'
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import App, { RankedTestApp } from './App'
-import { isRankedLocalTest } from './rankedClient'
-import { isPokemonUsageDemo } from './pokemonUsageClient'
-import UsageTestApp from './UsageTestApp'
-import { AuthProvider } from './auth/AuthProvider'
-import ResourceBootstrap from './ResourceBootstrap'
-import './styles.css'
-import './screenRedesign.css'
-import './battleGen5.css'
-import './titleCleanup.css'
-import './battleGimmicks.css'
-import './moveAnimationDirector.css'
-import './settings.css'
-import './auth.css'
-import './mobileLandscape.css'
-import './gameTextScale.css'
-import './scaledBoxCards.css'
-import './scaledBattleCards.css'
-import './scaledTrainingEditor.css'
-import './mobileTouch.css'
-import './mobileUiV2.css'
-import './mobileReferenceLayout.css'
-import './installApp.css'
-import { loadGameSettings } from './gameSettings'
-import { applyGameTextScale } from './gameTextScale'
+import { isGameFrame, mountGameViewport } from './fixedGameViewport.js'
 
-applyGameTextScale(loadGameSettings().game.textScale)
-
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <ResourceBootstrap>
-      {isPokemonUsageDemo ? <UsageTestApp /> : isRankedLocalTest ? <RankedTestApp /> : <AuthProvider>
-        <App />
-      </AuthProvider>}
-    </ResourceBootstrap>
-  </StrictMode>,
-)
+// Only the game document starts React, authentication and resource loading.
+// A real viewport keeps CSS viewport units, portals and pointer coordinates
+// consistent while the host scales the complete screen without cropping it.
+async function start() {
+  if (isGameFrame()) {
+    document.documentElement.dataset.gameFrame = 'true'
+    await import('./gameEntry.jsx')
+  } else {
+    await import('./fixedGameViewport.css')
+    mountGameViewport(document.getElementById('root'))
+  }
+}
+start()

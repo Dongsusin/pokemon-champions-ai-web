@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const viewport = readFileSync(new URL('../src/mobileViewport.js', import.meta.url), 'utf8')
-const entry = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8')
+const entry = readFileSync(new URL('../src/gameEntry.jsx', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../src/mobileTouch.css', import.meta.url), 'utf8')
 
 assert(viewport.includes("width=device-width, initial-scale=1.0, viewport-fit=cover"))

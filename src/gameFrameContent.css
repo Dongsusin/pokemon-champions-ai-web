@@ -1,0 +1,17 @@
+/* The desktop header's content can be taller than its 84px minimum. Let the
+   lobby use the actual remaining frame height instead of subtracting 84px. */
+html[data-game-frame="true"][data-mobile-layout="desktop"] .app-shell:has(> .lobby-layout) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+}
+
+html[data-game-frame="true"][data-mobile-layout="desktop"] .app-shell:has(> .lobby-layout) > .topbar {
+  flex: 0 0 auto;
+}
+
+html[data-game-frame="true"][data-mobile-layout="desktop"] .lobby-layout {
+  flex: 1;
+  min-height: 0;
+}
