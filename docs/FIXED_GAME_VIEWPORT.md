@@ -15,7 +15,9 @@ This uses a separate browser viewport rather than transforming `#root`: existing
 and pointer coordinates all remain relative to the same game document.
 
 - `fixedGameViewport.js` computes a contain scale using the visual viewport and
-  safe-area insets. Browser pinch zoom is not counteracted.
+  safe-area insets on touch devices. Desktop uses the containing stage's actual
+  dimensions and ignores visual-viewport offsets. A ResizeObserver refits the
+  frame when the stage changes. Browser pinch zoom is not counteracted.
 - The host displays the portrait rotation guide on touch devices. Rotation is
   manual; returning to landscape preserves the current game.
 - `mobileViewport.js` follows the host's intended compact/desktop composition.
@@ -42,6 +44,6 @@ settings and detail portals, menu navigation, battle controls and rotation. Safe
 insets and software-keyboard viewport reduction are simulated. It does not claim
 physical-device keyboard or Google sign-in verification.
 
-This work stays on `codex/fixed-aspect-frame`, whose automatic Vercel deployments
-are disabled in `vercel.json`. Do not merge into the production branch until
-deployment is requested.
+The fixed viewport was promoted to `main` after deployment was requested.
+Automatic Vercel deployments for `codex/fixed-aspect-frame` and the separate
+boss-raid development branch remain disabled in `vercel.json`.

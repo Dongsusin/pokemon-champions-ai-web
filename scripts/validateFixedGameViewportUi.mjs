@@ -86,6 +86,7 @@ try {
     { id: 'tablet-1024', width: 1024, height: 768, touch: true },
     { id: 'tablet-1366', width: 1366, height: 1024, touch: true },
     { id: 'desktop-1920', width: 1920, height: 1080 },
+    { id: 'desktop-window', width: 1536, height: 730 },
     { id: 'ultrawide-2560', width: 2560, height: 1080 },
   ].filter(device => !process.env.VIEWPORT_DEVICE || device.id === process.env.VIEWPORT_DEVICE)
   for (const device of devices) {
@@ -114,6 +115,36 @@ try {
       await geometry(page, frame, `${device.id}/lobby`)
       await control(frame.getByRole('button', { name: '설정', exact: true }))
       await control(frame.locator('.mode-card.mode-training'))
+    })
+    if (device.id === 'desktop-window') await test(`${device.id}: desktop ignores visual viewport offsets and recenters after resize`, async () => {
+      const token = await frame.evaluate(() => { window.__desktopFrameToken = Math.random(); return window.__desktopFrameToken })
+      const original = await iframe.boundingBox()
+      try {
+        await page.evaluate(() => {
+          const viewport = window.visualViewport
+          for (const [key, value] of Object.entries({ width: 1800, height: 1100, offsetLeft: 80, offsetTop: 260, scale: 1 })) Object.defineProperty(viewport, key, { configurable: true, value })
+          viewport.dispatchEvent(new Event('scroll'))
+        })
+        await page.waitForTimeout(150)
+        const fit = await iframe.boundingBox()
+        assert(Math.abs(fit.x - original.x) < 1 && Math.abs(fit.y - original.y) < 1, `Desktop displaced: ${JSON.stringify(fit)}`)
+        for (const viewport of [{ width: 1366, height: 657 }, { width: 1920, height: 945 }, { width: 1280, height: 1024 }, { width: device.width, height: device.height }]) {
+          await page.setViewportSize(viewport)
+          await page.waitForFunction(() => {
+            const r = document.querySelector('iframe[data-game-frame]').getBoundingClientRect()
+            return Math.abs(r.width - Math.min(innerWidth, innerHeight * 16 / 9)) < 1 && Math.abs(r.height - Math.min(innerHeight, innerWidth * 9 / 16)) < 1
+          })
+          await geometry(page, frame, `desktop-resize/${viewport.width}x${viewport.height}`)
+          const bounds = await iframe.boundingBox()
+          assert(Math.abs(bounds.x - (viewport.width - bounds.width) / 2) < 1 && Math.abs(bounds.y - (viewport.height - bounds.height) / 2) < 1)
+          assert.equal(await frame.evaluate(() => window.__desktopFrameToken), token)
+        }
+      } finally {
+        await page.evaluate(() => {
+          for (const key of ['width', 'height', 'offsetLeft', 'offsetTop', 'scale']) delete window.visualViewport[key]
+          window.visualViewport.dispatchEvent(new Event('resize'))
+        })
+      }
     })
     await test(`${device.id}: settings portal opens and closes at real pointer coordinates`, async () => {
       const settingsButton = frame.getByRole('button', { name: '설정', exact: true })

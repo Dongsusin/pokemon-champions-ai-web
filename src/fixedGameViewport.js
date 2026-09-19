@@ -41,16 +41,18 @@ export function mountGameViewport(root) {
   let scheduled = 0
   function sync() {
     const viewport = window.visualViewport
-    // Don't counteract intentional browser pinch zoom.
-    const visual = viewport && Math.abs(viewport.scale - 1) < .01
-    const width = visual ? viewport.width : window.innerWidth
-    const height = visual ? viewport.height : window.innerHeight
+    const touchDevice = mobile || touch.matches || navigator.maxTouchPoints > 0
+    // Desktop layout is anchored to the containing stage. Visual-viewport
+    // offsets are only needed for a touch keyboard; stale offsets must never
+    // move the desktop game below the browser window. Preserve pinch zoom.
+    const visual = touchDevice && viewport && Math.abs(viewport.scale - 1) < .01
+    const width = visual ? viewport.width : stage.clientWidth
+    const height = visual ? viewport.height : stage.clientHeight
     const insets = getComputedStyle(stage)
     const left = parseFloat(insets.paddingLeft) || 0
     const right = parseFloat(insets.paddingRight) || 0
     const top = parseFloat(insets.paddingTop) || 0
     const bottom = parseFloat(insets.paddingBottom) || 0
-    const touchDevice = mobile || touch.matches || navigator.maxTouchPoints > 0
     const compact = touchDevice || window.innerWidth < 1280
     const canvas = GAME_FRAME_SIZES[compact ? 'compact' : 'desktop']
     const fitted = fitGameFrame(Math.max(0, width - left - right), Math.max(0, height - top - bottom), canvas)
@@ -75,6 +77,10 @@ export function mountGameViewport(root) {
     scheduled = requestAnimationFrame(sync)
   }
   sync()
+  // The containing viewport can settle after browser chrome or zoom changes
+  // without a matching visualViewport event.
+  const stageObserver = new ResizeObserver(sync)
+  stageObserver.observe(stage)
   window.addEventListener('resize', schedule, { passive: true })
   window.addEventListener('orientationchange', schedule, { passive: true })
   window.addEventListener('pageshow', schedule)
@@ -90,6 +96,7 @@ export function mountGameViewport(root) {
   window.addEventListener('appinstalled', installed)
   return () => {
     cancelAnimationFrame(scheduled)
+    stageObserver.disconnect()
     window.removeEventListener('resize', schedule)
     window.removeEventListener('orientationchange', schedule)
     window.removeEventListener('pageshow', schedule)
