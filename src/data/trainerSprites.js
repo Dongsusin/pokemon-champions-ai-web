@@ -213,6 +213,10 @@ export const TRAINER_SPRITE_SLUGS = {
   리파: 'tulip',
   그루샤: 'grusha',
   아폴로: 'archer',
+  아테나: 'ariana',
+  랜스: 'proton',
+  란다: 'petrel',
+  '로사 / 로이': 'jessiejames-gen1',
   '로사&로이': 'jessiejames-gen1',
   실버: 'silver-gen2',
   수호: 'eusine-gen2',
@@ -256,6 +260,7 @@ function spriteUrl(slug) {
 }
 
 export function getTrainerSpriteCandidates(trainer = {}) {
+  if (trainer.spriteSources?.length) return trainer.spriteSources
   const localSprite = TRAINER_LOCAL_SPRITES[trainer.name]
   const primarySlug = TRAINER_SPRITE_SLUGS[trainer.name]
   return [localSprite, primarySlug ? spriteUrl(primarySlug) : null].filter(Boolean)

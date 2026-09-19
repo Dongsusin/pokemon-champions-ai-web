@@ -56,6 +56,14 @@ try {
       await page.getByRole('button', { name: new RegExp(name) }).filter({ has: page.locator('strong') }).first().click()
       await start.click()
       await page.waitForFunction(() => window.__bossRun()?.phase === 'battle')
+      const portrait = page.locator('.battle-intro-trainer.opponent .battle-intro-trainer-sprite')
+      await portrait.waitFor({ state: 'visible' })
+      await page.waitForFunction(() => {
+        const images = [...document.querySelectorAll('.battle-intro-trainer.opponent .battle-intro-trainer-sprite img')]
+        return images.length > 0 && images.every(img => img.complete && img.naturalWidth > 0)
+      })
+      assert.equal(await portrait.locator('img').count(), name === '뮤츠' ? 1 : 2)
+      await page.screenshot({ path: fileURLToPath(new URL(`trainers-${name}-${viewport.width}.png`, output)) })
       assert.equal(await page.evaluate(() => window.__bossBattle().player.team.length), 6)
       assert.equal(await page.evaluate(() => window.__bossBattle().player.activeIndexes.length), 2)
       // Test-only terminal callback checks the controller, not combat outcomes.

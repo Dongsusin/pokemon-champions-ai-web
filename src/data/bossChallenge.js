@@ -9,10 +9,10 @@ export const BOSS_CHALLENGES = RAID_BOSSES.map(boss => ({
     { name: '로사 / 로이', format: 'double', pokemon: roster([24, 110, 52, 202, 455, 469], '로사 / 로이') },
     { name: '비주기', format: 'single', pokemon: roster([53, 31, 34, 112, 51, 115], '비주기') },
   ] : boss.id === 'hooh' ? [
-    { name: '랜스 / 란다', format: 'double', pokemon: roster([42, 110, 89, 24, 44, 198], '랜스 / 란다') },
+    { name: '랜스 / 란다', trainers: ['랜스', '란다'], format: 'double', pokemon: roster([42, 110, 89, 24, 44, 198], '랜스 / 란다') },
     { name: '엔테이 / 스이쿤 / 라이코', format: 'single', pokemon: [boss.stageOne[0], boss.stageOne[2], boss.stageOne[1]] },
   ] : [
-    { name: '아테나 / 아폴로', format: 'double', pokemon: roster([24, 45, 198, 229, 110, 169], '아테나 / 아폴로') },
+    { name: '아테나 / 아폴로', trainers: ['아테나', '아폴로'], format: 'double', pokemon: roster([24, 45, 198, 229, 110, 169], '아테나 / 아폴로') },
     { name: '파이어 / 프리저 / 썬더', format: 'single', pokemon: [boss.stageOne[1], boss.stageOne[2], boss.stageOne[0]] },
   ],
 })).map(boss => ({ ...boss, rounds: [...boss.rounds,
@@ -55,8 +55,14 @@ export function createBossChallengeBattle({ bossId, round, party, playerName, ra
     teamRule: { id: 'full', label: `6대${encounter.pokemon.length}`, battleSize: 6 },
     gimmickRestriction: { id: null, label: '제한 없음' }, aiDifficulty: { id: 'normal' },
   }
+  const portraitMembers = encounter.trainers?.map(name => ({ name })) ?? (
+    round > 1 && encounter.name !== '비주기' ? encounter.pokemon.map(entry => {
+      const profile = getSpeciesProfile(entry.speciesId)
+      return { name: profile.name, spriteSources: [profile.spriteFront, profile.spriteFrontFallback].flat().filter(Boolean) }
+    }) : undefined
+  )
   const battle = createBattle({ playerPokemon: structuredClone(party), playerName,
-    opponent: { id: `boss-${bossId}-${round}`, name: encounter.name, tier: 'S', specialties: [] },
+    opponent: { id: `boss-${bossId}-${round}`, name: encounter.name, portraitMembers, tier: 'S', specialties: [] },
     opponentTeam: { pokemon: encounter.pokemon.map((p, i) => createBossOpponent(p, `boss-${round}-${i}`)), battleGimmicks: [], strategy: {} }, rules, random })
   if (round === 3) {
     const order = [0, 1, 2]
