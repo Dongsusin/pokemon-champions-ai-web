@@ -358,7 +358,7 @@ check('rental snapshots survive damaged HP, status, depleted PP, consumed items 
   assert.equal(JSON.stringify(run), before)
 })
 
-check('real normal-AI turns accept factory parties without affecting the stored run', () => {
+check('real hard-tactical AI turns accept factory parties without stat boosts or changing the stored run', () => {
   for (const seed of [4, 17, 42]) {
     const run = deepFreeze(readyRun(seed))
     const before = JSON.stringify(run)
@@ -368,6 +368,8 @@ check('real normal-AI turns accept factory parties without affecting the stored 
     assert.equal(result.player.team.length, 3)
     assert.equal(result.opponent.team.length, 3)
     assert.equal(result.rules.aiDifficulty.id, 'normal')
+    assert.equal(result.rules.aiDecisionLevel, 'hard')
+    assert.equal(result.rules.aiDifficulty.boostStage, 0)
     assert(result.turn > 1 || result.awaitingPlayerSwitch || result.winner)
     assert.equal(JSON.stringify(run), before)
     for (const pokemon of [...result.player.team, ...result.opponent.team]) {

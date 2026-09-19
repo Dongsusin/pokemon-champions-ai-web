@@ -7,6 +7,7 @@ import FactoryInfoTooltip from './FactoryInfoTooltip'
 import FactoryTeamManager, { FactoryHealthMeter as HealthMeter } from './FactoryTeamManager'
 import { createBattlePreviewPokemon } from './data/battleEngine'
 import { getBattleFactoryVpReward } from './data/battleFactoryRewards'
+import { getFactoryDifficulty } from './data/battleFactoryDifficulty'
 import { getBattleItem } from './data/shopData'
 import {
   FACTORY_MODES, getFactoryMode, getFactoryRarityLabel, getFactorySwapCost,
@@ -94,7 +95,7 @@ function FloorRail({ run }) {
     <ol className="factory-floor-rail">{levels.map(level => <li key={level} className={level === floor ? 'current' : level < floor ? 'cleared' : ''} aria-current={level === floor ? 'step' : undefined}>
       <span>{level < floor ? <Check size={14} /> : level === floor ? <ChevronUp size={17} /> : <i />}</span><b>{level}F</b><small>{level < floor ? '클리어' : level === floor ? '현재 층' : 'NEXT'}</small>
     </li>)}</ol>
-    <div className="factory-trainer"><div className="factory-trainer-image"><img src={TRAINER_IMAGE} alt="배틀팩토리 AI 트레이너" /></div><span><small>FACTORY TRAINER</small><strong>팩토리 AI 트레이너</strong><em>매 층, 새로운 랜덤 팀</em></span></div>
+    <div className="factory-trainer"><div className="factory-trainer-image"><img src={TRAINER_IMAGE} alt="배틀팩토리 AI 트레이너" /></div><span><small>FACTORY TRAINER</small><strong>팩토리 AI 트레이너</strong><em>{getFactoryDifficulty(floor, run.mode).label} 팀 · 전술 하드</em></span></div>
   </aside>
 }
 

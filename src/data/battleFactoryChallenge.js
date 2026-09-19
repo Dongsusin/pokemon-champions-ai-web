@@ -8,11 +8,11 @@ import { BATTLE_ITEMS } from './shopData.js'
 export const FACTORY_MODES = Object.freeze([
   Object.freeze({
     id: 'standard', label: '일반 모드', tagline: 'CLASSIC RUN',
-    description: '매 층 시작 시 HP·PP·상태가 모두 회복됩니다. 교환은 무료입니다.',
+    description: '층이 높아질수록 상대 팀이 강해집니다. 매 층 HP·PP·상태 회복, 무료 교환을 지원합니다.',
   }),
   Object.freeze({
     id: 'challenge', label: '도전 모드', tagline: 'CHALLENGE RUN',
-    description: 'HP가 회복되지 않고 다음 층으로 이어집니다. 승리로 얻은 TP로만 회복·교체·도구 변경을 할 수 있습니다.',
+    description: '더 강한 상대와 빠른 난이도 상승에 도전합니다. HP가 이어지며 TP로 회복·교체·도구를 관리합니다.',
   }),
 ])
 

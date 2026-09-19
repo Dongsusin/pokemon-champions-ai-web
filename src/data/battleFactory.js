@@ -9,6 +9,7 @@ import {
 } from './trainingData.js'
 import { getBattleTeraType } from './battleEngine.js'
 import { getBattleItem } from './shopData.js'
+import { getFactoryDifficulty, scoreFactorySet, scoreFactoryTeam } from './battleFactoryDifficulty.js'
 import {
   BATTLE_FORMATS,
   BATTLE_GIMMICK_RESTRICTIONS,
@@ -25,7 +26,7 @@ import {
 export const FACTORY_TRAINER = Object.freeze({
   id: 'factory-clown',
   name: '팩토리 삐에로',
-  tier: 'B',
+  tier: 'S',
   region: 'battle-factory',
   specialties: [],
 })
@@ -101,7 +102,7 @@ function getRentalPool() {
   return rentalPool
 }
 
-function sampleRentals(seed, count, capturePrefix) {
+function sampleRentals(seed, count, capturePrefix, chosenSets = null) {
   const random = randomStream(seed)
   // Keep type rolls independent of species/set rolls and stable for this rental.
   const teraRandom = randomStream(seedValue(`${seed}:tera`))
@@ -112,7 +113,8 @@ function sampleRentals(seed, count, capturePrefix) {
     const chosenIndex = index + Math.floor(random() * (pool.length - index))
     ;[pool[index], pool[chosenIndex]] = [pool[chosenIndex], pool[index]]
     const sets = pool[index]
-    const { pokemon, gimmicks } = sets[Math.floor(random() * sets.length)]
+    const rolledSet = sets[Math.floor(random() * sets.length)]
+    const { pokemon, gimmicks } = chosenSets?.[index] ?? rolledSet
     const item = getBattleItem(pokemon.heldItemId)
     const entry = normalizePokemon({
       captureId: `${capturePrefix}:${index + 1}`,
@@ -169,7 +171,7 @@ function sampleRentals(seed, count, capturePrefix) {
   return selected
 }
 
-function createRules(id) {
+function createRules(id, floor = 1, mode = FACTORY_DEFAULT_MODE) {
   return {
     id,
     weather: { ...BATTLE_WEATHERS.find((entry) => entry.id === 'clear') },
@@ -179,7 +181,45 @@ function createRules(id) {
     disabledGimmickId: null,
     gimmickRestriction: { ...BATTLE_GIMMICK_RESTRICTIONS.find((entry) => entry.id === null) },
     aiDifficulty: normalizeAiBattleDifficulty('normal'),
+    aiDecisionLevel: 'hard',
+    factoryDifficulty: getFactoryDifficulty(floor, mode),
   }
+}
+
+let opponentPool
+function selectOpponentSets(run, floor) {
+  if (!opponentPool) {
+    opponentPool = getRentalPool().map(sets => sets.map(entry => ({
+      ...entry,
+      pokemon: { ...entry.pokemon, factoryGimmicks: entry.gimmicks },
+      score: scoreFactorySet(entry.pokemon, entry.gimmicks),
+    })).sort((left, right) => right.score - left.score))
+      .sort((left, right) => left[0].score - right[0].score)
+  }
+  const difficulty = getFactoryDifficulty(floor, run.mode)
+  const pool = opponentPool.slice(Math.min(opponentPool.length - FACTORY_PARTY_SIZE, Math.floor(opponentPool.length * difficulty.minPercentile)))
+  const random = randomStream(seedValue(`${run.seed}:floor:${floor}:team-quality`))
+  let bestTeam = null
+  let bestScore = -Infinity
+  for (let attempt = 0; attempt < difficulty.teamCandidates; attempt += 1) {
+    const remaining = [...pool]
+    const team = []
+    for (let slot = 0; slot < FACTORY_PARTY_SIZE; slot += 1) {
+      const [sets] = remaining.splice(Math.floor(random() * remaining.length), 1)
+      // Keep several competitive builds per species, but exclude examples
+      // substantially weaker than its best singles set even at low floors.
+      const viable = sets.filter(set => set.score >= sets[0].score - 30).slice(0, difficulty.setCandidates)
+      team.push(viable[Math.floor(random() * viable.length)])
+    }
+    const score = scoreFactoryTeam(team.map(set => set.pokemon))
+    if (score > bestScore) { bestScore = score; bestTeam = team }
+  }
+  // Fast pressure or a weather setter leads; selection never reads the player party.
+  return bestTeam.sort((left, right) => {
+    const leadScore = entry => (getSpeciesProfile(entry.pokemon.speciesId)?.stats[5] ?? 0)
+      + (['가뭄', '잔비', '모래날림', '눈퍼뜨리기', '일렉트릭메이커', '그래스메이커', '사이코메이커'].includes(entry.pokemon.ability) ? 100 : 0)
+    return leadScore(right) - leadScore(left)
+  })
 }
 
 function createOpponentTeam(run, floor) {
@@ -187,12 +227,13 @@ function createOpponentTeam(run, floor) {
     seedValue(`${run.seed}:floor:${floor}`),
     FACTORY_PARTY_SIZE,
     `${run.id}:floor:${floor}:opponent`,
+    selectOpponentSets(run, floor),
   )
   return {
     number: floor,
     pokemon,
     battleGimmicks: pokemon.flatMap((entry) => clone(entry.factoryGimmicks)),
-    strategy: { lead: pokemon[0].name, summary: '렌탈 포켓몬 3마리로 도전자에게 맞섭니다.' },
+    strategy: { lead: pokemon[0].name, summary: `${getFactoryDifficulty(floor, run.mode).label} 렌탈 팀 · 층별 전력 강화 · 전술 하드` },
   }
 }
 
@@ -222,7 +263,7 @@ export function createFactoryRun({ seed = randomSeed(), id, mode = FACTORY_DEFAU
     leadCaptureId: null,
     opponentTeam: null,
     previousOpponent: [],
-    rules: createRules(`${runId}:rules`),
+    rules: createRules(`${runId}:rules`, 1, mode),
     battleId: null,
     completedBattleIds: [],
     lastResult: null,
@@ -239,7 +280,8 @@ export function selectFactoryRentals(run, captureIds) {
   const party = captureIds.map((captureId) => run.offers.find((entry) => entry.captureId === captureId))
   if (party.some((entry) => !entry)) fail('FACTORY_SELECTION', '이번 도전에서 제시된 포켓몬만 선택할 수 있습니다.')
   assertDistinctParty(party)
-  return { ...run, phase: 'ready', party: clone(party), leadCaptureId: null, opponentTeam: createOpponentTeam(run, run.floor) }
+  return { ...run, phase: 'ready', party: clone(party), leadCaptureId: null,
+    rules: createRules(`${run.id}:rules`, run.floor, run.mode), opponentTeam: createOpponentTeam(run, run.floor) }
 }
 
 export function selectFactoryLead(run, captureId) {
@@ -267,6 +309,7 @@ export function beginFactoryBattle(run) {
   return {
     ...run,
     phase: 'battle',
+    rules: createRules(`${run.id}:rules`, run.floor, run.mode),
     party: clone([lead, ...run.party.filter((pokemon) => pokemon.captureId !== lead.captureId)]),
     battleId: `${run.id}:floor:${run.floor}`,
     battleState: null,
@@ -341,6 +384,7 @@ export function advanceFactoryFloor(run, exchange = null) {
     ...run,
     phase: 'ready',
     floor,
+    rules: createRules(`${run.id}:rules`, floor, run.mode),
     towerPoints,
     // These are original rental loadouts, never the mutable battle snapshots.
     // In standard mode createBattle restores HP, PP, status, items and gimmicks
