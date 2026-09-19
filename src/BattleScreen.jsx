@@ -69,6 +69,7 @@ import { getAiBattleDifficultyLabel, getBattleRuleDescription } from './data/bat
 import { getTrainer } from './data/trainerTeams'
 import { getTrainerDialogue, TRAINER_DIALOGUE_EVENTS } from './data/trainerDialogues'
 import { getBattleFormOptions, typeClassName } from './data/trainingData'
+import { isBossShielded, isRaidBoss } from './data/raidPolicy'
 
 function animationClassToken(value = '') {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unmapped'
@@ -1347,12 +1348,18 @@ function BattleTeraBadge({ pokemon }) {
   )
 }
 
-export function BattleStatusPanel({ pokemon, side, trainerName, publicView = false, isBoss = false }) {
+export function BattleStatusPanel({ pokemon, side, trainerName, publicView = false, isBoss = false, isInvulnerable = false }) {
+  const shielded = isBoss && isInvulnerable
   return (
-    <section className={`battle-hp-panel side-${side}${isBoss ? ' is-boss' : ''}`}>
+    <section className={`battle-hp-panel side-${side}${isBoss ? ' is-boss' : ''}${shielded ? ' is-invulnerable' : ''}`}>
       <header>
         <div>
           <strong>{pokemon.name}</strong>
+          {shielded && <span className="boss-invulnerability-badge" role="status"
+            title="부활한 포켓몬을 쓰러뜨리면 무적이 해제됩니다."
+            aria-label="무적: 부활한 포켓몬을 쓰러뜨리면 해제">
+            <Shield size={10} aria-hidden="true" />무적
+          </span>}
           {pokemon.dynamaxActive && <span className="dynamax-state">MAX</span>}
           {pokemon.megaActive && <span className="mega-state">MEGA</span>}
           {pokemon.primalActive && <span className="primal-state">PRIMAL</span>}
@@ -1372,7 +1379,7 @@ export function BattleStatusPanel({ pokemon, side, trainerName, publicView = fal
           aria-label={isBoss ? `${pokemon.name} 보스 체력` : undefined}
           aria-valuemin={isBoss ? 0 : undefined} aria-valuemax={isBoss ? 100 : undefined}
           aria-valuenow={isBoss ? Math.ceil(hpRatio(pokemon)) : undefined}
-          aria-valuetext={isBoss ? `${Math.ceil(hpRatio(pokemon))}%, 25%씩 4구간` : undefined}>
+          aria-valuetext={isBoss ? `${Math.ceil(hpRatio(pokemon))}%, 25%씩 4구간${shielded ? ', 무적' : ''}` : undefined}>
           <i style={{ width: `${hpRatio(pokemon)}%` }} />
           {isBoss && <span className="boss-hp-segments" aria-hidden="true">
             {[25, 50, 75].map(percent => <b key={percent} style={{ left: `${percent}%` }} />)}
@@ -1762,12 +1769,14 @@ export function MoveTargetMenu({
             : null
           const presentation = effectivenessPresentation(multiplier)
           const healsTarget = targetMove.healsTarget || ['healpulse', 'floralhealing'].includes(targetMove.id)
+          const shielded = targetSideId === 'opponent' && isRaidBoss(battle, target) && isBossShielded(battle)
+          const blockedDamage = shielded && moveDealsDirectDamage(targetMove)
 
           return (
             <button
               className={`battle-target-card effectiveness-${presentation.tone}`}
               type="button"
-              aria-label={`${targetSideId === 'player' ? '아군' : '상대'} ${target.name}을 기술 대상으로 선택`}
+              aria-label={`${targetSideId === 'player' ? '아군' : '상대'} ${target.name}을 기술 대상으로 선택${shielded ? ', 무적 상태' : ''}`}
               key={target.battleId}
               onPointerEnter={onPreview}
               onClick={() => onSelect(slot, targetSideId)}
@@ -1789,10 +1798,10 @@ export function MoveTargetMenu({
                 </span>
                 <em>HP {Math.round(hpRatio(target))}%</em>
               </span>
-              <span className={`battle-target-effectiveness effectiveness-${presentation.tone}`}>
-                <small>{healsTarget ? '효과' : '상성'}</small>
-                <strong>{healsTarget ? '회복' : presentation.value}</strong>
-                <em>{healsTarget ? 'HP 회복' : presentation.label}</em>
+              <span className={`battle-target-effectiveness effectiveness-${presentation.tone}${blockedDamage ? ' is-shielded' : ''}`}>
+                <small>{blockedDamage ? '보호' : healsTarget ? '효과' : '상성'}</small>
+                <strong>{blockedDamage ? <><Shield size={11} aria-hidden="true" />무적</> : healsTarget ? '회복' : presentation.value}</strong>
+                <em>{blockedDamage ? '부활 포켓몬 처치 후 해제' : healsTarget ? 'HP 회복' : presentation.label}</em>
               </span>
             </button>
           )
@@ -2660,7 +2669,8 @@ function BattleScreen({
         {opponentActivePokemon.map((pokemon, slot) => (
           <div className={statusAnchorClassName('opponent', pokemon, visualTurnCue, slot)} key={`opponent-status-${pokemon.battleId}`}>
             <BattleStatusPanel pokemon={pokemon} side="opponent" trainerName={opponent.name} publicView={spectating}
-              isBoss={Boolean(battle.raid?.campaign && pokemon.battleId === battle.raid.primaryBossId)} />
+              isBoss={Boolean(battle.raid?.campaign && isRaidBoss(battle, pokemon))}
+              isInvulnerable={isRaidBoss(battle, pokemon) && isBossShielded(battle)} />
             {slot === 0 && <PartyIndicators side={battle.opponent} />}
           </div>
         ))}

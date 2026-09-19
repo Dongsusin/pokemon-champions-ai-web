@@ -12,6 +12,9 @@
 .app-shell.battle-view .battle-hp-panel.is-boss .battle-hp-meter-row > small { flex-shrink: 0; color: #ffd46d; letter-spacing: .04em; }
 .boss-hp-segments { position: absolute; inset: 0; pointer-events: none; }
 .boss-hp-segments > b { position: absolute; top: 0; bottom: 0; width: 2px; background: #12283a; box-shadow: 1px 0 #f6ffe8; transform: translateX(-50%); }
+.app-shell.battle-view .battle-hp-panel header .boss-invulnerability-badge { flex-shrink: 0; gap: 3px; padding: 2px 5px; color: #fff0b7; background: #263b52; border: 1px solid #bc9348; white-space: nowrap; }
+.app-shell.battle-view .battle-hp-panel.is-invulnerable::before { background: linear-gradient(180deg, #ffe590, #aa7936); }
+.app-shell.battle-view .battle-target-effectiveness.is-shielded strong { display: inline-flex; align-items: center; gap: 3px; color: #ffe590; }
 /* Keep each opponent visible inside the existing intro/dialogue portrait frame. */
 .trainer-sprite-frame.trainer-portrait-group { display: flex; align-items: flex-end; justify-content: center; gap: 0; }
 .trainer-sprite-frame.trainer-portrait-group > .trainer-sprite-frame { flex: 1; width: 0; min-width: 0; height: 100%; }

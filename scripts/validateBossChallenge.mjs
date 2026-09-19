@@ -85,22 +85,105 @@ test('Mewtwo transforms at 50% and uses real Mega X/Y stats, types and sprites a
   }
 })
 
-test('Ho-Oh revives two distinct beasts and blocks every HP loss until living summons are defeated', () => {
+test('Ho-Oh shields both revival waves, blocks the next gate, and reuses one support slot', () => {
   const state = make('hooh')
   reach(state, 50)
   assert.equal(state.opponent.team.length, 2)
-  assert.equal(isBossShielded(state), false)
+  const first = state.opponent.team[1]
+  const protectedHp = boss(state).hp
+  assert.equal(isBossShielded(state), true)
+  for (const kind of ['action', 'residual', 'entry']) {
+    beginRaidDamageRoot(state, `shield-${kind}`, kind)
+    assert.equal(previewBattleHpLoss(state, boss(state), 9999), 0, `${kind} preview starts shielded`)
+    for (let hitIndex = 0; hitIndex < 5; hitIndex++) assert.equal(applyBattleHpLoss(state, boss(state), 9999), 0)
+    finishRaidDamageRoot(state)
+  }
+  assert.equal(boss(state).hp, protectedHp)
+  assert(!state.raid.crossedGates.includes(25))
+  assert(!state.raid.firedMechanics.includes(25))
+  assert.deepEqual(state.raid.pendingGates, [])
+  applyBattleHpLoss(state, first, first.hp)
+  assert.equal(isBossShielded(state), false, 'zero HP removes the shield before faint bookkeeping')
+  first.fainted = true
   reach(state, 25)
   assert.equal(state.opponent.team.length, 3)
-  assert.notEqual(state.opponent.team[1].speciesId, state.opponent.team[2].speciesId)
+  const second = state.opponent.team[2]
+  assert.notEqual(first.speciesId, second.speciesId)
+  assert.deepEqual(state.opponent.activeIndexes, [0, 2])
+  assert.equal(first.hp, 0)
+  assert.equal(first.fainted, true)
+  assert.equal(second.hp, second.maxHp)
   assert.equal(isBossShielded(state), true)
+  beginRaidDamageRoot(state, 'fresh-second-wave')
   assert.equal(previewBattleHpLoss(state, boss(state), 9999), 0)
   assert.equal(hit(state), 0)
-  state.opponent.team[1].hp = 0; state.opponent.team[1].fainted = true
-  assert.equal(hit(state), 0)
-  state.opponent.team[2].hp = 0; state.opponent.team[2].fainted = true
+  applyBattleHpLoss(state, second, second.hp)
+  second.fainted = true
   assert.equal(isBossShielded(state), false)
-  assert(hit(state) > 0)
+  assert(hit(state, 1) > 0)
+  boss(state).hp = boss(state).maxHp
+  for (let index = 0; index < 5; index++) hit(state)
+  assert.equal(state.opponent.team.length, 3, 'healing never revives another beast')
+  assert.deepEqual(state.raid.firedMechanics, [75, 50, 25])
+  assert.equal(state.raid.events.filter(event => event.kind === 'summon').length, 2)
+})
+
+test('resumed pending Ho-Oh waves wait for the current beast and fire only once', () => {
+  const state = make('hooh')
+  reach(state, 50)
+  state.raid.pendingGates = [50, 25, 25]
+  finishRaidDamageRoot(state)
+  finishRaidDamageRoot(state)
+  assert.equal(state.opponent.team.length, 2)
+  assert.deepEqual(state.raid.pendingGates, [25])
+  assert.deepEqual(state.raid.firedMechanics, [75, 50])
+  applyBattleHpLoss(state, state.opponent.team[1], 9999)
+  finishRaidDamageRoot(state)
+  finishRaidDamageRoot(state)
+  assert.equal(state.opponent.team.length, 3)
+  assert.deepEqual(state.opponent.activeIndexes, [0, 2])
+  assert.deepEqual(state.raid.pendingGates, [])
+  assert.deepEqual(state.raid.firedMechanics, [75, 50, 25])
+})
+
+test('Ho-Oh shield blocks actual multihit, status, and weather damage at both thresholds', () => {
+  let state = make('hooh')
+  reach(state, 50)
+  for (const gate of [50, 25]) {
+    const protectedHp = boss(state).hp
+    boss(state).status = { id: 'toxic', label: '맹독', toxicCounter: 10 }
+    state.rules.weather = { id: 'sandstorm', label: '모래바람' }
+    state.environment.weatherTurns = 5
+    state.player.team[0].moves[0] = { ...getMoveById('doublehit'), currentPp: 20, maxPp: 20, power: 999, accuracy: 100 }
+    state = playBattleTurnWithActions(state, [{ type: 'move', moveIndex: 0, targetSlot: 0 }], [], () => .1)
+    assert.equal(boss(state).hp, protectedHp, `${gate}% shield survives the whole attack and residual phase`)
+    assert(isBossShielded(state))
+    assert.equal(state.opponent.activeIndexes.length, 2)
+    boss(state).status = null
+    state.rules.weather = { id: 'clear', label: '맑음' }
+    state.environment.weatherTurns = null
+    const supportIndex = state.opponent.activeIndexes[1]
+    state.opponent.team[supportIndex].hp = 1
+    state = playBattleTurnWithActions(state, [{ type: 'move', moveIndex: 0, targetSlot: 1 }], [], () => .1)
+    assert.equal(state.opponent.team[supportIndex].fainted, true)
+    assert.equal(boss(state).hp, protectedHp, 'defeating a targeted beast does not redirect later multihits to Ho-Oh')
+    assert.equal(isBossShielded(state), false)
+    if (gate === 50) reach(state, 25)
+  }
+})
+
+test('a spread attack defeats the beast without passing through the shield onto Ho-Oh', () => {
+  let state = make('hooh')
+  reach(state, 50)
+  const protectedHp = boss(state).hp
+  state.opponent.team[1].hp = 1
+  state.player.team[0].moves[0] = { ...getMoveById('swift'), currentPp: 20, maxPp: 20, power: 999, accuracy: true }
+  state = playBattleTurnWithActions(state, [{ type: 'move', moveIndex: 0, targetSlot: 0 }], [], () => .1)
+  assert.equal(boss(state).hp, protectedHp)
+  assert.equal(state.opponent.team[1].fainted, true)
+  assert.equal(isBossShielded(state), false)
+  assert(!state.raid.firedMechanics.includes(25))
+  assert(hit(state) > 0, 'the following damage root can advance toward 25%')
 })
 
 test('Lugia changes form at 50%, rain begins only at 25%, preserves field and rejects weather moves', () => {
@@ -132,18 +215,34 @@ test('six-member boss rounds support normal voluntary switches and pivot moves',
   assert(pivot.awaitingPlayerSwitch)
 })
 
-test('revived beasts are selectable targets and act on the following turn', () => {
+test('both revived beasts are selectable in support slot one and act on the following turn', () => {
   let state = make('hooh')
   state = engineGate(state, 75)
   state = engineGate(state, 50)
-  assert.equal(state.opponent.activeIndexes.length, 2)
-  state.player.team[0].moves[0] = { ...getMoveById('tackle'), currentPp: 20, maxPp: 20 }
-  assert(getBattleMoveTargets(state, 'player', 0).some(target => target.slot === 1))
-  const summon = state.opponent.team[1]
-  summon.moves[0] = { ...getMoveById('swift'), currentPp: 20, maxPp: 20, accuracy: true }
-  const hp = state.player.team[0].hp
-  state = playBattleTurnWithActions(state, [], [{ type: 'move', moveIndex: 0, actorSlot: 1, targetSlot: 0 }], () => .1)
-  assert(state.player.team[0].hp < hp)
+  const species = []
+  for (const gate of [50, 25]) {
+    assert.equal(state.opponent.activeIndexes.length, 2)
+    state.player.team[0].moves[0] = { ...getMoveById('tackle'), currentPp: 20, maxPp: 20 }
+    const targets = getBattleMoveTargets(state, 'player', 0)
+    assert(targets.some(target => target.slot === 1))
+    assert(targets.every(target => target.slot < 2))
+    const summonIndex = state.opponent.activeIndexes[1]
+    const summon = state.opponent.team[summonIndex]
+    species.push(summon.speciesId)
+    assert.equal(summon.activeFromTurn, state.turn)
+    summon.moves[0] = { ...getMoveById('swift'), currentPp: 20, maxPp: 20, accuracy: true }
+    state.player.team[0].moves[0] = { ...getMoveById('splash'), currentPp: 20, maxPp: 20 }
+    const hp = state.player.team[0].hp
+    state = playBattleTurnWithActions(state, [{ type: 'move', moveIndex: 0 }], [{ type: 'move', moveIndex: 0, actorSlot: 1, targetSlot: 0 }], () => .1)
+    assert(state.player.team[0].hp < hp, `${gate}% summon must act from the reused support slot`)
+    assert(chooseAiActionsForSide(state, 'opponent', () => .1).every(action => action.actorSlot < 2))
+    if (gate === 50) {
+      applyBattleHpLoss(state, state.opponent.team[summonIndex], 9999)
+      state.opponent.team[summonIndex].fainted = true
+      state = engineGate(state, 25)
+    }
+  }
+  assert.notEqual(species[0], species[1])
 })
 
 test('retired matchmaking rejects room operations before calling the legacy service', async () => {

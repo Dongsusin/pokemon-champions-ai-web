@@ -12,7 +12,7 @@ export const RAID_SIDE_CLEAR_FIELDS = Object.freeze({
 export const RAID_FIELD_CLEAR_FIELDS = Object.freeze(['gravityTurns', 'trickRoomTurns', 'wonderRoomTurns', 'magicRoomTurns', 'mudSportTurns', 'waterSportTurns', 'fairyLockTurns', 'ionDelugeTurns'])
 export const isRaidBoss = (state, pokemon) => Boolean(state?.raid?.primaryBossId && pokemon?.battleId === state.raid.primaryBossId)
 export const isBossShielded = state => Boolean(state?.raid?.campaign && state.raid.bossId === 'hooh'
-  && state.raid.firedMechanics.includes(25)
+  && state.raid.firedMechanics.some(gate => gate === 50 || gate === 25)
   && state.opponent.team.some(p => p.battleId !== state.raid.primaryBossId && p.hp > 0 && !p.fainted))
 export function raidEvent(state, kind, message, details = {}, { log = true } = {}) {
   if (!state.raid) return
@@ -44,7 +44,7 @@ export function applyBattleHpLoss(state, pokemon, rawAmount) {
   let applied = Math.min(pokemon.hp, requested)
   if (isRaidBoss(state, pokemon)) {
     if (isBossShielded(state)) {
-      raidEvent(state, 'damage-protection', '부활한 전설의 포켓몬을 모두 쓰러뜨려야 칠색조에게 피해를 줄 수 있다.')
+      raidEvent(state, 'damage-protection', '부활한 전설의 포켓몬을 쓰러뜨려야 칠색조에게 피해를 줄 수 있다.')
       return 0
     }
     if (!state.raid.damageRoot) beginRaidDamageRoot(state, `entry:${state.turn}`, 'entry')
@@ -99,8 +99,16 @@ export function finishRaidDamageRoot(state, hooks = {}) {
   const raid = state.raid
   const boss = state.opponent.team.find((actor) => isRaidBoss(state, actor))
   if (raid.campaign) {
+    const deferredGates = []
     for (const gate of raid.pendingGates ?? []) {
       if (!boss || boss.hp <= 0 || ![75, 50, 25].includes(gate) || raid.firedMechanics.includes(gate)) continue
+      // A revival is a separate wave. Never fire or discard the next wave while
+      // the previous beast is alive, including when resuming pending mechanics.
+      if (raid.bossId === 'hooh' && [50, 25].includes(gate)
+        && state.opponent.team.some(pokemon => !isRaidBoss(state, pokemon) && pokemon.hp > 0 && !pokemon.fainted)) {
+        if (!deferredGates.includes(gate)) deferredGates.push(gate)
+        continue
+      }
       raid.firedMechanics.push(gate)
       if (gate === 75) {
         raiseRaidVitality(boss)
@@ -120,10 +128,13 @@ export function finishRaidDamageRoot(state, hooks = {}) {
         const summoned = structuredClone(raid.summonPool[raid.reviveOrder[gate === 50 ? 0 : 1]])
         summoned.activeFromTurn = state.turn + 1
         state.opponent.team.push(summoned)
-        const slot = state.opponent.activeIndexes.length
-        state.opponent.activeIndexes.push(state.opponent.team.length - 1)
+        // Keep defeated beasts in the roster history but reuse the one support
+        // position so actions, targets, and status panels never gain a third slot.
+        state.opponent.activeIndexes = [state.opponent.team.indexOf(boss), state.opponent.team.length - 1]
+        state.opponent.activeIndex = state.opponent.activeIndexes[0]
+        const slot = 1
         hooks.onSummon?.(slot)
-        raidEvent(state, 'summon', `${summoned.name} 부활!${gate === 25 ? ' 남은 부활 포켓몬을 처치할 때까지 칠색조는 무적이다!' : ''}`, { gate })
+        raidEvent(state, 'summon', `${summoned.name} 부활! 부활한 포켓몬을 처치할 때까지 칠색조는 무적이다!`, { gate })
       } else if (raid.bossId === 'lugia') {
         if (gate === 50) {
           boss.raidForm = 'dark'; boss.name = '다크루기아'
@@ -138,7 +149,7 @@ export function finishRaidDamageRoot(state, hooks = {}) {
         raidEvent(state, 'boss-mechanic', gate === 50 ? '다크루기아로 폼체인지했다!' : '변경할 수 없는 비가 내리기 시작했다!', { gate })
       }
     }
-    raid.pendingGates = []
+    raid.pendingGates = deferredGates
     return
   }
   for (const gate of raid.pendingGates ?? []) {
