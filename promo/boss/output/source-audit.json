@@ -1,0 +1,551 @@
+{
+  "provenance": "Actual shipped RaidScreen, BattleScreen and combat engine, with local legal level-50 party. No cloud account, production write, fabricated victory or reward. Later rounds are isolated staged starting points, disclosed in staging. UI commands and their damage/animations run through the actual engine. CDP timestamps preserve actual motion before encoding to 1920x1080 30 fps.",
+  "sourceGameCommit": "dc9f2813d8b8f66b2190cc6fbf07bf6c62ef1d8c",
+  "sourceWorkingTreeChanged": true,
+  "sourceGameFiles": [
+    {
+      "path": "src/RaidScreen.jsx",
+      "bytes": 7406,
+      "sha256": "f4cb6317190a0b1ab3cba329ab4a1740096b146eb760c4d3f03d3e3396804337"
+    },
+    {
+      "path": "src/main.jsx",
+      "bytes": 583,
+      "sha256": "b54800ffe61aaa81109028755ff3663c1309d86fcad2c4a2c445ed6f798f5498"
+    },
+    {
+      "path": "src/fixedGameViewport.js",
+      "bytes": 5559,
+      "sha256": "5ae50279ac0845e3439f33928e27182ff00af414be397d1e5d7869135b23d113"
+    },
+    {
+      "path": "src/fixedGameViewport.css",
+      "bytes": 1452,
+      "sha256": "7955aad80510fe9d0930de069bf190dffdb9ef4f2f81a8b754064c56f3497859"
+    },
+    {
+      "path": "src/gameTextScale.js",
+      "bytes": 958,
+      "sha256": "cab1b1dc975591afa832cbbf751afc89358cb9003696338f4d3efaed271caa17"
+    },
+    {
+      "path": "src/BattleScreen.jsx",
+      "bytes": 125495,
+      "sha256": "ce89bb9844b8ffdc09c457149bf11dc5573400a367d31bfb94220876725d8249"
+    },
+    {
+      "path": "src/RankedTeamRoster.jsx",
+      "bytes": 9215,
+      "sha256": "3ca3de83669327e3e96b483c5afaadbd318c8fa9b39dbcb110fc0a901136c910"
+    },
+    {
+      "path": "src/data/bossChallenge.js",
+      "bytes": 6832,
+      "sha256": "2ad4fd000fc62a4fda61fe55e7610733600d858ee1268ff7ee4a8534e7a99817"
+    },
+    {
+      "path": "src/data/bossChallengeLoadouts.js",
+      "bytes": 6635,
+      "sha256": "356d79ca1428318f519d7c229563d7ddd96db939c527bfefb7fd1e1ee4ea809b"
+    },
+    {
+      "path": "src/data/battleEngine.js",
+      "bytes": 588806,
+      "sha256": "d5c12e37338e08c186bbfb22894a3b64d848da72f03f539112a93102d6f2f043"
+    },
+    {
+      "path": "src/data/raidPolicy.js",
+      "bytes": 12097,
+      "sha256": "033435a5686e385f7bad52a944551bea33fa5b4b4ac0aa152f3123f9125a626f"
+    },
+    {
+      "path": "src/bossChallenge.css",
+      "bytes": 18388,
+      "sha256": "ddb46c755877f0855249fe9c64c69628d7e6df3fc1107cfd3929af4446fe6bcd"
+    },
+    {
+      "path": "src/styles.css",
+      "bytes": 51518,
+      "sha256": "0d28fc73da2357c3032111ca02923156ee77ccddda86d196d86dec0292a6345a"
+    },
+    {
+      "path": "src/battleGen5.css",
+      "bytes": 192771,
+      "sha256": "65593f7253d3395d9bf997259210f97edcb4365977eabe5cd6b4e4c332ab93f2"
+    },
+    {
+      "path": "src/battleGimmicks.css",
+      "bytes": 54991,
+      "sha256": "0cd249e2beb6ec980658b02bed2d82a48b049e277b6a56d2168bce2c1b360855"
+    },
+    {
+      "path": "src/moveAnimationDirector.css",
+      "bytes": 32793,
+      "sha256": "3bb5e92d498cee495aa19d66e10881f1c3463b28711c50abafc5e1d520044c42"
+    },
+    {
+      "path": "promo/boss/capture/entry.jsx",
+      "bytes": 1970,
+      "sha256": "b7de4198aceaccecbf5d30a4b33cb9dc360aabc75b4ddbfaaa487ada237268ed"
+    },
+    {
+      "path": "promo/boss/capture/capture.mjs",
+      "bytes": 15469,
+      "sha256": "78cf624df79b92ab9ab692855315003e5d85d97c6ac2a732c780ce58e9f80361"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "selection",
+      "usableDuration": 11.4,
+      "visibleImages": 9,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\selection.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 185,
+        "firstTimestamp": 1789830189.303195,
+        "lastTimestamp": 1789830200.651422,
+        "averageRenderedFps": 16.302106012460968,
+        "outputFps": 30
+      },
+      "visibleText": "배틀 모드\nBOSS CHALLENGE\n보스전\n출전 준비 완료\n6/6\nCURRENT BATTLE PARTY\n보스 공략 팀\n6/6\nTEAM\n1\n6 / 6\nTEAM\n2\n6 / 6\n01\n마기라스\nLv.50 · 바위 / 악\n먹다남은음식\n테라 바위\n02\n한카리아스\nLv.50 · 드래곤 / 땅\n도구 없음\n테라 드래곤\n03\n리자몽\nLv.50 · 불꽃 / 비행\n도구 없음\n테라 불꽃\n04\n루카리오\nLv.50 · 격투 / 강철\n도구 없음\n테라 격투\n05\n팬텀\nLv.50 · 고스트 / 독\n도구 없음\n테라 고스트\n06\n라프라스\nLv.50 · 물 / 얼음\n도구 없음\n테라 물\n6마리 출전 등록 완료\n팀 편성\nSELECT BOSS CHALLENGE\n도전할 보스를 선택하세요\n3 ROUNDS\nBOSS CHALLENGE\n뮤츠\n로켓단의 비밀 병기\n선택됨\nBOSS CHALLENGE\n칠색조\n되살아나는 전설\n선택\nBOSS CHALLENGE\n루기아\n폭풍 속 어둠의 수호자\n선택\nSELECTED BOSS\n뮤츠 · 3라운드 연속 배틀\n뮤츠에게 도전"
+    },
+    {
+      "id": "team",
+      "usableDuration": 10.4,
+      "visibleImages": 9,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\team.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 173,
+        "firstTimestamp": 1789830204.56718,
+        "lastTimestamp": 1789830214.923296,
+        "averageRenderedFps": 16.705104409522463,
+        "outputFps": 30
+      },
+      "visibleText": "배틀 모드\nBOSS CHALLENGE\n보스전\n출전 준비 완료\n6/6\nCURRENT BATTLE PARTY\n보스 공략 팀\n6/6\nTEAM\n1\n6 / 6\nTEAM\n2\n6 / 6\n01\n마기라스\nLv.50 · 바위 / 악\n먹다남은음식\n테라 바위\n02\n한카리아스\nLv.50 · 드래곤 / 땅\n도구 없음\n테라 드래곤\n03\n리자몽\nLv.50 · 불꽃 / 비행\n도구 없음\n테라 불꽃\n04\n루카리오\nLv.50 · 격투 / 강철\n도구 없음\n테라 격투\n05\n팬텀\nLv.50 · 고스트 / 독\n도구 없음\n테라 고스트\n06\n라프라스\nLv.50 · 물 / 얼음\n도구 없음\n테라 물\n6마리 출전 등록 완료\n팀 편성\nSELECT BOSS CHALLENGE\n도전할 보스를 선택하세요\n3 ROUNDS\nBOSS CHALLENGE\n뮤츠\n로켓단의 비밀 병기\n선택됨\nBOSS CHALLENGE\n칠색조\n되살아나는 전설\n선택\nBOSS CHALLENGE\n루기아\n폭풍 속 어둠의 수호자\n선택\nSELECTED BOSS\n뮤츠 · 3라운드 연속 배틀\n뮤츠에게 도전"
+    },
+    {
+      "id": "mewtwo",
+      "usableDuration": 14.4,
+      "visibleImages": 9,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\mewtwo.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 375,
+        "firstTimestamp": 1789830383.68927,
+        "lastTimestamp": 1789830398.458988,
+        "averageRenderedFps": 25.389787518821826,
+        "outputFps": 30
+      },
+      "visibleText": "TRAINER BATTLE\n뮤츠 보스전 · ROUND 1 / 3\nTURN\n1\n날씨\n모래바람 · 5T\n필드\n일반 필드\n배틀\n더블배틀\n기믹\n제한 없음\nAI\n전술 하드\n마기라스 VS 나옹\n나옹\nLv.50\n현재\n노말\nHP\n다이맥스 무스틈니\nMAX\nLv.50\n현재\n풀\nHP\n마기라스\nLv.50\n현재\n바위 / 악\n테라\n바위\nHP\n한카리아스\nLv.50\n현재\n드래곤 / 땅\n테라\n드래곤\nHP\nMAX\nGALAR PARTICLE SURGE\n다이맥스\n다이맥스 무스틈니\n배틀 로그\nTURN 1\n\n로사 / 로이이(가) 승부를 걸어왔다!\n\n맑음 · 일반 필드 · 더블배틀\n\n로사 / 로이은(는) 나옹, 무스틈니을(를) 내보냈다!\n\n마기라스, 한카리아스! 너희로 정했다!\n\n마기라스의 모래날림!\n\n모래날림의 효과로 날씨가 모래바람 상태가 되었다! (5턴)\n\n로사 / 로이의 무스틈니이(가) 다이맥스했다!\n\n▶\n다이맥스 무스틈니의 다이맥스이(가) 발동했다!\n\nFIGHT\n싸운다\nPOKÉMON\n포켓몬\nSTATUS\n전황\nGIVE UP\n기권"
+    },
+    {
+      "id": "giovanni",
+      "usableDuration": 11.4,
+      "visibleImages": 5,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\giovanni.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 266,
+        "firstTimestamp": 1789830421.334944,
+        "lastTimestamp": 1789830432.639375,
+        "averageRenderedFps": 23.53059617979585,
+        "outputFps": 30
+      },
+      "visibleText": "TRAINER BATTLE\n뮤츠 보스전 · ROUND 2 / 3\nTURN\n2\n날씨\n모래바람 · 4T\n필드\n일반 필드\n배틀\n싱글배틀\n기믹\n제한 없음\nAI\n전술 하드\n마기라스 VS 코뿌리\n코뿌리\nLv.50\n현재\n땅 / 바위\nHP\n비주기\n마기라스\nLv.50\n현재\n바위 / 악\n테라\n바위\nHP\n207 / 207\n배틀 로그\nTURN 2\n\n비주기이(가) 승부를 걸어왔다!\n\n맑음 · 일반 필드 · 싱글배틀\n\n비주기은(는) 니드킹을(를) 내보냈다!\n\n마기라스! 너희로 정했다!\n\n마기라스의 모래날림!\n\n모래날림의 효과로 날씨가 모래바람 상태가 되었다! (5턴)\n\n비주기은(는) 코뿌리을(를) 내보냈다!\n\n마기라스의 깨물어부수기!\n\n▶\n코뿌리의 방어 하락!\n\nFIGHT\n싸운다\nPOKÉMON\n포켓몬\nSTATUS\n전황\nGIVE UP\n기권"
+    },
+    {
+      "id": "finale",
+      "usableDuration": 13.4,
+      "visibleImages": 5,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\finale.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 298,
+        "firstTimestamp": 1789830454.191742,
+        "lastTimestamp": 1789830467.623348,
+        "averageRenderedFps": 22.186475600545503,
+        "outputFps": 30
+      },
+      "visibleText": "TRAINER BATTLE\n뮤츠 보스전 · ROUND 3 / 3\nTURN\n5\n날씨\n맑음\n필드\n일반 필드\n배틀\n싱글배틀\n기믹\n제한 없음\nAI\n전술 하드\n화강돌 VS 메가뮤츠Y\n메가뮤츠Y\nMEGA\nLv.50\n현재\n에스퍼\nBOSS\n뮤츠\n25%\n화강돌\nLv.50\n현재\n고스트 / 악\n테라\n고스트\nHP\n157 / 157\n배틀 로그\nTURN 5\n\n화강돌의 프레셔!\n\n화강돌의 악의파동!\n\n효과가 굉장했다!\n\n화강돌의 악의파동!\n\n효과가 굉장했다!\n\n화강돌의 도발!\n\n아머드 뮤츠은(는) 도발당해 변화 기술을 쓸 수 없다!\n\n아머드 뮤츠의 사이코브레이크!\n\n화강돌에게는 효과가 없는 것 같다…\n\n화강돌의 악의파동!\n\n효과가 굉장했다!\n\n메가뮤츠Y의 메가진화! 아머드 뮤츠에서 모습이 변했다!\n\n▶\n메가뮤츠Y(으)로 메가진화했다!\n\nFIGHT\n싸운다\nPOKÉMON\n포켓몬\nSTATUS\n전황\nGIVE UP\n기권"
+    },
+    {
+      "id": "hooh",
+      "usableDuration": 11.4,
+      "visibleImages": 5,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\hooh.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 257,
+        "firstTimestamp": 1789830497.302081,
+        "lastTimestamp": 1789830508.680722,
+        "averageRenderedFps": 22.58617724926344,
+        "outputFps": 30
+      },
+      "visibleText": "TRAINER BATTLE\n칠색조 보스전 · ROUND 3 / 3\nTURN\n4\n날씨\n맑음\n필드\n일반 필드\n배틀\n싱글배틀\n기믹\n제한 없음\nAI\n전술 하드\n화강돌 VS 칠색조\n칠색조\n무적\nLv.50\n현재\n불꽃 / 비행\nBOSS\n칠색조\n57%\n앤테이\nLv.50\n현재\n불꽃\nHP\n칠색조\n화강돌\nLv.50\n현재\n고스트 / 악\n테라\n고스트\nHP\n1 / 157\n배틀 로그\nTURN 4\n\n칠색조의 체력·공격·방어·특공·특방·스피드가 1단계 올랐다!\n\n칠색조은(는) 먹다남은음식으로 HP를 17 회복했다.\n\n화강돌의 도발!\n\n칠색조은(는) 도발당해 변화 기술을 쓸 수 없다!\n\n칠색조은(는) 먹다남은음식으로 HP를 17 회복했다.\n\n칠색조의 브레이브버드!\n\n화강돌은(는) 기합의띠로 버텼다!\n\nHP 구간 보호로 초과 피해가 차단되었다.\n\n칠색조은(는) 반동으로 1의 데미지를 입었다.\n\n앤테이 부활! 부활한 포켓몬을 처치할 때까지 칠색조는 무적이다!\n\n화강돌의 악의파동!\n\n부활한 전설의 포켓몬을 쓰러뜨려야 칠색조에게 피해를 줄 수 있다.\n\n▶\n칠색조은(는) 먹다남은음식으로 HP를 17 회복했다.\n\nFIGHT\n싸운다\nPOKÉMON\n포켓몬\nSTATUS\n전황\nGIVE UP\n기권"
+    },
+    {
+      "id": "lugia",
+      "usableDuration": 11.4,
+      "visibleImages": 5,
+      "allVisibleImagesLoaded": true,
+      "sourceVideo": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\generated\\footage\\lugia.mp4",
+      "recommendedTrimOffset": 0.2,
+      "recording": {
+        "method": "Chromium CDP Page.startScreencast, every rendered frame, timestamp-preserving CFR conversion",
+        "capturedFrames": 254,
+        "firstTimestamp": 1789830649.531168,
+        "lastTimestamp": 1789830660.825821,
+        "averageRenderedFps": 22.48851747595392,
+        "outputFps": 30
+      },
+      "visibleText": "TRAINER BATTLE\n루기아 보스전 · ROUND 3 / 3\nTURN\n2\n날씨\n맑음\n필드\n일반 필드\n배틀\n싱글배틀\n기믹\n제한 없음\nAI\n전술 하드\n화강돌 VS 루기아\n루기아\nLv.50\n현재\n에스퍼 / 비행\nBOSS\n루기아\n89%\n화강돌\nLv.50\n현재\n고스트 / 악\n테라\n고스트\nHP\n148 / 157\n맹독\n배틀 로그\nTURN 2\n\n루기아이(가) 승부를 걸어왔다!\n\n맑음 · 일반 필드 · 싱글배틀\n\n루기아은(는) 루기아을(를) 내보냈다!\n\n화강돌! 너희로 정했다!\n\n화강돌의 프레셔!\n\n루기아의 맹독!\n\n화강돌은(는) 맹독 상태가 되었다!\n\n화강돌의 악의파동!\n\n효과가 굉장했다!\n\n루기아은(는) 먹다남은음식으로 HP를 11 회복했다.\n\n▶\n화강돌은(는) 맹독의 데미지를 입었다.\n\nFIGHT\n싸운다\nPOKÉMON\n포켓몬\nSTATUS\n전황\nGIVE UP\n기권"
+    }
+  ],
+  "captureErrors": [],
+  "imageVerification": {
+    "allVisibleImagesLoaded": true,
+    "countsRecorded": true
+  },
+  "staging": [
+    {
+      "bossId": "mewtwo",
+      "round": 2,
+      "method": "Call actual RaidScreen.startRound with a normal legal six-Pokemon party. Round starting point staged for filming; earlier victories and carryover HP are not claimed.",
+      "alternateLead": null
+    },
+    {
+      "bossId": "mewtwo",
+      "round": 3,
+      "method": "Call actual RaidScreen.startRound with a normal legal six-Pokemon party. Round starting point staged for filming; earlier victories and carryover HP are not claimed.",
+      "alternateLead": "Level-50 Spiritomb with legal Dark Pulse, Taunt, Will-O-Wisp, Protect and Focus Sash"
+    },
+    {
+      "bossId": "mewtwo",
+      "stagedGates": [
+        75,
+        50
+      ],
+      "nextGate": 25,
+      "turn": 4,
+      "party": [
+        {
+          "name": "화강돌",
+          "hp": 157,
+          "maxHp": 157
+        },
+        {
+          "name": "한카리아스",
+          "hp": 183,
+          "maxHp": 183
+        },
+        {
+          "name": "리자몽",
+          "hp": 153,
+          "maxHp": 153
+        },
+        {
+          "name": "루카리오",
+          "hp": 145,
+          "maxHp": 145
+        },
+        {
+          "name": "팬텀",
+          "hp": 135,
+          "maxHp": 135
+        },
+        {
+          "name": "라프라스",
+          "hp": 237,
+          "maxHp": 237
+        }
+      ],
+      "boss": {
+        "name": "아머드 뮤츠",
+        "hp": 69,
+        "maxHp": 272
+      },
+      "method": "Transparent filming fixture: boss HP placed one point above earlier gates; real battle engine legal Dark Pulse (with no opponent action offcamera) establishes prior forms, then legal Taunt establishes status. Next threshold HP staged one point above gate. The recorded turn uses ordinary game UI and normal opponent AI; no fabricated win or reward."
+    },
+    {
+      "bossId": "hooh",
+      "round": 3,
+      "method": "Call actual RaidScreen.startRound with a normal legal six-Pokemon party. Round starting point staged for filming; earlier victories and carryover HP are not claimed.",
+      "alternateLead": "Level-50 Spiritomb with legal Dark Pulse, Taunt, Will-O-Wisp, Protect and Focus Sash"
+    },
+    {
+      "bossId": "hooh",
+      "stagedGates": [
+        75
+      ],
+      "nextGate": 50,
+      "turn": 3,
+      "party": [
+        {
+          "name": "화강돌",
+          "hp": 157,
+          "maxHp": 157
+        },
+        {
+          "name": "한카리아스",
+          "hp": 183,
+          "maxHp": 183
+        },
+        {
+          "name": "리자몽",
+          "hp": 153,
+          "maxHp": 153
+        },
+        {
+          "name": "루카리오",
+          "hp": 145,
+          "maxHp": 145
+        },
+        {
+          "name": "팬텀",
+          "hp": 135,
+          "maxHp": 135
+        },
+        {
+          "name": "라프라스",
+          "hp": 237,
+          "maxHp": 237
+        }
+      ],
+      "boss": {
+        "name": "칠색조",
+        "hp": 137,
+        "maxHp": 272
+      },
+      "method": "Transparent filming fixture: boss HP placed one point above earlier gates; real battle engine legal Dark Pulse (with no opponent action offcamera) establishes prior forms, then legal Taunt establishes status. Next threshold HP staged one point above gate. The recorded turn uses ordinary game UI and normal opponent AI; no fabricated win or reward."
+    },
+    {
+      "bossId": "lugia",
+      "round": 3,
+      "method": "Call actual RaidScreen.startRound with a normal legal six-Pokemon party. Round starting point staged for filming; earlier victories and carryover HP are not claimed.",
+      "alternateLead": "Level-50 Spiritomb with legal Dark Pulse, Taunt, Will-O-Wisp, Protect and Focus Sash"
+    }
+  ],
+  "sourceGameFilesUnchangedDuringCapture": true,
+  "recordedActions": [
+    {
+      "phase": "capture mewtwo",
+      "turn": 1,
+      "slot": 0,
+      "moveIndex": 0,
+      "time": 1789830386063
+    },
+    {
+      "phase": "capture mewtwo",
+      "turn": 1,
+      "slot": 1,
+      "moveIndex": 0,
+      "time": 1789830387237
+    },
+    {
+      "phase": "capture giovanni",
+      "turn": 1,
+      "slot": 0,
+      "moveIndex": 0,
+      "time": 1789830423715
+    },
+    {
+      "phase": "capture finale",
+      "turn": 4,
+      "slot": 0,
+      "moveIndex": 0,
+      "time": 1789830455906
+    },
+    {
+      "phase": "capture hooh",
+      "turn": 3,
+      "slot": 0,
+      "moveIndex": 0,
+      "time": 1789830499607
+    },
+    {
+      "phase": "capture lugia",
+      "turn": 1,
+      "slot": 0,
+      "moveIndex": 0,
+      "time": 1789830652007
+    }
+  ],
+  "music": {
+    "title": "Face The Champion!",
+    "creator": "Spring Spring",
+    "attribution": "Produced by Julie Damsgaard / Spring Spring / Spring Enterprises",
+    "sourceUrl": "https://opengameart.org/content/face-the-champion",
+    "creatorUrl": "https://spring-enterprises.neocities.org",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "source": "public/assets/audio/battle/battle-theme.ogg",
+    "sourceSha256": "5f9e9bbea3a3ce9023e13c148808787264365e673e99cbd7fc2addccc71f6540",
+    "output": "promo/boss/generated/music.wav",
+    "outputSha256": "ad7f38133023eb8cb63f8b5b58bd6a480a7771ebfa098f92f3bbeec4c3dc69c9",
+    "sourceStartSeconds": 0,
+    "durationSeconds": 95,
+    "fadeInSeconds": 0.2,
+    "fadeOutSeconds": 1.6,
+    "sampleRate": 48000,
+    "channels": 2,
+    "targetIntegratedLUFS": -18,
+    "measuredIntegratedLUFS": -18,
+    "measuredTruePeakDbTP": -7.07,
+    "soundEffects": [
+      {
+        "name": "whoosh",
+        "file": "promo/boss/generated/whoosh.wav",
+        "durationSeconds": 0.42,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      },
+      {
+        "name": "impact",
+        "file": "promo/boss/generated/impact.wav",
+        "durationSeconds": 0.42,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      },
+      {
+        "name": "chime",
+        "file": "promo/boss/generated/chime.wav",
+        "durationSeconds": 0.85,
+        "sampleRate": 48000,
+        "channels": 2,
+        "peakDbFS": -14,
+        "source": "Project-generated procedural synthesis; no external samples or sound fonts."
+      }
+    ],
+    "modifications": "Excerpted from the existing web-game BGM, faded in/out, normalized, and resampled. Final trailer may mix game effects over this music."
+  },
+  "timeline": [
+    {
+      "id": "intro",
+      "kind": "motion",
+      "scene": "intro",
+      "duration": 5,
+      "title": "POKÉMON CHAMPIONS ARENA",
+      "transition": "fade"
+    },
+    {
+      "id": "boss",
+      "kind": "motion",
+      "scene": "boss",
+      "duration": 7,
+      "title": "보스전",
+      "description": "세 개의 전설. 세 번의 승부.",
+      "transition": "fade"
+    },
+    {
+      "id": "selection",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "뮤츠 · 칠색조 · 루기아",
+        "도전할 전설을 선택하세요"
+      ],
+      "title": "뮤츠, 칠색조, 루기아. 도전할 보스를 선택하세요.",
+      "accent": "#c4a8ff",
+      "transition": "smoothup"
+    },
+    {
+      "id": "team",
+      "kind": "footage",
+      "duration": 9,
+      "lines": [
+        "함께할 6마리",
+        "당신의 팀으로 도전"
+      ],
+      "title": "보유 포켓몬 6마리로 팀을 준비하고 보스전에 도전하세요.",
+      "accent": "#8eeaff",
+      "transition": "fade"
+    },
+    {
+      "id": "mewtwo",
+      "kind": "footage",
+      "duration": 13,
+      "lines": [
+        "첫 관문은 더블배틀",
+        "로사와 로이를 넘어"
+      ],
+      "title": "뮤츠에 도전하는 첫 관문. 로사와 로이를 상대하는 더블배틀.",
+      "accent": "#eeb4ff",
+      "transition": "fade"
+    },
+    {
+      "id": "giovanni",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "두 번째 관문",
+        "비주기와의 정면승부"
+      ],
+      "title": "두 번째 라운드에서는 비주기와 싱글배틀을 펼칩니다.",
+      "accent": "#ffda88",
+      "transition": "smoothleft"
+    },
+    {
+      "id": "finale",
+      "kind": "footage",
+      "duration": 12,
+      "lines": [
+        "최후의 관문",
+        "메가진화의 힘에 맞서라"
+      ],
+      "title": "아머드 뮤츠를 넘어 메가뮤츠로. 변화하는 보스와 맞서세요.",
+      "accent": "#d3b3ff",
+      "transition": "fade"
+    },
+    {
+      "id": "hooh",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "되살아나는 전설",
+        "칠색조의 무적을 뚫어라"
+      ],
+      "title": "칠색조가 부활시킨 전설의 포켓몬을 쓰러뜨려 무적을 해제하세요.",
+      "accent": "#ffd37e",
+      "transition": "fade"
+    },
+    {
+      "id": "lugia",
+      "kind": "footage",
+      "duration": 10,
+      "lines": [
+        "폭풍 속 어둠의 수호자",
+        "루기아와의 최종 결전"
+      ],
+      "title": "파이어, 프리저, 썬더를 넘어 루기아에게. 당신의 팀으로 최종전에 도전하세요.",
+      "accent": "#9deeff",
+      "transition": "fade"
+    },
+    {
+      "id": "outro",
+      "kind": "motion",
+      "scene": "outro",
+      "duration": 9,
+      "title": "전설에 도전하세요",
+      "description": "pokemon-champions-area-web.co.kr",
+      "transition": "fade"
+    }
+  ]
+}

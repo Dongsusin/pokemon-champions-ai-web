@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-09-19T15:13:52.710Z",
+  "passed": true,
+  "scope": "Rendered motion samples and seven rendered footage scene samples, plus end-of-take battle frames. Independent factual and visual review; full video playback and audio measurement are recorded separately.",
+  "reviewedScenes": [
+    "intro",
+    "boss",
+    "selection",
+    "team",
+    "mewtwo",
+    "giovanni",
+    "finale",
+    "hooh",
+    "lugia",
+    "outro"
+  ],
+  "checks": {
+    "koreanCopyWithinFrame": true,
+    "logoAndUrlReadable": true,
+    "visibleSpritesLoadedInReviewedFrames": true,
+    "selectionTextLegible": true,
+    "megaMewtwoYVisible": true,
+    "hoohRevivedEnteiAndShieldVisible": true,
+    "lugiaNormalSpriteVisible": true,
+    "noVictoryOrRewardClaim": true
+  },
+  "notes": [
+    "The filming harness uses the real fixed game viewport with the supported text scale 1.5.",
+    "Later-round starts and Mewtwo/Ho-Oh HP thresholds are staged and disclosed in source-audit.json.",
+    "The ordinary Lugia final battle is used; the trailer makes no claim that dark-form transformation is shown."
+  ],
+  "limitations": [
+    "Frame samples cannot establish every intermediate frame or subjective audio quality. See validation.json and playback-validation.json for automated checks."
+  ],
+  "finalContactSheetReviewed": true,
+  "finalVideoSha256": "85628c6d81166df0e994c285327c35879dba9cd815bde41aee4a4c21b41e4210"
+}

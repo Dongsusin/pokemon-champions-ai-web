@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2026-09-19T15:15:43.278Z",
+  "expectedDuration": 95,
+  "metadata": {
+    "duration": 95,
+    "width": 1920,
+    "height": 1080,
+    "chapters": [
+      0,
+      5,
+      12,
+      22,
+      31,
+      44,
+      54,
+      66,
+      76,
+      86
+    ]
+  },
+  "playback": {
+    "waiting": [
+      0
+    ],
+    "stalls": [],
+    "errors": [],
+    "ended": true,
+    "startedAt": 711.6999999997206,
+    "endedAt": 96368.69999999972,
+    "currentTime": 95,
+    "quality": {
+      "totalVideoFrames": 2850,
+      "droppedVideoFrames": 4,
+      "corruptedVideoFrames": 0
+    }
+  },
+  "chapterChecks": [
+    {
+      "requested": 12,
+      "actual": 12.015557
+    },
+    {
+      "requested": 31,
+      "actual": 31.009471
+    },
+    {
+      "requested": 44,
+      "actual": 44.008137
+    },
+    {
+      "requested": 54,
+      "actual": 54.005652
+    },
+    {
+      "requested": 66,
+      "actual": 66.017868
+    },
+    {
+      "requested": 76,
+      "actual": 76.00707
+    },
+    {
+      "requested": 86,
+      "actual": 86.00328
+    }
+  ],
+  "cancelledMediaRequests": [
+    "http://127.0.0.1:5186/promo/boss/output/champions-arena-boss-battle-1080p.mp4: net::ERR_ABORTED",
+    "http://127.0.0.1:5186/promo/boss/output/champions-arena-boss-battle-1080p.mp4: net::ERR_ABORTED",
+    "http://127.0.0.1:5186/promo/boss/output/champions-arena-boss-battle-1080p.mp4: net::ERR_ABORTED",
+    "http://127.0.0.1:5186/promo/boss/output/champions-arena-boss-battle-1080p.mp4: net::ERR_ABORTED"
+  ],
+  "errors": [],
+  "passed": true,
+  "scope": "Complete muted video playback and chapter controls in an isolated Chromium browser. Human visual review is recorded separately; this does not claim subjective listening."
+}

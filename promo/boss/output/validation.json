@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-09-19T15:14:04.962Z",
+  "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\output\\champions-arena-boss-battle-1080p.mp4",
+  "passed": true,
+  "failures": [],
+  "warnings": [
+    "2 still segment(s) exceed 2.5 seconds. Review them; stable titles and readable data cards are allowed."
+  ],
+  "review": {
+    "required": true,
+    "completed": true,
+    "scope": "Final contact sheet plus independent scene-sample and end-of-take visual/content review. Full Chromium playback is recorded separately.",
+    "evidence": "visual-review.json",
+    "stillSegmentAssessment": "17.37–20.37s is the held boss-selection screen; 26.77–29.83s is the held team-information screen. Both are intentional reading time, with continuous BGM."
+  },
+  "embeddedSubtitleTracks": 0,
+  "durationSeconds": 95,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "pixelFormat": "yuv420p",
+    "decodedFrames": 2850,
+    "frameDurationSeconds": 95
+  },
+  "audio": {
+    "codec": "aac",
+    "sampleRate": 48000,
+    "channelLayout": "stereo",
+    "integratedLUFS": -16.07,
+    "truePeakDbTP": -5.1,
+    "loudnessRangeLU": 7
+  },
+  "decode": {
+    "passed": true,
+    "errors": ""
+  },
+  "scan": {
+    "blackSegments": [],
+    "freezeSegments": [
+      {
+        "start": 17.3667,
+        "end": 20.3667,
+        "duration": 3
+      },
+      {
+        "start": 26.7667,
+        "end": 29.8333,
+        "duration": 3.066600000000001
+      }
+    ],
+    "silenceSegments": []
+  },
+  "contactSheet": {
+    "file": "C:\\Users\\pdwea\\Develop\\pokemon-champions-ai-web\\promo\\boss\\output\\contact-sheet.jpg",
+    "rows": 4,
+    "columns": 4,
+    "approximateSampleSeconds": [
+      2.969,
+      8.906,
+      14.844,
+      20.781,
+      26.719,
+      32.656,
+      38.594,
+      44.531,
+      50.469,
+      56.406,
+      62.344,
+      68.281,
+      74.219,
+      80.156,
+      86.094,
+      92.031
+    ]
+  },
+  "bytes": 34406401,
+  "sha256": "85628c6d81166df0e994c285327c35879dba9cd815bde41aee4a4c21b41e4210"
+}

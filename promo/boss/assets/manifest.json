@@ -1,0 +1,23 @@
+[
+  {
+    "id": 150,
+    "name": "뮤츠",
+    "file": "pokemon-150.png",
+    "url": "https://play.pokemonshowdown.com/sprites/gen5/mewtwo.png",
+    "sha256": "c2256a90c93116d04fab63db3c4e1158be41bfcfba57bec1206fe6c42d9970b3"
+  },
+  {
+    "id": 250,
+    "name": "칠색조",
+    "file": "pokemon-250.png",
+    "url": "https://play.pokemonshowdown.com/sprites/gen5/hooh.png",
+    "sha256": "5c3989cc0cdee4d6c6c6ad908eb4e8fb83f070b4926ffe5343949139c91ef452"
+  },
+  {
+    "id": 249,
+    "name": "루기아",
+    "file": "pokemon-249.png",
+    "url": "https://play.pokemonshowdown.com/sprites/gen5/lugia.png",
+    "sha256": "9cd4b76b29de20956f309711d4ddea1f5a513d0bd52413eb82f01df5777b4fe0"
+  }
+]

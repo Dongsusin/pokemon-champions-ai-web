@@ -1,0 +1,78 @@
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\pdwea\Develop\pokemon-champions-ai-web\promo\boss\output\champions-arena-boss-battle-1080p.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    title           : Pokémon Champions Arena — Boss Battle
+    encoder         : Lavf60.16.100
+    comment         : Unofficial fan-made game. Actual game components and locally played matches; Scenes filmed in isolated local game; later-round starting states staged for capture. See accompanying CREDITS.md for music attribution.
+  Duration: 00:01:35.00, start: 0.000000, bitrate: 2897 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt470bg/unknown/unknown, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 2630 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      vendor_id       : [0][0][0][0]
+      encoder         : Lavc60.31.102 libx264
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 258 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+      vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:0 -> #0:0 (h264 (native) -> wrapped_avframe (native))
+  Stream #0:1 -> #0:1 (aac (native) -> pcm_s16le (native))
+Output #0, null, to 'NUL':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    title           : Pokémon Champions Arena — Boss Battle
+    comment         : Unofficial fan-made game. Actual game components and locally played matches; Scenes filmed in isolated local game; later-round starting states staged for capture. See accompanying CREDITS.md for music attribution.
+    encoder         : Lavf60.16.100
+  Stream #0:0(und): Video: wrapped_avframe, yuv420p(tv, bt470bg/unknown/unknown, progressive), 480x270 [SAR 1:1 DAR 16:9], q=2-31, 200 kb/s, 30 fps, 30 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      vendor_id       : [0][0][0][0]
+      encoder         : Lavc60.31.102 wrapped_avframe
+  Stream #0:1(und): Audio: pcm_s16le, 192000 Hz, stereo, s16, 6144 kb/s (default)
+    Metadata:
+      handler_name    : SoundHandler
+      vendor_id       : [0][0][0][0]
+      encoder         : Lavc60.31.102 pcm_s16le
+frame=   89 fps=0.0 q=-0.0 size=N/A time=00:00:02.93 bitrate=N/A speed=9.55x
+frame=  200 fps=0.0 q=-0.0 size=N/A time=00:00:06.63 bitrate=N/A speed=8.17x
+frame=  336 fps=256 q=-0.0 size=N/A time=00:00:11.16 bitrate=N/A speed=8.51x
+frame=  509 fps=280 q=-0.0 size=N/A time=00:00:16.93 bitrate=N/A speed=9.33x
+[freezedetect @ 0000012a1af7b800] lavfi.freezedetect.freeze_start: 17.3667
+[freezedetect @ 0000012a1af7b800] lavfi.freezedetect.freeze_duration: 3
+[freezedetect @ 0000012a1af7b800] lavfi.freezedetect.freeze_end: 20.3667
+frame=  695 fps=300 q=-0.0 size=N/A time=00:00:23.16 bitrate=N/A speed=  10x
+frame=  868 fps=289 q=-0.0 size=N/A time=00:00:28.90 bitrate=N/A speed=9.61x
+[freezedetect @ 0000012a1af7b800] lavfi.freezedetect.freeze_start: 26.7667
+[freezedetect @ 0000012a1af7b800] lavfi.freezedetect.freeze_duration: 3.06667
+[freezedetect @ 0000012a1af7b800] lavfi.freezedetect.freeze_end: 29.8333
+frame= 1010 fps=288 q=-0.0 size=N/A time=00:00:33.66 bitrate=N/A speed=9.59x
+frame= 1172 fps=292 q=-0.0 size=N/A time=00:00:39.03 bitrate=N/A speed=9.73x
+frame= 1329 fps=295 q=-0.0 size=N/A time=00:00:44.26 bitrate=N/A speed=9.81x
+frame= 1490 fps=297 q=-0.0 size=N/A time=00:00:49.66 bitrate=N/A speed=9.91x
+frame= 1625 fps=295 q=-0.0 size=N/A time=00:00:54.13 bitrate=N/A speed=9.81x
+frame= 1772 fps=295 q=-0.0 size=N/A time=00:00:59.03 bitrate=N/A speed=9.81x
+frame= 1913 fps=293 q=-0.0 size=N/A time=00:01:03.73 bitrate=N/A speed=9.77x
+frame= 2062 fps=294 q=-0.0 size=N/A time=00:01:08.70 bitrate=N/A speed=9.78x
+frame= 2205 fps=293 q=-0.0 size=N/A time=00:01:13.46 bitrate=N/A speed=9.77x
+frame= 2352 fps=293 q=-0.0 size=N/A time=00:01:18.36 bitrate=N/A speed=9.76x
+frame= 2515 fps=295 q=-0.0 size=N/A time=00:01:23.80 bitrate=N/A speed=9.83x
+frame= 2678 fps=297 q=-0.0 size=N/A time=00:01:29.23 bitrate=N/A speed=9.88x
+[out#0/null @ 0000012a1ae53440] video:1336kB audio:71264kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+frame= 2850 fps=299 q=-0.0 Lsize=N/A time=00:01:34.96 bitrate=N/A speed=9.97x
+[Parsed_loudnorm_1 @ 0000012a1a526ac0]
+{
+	"input_i" : "-16.07",
+	"input_tp" : "-5.10",
+	"input_lra" : "7.00",
+	"input_thresh" : "-26.17",
+	"output_i" : "-13.99",
+	"output_tp" : "-1.50",
+	"output_lra" : "2.80",
+	"output_thresh" : "-24.01",
+	"normalization_type" : "dynamic",
+	"target_offset" : "-2.01"
+}

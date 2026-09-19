@@ -1,0 +1,116 @@
+{
+  "output": "promo/boss/output/champions-arena-boss-battle-1080p.mp4",
+  "duration": 95,
+  "fps": 30,
+  "sourceHashes": {
+    "intro": "58d056a367da0bf82da2dd501c47724541f2dcf3852fd7c5d44e0dddbb9a7f1b",
+    "boss": "2d31f13b3f502af546572553b5de24d93b32bd23ca2067616d679ab734cc9207",
+    "selection": "0ffb5d35897082e9a370290b6c60ab053526fcd4f279e402c6759da9802aa0f1",
+    "team": "7ec2e3507cd0a456674429dcb3da3bcd5e37f1ca99747075c62874e061e8d052",
+    "mewtwo": "9951d519a21816a0b4d02b364946d8e456b0d4d0ad84ae19b623fa8f2c1de26f",
+    "giovanni": "ca447f8f991875418201df357161bdfcef31a1946f805b08744f1262e7de7ac4",
+    "finale": "31e92472bfd6f4eff874d06b76a798b48e9ace0560427efc126d961132e7f557",
+    "hooh": "2acca7c37e54656110ab9423094a2d1d841882462ce07dd213ca867c635976dc",
+    "lugia": "1aa05eb9192aa9926c5a366a0462918aa2a94ac37b0899e1e1c578be82abbf04",
+    "outro": "6808e26217de3a37eff5016f5f47fc557104cbda8181f008eb79c9e5bfbe4ef2"
+  },
+  "cues": [
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 4.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/impact.wav",
+      "at": 5.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 11.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 21.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 30.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/impact.wav",
+      "at": 31.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 43.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 53.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/impact.wav",
+      "at": 54.5,
+      "volume": 0.35
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 65.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/chime.wav",
+      "at": 67.1,
+      "volume": 0.5
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 75.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/whoosh.wav",
+      "at": 85.92,
+      "volume": 0.4
+    },
+    {
+      "file": "promo/boss/generated/chime.wav",
+      "at": 87.1,
+      "volume": 0.5
+    }
+  ],
+  "audioMeasuredBeforeMastering": {
+    "input_i": "-17.07",
+    "input_tp": "-6.16",
+    "input_lra": "7.10",
+    "input_thresh": "-27.17",
+    "output_i": "-14.01",
+    "output_tp": "-2.50",
+    "output_lra": "2.80",
+    "output_thresh": "-24.03",
+    "normalization_type": "dynamic",
+    "target_offset": "-1.99"
+  },
+  "audioMeasuredAfterEncoding": {
+    "input_i": "-16.07",
+    "input_tp": "-5.10",
+    "input_lra": "7.00",
+    "input_thresh": "-26.17",
+    "output_i": "-14.00",
+    "output_tp": "-2.50",
+    "output_lra": "2.80",
+    "output_thresh": "-24.02",
+    "normalization_type": "dynamic",
+    "target_offset": "-2.00"
+  },
+  "audioEncoder": "aac-fast-256k",
+  "sha256": "85628c6d81166df0e994c285327c35879dba9cd815bde41aee4a4c21b41e4210",
+  "bytes": 34406401
+}
