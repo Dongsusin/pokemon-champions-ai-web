@@ -58,7 +58,7 @@ async function readPayload(request) {
   return payload
 }
 
-export function createRaidHttpHandler({ service, authenticate, enabled = false, unavailable = false, allowLocalOrigins = false, now = Date.now } = {}) {
+export function createRaidHttpHandler({ service, authenticate, enabled = false, unavailable = false, allowLocalOrigins = false, legacyMatching = true, now = Date.now } = {}) {
   const buckets = new Map()
   function limit(uid, mutation) {
     const timestamp = now()
@@ -104,6 +104,9 @@ export function createRaidHttpHandler({ service, authenticate, enabled = false, 
           }
         : await readPayload(request)
       if (request.method === 'GET' && !['catalog', 'rooms', 'raidList', 'status'].includes(payload.action)) throw new RaidError('METHOD_NOT_ALLOWED', '상태 변경은 POST 요청만 허용됩니다.', 405)
+      if (!legacyMatching && ['rooms', 'roomCreate', 'roomJoin', 'roomReady', 'roomStart', 'roomHeartbeat'].includes(payload.action)) {
+        throw new RaidError('MATCHING_RETIRED', '보스전 매칭이 종료되었습니다. 6마리의 팀으로 솔로 보스전에 도전해주세요.', 410)
+      }
       let identity
       try {
         identity = await authenticate(request, bearer[1], { freshNickname: ['roomCreate', 'roomJoin'].includes(payload.action) })
@@ -167,7 +170,7 @@ export async function handleProductionRaidRequest(request) {
       const { rankedStore: store, accountStore, guestRegistry, firestore, authenticate } = services
       const resolvePokemon = accountStore ? createAccountRaidPokemonResolver(accountStore) : createFirebaseRaidPokemonResolver(firestore)
       const service = createRaidService({ store, engine, guestRegistry, resolvePokemon })
-      return createRaidHttpHandler({ enabled: true, service, authenticate })
+      return createRaidHttpHandler({ enabled: true, service, authenticate, legacyMatching: false })
     })().catch(error => {
       logFailure('initialization', error)
       productionHandler = null

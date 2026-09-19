@@ -5411,7 +5411,7 @@ function changeBattleForm(state, pokemon, targetFormOrSlug, sourceName, options 
     moves: pokemon.moves.map((move) => move.name),
   })
   const nextStats = statObject(transformed)
-  const nextBaseMaxHp = Math.max(
+  const nextBaseMaxHp = options.maxHp ?? Math.max(
     1,
     Math.floor(nextStats.hp * (pokemon.difficultyHpMultiplier ?? 1)),
   )
@@ -6206,7 +6206,7 @@ function encoredMoveIndex(pokemon, gimmick = null) {
 // Selection restrictions are separate from charge/recharge turn commitments:
 // Encore, Disable and Choice items restrict moves but never prohibit switching.
 export function getBattleMoveSelectionState(state, sideId = 'player', moveIndex = 0, activeSlot = 0, gimmick = null) {
-  if (state?.raid) {
+  if (state?.raid && !state.raid.campaign) {
     const move = getActivePokemon(state, sideId, activeSlot)?.moves?.[moveIndex]
     if (['batonpass', 'teleport', 'chillyreception', 'shedtail', 'revivalblessing', 'healingwish', 'lunardance'].includes(move?.id)) return { disabled: true, reason: '협동 보스전에는 교대할 대기 포켓몬이 없습니다.' }
   }
@@ -7250,7 +7250,7 @@ function applyBatonPassSnapshot(pokemon, snapshot) {
 }
 
 function requestBattleSwitch(state, sideId, actorSlot, details, timeline = null) {
-  if (state.raid) return false
+  if (state.raid && !state.raid.campaign) return false
   const actor = getActivePokemon(state, sideId, actorSlot)
   if (!actor || actor.hp <= 0 || actor.commanding || actor.commandedByBattleId
     || details.kind !== 'revival' && availableBenchIndexes(getSide(state, sideId)).length === 0) return false
@@ -13150,6 +13150,8 @@ function continueBattleTurn(nextState, random, timeline) {
     resolvePendingEjectPacks(nextState, timeline, actionOrder)
     finishRaidDamageRoot(nextState, {
       onSummon: (slot) => { const summoned = getActivePokemon(nextState, 'opponent', slot); activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, summoned) },
+      onMega: (boss, form) => changeBattleForm(nextState, boss, form, '메가진화', { maxHp: boss.maxHp }),
+      onWeather: () => refreshEnvironmentDependentAbilities(nextState, 'weather'),
       onPurge: () => { updateMagicRoomSuppression(nextState, false); refreshEnvironmentDependentAbilities(nextState, 'weather'); refreshEnvironmentDependentAbilities(nextState, 'terrain') },
     })
     if (nextState.raid && nextState.raid.firedMechanics.length !== raidMechanicsBefore) {
@@ -13188,6 +13190,8 @@ function continueBattleTurn(nextState, random, timeline) {
     runResidualEffects(nextState, timeline, random)
     finishRaidDamageRoot(nextState, {
       onSummon: (slot) => { activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, getActivePokemon(nextState, 'opponent', slot)) },
+      onMega: (boss, form) => changeBattleForm(nextState, boss, form, '메가진화', { maxHp: boss.maxHp }),
+      onWeather: () => refreshEnvironmentDependentAbilities(nextState, 'weather'),
       onPurge: () => { updateMagicRoomSuppression(nextState, false); refreshEnvironmentDependentAbilities(nextState, 'weather'); refreshEnvironmentDependentAbilities(nextState, 'terrain') },
     })
     advanceSideConditionTimers(nextState)

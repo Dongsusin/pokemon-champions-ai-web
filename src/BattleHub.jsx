@@ -60,9 +60,9 @@ export default function BattleHub({ user, onBack, onSelectAi, onSelectRanked, on
       art: [{ gender: 'male' }, { pokemon: 25 }, { gender: 'female' }],
     },
     ...(onSelectRaid ? [{
-      id: 'raid', Icon: Crown, label: 'CO-OP BOSS RAID', title: '협동 보스전', subtitle: '전설에 맞서는 하나의 팀',
-      description: '각자 한 마리의 파트너를 데리고 힘을 모으세요. 전초전부터 본체전까지, 함께 전설의 포켓몬에 도전하세요.',
-      facts: [['협동 인원', '1~3명'], ['출전 포켓몬', '각자 1마리'], ['전설의 보스', '뮤츠 · 칠색조 · 루기아']],
+      id: 'raid', Icon: Crown, label: 'BOSS CHALLENGE', title: '보스전', subtitle: '6마리의 팀으로 전설에 도전',
+      description: '로켓단과 전설의 포켓몬을 넘어, 3라운드 보스전을 돌파하세요.',
+      facts: [['라운드', '총 3라운드'], ['출전 포켓몬', '내 포켓몬 6마리'], ['전설의 보스', '뮤츠 · 칠색조 · 루기아']],
       action: '보스전에 도전', onSelect: onSelectRaid, background: 'psychic', visualLabel: 'TOGETHER AGAINST LEGENDS',
       art: [{ pokemon: 249 }, { pokemon: 150 }, { pokemon: 250 }],
     }] : []),

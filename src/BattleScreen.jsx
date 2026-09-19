@@ -1977,11 +1977,12 @@ function BattleScreen({
   onOpenSettings,
   onResolved,
   battleRewards = null,
+  initialBattle = null,
   onComplete,
   online = null,
 }) {
   const spectating = online?.spectator === true
-  const [battle, setBattle] = useState(() => online?.state ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
+  const [battle, setBattle] = useState(() => online?.state ?? initialBattle ?? createBattle({ playerPokemon, playerName, opponent, opponentTeam, rules }))
   const [introVisible, setIntroVisible] = useState(!online)
   const [menu, setMenu] = useState('command')
   const [pendingGimmick, setPendingGimmick] = useState(null)
@@ -2617,7 +2618,7 @@ function BattleScreen({
       </header>
 
       <section
-        className={`battle-arena phase-${visualTurnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}`}
+        className={`battle-arena phase-${visualTurnCue?.phase ?? 'command'} format-${battle.rules.format.id} weather-${battle.rules.weather.id} terrain-${battle.rules.terrain.id}${battle.raid?.campaign && opponentActivePokemon.length > 1 ? ' boss-summons' : ''}`}
         onPointerDown={(event) => {
           if (event.pointerType !== 'mouse') setPinnedPokemonSide(null)
         }}

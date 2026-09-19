@@ -1,3 +1,5 @@
+> 과거 협동전 기록 보존용 문서입니다. 2026-09-19 이후 솔로 3라운드 보스전의 현행 규칙과 검증은 [raid-rules.md](./raid-rules.md)를 참고하세요.
+
 # 협동 보스전 서버 구조
 
 이 문서는 `pokemon_champions_coop_boss_raid_codex_prompt.txt`를 기준으로 구현한 1~3인 협동 보스전의 서버 경계와 복구 절차를 설명한다. `server/raidBattle.js`는 순수·결정론적 전투 엔진이고, `server/raidService.js`는 인증된 참가자, 방, 저장된 전투 상태, 명령, 보상을 조율한다. 클라이언트는 서버가 만든 상태를 표시하고 자신의 명령만 요청한다.

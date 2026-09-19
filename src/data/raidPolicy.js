@@ -11,6 +11,9 @@ export const RAID_SIDE_CLEAR_FIELDS = Object.freeze({
 })
 export const RAID_FIELD_CLEAR_FIELDS = Object.freeze(['gravityTurns', 'trickRoomTurns', 'wonderRoomTurns', 'magicRoomTurns', 'mudSportTurns', 'waterSportTurns', 'fairyLockTurns', 'ionDelugeTurns'])
 export const isRaidBoss = (state, pokemon) => Boolean(state?.raid?.primaryBossId && pokemon?.battleId === state.raid.primaryBossId)
+export const isBossShielded = state => Boolean(state?.raid?.campaign && state.raid.bossId === 'hooh'
+  && state.raid.firedMechanics.includes(25)
+  && state.opponent.team.some(p => p.battleId !== state.raid.primaryBossId && p.hp > 0 && !p.fainted))
 export function raidEvent(state, kind, message, details = {}, { log = true } = {}) {
   if (!state.raid) return
   const number = (state.raid.eventSequence ?? 0) + 1
@@ -30,6 +33,7 @@ export function previewBattleHpLoss(state, pokemon, rawAmount) {
   if (!pokemon || pokemon.hp <= 0) return 0
   const requested = Math.min(pokemon.hp, Math.max(0, Math.floor(Number(rawAmount) || 0)))
   if (!isRaidBoss(state, pokemon)) return requested
+  if (isBossShielded(state)) return 0
   const root = state.raid.damageRoot ?? { budget: Math.floor(pokemon.maxHp / 4), spent: 0, closed: false }
   const gate = RAID_GATES.find((value) => !(state.raid.crossedGates ?? []).includes(value) && pokemon.hp > Math.floor(pokemon.maxHp * value / 100)) ?? 0
   return root.closed ? 0 : Math.min(requested, Math.max(0, root.budget - root.spent), Math.max(0, pokemon.hp - Math.floor(pokemon.maxHp * gate / 100)))
@@ -39,6 +43,10 @@ export function applyBattleHpLoss(state, pokemon, rawAmount) {
   const requested = Math.max(0, Math.floor(Number(rawAmount) || 0))
   let applied = Math.min(pokemon.hp, requested)
   if (isRaidBoss(state, pokemon)) {
+    if (isBossShielded(state)) {
+      raidEvent(state, 'damage-protection', '부활한 전설의 포켓몬을 모두 쓰러뜨려야 칠색조에게 피해를 줄 수 있다.')
+      return 0
+    }
     if (!state.raid.damageRoot) beginRaidDamageRoot(state, `entry:${state.turn}`, 'entry')
     const root = state.raid.damageRoot
     const crossed = state.raid.crossedGates ??= []
@@ -90,6 +98,49 @@ export function finishRaidDamageRoot(state, hooks = {}) {
   if (!state.raid) return
   const raid = state.raid
   const boss = state.opponent.team.find((actor) => isRaidBoss(state, actor))
+  if (raid.campaign) {
+    for (const gate of raid.pendingGates ?? []) {
+      if (!boss || boss.hp <= 0 || ![75, 50, 25].includes(gate) || raid.firedMechanics.includes(gate)) continue
+      raid.firedMechanics.push(gate)
+      if (gate === 75) {
+        raiseRaidVitality(boss)
+        raidEvent(state, 'boss-mechanic', `${boss.name}의 체력·공격·방어·특공·특방·스피드가 1단계 올랐다!`, { gate })
+      } else if (raid.bossId === 'mewtwo') {
+        if (gate === 50) {
+          boss.raidForm = 'armored'; boss.name = '아머드 뮤츠'
+          boss.spriteFront = '/assets/pokemon/skins/armored-mewtwo-front.gif'
+          boss.spriteBack = '/assets/pokemon/skins/armored-mewtwo-back.gif'
+        } else {
+          hooks.onMega?.(boss, raid.megaForm)
+          boss.raidForm = raid.megaForm
+          boss.megaActive = true
+        }
+        raidEvent(state, 'boss-mechanic', `${boss.name}(으)로 ${gate === 50 ? '폼체인지' : '메가진화'}했다!`, { gate })
+      } else if (raid.bossId === 'hooh') {
+        const summoned = structuredClone(raid.summonPool[raid.reviveOrder[gate === 50 ? 0 : 1]])
+        summoned.activeFromTurn = state.turn + 1
+        state.opponent.team.push(summoned)
+        const slot = state.opponent.activeIndexes.length
+        state.opponent.activeIndexes.push(state.opponent.team.length - 1)
+        hooks.onSummon?.(slot)
+        raidEvent(state, 'summon', `${summoned.name} 부활!${gate === 25 ? ' 남은 부활 포켓몬을 처치할 때까지 칠색조는 무적이다!' : ''}`, { gate })
+      } else if (raid.bossId === 'lugia') {
+        if (gate === 50) {
+          boss.raidForm = 'dark'; boss.name = '다크루기아'
+          boss.spriteFront = '/assets/pokemon/skins/shadow-lugia-sheet.png#front'
+          boss.spriteBack = '/assets/pokemon/skins/shadow-lugia-sheet.png#back'
+        } else {
+          state.rules.weather = { id: 'rain', label: '비' }
+          Object.assign(state.environment, { weatherTurns: null, weatherSource: '다크루기아', weatherSourceBattleId: null, weatherSourceAbility: null, weatherStrong: false })
+          raid.weatherLock = { id: 'rain', duration: 'infinite', suppressionAllowed: true }
+          hooks.onWeather?.()
+        }
+        raidEvent(state, 'boss-mechanic', gate === 50 ? '다크루기아로 폼체인지했다!' : '변경할 수 없는 비가 내리기 시작했다!', { gate })
+      }
+    }
+    raid.pendingGates = []
+    return
+  }
   for (const gate of raid.pendingGates ?? []) {
     if (!boss || boss.hp <= 0 || ![50, 25].includes(gate) || raid.firedMechanics.includes(gate)) continue
     raid.firedMechanics.push(gate)

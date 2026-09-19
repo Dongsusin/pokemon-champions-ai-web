@@ -1,0 +1,37 @@
+.app-shell.raid-view { height: 100dvh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.boss-challenge { flex: 1; min-height: 0; width: min(1100px, 100%); margin: 0 auto; padding: 22px; color: #e8ecff; overflow-y: auto; }
+.boss-challenge button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #7083b055; border-radius: 12px; background: #17243d; color: inherit; padding: 12px 18px; font: inherit; cursor: pointer; }
+.boss-challenge button:disabled { opacity: .4; cursor: default; }
+.boss-challenge button:focus-visible { outline: 3px solid #d6bdff; outline-offset: 3px; }
+.boss-challenge button[aria-pressed=true] { background: #49377a; border-color: #cca0ff; box-shadow: inset 0 0 0 1px #cca0ff; }
+.boss-challenge header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.boss-challenge header > span, .boss-challenge li > span { color: #b6a5e5; font-size: 12px; letter-spacing: .08em; }
+.boss-challenge-title { text-align: center; padding: 24px 0; }
+.boss-challenge h1 { margin: 10px 0; font-size: clamp(24px, 4vw, 36px); }
+.boss-challenge p { color: #b9c5dd; line-height: 1.6; }
+.boss-challenge-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.boss-challenge-choices > button { flex-direction: column; min-width: 0; }
+.boss-challenge-choices .pokemon-sprite-frame { width: 100px; height: 100px; }
+.boss-challenge .pokemon-sprite-layer { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.boss-challenge-rules { margin: 20px 0; padding: 20px; background: #101e34; border: 1px solid #697da644; border-radius: 16px; }
+.boss-challenge-rules ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; list-style: none; padding: 0; }
+.boss-challenge-rules ol li { display: flex; flex-direction: column; gap: 8px; }
+.boss-challenge-rules ul { padding-left: 20px; line-height: 1.8; }
+.boss-challenge small { color: #b5bfd5; line-height: 1.5; }
+.boss-challenge-party h2 span { color: #d3acff; }
+.boss-challenge-party > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 10px; max-height: 420px; overflow: auto; padding: 4px; }
+.boss-challenge-party button { flex-direction: column; padding: 8px; }
+.boss-challenge-party .pokemon-sprite-frame { width: 65px; height: 65px; }
+.boss-challenge footer { position: sticky; bottom: 0; padding: 18px 0 0; display: flex; justify-content: flex-end; }
+.boss-challenge .boss-primary { background: #6949b4; border-color: #cba5ff; font-weight: 700; }
+.boss-challenge-result { text-align: center; margin: 12vh auto; max-width: 620px; }
+.app-shell.battle-view .battle-game-screen .battle-arena.boss-summons .opponent-status-anchor { width: 18%; min-width: 0; top: 78px; bottom: auto; right: auto; }
+.app-shell.battle-view .battle-arena.boss-summons .opponent-status-anchor.slot-0 { left: 1%; }
+.app-shell.battle-view .battle-arena.boss-summons .opponent-status-anchor.slot-1 { left: 20%; }
+.app-shell.battle-view .battle-arena.boss-summons .opponent-status-anchor.slot-2 { left: 39%; }
+.app-shell.battle-view .battle-arena.boss-summons .opponent-status-anchor .battle-hp-panel { width: 100%; min-width: 0; }
+.app-shell.battle-view .boss-summons .battle-pokemon-stage.opponent { width: 18%; }
+.app-shell.battle-view .boss-summons .battle-pokemon-stage.opponent.slot-0 { --battle-stage-center: 88%; --battle-stage-floor: 30%; }
+.app-shell.battle-view .boss-summons .battle-pokemon-stage.opponent.slot-1 { --battle-stage-center: 72%; --battle-stage-floor: 40%; }
+.app-shell.battle-view .boss-summons .battle-pokemon-stage.opponent.slot-2 { --battle-stage-center: 56%; --battle-stage-floor: 50%; }
+@media (max-width: 650px) { .boss-challenge { padding: 12px; } .boss-challenge header > span { display: none; } .boss-challenge-choices { gap: 6px; } .boss-challenge-choices > button { padding: 10px 4px; } .boss-challenge-choices small { display: none; } .boss-challenge-choices .pokemon-sprite-frame { width: 75px; height: 75px; } .boss-challenge-rules { padding: 14px; } .boss-challenge-rules ol { grid-template-columns: 1fr; gap: 12px; } }

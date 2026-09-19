@@ -24,13 +24,12 @@ import BattleRoomsTestLobby from './BattleRoomsTestLobby'
 import BattleFactoryScreen from './BattleFactoryScreen'
 import RaidScreen from './RaidScreen'
 import { isRankedLocalTest } from './rankedClient'
-import { isRaidEnabled, isRaidLocalTest } from './raidClient'
 import BattleScreen from './BattleScreen'
 import AchievementsScreen from './AchievementsScreen'
 import AchievementToast from './AchievementToast'
 import PokemonUsagePanel from './PokemonUsagePanel'
 import usePokemonUsage from './usePokemonUsage'
-import { creditRaidVpRewards, creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
+import { creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
 import { getAiBattleVpReward } from './data/aiBattleRewards'
 import { getUnlockedPokemonSkins } from './data/rareRewards'
@@ -347,7 +346,6 @@ export function GameApp({
   const noticeTimer = useRef(null)
   const gameAudioRef = useRef(null)
   const rankedRewardSyncPending = useRef(false)
-  const raidRewardSyncPending = useRef(false)
   if (!gameAudioRef.current) gameAudioRef.current = createGameAudio(settings.audio.enabled, settings.audio)
   const activeTeam = teams.find((team) => team.id === activeTeamId) ?? teams[0]
   const teamIds = activeTeam?.pokemonIds ?? []
@@ -360,8 +358,7 @@ export function GameApp({
     || (isGuest ? '게스트 트레이너' : '트레이너')
   const trainerName = isGuest ? accountTrainerName : maskRankedTrainerName(accountTrainerName, false, user.nickname)
   const trainerInitial = Array.from(trainerName)[0]?.toUpperCase() ?? 'T'
-  const onlineScreen = screen === 'ranked' || screen === 'rooms' || screen === 'raid'
-  const raidFeatureAvailable = isRaidEnabled || isRaidLocalTest
+  const onlineScreen = screen === 'ranked' || screen === 'rooms'
   const displayedTrainerName = trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
@@ -380,29 +377,6 @@ export function GameApp({
         throw new Error('VP는 이 기기에 지급됐습니다. 계정 저장을 다시 시도해주세요.')
       }
       rankedRewardSyncPending.current = false
-    }
-    return result
-  }, [user.uid, user.isLocalGuest, onPlayerDataChanged, onSyncBeforeRanked])
-
-  const receiveRaidVpRewards = useCallback(async rewards => {
-    if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {
-      throw new Error('계정 연결을 확인한 뒤 보스전 보상을 다시 받아주세요.')
-    }
-    // Raid responses are auth-scoped and deliberately do not expose an owner
-    // id. Attach the currently authenticated account locally for the wallet's
-    // idempotent receipt validation instead of trusting a server-supplied id.
-    const result = creditRaidVpRewards(achievementProgressRef.current, vpBalance.current, { ...rewards, uid: user.uid }, user.uid)
-    if (result.granted > 0) {
-      vpBalance.current = result.balance
-      setVp(result.balance)
-      raidRewardSyncPending.current = true
-      onPlayerDataChanged?.()
-    }
-    if (raidRewardSyncPending.current) {
-      if (onSyncBeforeRanked && await onSyncBeforeRanked() === false) {
-        throw new Error('VP는 이 기기에 지급됐습니다. 계정 저장을 다시 시도해주세요.')
-      }
-      raidRewardSyncPending.current = false
     }
     return result
   }, [user.uid, user.isLocalGuest, onPlayerDataChanged, onSyncBeforeRanked])
@@ -1094,7 +1068,7 @@ export function GameApp({
   }
 
   return (
-    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'rooms' ? ' rooms-view ranked-view' : ''}${screen === 'raid' ? ' raid-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
+    <div className={`app-shell${screen === 'hatch' ? ' draw-view' : ''}${screen === 'box' ? ' pc-view' : ''}${screen === 'training' ? ' training-view' : ''}${screen === 'shop' ? ' shop-view' : ''}${screen === 'achievements' ? ' achievement-view' : ''}${screen === 'battle-select' ? ' battle-select-view' : ''}${screen === 'ranked' ? ' ranked-view' : ''}${screen === 'rooms' ? ' rooms-view ranked-view' : ''}${screen === 'raid' && !raidBattleActive ? ' raid-view' : ''}${screen === 'factory' ? ' factory-view' : ''}${screen === 'competition' ? ' competition-view' : ''}${battleMusicActive ? ' battle-view' : ''}`}>
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
@@ -1224,11 +1198,11 @@ export function GameApp({
       ) : screen === 'battle-hub' ? (
         <BattleHub user={user} onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
           onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')}
-          onSelectRaid={raidFeatureAvailable ? () => setScreen('raid') : undefined} />
+          onSelectRaid={() => setScreen('raid')} />
       ) : screen === 'raid' ? (
-        <RaidScreen user={user} boxPokemon={boxPokemon} onBack={() => setScreen('battle-hub')}
-          onBeforeJoin={onSyncBeforeRanked} onBattleActiveChange={setRaidBattleActive}
-          soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio} onReceiveVpRewards={receiveRaidVpRewards}
+        <RaidScreen playerName={trainerName} boxPokemon={boxPokemon} onBack={() => setScreen('battle-hub')}
+          onBattleActiveChange={setRaidBattleActive}
+          soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio}
           onToggleSound={toggleSound} onOpenSettings={() => openSettings()} />
       ) : screen === 'rooms' ? (
         <BattleRoomsScreen user={user} teams={teams} boxPokemon={boxPokemon} activeTeamId={activeTeam?.id}
