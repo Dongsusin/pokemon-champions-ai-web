@@ -46,8 +46,8 @@ export default function BattleFactoryScreen({
   // best once the leaderboard loads so its achievement settles retroactively.
   const bestFloor = ranking.ownBest?.floor ?? 0
   useEffect(() => {
-    if (bestFloor > 0) onFactoryBestFloor?.(bestFloor)
-  }, [bestFloor, onFactoryBestFloor])
+    if (bestFloor > 0) onFactoryBestFloor?.(bestFloor, rankingMode)
+  }, [bestFloor, rankingMode, onFactoryBestFloor])
 
   useEffect(() => {
     if (run || restoreError) return
@@ -59,6 +59,11 @@ export default function BattleFactoryScreen({
       setError(cause.message || '대여 포켓몬을 준비하지 못했습니다.')
     }
   }, [run, onRunChange, restoreError])
+
+  // Both a newly reached floor and a restored active run count before the next battle.
+  useEffect(() => {
+    if (run?.floor > 0) onFactoryBestFloor?.(run.floor, run.mode ?? 'standard')
+  }, [run?.floor, run?.mode, onFactoryBestFloor])
 
   function transition(update) {
     // A button from the previous render can still receive a queued second click.
@@ -113,7 +118,7 @@ export default function BattleFactoryScreen({
       const next = resolveFactoryBattle(current, { ...summary, battleId: run.battleId,
         playerTeamHp: summary.playerTeamHp })
       if (next !== current && next.lastResult?.won) onVpReward?.({
-        runId: next.id, battleId: next.battleId, floor: next.floor,
+        runId: next.id, battleId: next.battleId, floor: next.floor, mode: next.mode,
         winner: next.lastResult.winner, forfeited: next.lastResult.forfeited,
       })
       return next

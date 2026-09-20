@@ -464,7 +464,7 @@ export function GameApp({
       showNotice(`배틀팩토리 ${result.floor}층 승리 보상 ${credited.granted.toLocaleString()} VP 지급 완료`)
       gameAudioRef.current?.playEvent('reward')
     }
-    settleFactoryAchievements(result.floor)
+    settleFactoryAchievements(result.floor, result.mode)
     return credited
   }
 
@@ -497,8 +497,8 @@ export function GameApp({
     return settleLadderAchievements(applyBossAchievements(achievementProgressRef.current, event))
   }, [onPlayerDataChanged])
 
-  const settleFactoryAchievements = useCallback(floor => {
-    settleLadderAchievements(applyFactoryAchievements(achievementProgressRef.current, floor))
+  const settleFactoryAchievements = useCallback((floor, mode) => {
+    settleLadderAchievements(applyFactoryAchievements(achievementProgressRef.current, floor, Date.now(), mode))
   }, [onPlayerDataChanged])
 
   const settleRankedAchievements = useCallback(points => {

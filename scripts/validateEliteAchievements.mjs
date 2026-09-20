@@ -60,7 +60,7 @@ function playCompetition(mode, changes = new Map(), difficulty = 'normal', mutat
 }
 
 check('five elite definitions stay sealed and award the right title, item and VP', () => {
-  assert.equal(ACHIEVEMENTS.length, 288)
+  assert.equal(ACHIEVEMENTS.length, 292)
   const secrets = ACHIEVEMENTS.filter((entry) => entry.secretReward)
   assert.equal(secrets.length, 5)
   assert.deepEqual(secrets.map((entry) => [entry.id, entry.titleId, entry.rewardId, entry.rewardVp]), [

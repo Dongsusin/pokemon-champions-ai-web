@@ -147,7 +147,8 @@
     "validate:trainer-nicknames-ui": "node scripts/validateTrainerNicknameAuth.mjs && node scripts/validateTrainerNicknameUi.mjs",
     "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
     "validate:battle-retention": "node scripts/validateBattleRetention.mjs",
-    "validate:boss-achievements": "node scripts/validateBossAchievements.mjs"
+    "validate:boss-achievements": "node scripts/validateBossAchievements.mjs",
+    "validate:factory-challenge-achievements": "node scripts/validateFactoryChallengeAchievements.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.7",

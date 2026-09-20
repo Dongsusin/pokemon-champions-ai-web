@@ -34,8 +34,8 @@ const event = (facts = {}, overrides = {}) => ({
   ...overrides,
 })
 
-check('catalog has 50 general goals plus one stable first-win goal per AI', () => {
-  assert.equal(ACHIEVEMENTS.length, 50 + TRAINERS.length)
+check('catalog has 54 general goals plus one stable first-win goal per AI', () => {
+  assert.equal(ACHIEVEMENTS.length, 54 + TRAINERS.length)
   assert.equal(new Set(ACHIEVEMENTS.map((entry) => entry.id)).size, ACHIEVEMENTS.length)
   assert.equal(ACHIEVEMENTS.filter((entry) => entry.trainerId).length, TRAINERS.length)
   assert(ACHIEVEMENTS.every((entry) => ACHIEVEMENT_CATEGORIES.some((category) => category.id === entry.category)))

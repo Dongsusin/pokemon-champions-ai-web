@@ -28,6 +28,7 @@ const CATEGORY_ICONS = {
   exploration: Flag,
   competition: Crown,
   boss: Crown,
+  'factory-challenge': ShieldCheck,
   trainers: UsersRound,
   collection: Sparkles,
   mastery: Crown,

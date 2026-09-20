@@ -8,6 +8,10 @@
 const title = (id, name, achievementId, description) => Object.freeze({ id, name, achievementId, description })
 
 export const TRAINER_TITLES = Object.freeze([
+  title('factory-challenge-10', '도전의 개척자', 'factory-challenge-10', '배틀팩토리 도전 모드 10층에 도달한 트레이너에게 주어집니다.'),
+  title('factory-challenge-30', '불굴의 도전자', 'factory-challenge-30', '배틀팩토리 도전 모드 30층에 도달한 트레이너에게 주어집니다.'),
+  title('factory-challenge-50', '극한의 지휘관', 'factory-challenge-50', '배틀팩토리 도전 모드 50층에 도달한 트레이너에게 주어집니다.'),
+  title('factory-challenge-100', '도전의 정점', 'factory-challenge-100', '배틀팩토리 도전 모드 100층에 도달한 트레이너에게 주어집니다.'),
   title('boss-first', '전설의 도전자', 'boss-first', '보스전을 처음 클리어한 트레이너에게 주어집니다.'),
   title('boss-mewtwo', '비밀 병기 파괴자', 'boss-mewtwo', '뮤츠 보스전을 클리어한 트레이너에게 주어집니다.'),
   title('boss-hooh', '무지개의 계승자', 'boss-hooh', '칠색조 보스전을 클리어한 트레이너에게 주어집니다.'),

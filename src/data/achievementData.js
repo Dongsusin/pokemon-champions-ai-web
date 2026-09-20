@@ -12,6 +12,7 @@ export const ACHIEVEMENT_CATEGORIES = Object.freeze([
   { id: 'exploration', label: '무대 정복' },
   { id: 'competition', label: '대회 업적' },
   { id: 'factory', label: '배틀팩토리' },
+  { id: 'factory-challenge', label: '팩토리 도전' },
   { id: 'boss', label: '보스전' },
   { id: 'ranked', label: '레이팅 배틀' },
   { id: 'trainers', label: 'AI 첫 승리' },
@@ -81,6 +82,10 @@ const standardAchievements = [
   secretDefinition('collection-shiny-all', '모든 빛깔의 발견', `획득 가능한 전국도감 ${ACHIEVABLE_SHINY_SPECIES_IDS.length}종의 이로치를 모두 해금하세요. 같은 진화계열에서 이로치를 얻으면 그 계열 전체의 해금으로 인정합니다.`, 'collection', 400000, null, 'shinySpeciesCount', ACHIEVABLE_SHINY_SPECIES_IDS.length),
   definition('factory-floor-50', '배팩 50층 정복자', '배틀팩토리에서 50층에 도달하세요.', 'factory', 3000, 'factoryBestFloor', 50),
   definition('factory-floor-100', '배팩 100층 정복자', '배틀팩토리에서 100층에 도달하세요.', 'factory', 8000, 'factoryBestFloor', 100),
+  ...[10, 30, 50, 100].map((floor, index) => definition(
+    `factory-challenge-${floor}`, `도전 ${floor}층 돌파`, `배틀팩토리 도전 모드에서 ${floor}층에 도달하세요.`,
+    'factory-challenge', [1000, 3000, 5000, 10000][index], 'factoryChallengeBestFloor', floor,
+  )),
   definition('boss-first', '전설에 맞선 첫 승리', '보스전의 최종 보스를 처음 쓰러뜨리세요.', 'boss', 1000, 'bossFirst'),
   definition('boss-mewtwo', '비밀 병기의 종결', '뮤츠 보스전 3라운드를 모두 승리하세요.', 'boss', 2000, 'bossMewtwo'),
   definition('boss-hooh', '무지개 너머의 승리', '칠색조 보스전 3라운드를 모두 승리하세요.', 'boss', 2000, 'bossHooh'),
@@ -107,7 +112,7 @@ const COUNTERS = [
   'hardWins', 'boostedWins', 'leagueChampionships', 'tournamentChampionships',
   'perfectLeagues', 'currentStreak', 'bestStreak',
   'flawlessLeagues', 'flawlessTournaments', 'collectionSpeciesCount', 'shinySpeciesCount',
-  'factoryBestFloor', 'rankedTierIndex', 'bossFirst', 'bossMewtwo', 'bossHooh', 'bossLugia', 'bossKinds',
+  'factoryBestFloor', 'factoryChallengeBestFloor', 'rankedTierIndex', 'bossFirst', 'bossMewtwo', 'bossHooh', 'bossLugia', 'bossKinds',
 ]
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {}
 const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : 0
@@ -136,6 +141,7 @@ export function normalizeAchievementState(value) {
   state.stats.shinySpeciesCount = Math.min(ACHIEVABLE_SHINY_SPECIES_IDS.length, state.stats.shinySpeciesCount)
   state.stats.bestStreak = Math.max(state.stats.bestStreak, state.stats.currentStreak)
   state.stats.factoryBestFloor = Math.min(FACTORY_TITLE_FLOORS.at(-1), state.stats.factoryBestFloor)
+  state.stats.factoryChallengeBestFloor = Math.min(100, state.stats.factoryChallengeBestFloor)
   state.stats.rankedTierIndex = Math.min(RANKED_TITLE_TIERS.length, state.stats.rankedTierIndex)
   const mechanicWins = record(stats.mechanicWins)
   for (const mechanic of MECHANICS) state.stats.mechanicWins[mechanic] = count(mechanicWins[mechanic])
@@ -244,15 +250,18 @@ export function applyCollectionAchievements(value, collection, now = Date.now())
  * replaying an easier run never takes a title away, and floors past the last
  * milestone are clamped: climbing higher is allowed, it just earns nothing new.
  */
-export function applyFactoryAchievements(value, floor, now = Date.now()) {
+export function applyFactoryAchievements(value, floor, now = Date.now(), mode = 'standard') {
   const state = normalizeAchievementState(value)
   const result = { state, unlocked: [], rewardVp: 0, processed: false }
   const ceiling = FACTORY_TITLE_FLOORS.at(-1)
   const reached = Math.min(ceiling, count(floor))
-  if (reached <= state.stats.factoryBestFloor) return result
-  state.stats.factoryBestFloor = reached
-  result.processed = true
-  unlockEligible(result, now, ACHIEVEMENTS.filter((def) => def.category === 'factory'))
+  const previous = state.stats.factoryBestFloor
+  const previousChallenge = state.stats.factoryChallengeBestFloor
+  state.stats.factoryBestFloor = Math.max(previous, reached)
+  if (mode === 'challenge') state.stats.factoryChallengeBestFloor = Math.max(previousChallenge, reached)
+  result.processed = state.stats.factoryBestFloor !== previous || state.stats.factoryChallengeBestFloor !== previousChallenge
+  unlockEligible(result, now, ACHIEVEMENTS.filter(def => def.category === 'factory' || (mode === 'challenge' && def.category === 'factory-challenge')))
+  result.processed ||= result.unlocked.length > 0
   return result
 }
 
