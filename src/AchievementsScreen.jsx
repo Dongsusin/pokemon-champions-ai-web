@@ -27,6 +27,7 @@ const CATEGORY_ICONS = {
   gimmick: Sparkles,
   exploration: Flag,
   competition: Crown,
+  boss: Crown,
   trainers: UsersRound,
   collection: Sparkles,
   mastery: Crown,

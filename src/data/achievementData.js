@@ -12,6 +12,7 @@ export const ACHIEVEMENT_CATEGORIES = Object.freeze([
   { id: 'exploration', label: '무대 정복' },
   { id: 'competition', label: '대회 업적' },
   { id: 'factory', label: '배틀팩토리' },
+  { id: 'boss', label: '보스전' },
   { id: 'ranked', label: '레이팅 배틀' },
   { id: 'trainers', label: 'AI 첫 승리' },
   { id: 'collection', label: '도감 완성' },
@@ -80,6 +81,11 @@ const standardAchievements = [
   secretDefinition('collection-shiny-all', '모든 빛깔의 발견', `획득 가능한 전국도감 ${ACHIEVABLE_SHINY_SPECIES_IDS.length}종의 이로치를 모두 해금하세요. 같은 진화계열에서 이로치를 얻으면 그 계열 전체의 해금으로 인정합니다.`, 'collection', 400000, null, 'shinySpeciesCount', ACHIEVABLE_SHINY_SPECIES_IDS.length),
   definition('factory-floor-50', '배팩 50층 정복자', '배틀팩토리에서 50층에 도달하세요.', 'factory', 3000, 'factoryBestFloor', 50),
   definition('factory-floor-100', '배팩 100층 정복자', '배틀팩토리에서 100층에 도달하세요.', 'factory', 8000, 'factoryBestFloor', 100),
+  definition('boss-first', '전설에 맞선 첫 승리', '보스전의 최종 보스를 처음 쓰러뜨리세요.', 'boss', 1000, 'bossFirst'),
+  definition('boss-mewtwo', '비밀 병기의 종결', '뮤츠 보스전 3라운드를 모두 승리하세요.', 'boss', 2000, 'bossMewtwo'),
+  definition('boss-hooh', '무지개 너머의 승리', '칠색조 보스전 3라운드를 모두 승리하세요.', 'boss', 2000, 'bossHooh'),
+  definition('boss-lugia', '폭풍을 넘어', '루기아 보스전 3라운드를 모두 승리하세요.', 'boss', 2000, 'bossLugia'),
+  definition('boss-all', '전설의 정복자', '뮤츠·칠색조·루기아 보스전을 각각 클리어하세요.', 'boss', 5000, 'bossKinds', 3),
   ...RANKED_TITLE_TIERS.map((tier, index) => definition(
     `ranked-${tier.id}`, `${tier.name} 도달`, `레이팅 배틀에서 ${tier.name} 등급에 도달하세요.`,
     'ranked', 2000 + index * 2000, 'rankedTierIndex', index + 1,
@@ -101,7 +107,7 @@ const COUNTERS = [
   'hardWins', 'boostedWins', 'leagueChampionships', 'tournamentChampionships',
   'perfectLeagues', 'currentStreak', 'bestStreak',
   'flawlessLeagues', 'flawlessTournaments', 'collectionSpeciesCount', 'shinySpeciesCount',
-  'factoryBestFloor', 'rankedTierIndex',
+  'factoryBestFloor', 'rankedTierIndex', 'bossFirst', 'bossMewtwo', 'bossHooh', 'bossLugia', 'bossKinds',
 ]
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {}
 const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : 0
@@ -341,5 +347,20 @@ export function applyBattleAchievements(value, event, now = Date.now()) {
   }
 
   unlockEligible(result, now)
+  return result
+}
+
+/** Only the final resolved victory counts; permanent flags make repeated callbacks idempotent. */
+export function applyBossAchievements(value, event, now = Date.now()) {
+  const state = normalizeAchievementState(value)
+  const result = { state, unlocked: [], rewardVp: 0, processed: false }
+  const metric = { mewtwo: 'bossMewtwo', hooh: 'bossHooh', lugia: 'bossLugia' }[event?.bossId]
+  if (!['mewtwo', 'hooh', 'lugia'].includes(event?.bossId) || !metric || event?.round !== 3 || event?.winner !== 'player' || event?.forfeited) return result
+  result.processed = state.stats[metric] !== 1
+  state.stats[metric] = 1
+  state.stats.bossFirst = 1
+  state.stats.bossKinds = ['bossMewtwo', 'bossHooh', 'bossLugia'].filter(key => state.stats[key] > 0).length
+  unlockEligible(result, now, ACHIEVEMENTS.filter(def => def.category === 'boss'))
+  result.processed ||= result.unlocked.length > 0
   return result
 }

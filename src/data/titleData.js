@@ -8,6 +8,11 @@
 const title = (id, name, achievementId, description) => Object.freeze({ id, name, achievementId, description })
 
 export const TRAINER_TITLES = Object.freeze([
+  title('boss-first', '전설의 도전자', 'boss-first', '보스전을 처음 클리어한 트레이너에게 주어집니다.'),
+  title('boss-mewtwo', '비밀 병기 파괴자', 'boss-mewtwo', '뮤츠 보스전을 클리어한 트레이너에게 주어집니다.'),
+  title('boss-hooh', '무지개의 계승자', 'boss-hooh', '칠색조 보스전을 클리어한 트레이너에게 주어집니다.'),
+  title('boss-lugia', '폭풍의 지배자', 'boss-lugia', '루기아 보스전을 클리어한 트레이너에게 주어집니다.'),
+  title('boss-all', '전설의 정복자', 'boss-all', '세 보스전을 모두 클리어한 트레이너에게 주어집니다.'),
   // The four achievements that used to hand out a hidden Pokemon skin.
   title('unbeaten-commander', '불패의 지휘관', 'flawless-league', '리그 7경기를 기절 없이 전승 우승한 지휘관에게 주어집니다.'),
   title('flawless-champion', '무결의 토너먼트 왕', 'flawless-tournament', '128강부터 결승까지 기절 없이 우승한 트레이너에게 주어집니다.'),

@@ -11,7 +11,7 @@ import { getBattleItem } from './data/shopData'
 import './bossChallenge.css'
 
 export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSelectTeam, onOpenBox,
-  selectedBossId, onSelectBoss, onBack, onExit, onBattleActiveChange, playerName = '트레이너',
+  onBossClear, selectedBossId, onSelectBoss, onBack, onExit, onBattleActiveChange, playerName = '트레이너',
   soundEnabled, gameSettings, audioSettings, onToggleSound, onOpenSettings }) {
   const [localBossId, setLocalBossId] = useState('mewtwo')
   const bossId = selectedBossId ?? localBossId
@@ -21,6 +21,7 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
   const teamReady = party.length === 6 && new Set(party.map(pokemon => pokemon.captureId)).size === 6
   const [run, setRun] = useState(null)
   const [error, setError] = useState('')
+  const [rewardRetry, setRewardRetry] = useState(null)
   const current = useRef(run)
   current.current = run
   const boss = BOSS_CHALLENGES.find(b => b.id === (run?.bossId ?? bossId))
@@ -49,12 +50,18 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
       startRound(run.party, run.round + 1, run.bossId, finishedBattle.player.team)
       return
     }
+    if (summary.winner === 'player' && run.round === 3) {
+      if (onBossClear?.({ bossId: run.bossId, round: run.round, winner: summary.winner, forfeited: summary.forfeited }) === false) {
+        setRewardRetry({ summary, finishedBattle }); return
+      }
+    }
+    setRewardRetry(null)
     current.current = null
     setRun(null)
     onBattleActiveChange?.(false)
     onExit?.()
   }
-  if (active) return <BattleScreen key={`${run.bossId}-${run.round}`}
+  if (active) return <><BattleScreen key={`${run.bossId}-${run.round}`}
     initialBattle={run.battle} skipIntro={run.round > 1} startWithDialogue={run.round > 1} hideResult onResolved={complete}
     battleBackground={boss.rounds[run.round - 1].background}
     playerPokemon={run.party} playerName={playerName}
@@ -62,6 +69,10 @@ export default function RaidScreen({ boxPokemon, teams = [], activeTeamId, onSel
     competitionLabel={`${boss.name} 보스전 · ROUND ${run.round} / 3`}
     soundEnabled={soundEnabled} gameSettings={gameSettings} playerGender={gameSettings?.playerGender}
     audioSettings={audioSettings} onToggleSound={onToggleSound} onOpenSettings={onOpenSettings} onComplete={complete} />
+    {rewardRetry && <div role="alert" style={{ position: 'fixed', zIndex: 1000, inset: '40% 20% auto', padding: 24, background: '#102e42', border: '1px solid #82dce0', borderRadius: 12 }}>
+      <p>승리 보상을 저장하지 못했습니다. 저장을 다시 시도해 주세요.</p>
+      <button type="button" onClick={() => complete(rewardRetry.summary, rewardRetry.finishedBattle)}>보상 저장 다시 시도</button>
+    </div>}</>
 
   return <main className="boss-challenge">
     <header className="boss-page-header"><button type="button" onClick={onBack}><ArrowLeft size={18} /> 배틀 모드</button><div><span>BOSS CHALLENGE</span><h1>보스전</h1></div><div className="boss-ready-badge"><ShieldCheck size={22} /><span><small>{teamReady ? '출전 준비 완료' : '팀 편성 필요'}</small><strong>{party.length}/6</strong></span></div></header>

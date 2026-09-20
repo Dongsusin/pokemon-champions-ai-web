@@ -34,7 +34,7 @@ import PokemonUsagePanel from './PokemonUsagePanel'
 import usePokemonUsage from './usePokemonUsage'
 import { creditBattleFactoryVpReward, creditRankedVpRewards, loadAchievementWallet, saveAchievementWallet } from './data/achievementStorage'
 import { prepareAchievementRewards, restoreAchievementRewards } from './data/achievementRewards'
-import { applyFactoryAchievements, applyRankedAchievements } from './data/achievementData'
+import { applyBossAchievements, applyFactoryAchievements, applyRankedAchievements } from './data/achievementData'
 import { getAiBattleVpReward } from './data/aiBattleRewards'
 import BoxScreen from './BoxScreen'
 import CompetitionScreen from './CompetitionScreen'
@@ -473,13 +473,13 @@ export function GameApp({
   // the player already held is a no-op, so a stored best earned before this
   // update still unlocks its achievement the first time it is observed.
   function settleLadderAchievements(result) {
-    if (!result.processed) return
+    if (!result.processed) return true
     const nextVp = vpBalance.current + result.rewardVp
     try {
       saveAchievementWallet(result.state, nextVp)
     } catch {
       showNotice('업적을 저장하지 못했습니다. 잠시 후 다시 시도합니다.')
-      return
+      return false
     }
     achievementProgressRef.current = result.state
     vpBalance.current = nextVp
@@ -490,7 +490,12 @@ export function GameApp({
       gameAudioRef.current?.playEvent('reward')
     }
     onPlayerDataChanged?.()
+    return true
   }
+
+  const settleBossAchievements = useCallback(event => {
+    return settleLadderAchievements(applyBossAchievements(achievementProgressRef.current, event))
+  }, [onPlayerDataChanged])
 
   const settleFactoryAchievements = useCallback(floor => {
     settleLadderAchievements(applyFactoryAchievements(achievementProgressRef.current, floor))
@@ -1336,7 +1341,7 @@ export function GameApp({
         <BattleHub user={user} onBack={returnToLobby} onSelectAi={() => setScreen('battle-select')} onSelectRanked={() => setScreen('ranked')}
           onSelectFactory={() => setScreen('factory')} onSelectRooms={() => setScreen('rooms')} onSelectRaid={() => setScreen('raid')} />
       ) : screen === 'raid' ? (
-        <RaidScreen boxPokemon={boxPokemon} teams={teams} activeTeamId={activeTeam?.id}
+        <RaidScreen onBossClear={settleBossAchievements} boxPokemon={boxPokemon} teams={teams} activeTeamId={activeTeam?.id}
           onSelectTeam={selectSavedTeam} onOpenBox={openBoxFromBoss} onBack={() => setScreen('battle-hub')}
           selectedBossId={selectedBossId} onSelectBoss={setSelectedBossId} onExit={returnToLobby} playerName={trainerName}
           soundEnabled={soundEnabled} gameSettings={settings.game} audioSettings={settings.audio}

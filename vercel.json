@@ -4,7 +4,8 @@
   "git": {
     "deploymentEnabled": {
       "codex/battle-factory": false,
-      "codex/fixed-aspect-frame": false
+      "codex/fixed-aspect-frame": false,
+      "codex/boss-achievements": false
     }
   }
 }

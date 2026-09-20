@@ -91,6 +91,12 @@ async function freezeEnding(frame, page) {
   await page.clock.pauseAt(new Date(await frame.evaluate(() => Date.now()) + 100))
 }
 async function openFullGameBoss(frame, name) {
+  // Reward notifications can cover mobile selectors; close them as a player would.
+  const toast = frame.getByRole('button', { name: '업적 알림 닫기', exact: true })
+  while (await toast.count()) {
+    await toast.click()
+    await frame.locator('.achievement-toast').waitFor({ state: 'detached' })
+  }
   await frame.getByRole('button', { name: /시작하기/ }).click()
   await frame.getByRole('tab', { name: '보스전', exact: true }).click()
   await frame.getByRole('button', { name: '보스전에 도전', exact: true }).click()
@@ -503,6 +509,12 @@ try {
     await freezeEnding(frame, page)
     await forfeitThroughUi(frame)
     await assertMainLobby(frame, 'actual GameApp confirmed forfeit')
+    const earnedBoss = await frame.evaluate(() => {
+      const wallet = JSON.parse(localStorage.getItem('champions-achievements-v1'))
+      return { ids: Object.keys(wallet.unlocked).filter(id => id.startsWith('boss-')).sort(), kinds: wallet.stats.bossKinds }
+    })
+    assert.deepEqual(earnedBoss.ids, ['boss-all','boss-first','boss-hooh','boss-lugia','boss-mewtwo'])
+    assert.equal(earnedBoss.kinds, 3)
     await page.screenshot({ path: fileURLToPath(new URL(`actual-game-lobby-${viewport.width}.png`, output)) })
     await page.clock.resume()
     await openFullGameBoss(frame, '루기아')

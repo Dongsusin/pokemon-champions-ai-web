@@ -60,7 +60,7 @@ function playCompetition(mode, changes = new Map(), difficulty = 'normal', mutat
 }
 
 check('five elite definitions stay sealed and award the right title, item and VP', () => {
-  assert.equal(ACHIEVEMENTS.length, 283)
+  assert.equal(ACHIEVEMENTS.length, 288)
   const secrets = ACHIEVEMENTS.filter((entry) => entry.secretReward)
   assert.equal(secrets.length, 5)
   assert.deepEqual(secrets.map((entry) => [entry.id, entry.titleId, entry.rewardId, entry.rewardVp]), [
@@ -220,13 +220,13 @@ check('the meta goal excludes itself and unlocks in the same call as the last co
   const state = allBut('collection-shiny-all')
   const meta = ACHIEVEMENTS.find((entry) => entry.id === 'achievements-all')
   const before = getAchievementProgress(meta, state)
-  assert.equal(before.current, 281)
-  assert.equal(before.target, 282)
+  assert.equal(before.current, ACHIEVEMENTS.length - 2)
+  assert.equal(before.target, ACHIEVEMENTS.length - 1)
   assert.equal(before.completed, false)
   const result = applyCollectionAchievements(state, shinyDrawCollection, 5000)
   assert.deepEqual(result.unlocked.map((entry) => entry.id), ['collection-shiny-all', 'achievements-all'])
   assert.equal(result.rewardVp, 1000000)
-  assert.equal(getAchievementProgress(meta, result.state).current, 282)
+  assert.equal(getAchievementProgress(meta, result.state).current, ACHIEVEMENTS.length - 1)
   const replay = applyCollectionAchievements(result.state, shinyDrawCollection)
   assert.equal(replay.rewardVp, 0)
   assert.equal(replay.processed, false)
