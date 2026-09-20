@@ -15,3 +15,37 @@ html[data-game-frame="true"][data-mobile-layout="desktop"] .lobby-layout {
   flex: 1;
   min-height: 0;
 }
+
+/* Size both battle rows from one containing block. Viewport-unit rows and a
+   separate minimum deck height can exceed the screen on short mobile windows. */
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-game-screen {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 55fr) minmax(0, 45fr);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.battle-command-deck, .battle-command-panel) {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) .battle-move-menu {
+  min-height: 0;
+  height: 100%;
+  grid-template-rows: minmax(0, 32px) minmax(0, 1fr);
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.battle-move-grid, .battle-command-buttons) {
+  min-height: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+html[data-mobile-layout="landscape"] .app-shell.battle-view:not(.raid-view) :is(.battle-move-option, .battle-move-button, .battle-command-buttons > button) {
+  min-height: 0;
+  height: 100%;
+}
