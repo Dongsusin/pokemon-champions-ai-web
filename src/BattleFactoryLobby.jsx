@@ -12,6 +12,7 @@ import { getBattleItem } from './data/shopData'
 import {
   FACTORY_MODES, getFactoryMode, getFactoryRarityLabel, getFactorySwapCost,
   isFactoryChallengeMode, isFactoryPokemonFainted,
+  FACTORY_PARTY_COST_LIMIT, getFactoryPokemonCost, getFactoryPartyCost, hasFactoryCostLimit,
 } from './data/battleFactoryChallenge'
 import { getAbility, getSpeciesProfile, NATURE_OPTIONS, STAT_META, typeClassName } from './data/trainingData'
 import './battleFactory.css'
@@ -64,7 +65,7 @@ export function RentalDetails({ pokemon, onClose }) {
   </dialog>, document.body)
 }
 
-function RentalCard({ pokemon, order, selected = false, disabled = false, onSelect, onDetails, label, compact = false, selectAriaLabel, selectedLabel = '선택', showHealth = false, showRarity = false, footer = null }) {
+function RentalCard({ pokemon, order, selected = false, disabled = false, onSelect, onDetails, label, compact = false, selectAriaLabel, selectedLabel = '선택', showHealth = false, showRarity = false, showCost = false, footer = null }) {
   const profile = getSpeciesProfile(pokemon.speciesId)
   const item = getBattleItem(pokemon.heldItemId)
   const name = nameOf(pokemon)
@@ -72,7 +73,7 @@ function RentalCard({ pokemon, order, selected = false, disabled = false, onSele
     <span className="factory-card-number">{selected ? <><Check size={13} />{order ? `${order}번` : selectedLabel}</> : label}</span>
     <SpriteImage src={pokemon.icon ?? profile?.icon} fallbackSrc={pokemon.iconFallback ?? profile?.iconFallback} alt="" draggable="false" />
     <strong>{name}</strong><span className="factory-card-types">{(pokemon.types ?? profile?.types ?? []).join(' · ')}</span>
-    {showRarity && <span className="factory-card-rarity">{getFactoryRarityLabel(pokemon)}</span>}
+    {(showRarity || showCost) && <span className="factory-card-rarity">{getFactoryRarityLabel(pokemon)}{showCost ? ` · ${getFactoryPokemonCost(pokemon)} 코스트` : ''}</span>}
     {showHealth && <HealthMeter pokemon={pokemon} />}
   </>
   return <article className={`factory-rental-card${selected ? ' selected' : ''}${disabled ? ' unavailable' : ''}${compact ? ' compact' : ''}`}>
@@ -122,11 +123,16 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
   const exchangeTarget = previousOpponent.find(pokemon => pokemon.captureId === takeId)
   const exchangeSource = party.find(pokemon => pokemon.captureId === giveId)
   const challenge = isFactoryChallengeMode(run.mode)
+  const costLimited = hasFactoryCostLimit(run)
+  const partyCost = getFactoryPartyCost(run.phase === 'selection' ? selectedOffers : party)
+  const exchangePartyCost = exchangeSource && exchangeTarget
+    ? getFactoryPartyCost(party.map(pokemon => pokemon.captureId === giveId ? exchangeTarget : pokemon)) : partyCost
+  const canAffordCost = !costLimited || exchangePartyCost <= FACTORY_PARTY_COST_LIMIT
   const points = run.towerPoints ?? 0
   const swapCost = challenge && exchangeTarget ? getFactorySwapCost(exchangeTarget) : 0
   const distinctSpecies = Boolean(exchangeSource && exchangeTarget && !party.some(pokemon => pokemon.captureId !== giveId && speciesKey(pokemon) === speciesKey(exchangeTarget)))
   const canAffordSwap = !challenge || points >= swapCost
-  const canExchange = distinctSpecies && canAffordSwap
+  const canExchange = distinctSpecies && canAffordSwap && canAffordCost
   const phase = run.phase
   const titles = {
     selection: ['RENTAL SELECTION', '랜덤 6마리. 당신의 선택은 3마리.', '함께할 3마리를 고른 뒤, 준비 화면에서 선봉을 선택합니다.'],
@@ -158,31 +164,34 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
       <section className="factory-panel" aria-labelledby="factory-phase-title">
         <header className="factory-panel-heading"><span>{eyebrow}</span><h2 id="factory-phase-title">{title}</h2><p>{description}</p></header>
         <div className="factory-panel-scroll">
+          {costLimited && <div className="factory-cost-guide"><strong className="factory-cost-total" aria-live="polite">팀 코스트 {partyCost}/{FACTORY_PARTY_COST_LIMIT} · 잔여 {Math.max(0, FACTORY_PARTY_COST_LIMIT - partyCost)}</strong><span>C 1 / B 2 / A 3 / S 4 / EX 5 · TP와 별도</span></div>}
+          {challenge && !costLimited && <p className="factory-cost-guide">기존 도전은 이전 규칙 유지 · 새 도전부터 팀 코스트 상한 10 적용</p>}
           {phase === 'selection' && <>
             <FactoryModePicker mode={run.mode ?? 'standard'} onSelect={id => { if (id !== run.mode) onRestart(id) }} />
             <div className="factory-selection-progress"><span><strong>{chosenIds.length}</strong> / 3 선택</span><div>{selectedOffers.length ? selectedOffers.map((pokemon, index) => <span key={pokemon.captureId}><b>{index + 1}번</b>{nameOf(pokemon)}</span>) : <small>함께 올라갈 포켓몬을 선택해 주세요.</small>}</div></div>
             <div className="factory-rental-grid" aria-label="렌탈 후보 6마리">{offers.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={String(index + 1).padStart(2, '0')}
-              selected={chosenIds.includes(pokemon.captureId)} order={chosenIds.indexOf(pokemon.captureId) + 1} disabled={!chosenIds.includes(pokemon.captureId) && chosenIds.length === 3}
+              showCost={challenge} selected={chosenIds.includes(pokemon.captureId)} order={chosenIds.indexOf(pokemon.captureId) + 1} disabled={!chosenIds.includes(pokemon.captureId) && (chosenIds.length === 3 || (costLimited && partyCost + getFactoryPokemonCost(pokemon) > FACTORY_PARTY_COST_LIMIT))}
               onSelect={() => selectOffer(pokemon)} onDetails={setDetails} />)}</div>
           </>}
           {phase === 'ready' && <div className="factory-team-groups">
             <section><h3><Flag size={16} />나의 렌탈 팀 <span>카드를 눌러 선봉 선택</span></h3><div className="factory-team-grid" aria-label="출전 선봉 선택">{party.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={`${index + 1}번`}
               selected={pokemon.captureId === run.leadCaptureId} selectedLabel="선봉" selectAriaLabel={`${nameOf(pokemon)} 선봉 선택`}
-              disabled={challenge && isFactoryPokemonFainted(pokemon)} showHealth={challenge}
+              disabled={challenge && isFactoryPokemonFainted(pokemon)} showHealth={challenge} showCost={challenge}
               onSelect={() => onChooseLead(pokemon.captureId)} onDetails={setDetails} />)}</div></section>
-            <section className="factory-enemy-group"><h3><Swords size={16} />{run.floor}층 상대 팀 <span>팩토리 AI 트레이너</span></h3><div className="factory-team-grid">{opponent.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={`상대 ${index + 1}`} onDetails={setDetails} compact />)}</div></section>
+            <section className="factory-enemy-group"><h3><Swords size={16} />{run.floor}층 상대 팀 <span>팩토리 AI 트레이너</span></h3><div className="factory-team-grid">{opponent.map((pokemon, index) => <RentalCard key={pokemon.captureId} pokemon={pokemon} label={`상대 ${index + 1}`} onDetails={setDetails} showCost={challenge} compact />)}</div></section>
           </div>}
           {phase === 'exchange' && <div className="factory-team-groups factory-exchange-groups">
             <section><h3><Flag size={16} />내보낼 포켓몬 <span>현재 렌탈 팀에서 1마리</span></h3><div className="factory-team-grid">{party.map(pokemon => <RentalCard key={pokemon.captureId} pokemon={pokemon} label="MY TEAM" selected={giveId === pokemon.captureId}
-              showHealth={challenge}
+              showHealth={challenge} showCost={challenge}
               onSelect={() => setGiveId(current => current === pokemon.captureId ? null : pokemon.captureId)} onDetails={setDetails} />)}</div></section>
             <div className="factory-exchange-indicator" aria-live="polite"><RefreshCw size={19} /><span>{exchangeSource && exchangeTarget ? `${nameOf(exchangeSource)} ↔ ${nameOf(exchangeTarget)}` : '위와 아래에서 각각 1마리씩 선택하세요.'}</span></div>
             <section><h3><Shuffle size={16} />데려올 포켓몬 <span>{challenge ? '이전 상대 팀에서 1마리 · 등급별 TP 소모' : '이전 상대 팀에서 1마리'}</span></h3><div className="factory-team-grid">{previousOpponent.map(pokemon => <RentalCard key={pokemon.captureId} pokemon={pokemon} label="OPPONENT" selected={takeId === pokemon.captureId}
-              showRarity={challenge}
+              showRarity={challenge} showCost={challenge}
               footer={challenge ? <span className="factory-card-cost"><Coins size={13} />{getFactorySwapCost(pokemon)} TP</span> : null}
               onSelect={() => setTakeId(current => current === pokemon.captureId ? null : pokemon.captureId)} onDetails={setDetails} />)}</div></section>
             {giveId && takeId && !distinctSpecies && <p className="factory-exchange-warning" role="status">같은 종류의 포켓몬을 2마리 데리고 갈 수 없습니다. 다른 조합을 선택해 주세요.</p>}
             {giveId && takeId && distinctSpecies && !canAffordSwap && <p className="factory-exchange-warning" role="status">TP가 부족합니다. 이 교체에는 {swapCost} TP가 필요하고 현재 {points} TP입니다.</p>}
+            {costLimited && giveId && takeId && <p className={canAffordCost ? 'factory-cost-guide' : 'factory-exchange-warning'} role="status">교환 후 팀 코스트 {exchangePartyCost}/{FACTORY_PARTY_COST_LIMIT}{canAffordCost ? '' : ' · 코스트 상한 초과로 교환할 수 없습니다.'}</p>}
           </div>}
           {phase === 'finished' && <div className="factory-finished">
             <span className="factory-finished-emblem"><Trophy size={48} /></span><p>렌탈 팀과 함께 쌓아 올린 기록</p>
@@ -200,8 +209,8 @@ function FactoryRunLobby({ run, onChooseRentals, onChooseLead, onStartBattle, on
             </div> : <div className="factory-rules-note"><span><Heart size={14} />{challenge ? 'HP는 이어지고 PP·상태만 회복' : '매 층 시작 시 HP·PP·상태 회복'}</span><small>{challenge ? 'TP로만 회복·교체·도구 변경이 가능합니다.' : '렌탈 포켓몬은 도전 중에만 함께합니다.'}</small></div>}
             <div className="factory-action-buttons">
               {challenge && ['ready', 'exchange'].includes(phase) && <FactoryTeamManager run={run} onHealParty={onHealParty} onRerollItem={onRerollItem} />}
-              {phase === 'selection' && <button type="button" className="factory-primary" disabled={chosenIds.length !== 3} onClick={() => onChooseRentals(chosenIds)}>렌탈 팀 확정 <span>{chosenIds.length}/3</span><ArrowRight size={18} /></button>}
-              {phase === 'ready' && <button type="button" className="factory-primary" disabled={!leadPokemon} onClick={onStartBattle}><Swords size={18} />{run.floor}층 배틀 시작</button>}
+              {phase === 'selection' && <button type="button" className="factory-primary" disabled={chosenIds.length !== 3 || (costLimited && partyCost > FACTORY_PARTY_COST_LIMIT)} onClick={() => onChooseRentals(chosenIds)}>렌탈 팀 확정 <span>{chosenIds.length}/3</span><ArrowRight size={18} /></button>}
+              {phase === 'ready' && <button type="button" className="factory-primary" disabled={!leadPokemon || (costLimited && partyCost > FACTORY_PARTY_COST_LIMIT)} onClick={onStartBattle}><Swords size={18} />{run.floor}층 배틀 시작</button>}
               {phase === 'exchange' && <><button type="button" className="factory-secondary" onClick={() => onAdvanceFloor(null)}>교환 없이 다음 층</button><button type="button" className="factory-primary" disabled={!canExchange} onClick={() => onAdvanceFloor({ giveCaptureId: giveId, takeCaptureId: takeId })}><RefreshCw size={17} />교환하고 다음 층{challenge && exchangeTarget ? ` · ${swapCost} TP` : ''}</button></>}
               {phase === 'finished' && <><button type="button" className="factory-secondary" onClick={onBack}>배틀 선택</button><button type="button" className="factory-primary" onClick={() => onRestart(run.mode)}><RefreshCw size={18} />새 도전 시작</button></>}
             </div>

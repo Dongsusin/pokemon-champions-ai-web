@@ -21,6 +21,7 @@ import {
   FACTORY_DEFAULT_MODE, FACTORY_TP_ITEM_REROLL_COST, getFactoryHpRatio,
   getFactoryMode, getFactoryPartyHealCost, getFactorySwapCost, getFactoryTpAward,
   isFactoryChallengeMode, isFactoryPokemonFainted, rollFactoryHeldItem, withFactoryHpRatio,
+  FACTORY_PARTY_COST_LIMIT, getFactoryPokemonCost, getFactoryPartyCost, hasFactoryCostLimit,
 } from './battleFactoryChallenge.js'
 
 export const FACTORY_TRAINER = Object.freeze({
@@ -243,6 +244,33 @@ function assertDistinctParty(party) {
   }
 }
 
+function assertPartyCost(run, party) {
+  const cost = getFactoryPartyCost(party)
+  if (hasFactoryCostLimit(run) && cost > FACTORY_PARTY_COST_LIMIT) {
+    fail('FACTORY_COST', `팀 코스트 ${cost}/${FACTORY_PARTY_COST_LIMIT}: 상한 이하로 포켓몬을 선택해 주세요.`)
+  }
+}
+
+function createRentalOffers(seed, prefix, mode) {
+  const offers = sampleRentals(seed, FACTORY_RENTAL_COUNT, prefix)
+  if (!isFactoryChallengeMode(mode)) return offers
+  const affordable = () => [...offers].sort((a, b) => getFactoryPokemonCost(a) - getFactoryPokemonCost(b)).slice(0, FACTORY_PARTY_SIZE)
+  if (getFactoryPartyCost(affordable()) <= FACTORY_PARTY_COST_LIMIT) return offers
+  const random = randomStream(seedValue(`${seed}:budget`))
+  const used = new Set(offers.map(speciesKey))
+  const budgetPool = getRentalPool().filter(sets => !used.has(speciesKey(sets[0].pokemon)) && getFactoryPokemonCost(sets[0].pokemon) <= 3)
+  // Bounded repair only when the six rolls have no legal trio. Keep the other
+  // offers intact, including their IDs, and never duplicate a species.
+  while (getFactoryPartyCost(affordable()) > FACTORY_PARTY_COST_LIMIT) {
+    const [sets] = budgetPool.splice(Math.floor(random() * budgetPool.length), 1)
+    if (!sets) fail('FACTORY_POOL', '코스트에 맞는 렌탈 후보를 준비하지 못했습니다.')
+    const index = offers.reduce((best, entry, slot) => getFactoryPokemonCost(entry) > getFactoryPokemonCost(offers[best]) ? slot : best, 0)
+    const replacement = sampleRentals(seedValue(`${seed}:budget:${index}`), 1, prefix, [sets[Math.floor(random() * sets.length)]])[0]
+    offers[index] = { ...replacement, captureId: offers[index].captureId }
+  }
+  return offers
+}
+
 export function createFactoryRun({ seed = randomSeed(), id, mode = FACTORY_DEFAULT_MODE } = {}) {
   const normalizedSeed = seedValue(seed)
   const runId = id ?? `factory-${Date.now()}-${normalizedSeed.toString(36)}`
@@ -251,6 +279,7 @@ export function createFactoryRun({ seed = randomSeed(), id, mode = FACTORY_DEFAU
     id: runId,
     seed: normalizedSeed,
     mode: getFactoryMode(mode).id,
+    ...(isFactoryChallengeMode(mode) ? { costRulesVersion: 1 } : {}),
     // Challenge mode only. Tower Points are earned by winning and spent on
     // healing, swaps and item rerolls; they never outlive this run.
     towerPoints: 0,
@@ -258,7 +287,7 @@ export function createFactoryRun({ seed = randomSeed(), id, mode = FACTORY_DEFAU
     phase: 'selection',
     floor: 1,
     wins: 0,
-    offers: sampleRentals(normalizedSeed, FACTORY_RENTAL_COUNT, `${runId}:rental`),
+    offers: createRentalOffers(normalizedSeed, `${runId}:rental`, mode),
     party: [],
     leadCaptureId: null,
     opponentTeam: null,
@@ -280,6 +309,7 @@ export function selectFactoryRentals(run, captureIds) {
   const party = captureIds.map((captureId) => run.offers.find((entry) => entry.captureId === captureId))
   if (party.some((entry) => !entry)) fail('FACTORY_SELECTION', '이번 도전에서 제시된 포켓몬만 선택할 수 있습니다.')
   assertDistinctParty(party)
+  assertPartyCost(run, party)
   return { ...run, phase: 'ready', party: clone(party), leadCaptureId: null,
     rules: createRules(`${run.id}:rules`, run.floor, run.mode), opponentTeam: createOpponentTeam(run, run.floor) }
 }
@@ -298,6 +328,7 @@ export function beginFactoryBattle(run) {
   if (run?.phase === 'battle') return run
   assertPhase(run, 'ready')
   assertDistinctParty(run.party)
+  assertPartyCost(run, run.party)
   const lead = run.party.find((pokemon) => pokemon.captureId === run.leadCaptureId)
   if (!lead) fail('FACTORY_LEAD', '배틀을 시작하기 전에 선봉 포켓몬을 선택해 주세요.')
   if (isFactoryChallengeMode(run.mode) && isFactoryPokemonFainted(lead)) {
@@ -379,6 +410,7 @@ export function advanceFactoryFloor(run, exchange = null) {
     party = party.map((entry, index) => index === giveIndex ? replacement : entry)
   }
   assertDistinctParty(party)
+  assertPartyCost(run, party)
   const floor = run.floor + 1
   return {
     ...run,

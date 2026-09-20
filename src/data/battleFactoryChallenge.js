@@ -12,12 +12,18 @@ export const FACTORY_MODES = Object.freeze([
   }),
   Object.freeze({
     id: 'challenge', label: '도전 모드', tagline: 'CHALLENGE RUN',
-    description: '더 강한 상대와 빠른 난이도 상승에 도전합니다. HP가 이어지며 TP로 회복·교체·도구를 관리합니다.',
+    description: '팀 코스트 10 안에서 강한 상대에 도전합니다. HP가 이어지며 TP로 회복·교체·도구를 관리합니다.',
   }),
 ])
 
 export const FACTORY_DEFAULT_MODE = 'standard'
 export const isFactoryChallengeMode = (mode) => mode === 'challenge'
+export const FACTORY_PARTY_COST_LIMIT = 10
+export const FACTORY_POKEMON_COST = Object.freeze({ common: 1, rare: 2, elite: 3, champion: 4, legend: 5 })
+// Existing runs keep their original rules; new challenge runs opt in explicitly.
+export const hasFactoryCostLimit = run => isFactoryChallengeMode(run?.mode) && run.costRulesVersion === 1
+export const getFactoryPokemonCost = pokemon => FACTORY_POKEMON_COST[getFactoryPokemonRarity(pokemon)]
+export const getFactoryPartyCost = party => (party ?? []).reduce((total, pokemon) => total + getFactoryPokemonCost(pokemon), 0)
 export function getFactoryMode(id) {
   return FACTORY_MODES.find((mode) => mode.id === id) ?? FACTORY_MODES[0]
 }

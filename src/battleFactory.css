@@ -257,6 +257,8 @@
 .factory-mode-option > span { color: #b9cbd8; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
 
 .factory-card-rarity { align-self: center; margin-top: 3px; color: #ffd39a; font-size: 10px; letter-spacing: .02em; }
+.factory-cost-guide { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0 0 10px; padding: 8px 12px; border: 1px solid #e0be6948; border-radius: 8px; background: #252c3abb; color: #ffd39a; font-size: 12px; }
+.factory-cost-guide > span { color: #c6d5e4; }
 .factory-card-health { display: flex; align-items: center; gap: 6px; width: calc(100% - 22px); margin: 6px auto 0; }
 .factory-card-health-track { flex: 1; min-width: 0; height: 5px; border-radius: 99px; background: #0b1a28; overflow: hidden; }
 .factory-card-health-track > i { display: block; height: 100%; border-radius: 99px; background: currentColor; transition: width .2s ease; }

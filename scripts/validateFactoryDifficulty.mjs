@@ -1,3 +1,4 @@
+import { getFactoryPokemonCost } from '../src/data/battleFactoryChallenge.js'
 import assert from 'node:assert/strict'
 import {
   advanceFactoryFloor, beginFactoryBattle, createFactoryRun, FACTORY_TRAINER,
@@ -21,7 +22,7 @@ const sampleSize = 32
 const learnsets = new Map()
 function readyAt({ seed = 73, floor = 1, mode = 'standard', id = `difficulty-${seed}` } = {}) {
   const selection = createFactoryRun({ seed, mode, id })
-  return selectFactoryRentals({ ...selection, floor }, selection.offers.slice(0, 3).map((pokemon) => pokemon.captureId))
+  return selectFactoryRentals({ ...selection, floor }, [...selection.offers].sort((a,b) => getFactoryPokemonCost(a) - getFactoryPokemonCost(b)).slice(0, 3).map((pokemon) => pokemon.captureId))
 }
 function assertLegalTeam(team) {
   assert.equal(team.pokemon.length, 3)
