@@ -17488,7 +17488,34 @@
 
 .battle-hp-panel footer em {
   margin-left: 7px;
-  background: #a05a2f;
+  background: #596575;
+}
+
+/* Major status badges keep distinct colors across every battle mode. */
+.battle-hp-panel footer em.status-poison,
+.battle-hp-panel footer em.status-toxic {
+  background: #8845ad;
+  color: #fff;
+}
+
+.battle-hp-panel footer em.status-burn {
+  background: #c43d38;
+  color: #fff;
+}
+
+.battle-hp-panel footer em.status-paralysis {
+  background: #f4ce46;
+  color: #30260b;
+}
+
+.battle-hp-panel footer em.status-sleep {
+  background: #596575;
+  color: #fff;
+}
+
+.battle-hp-panel footer em.status-freeze {
+  background: #81d4ec;
+  color: #123342;
 }
 
 .battle-party-indicators {
