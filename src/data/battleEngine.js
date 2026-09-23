@@ -8190,12 +8190,18 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     return
   }
 
+  const rainSkipsElectroShotCharge = move.id === 'electroshot'
+    && move.flags?.includes('charge')
+    && !isChargeContinuation
+    && resolvedGimmick !== 'zmove'
+    && !attacker.dynamaxActive
+    && effectiveMoveWeatherFamilyId(state, attacker) === 'rain'
   const requiresCharge = move.flags?.includes('charge')
     && !isChargeContinuation
     && resolvedGimmick !== 'zmove'
     && !attacker.dynamaxActive
     && !(effectiveMoveWeatherFamilyId(state, attacker) === 'sun' && ['solarbeam', 'solarblade'].includes(move.id))
-    && !(effectiveMoveWeatherFamilyId(state, attacker) === 'rain' && move.id === 'electroshot')
+    && !rainSkipsElectroShotCharge
   if (requiresCharge) {
     if (hasActiveHeldItem(attacker, 'power-herb')) {
       consumeHeldItem(state, attacker)
@@ -8218,6 +8224,8 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       })
       return
     }
+  } else if (rainSkipsElectroShotCharge) {
+    changeStages(state, attacker, CHARGE_TURN_BOOSTS.electroshot)
   }
 
   pushTimelineStep(timeline, state, { phase: 'attack', ...moveStep })

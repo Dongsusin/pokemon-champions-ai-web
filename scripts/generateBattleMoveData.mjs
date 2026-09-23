@@ -167,6 +167,9 @@ function fallbackDescription(move) {
 }
 
 function resolvedDescription(showdownId, showdownMove, localized) {
+  if (showdownId === 'electroshot') {
+    return '전기를 모으며 자신의 특수공격을 1랭크 올린 뒤 다음 턴에 공격한다. 비가 내리면 특수공격을 올린 뒤 같은 턴에 공격한다.'
+  }
   if (showdownId === 'terablast') {
     return '평소에는 위력 80의 노말타입 특수 기술이다. 테라스탈하면 테라타입으로 바뀌며, 능력 변화가 반영된 공격이 특수공격보다 높으면 물리 기술이 된다. 스텔라 테라스탈 시 위력이 100이 되고 테라스탈한 상대에게 효과가 굉장하며, 명중 후 자신의 공격과 특수공격이 1랭크씩 떨어진다.'
   }

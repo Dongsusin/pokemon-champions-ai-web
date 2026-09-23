@@ -18,10 +18,10 @@ function pokemon(slug, moveIds, overrides = {}) {
   return { speciesId: profile.id, captureId: `rule-correction-${++fixtureId}`,
     moves: moveIds.map(id => getMoveById(id).name), ...overrides }
 }
-function battle(playerPokemon, opponents) {
+function battle(playerPokemon, opponents, weather = 'clear') {
   return createBattle({ playerPokemon, opponent: { name: 'MOVE RULE CORRECTIONS' },
     opponentTeam: { pokemon: opponents, battleGimmicks: [] }, rules: {
-      weather: { id: 'clear' }, terrain: { id: 'neutral' },
+      weather: { id: weather }, terrain: { id: 'neutral' },
       format: { id: 'single', activeSlots: 1, actionSlots: 1 },
       teamRule: { id: 'full', battleSize: Math.max(playerPokemon.length, opponents.length) },
     } })
@@ -35,6 +35,49 @@ function turn(state, playerMove, opponentMove, random = () => .5) {
   }
   return playBattleTurnWithActions(state, [action('player', playerMove)], [action('opponent', opponentMove)], random)
 }
+
+test('Electro Shot raises Special Attack on the charging turn, not again when it attacks', () => {
+  let state = battle([pokemon('archaludon', ['electroshot'])], [pokemon('blissey', ['calmmind'])])
+  const targetHp = state.opponent.team[0].hp
+  state = turn(state, 'electroshot', 'calmmind')
+  assert.equal(state.player.team[0].statStages.specialAttack, 1)
+  assert.equal(state.player.team[0].chargingMove?.moveId, 'electroshot')
+  assert.equal(state.opponent.team[0].hp, targetHp)
+
+  state = turn(state, 'electroshot', 'calmmind')
+  assert.equal(state.player.team[0].statStages.specialAttack, 1)
+  assert.equal(state.player.team[0].chargingMove, null)
+  assert(state.opponent.team[0].hp < targetHp)
+})
+
+test('Electro Shot raises Special Attack before attacking immediately in rain', () => {
+  const before = battle([pokemon('archaludon', ['electroshot'])], [pokemon('blissey', ['calmmind'])], 'rain')
+  const after = turn(before, 'electroshot', 'calmmind')
+  assert.equal(after.player.team[0].statStages.specialAttack, 1)
+  assert.equal(after.player.team[0].chargingMove, null)
+  assert(after.opponent.team[0].hp < before.opponent.team[0].hp)
+  assert.equal(before.player.team[0].moves[0].currentPp - after.player.team[0].moves[0].currentPp, 1)
+})
+
+test('Electro Shot keeps its rain boost even when Protect blocks the attack', () => {
+  const before = battle([pokemon('archaludon', ['electroshot'])], [pokemon('blissey', ['protect'])], 'rain')
+  const after = turn(before, 'electroshot', 'protect')
+  assert.equal(after.player.team[0].statStages.specialAttack, 1)
+  assert.equal(after.opponent.team[0].hp, before.opponent.team[0].hp)
+})
+
+test('Electro Shot uses Power Herb only outside rain and boosts once either way', () => {
+  for (const weather of ['clear', 'rain']) {
+    const before = battle([
+      pokemon('archaludon', ['electroshot'], { heldItemId: 'power-herb' }),
+    ], [pokemon('blissey', ['calmmind'])], weather)
+    const after = turn(before, 'electroshot', 'calmmind')
+    assert.equal(after.player.team[0].statStages.specialAttack, 1, weather)
+    assert.equal(after.player.team[0].chargingMove, null, weather)
+    assert.equal(after.player.team[0].consumedItem, weather === 'clear', weather)
+    assert(after.opponent.team[0].hp < before.opponent.team[0].hp, weather)
+  }
+})
 
 test('Ghost Curse can sacrifice a user with 1 HP and apply its residual damage', () => {
   const before = battle([pokemon('gengar', ['curse']), pokemon('magikarp', ['splash'])], [pokemon('snorlax', ['amnesia'])])

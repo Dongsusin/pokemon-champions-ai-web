@@ -22973,7 +22973,7 @@
       "priority": 0,
       "target": "normal",
       "generation": 9,
-      "description": "위력 130의 전기타입 공격 기술이다.",
+      "description": "전기를 모으며 자신의 특수공격을 1랭크 올린 뒤 다음 턴에 공격한다. 비가 내리면 특수공격을 올린 뒤 같은 턴에 공격한다.",
       "flags": [
         "charge",
         "protect",
