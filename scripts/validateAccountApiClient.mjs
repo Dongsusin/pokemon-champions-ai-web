@@ -3,11 +3,13 @@ import { build } from 'esbuild'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gunzipSync } from 'node:zlib'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const environment = { VITE_GAME_STORAGE_PROVIDER: 'supabase', VITE_ACCOUNT_API_URL: 'http://127.0.0.1:9909/api/account' }
 const requests = []
+const wires = []
 let firestoreCalls = 0
 let currentOwner = 'session-owner-example'
 let tokenCalls = 0
@@ -46,10 +48,14 @@ globalThis.fetch = async (url, options) => {
   assert.equal(options.method, 'POST')
   assert.equal(options.credentials, 'omit')
   assert.match(options.headers.Authorization, /^Bearer fresh-token-/)
-  const body = JSON.parse(options.body)
+  const transmitted = JSON.parse(options.body)
+  const compressed = transmitted.encoding === 'gzip-base64-v1'
+  const body = compressed
+    ? JSON.parse(gunzipSync(Buffer.from(transmitted.data, 'base64')).toString('utf8')) : transmitted
   assert.equal(body.ownerId, currentOwner)
   assert.equal('uid' in body, false, 'Owner identity comes from the Firebase token')
   requests.push(body)
+  wires.push({ bytes: Buffer.byteLength(options.body), compressed })
   if (responseGate) await responseGate.promise
   return new Response(JSON.stringify(responseBody(body)), { status, headers: { 'content-type': 'application/json' } })
 }
@@ -154,6 +160,20 @@ try {
     const { 'champions-settings-v1': omitted, ...withoutSettings } = payload
     await api.savePlayerGameData(user.uid, withoutSettings)
     assert.deepEqual(requests.at(-1).removed, ['champions-settings-v1'])
+    const changedCollection = collection.replace('fixture-0', 'fixture-0-updated')
+    await api.savePlayerGameData(user.uid, { ...withoutSettings, 'champions-dex-v2': changedCollection })
+    assert.equal(requests.at(-1).action, 'savePatch')
+    assert.equal(requests.at(-1).patch['champions-dex-v2'], changedCollection)
+    assert.equal(wires.at(-1).compressed, true)
+    const collectionPatchBytes = Buffer.byteLength(JSON.stringify(requests.at(-1)))
+    assert(wires.at(-1).bytes < collectionPatchBytes / 3, 'Changed collections should use the compressed envelope')
+    console.log(`Synthetic 541 Pokemon collection save: ${collectionPatchBytes} -> ${wires.at(-1).bytes} bytes (${(100 * (1 - wires.at(-1).bytes / collectionPatchBytes)).toFixed(2)}% less)`)
+    const originalCompressionStream = globalThis.CompressionStream
+    try {
+      globalThis.CompressionStream = undefined
+      await api.savePlayerGameData(user.uid, { ...withoutSettings, 'champions-dex-v2': collection })
+      assert.equal(wires.at(-1).compressed, false, 'Older browsers must keep the existing JSON format')
+    } finally { globalThis.CompressionStream = originalCompressionStream }
     await api.deletePlayerGameData(user.uid)
     responseBody = original
   })

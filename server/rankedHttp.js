@@ -109,6 +109,7 @@ export function createRankedHttpHandler({ service, authenticate, enabled = false
       if (!match) throw new RankedError('UNAUTHENTICATED', '로그인이 필요합니다.', 401)
       const payload = request.method === 'GET'
         ? { action: url.searchParams.get('action') || 'status', ...(url.searchParams.has('matchId') ? { matchId: url.searchParams.get('matchId') } : {}), ...(url.searchParams.has('timelineRevision') ? { timelineRevision: url.searchParams.get('timelineRevision') } : {}),
+          ...(url.searchParams.has('matchRevision') ? { matchRevision: url.searchParams.get('matchRevision') } : {}),
           ...(url.searchParams.has('spectateMatchId') ? { spectateMatchId: url.searchParams.get('spectateMatchId') } : {}),
           ...(url.searchParams.has('mode') ? { mode: url.searchParams.get('mode') } : {}),
           ...(url.searchParams.has('spectateTimelineRevision') ? { spectateTimelineRevision: url.searchParams.get('spectateTimelineRevision') } : {}),
@@ -163,17 +164,23 @@ export function createFirebaseRankedTeamResolver(firestore) {
 }
 
 let productionHandler
+let productionBattleEngine
+function getProductionBattleEngine() {
+  if (!productionBattleEngine) productionBattleEngine = startupModule('battle-engine', import('./rankedBattle.js'))
+    .catch(error => { productionBattleEngine = null; throw error })
+  return productionBattleEngine
+}
 export async function handleProductionRankedRequest(request) {
   if (process.env.RANKED_ENABLED !== 'true') return createRankedHttpHandler()(request)
   if (!productionHandler) {
     productionHandler = (async () => {
-      const [services, engine] = await Promise.all([
-        getProductionServices(),
-        startupModule('battle-engine', import('./rankedBattle.js')),
-      ])
+      const services = await getProductionServices()
       const { rankedStore: store, accountStore, guestRegistry, firestore, authenticate } = services
       const resolveTeam = accountStore ? createAccountRankedTeamResolver(accountStore) : createFirebaseRankedTeamResolver(firestore)
-      const service = createRankedService({ store, engine, guestRegistry, resolveTeam, usageEnabled: process.env.POKEMON_USAGE_ENABLED === 'true' })
+      // Passive polls never need the battle catalog, which is substantially
+      // larger than the queue, profile and leaderboard service modules.
+      const service = createRankedService({ store, loadEngine: getProductionBattleEngine, guestRegistry, resolveTeam,
+        usageEnabled: process.env.POKEMON_USAGE_ENABLED === 'true' })
       return createRankedHttpHandler({ enabled: true, service, authenticate })
     })().catch(error => {
       logFailure('initialization', error)

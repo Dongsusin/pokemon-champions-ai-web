@@ -1,8 +1,10 @@
 import { AccountError, ACCOUNT_PAYLOAD_MAX_BYTES, createAccountService } from './accountService.js'
 import { getProductionServices } from './productionServices.js'
-import { createRankedService } from './rankedService.js'
+import { gunzip } from 'node:zlib'
+import { promisify } from 'node:util'
 
 export const ACCOUNT_HTTP_MAX_BYTES = ACCOUNT_PAYLOAD_MAX_BYTES + 8192
+const decompress = promisify(gunzip)
 const localHost = hostname => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)
 const response = (body, status = 200, headers = {}) => Response.json(body, {
   status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers },
@@ -32,6 +34,20 @@ async function readPayload(request) {
   let payload
   try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { throw new AccountError('INVALID_JSON', '요청 내용을 읽을 수 없습니다.') }
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new AccountError('INVALID_JSON', '요청 형식이 올바르지 않습니다.')
+  if (payload.encoding === 'gzip-base64-v1') {
+    if (Object.keys(payload).length !== 2 || typeof payload.data !== 'string'
+      || !payload.data.length || payload.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(payload.data)) {
+      throw new AccountError('INVALID_JSON', '압축된 요청 형식이 올바르지 않습니다.')
+    }
+    let decoded
+    try { decoded = await decompress(Buffer.from(payload.data, 'base64'), { maxOutputLength: ACCOUNT_HTTP_MAX_BYTES }) }
+    catch (error) {
+      if (error?.code === 'ERR_BUFFER_TOO_LARGE') throw new AccountError('BODY_TOO_LARGE', '요청 내용이 너무 큽니다.', 413)
+      throw new AccountError('INVALID_JSON', '압축된 요청을 읽을 수 없습니다.')
+    }
+    try { payload = JSON.parse(decoded.toString('utf8')) } catch { throw new AccountError('INVALID_JSON', '요청 내용을 읽을 수 없습니다.') }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new AccountError('INVALID_JSON', '요청 형식이 올바르지 않습니다.')
+  }
   return payload
 }
 
@@ -83,8 +99,13 @@ export async function handleProductionAccountRequest(request) {
   if (process.env.GAME_STORAGE_PROVIDER !== 'supabase') return unavailable()
   if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, rankedStore, guestRegistry, authenticate }) => {
     if (!accountStore) throw new Error('Account storage is unavailable')
-    const ranked = createRankedService({ store: rankedStore, guestRegistry })
-    return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry, deleteGuestData: ranked.deleteGuestAccount }), authenticate })
+    // Most account requests are saves or lease renewals. Only load the ranked
+    // cleanup tree when an anonymous account is actually being deleted.
+    const deleteGuestData = async identity => {
+      const { createRankedService } = await import('./rankedService.js')
+      return createRankedService({ store: rankedStore, guestRegistry }).deleteGuestAccount(identity)
+    }
+    return createAccountHttpHandler({ service: createAccountService({ store: accountStore, guestRegistry, deleteGuestData }), authenticate })
   }).catch(error => {
     // Restrict diagnostics to known labels; never log SDK messages or secrets.
     console.error('Account server initialization failed', {

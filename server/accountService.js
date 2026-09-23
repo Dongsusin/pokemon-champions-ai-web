@@ -155,6 +155,19 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
       // Versions belong to this request; transaction retries cannot resurrect
       // a stale release or generate a different lease for the same attempt.
       const version = action === 'sessionAcquire' || action === 'sessionHeartbeat' ? newVersion() : null
+      if (action === 'sessionHeartbeat' && typeof store.renewSessionLease === 'function') {
+        const timestamp = now()
+        const renewed = await store.renewSessionLease({
+          uid: identity.uid, ownerId, expectedVersion: command.version, nextVersion: version,
+          nowMs: timestamp, expiresAt: timestamp + ACCOUNT_LEASE_MS,
+          guestDeletionKey: identity.isGuest === true ? guestDeletionKey(identity.uid) : null,
+        })
+        if (renewed.guestDeleted) fail('GUEST_ACCOUNT_DELETED', '삭제가 진행된 게스트입니다. 로그아웃을 다시 시도해주세요.', 410)
+        if (!renewed.session) fail('account-session/lost', '로그인 세션 상태가 바뀌었습니다. 다시 접속해주세요.', 409)
+        const result = sessionView(renewed.session)
+        const onlinePlayers = await readOnlinePlayers()
+        return onlinePlayers ? { ...result, onlinePlayers } : result
+      }
       const result = await store.transaction(async tx => {
         const uid = identity.uid
         const timestamp = now()

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { generateKeyPairSync } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
 import { createGuestIdentityRegistry } from '../server/guestIdentity.js'
 import { ACCOUNT_LEASE_MS, ACCOUNT_PAYLOAD_MAX_BYTES, createAccountService, createAccountRankedTeamResolver } from '../server/accountService.js'
@@ -230,6 +231,35 @@ test('HTTP rejects unauthenticated/foreign-origin/oversized/GET requests and hid
   assert.equal((await request({ action: 'load', ownerId: ownerA })).status, 200)
   assert((await env.store.inspect()).collections.sessions[alice.uid])
   assert.equal((await env.store.inspect()).collections.sessions[bob.uid], undefined)
+})
+
+test('HTTP accepts compressed account saves while bounding decoded size and preserving legacy JSON', async () => {
+  const env = environment()
+  const handler = createAccountHttpHandler({ service: env.service, authenticate: async () => alice })
+  const request = payload => handler(new Request('https://game.example/api/account', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-google-token' },
+    body: JSON.stringify(payload),
+  }))
+  const compressed = value => ({ encoding: 'gzip-base64-v1', data: gzipSync(JSON.stringify(value)).toString('base64') })
+  assert.equal((await request({ action: 'sessionAcquire', ownerId: ownerA })).status, 200)
+  const collection = JSON.stringify(Array.from({ length: 541 }, (_, index) => ({ captureId: `caught-${index}`, speciesId: index + 1 })))
+  const save = { action: 'save', ownerId: ownerA, revision: 'compressed-revision-1', saveSequence: 1,
+    payload: { 'champions-dex-v2': collection, 'champions-vp-v1': '500' } }
+  const transmitted = compressed(save)
+  assert(Buffer.byteLength(JSON.stringify(transmitted)) < Buffer.byteLength(JSON.stringify(save)) / 3)
+  assert.equal((await request(transmitted)).status, 200)
+  assert.deepEqual((await env.call(alice, 'load')).gameData.payload, save.payload)
+  const legacy = { ...save, revision: 'legacy-revision-2', saveSequence: 2,
+    payload: { ...save.payload, 'champions-vp-v1': '600' } }
+  assert.equal((await request(legacy)).status, 200)
+  assert.equal((await env.call(alice, 'load')).gameData.payload['champions-vp-v1'], '600')
+  assert.equal((await request({ encoding: 'gzip-base64-v1', data: '%%%' })).status, 400)
+  assert.equal((await request({ encoding: 'gzip-base64-v1', data: Buffer.from('not gzip').toString('base64') })).status, 400)
+  const oversized = compressed({ ...save, payload: { 'champions-dex-v2': 'x'.repeat(ACCOUNT_HTTP_MAX_BYTES) } })
+  const rejected = await request(oversized)
+  assert.equal(rejected.status, 413)
+  assert.equal((await rejected.json()).error.code, 'BODY_TOO_LARGE')
+  assert.equal((await env.call(alice, 'load')).gameData.payload['champions-vp-v1'], '600')
 })
 
 test('Supabase startup shares one pool, retains Firebase revoked-token verification and never imports Firestore', async () => {

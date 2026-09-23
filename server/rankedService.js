@@ -72,7 +72,7 @@ function hasRequest(record, requestId, hash) {
   return Boolean(previous)
 }
 
-export function createRankedService({ store, engine, now = Date.now, newId = randomUUID,
+export function createRankedService({ store, engine, loadEngine = async () => engine, now = Date.now, newId = randomUUID,
   makeSeed = () => randomBytes(4).readUInt32LE(), resolveTeam = async (_identity, team) => team,
   fixtures = null, timeouts = {}, usageEnabled = false, guestRegistry = null }) {
   const guestIdentities = guestRegistry ?? createGuestIdentityRegistry({ store, now })
@@ -169,24 +169,28 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     return true
   }
 
-  function viewMatch(match, uid, timeline = []) {
+  async function viewMatch(match, uid, timeline = [], unchangedMatch = false) {
     if (!match) return null
     const index = indexOf(match, uid)
     if (index < 0) fail('MATCH_FORBIDDEN', '이 대전에 참여한 계정만 조회할 수 있습니다.', 403)
     const side = index === 0 ? 'player' : 'opponent'
     const you = match.players[index]
     const opponent = match.players[1 - index]
+    const battleEngine = (!unchangedMatch && match.state) || timeline.length ? await loadEngine() : null
     return maskRankedMatch({
       id: match.id, roomId: match.roomId ?? null, format: match.format, phase: match.phase, revision: match.revision,
       timelineRevision: match.timelineRevision,
       createdAt: match.createdAt, deadlineAt: match.deadlineAt, finishedAt: match.finishedAt ?? null,
       you: { name: you.name, nickname: you.nickname, rating: you.rating, isGuest: you.isGuest === true }, opponent: { name: opponent.name, nickname: opponent.nickname, rating: opponent.rating, isGuest: opponent.isGuest === true },
-      teamPreview: { you: clone(you.team), opponent: opponent.team.map(previewPokemon) },
+      // A matching revision means the client already has this immutable
+      // preview and the complete battle state. Omit the keys, not null them,
+      // so an older client can still distinguish a delta from a real empty state.
+      ...(!unchangedMatch ? { teamPreview: { you: clone(you.team), opponent: opponent.team.map(previewPokemon) } } : {}),
       selectionSubmitted: Boolean(match.selections[uid]), opponentSelectionSubmitted: Boolean(match.selections[opponent.uid]),
       selectedIndices: clone(match.selections[uid] ?? []),
       actionSubmitted: Boolean(match.pendingActions[side]), opponentActionSubmitted: Boolean(match.pendingActions[opposite(side)]),
-      state: match.state ? engine.getRankedBattleView(match.state, side) : null,
-      timeline: timeline.length ? engine.getRankedTimelineView(timeline, side) : [],
+      ...(!unchangedMatch ? { state: match.state ? battleEngine.getRankedBattleView(match.state, side) : null } : {}),
+      timeline: timeline.length ? battleEngine.getRankedTimelineView(timeline, side) : [],
       result: match.result ? clone(match.result[index]) : null,
     })
   }
@@ -216,16 +220,17 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (chunk) timeline.push(...chunk.frames)
       }
     }
+    const battleEngine = target.state || timeline.length ? await loadEngine() : null
     return {
       id: target.id, roomId: target.roomId, format: target.format, phase: target.phase,
       revision: target.revision, timelineRevision: target.timelineRevision, deadlineAt: target.deadlineAt,
       players: target.players.map(player => ({ name: maskRankedTrainerName(player.name, player.isGuest, player.nickname), nickname: player.nickname, isGuest: player.isGuest === true })),
-      state: target.state ? engine.getRoomSpectatorBattleView(target.state, target.id) : null,
-      timeline: timeline.length ? engine.getRoomSpectatorTimelineView(timeline, target.id) : [], result: null,
+      state: target.state ? battleEngine.getRoomSpectatorBattleView(target.state, target.id) : null,
+      timeline: timeline.length ? battleEngine.getRoomSpectatorTimelineView(timeline, target.id) : [], result: null,
     }
   }
 
-  async function snapshot(tx, uid, { knownTimelineRevision, knownMatchId, includeRooms = false, spectateMatchId, spectateTimelineRevision } = {}) {
+  async function snapshot(tx, uid, { knownTimelineRevision, knownMatchId, knownMatchRevision, includeRooms = false, spectateMatchId, spectateTimelineRevision } = {}) {
     let player = await tx.get('players', uid)
     const knownRoomMatch = knownMatchId ? await tx.get('matches', knownMatchId) : null
     const roomContext = includeRooms || Boolean(player?.activeRoomId || knownRoomMatch?.roomId)
@@ -254,6 +259,9 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
     if (includeRooms && match && !match.roomId) match = null
     const timeline = []
     const unchangedTimeline = match && knownMatchId === match.id && Number(knownTimelineRevision) === match.timelineRevision
+    const unchangedMatch = match && knownMatchId === match.id
+      && /^(0|[1-9]\d*)$/.test(String(knownMatchRevision))
+      && Number.isSafeInteger(Number(knownMatchRevision)) && Number(knownMatchRevision) === match.revision
     for (let index = 0; !unchangedTimeline && index < (match?.timelineChunks ?? 0); index += 1) {
       const chunk = await tx.get('timelines', `${match.id}_${match.timelineRevision}_${index}`)
       if (chunk) timeline.push(...chunk.frames)
@@ -262,7 +270,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       profile: clone(player?.profiles ?? { single: createRankedProfile('single'), double: createRankedProfile('double') }),
       vpRewards: { uid, total: vpRewardTotal(player?.vpRewardTotal) },
       queue: queue ? { ticket: queue.ticket, format: queue.format, queuedAt: queue.queuedAt, expiresAt: queue.expiresAt, rating: queue.rating } : null,
-      match: viewMatch(match, uid, timeline), serverTime: now(),
+      match: await viewMatch(match, uid, timeline, unchangedMatch), serverTime: now(),
       ...(roomContext ? await rooms.context(tx, uid) : { room: null, roomResult: clone(player?.roomResult ?? null) }),
       ...(includeRooms ? { rankedConflict, spectator: await spectatorView(tx, uid, spectateMatchId, spectateTimelineRevision) } : {}),
     }
@@ -438,18 +446,18 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
       if (!title || title.length > 32) fail('INVALID_ROOM_TITLE', '방 이름은 1~32자로 입력해주세요.')
       payload = { ...payload, title }
       validateRoomPassword(payload.password, fail)
-      team = engine.canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: payload.format, requireRegisteredTeam: true })
+      team = (await loadEngine()).canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: payload.format, requireRegisteredTeam: true })
     }
     if (['roomJoin', 'roomStart', 'roomLeave'].includes(action) && !isId(payload.roomId)) fail('INVALID_ROOM', '방 식별자가 올바르지 않습니다.')
     if (action === 'roomJoin') {
       validateRoomPassword(payload.password, fail)
       const targetRoom = await transaction(tx => tx.get('battleRooms', payload.roomId))
       if (!targetRoom) fail('ROOM_NOT_FOUND', '방이 종료되었거나 삭제되었습니다.', 404)
-      team = engine.canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: targetRoom.format, requireRegisteredTeam: true })
+      team = (await loadEngine()).canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: targetRoom.format, requireRegisteredTeam: true })
     }
     if (action === 'join') {
       if (!getRankedFormat(payload.format)) fail('INVALID_FORMAT', '싱글 또는 더블 배틀을 선택해주세요.')
-      team = engine.canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: payload.format, requireRegisteredTeam: true })
+      team = (await loadEngine()).canonicalizeRankedTeam(await resolveTeam(identity, payload.team), { format: payload.format, requireRegisteredTeam: true })
     }
     const requestHash = digest(payload)
     const response = await transaction(async tx => {
@@ -465,7 +473,8 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
           if (!requested) fail('MATCH_NOT_FOUND', '대전을 찾을 수 없습니다.', 404)
           if (indexOf(requested, identity.uid) < 0) fail('MATCH_FORBIDDEN', '이 대전에 참여한 계정만 조회할 수 있습니다.', 403)
         }
-        return snapshot(tx, identity.uid, { knownTimelineRevision: payload.timelineRevision, knownMatchId: payload.matchId, includeRooms: action === 'rooms',
+        return snapshot(tx, identity.uid, { knownTimelineRevision: payload.timelineRevision, knownMatchId: payload.matchId,
+          knownMatchRevision: payload.matchRevision, includeRooms: action === 'rooms',
           ...(action === 'rooms' ? { spectateMatchId: payload.spectateMatchId, spectateTimelineRevision: payload.spectateTimelineRevision } : {}),
         })
       }
@@ -553,7 +562,7 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (match.players.every(entry => match.selections[entry.uid])) {
           const selected = match.players.map(entry => match.selections[entry.uid].map(index => entry.team[index]))
           match.phase = 'battle'
-          const state = engine.createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name, match.players[0].isGuest, match.players[0].nickname), opponentName: maskRankedTrainerName(match.players[1].name, match.players[1].isGuest, match.players[1].nickname), playerNickname: match.players[0].nickname, opponentNickname: match.players[1].nickname, playerIsGuest: match.players[0].isGuest === true, opponentIsGuest: match.players[1].isGuest === true, random: seededRandom(seed) })
+          const state = (await loadEngine()).createRankedBattle({ playerTeam: selected[0], opponentTeam: selected[1], format: match.format, playerName: maskRankedTrainerName(match.players[0].name, match.players[0].isGuest, match.players[0].nickname), opponentName: maskRankedTrainerName(match.players[1].name, match.players[1].isGuest, match.players[1].nickname), playerNickname: match.players[0].nickname, opponentNickname: match.players[1].nickname, playerIsGuest: match.players[0].isGuest === true, opponentIsGuest: match.players[1].isGuest === true, random: seededRandom(seed) })
           if (usageEnabled === true && !match.roomId) await recordRankedPokemonUsage(tx, match, selected, timestamp)
           await afterEngine(tx, match, { state, timeline: [] }, timestamp)
         } else tx.set('matches', match.id, match)
@@ -561,15 +570,16 @@ export function createRankedService({ store, engine, now = Date.now, newId = ran
         if (match.phase !== 'battle' || match.state.pendingHumanSwitch) fail('WRONG_PHASE', '현재는 기술 선택 단계가 아닙니다.', 409)
         if (match.pendingActions[side]) fail('ALREADY_SUBMITTED', '이미 이번 턴의 행동을 확정했습니다.', 409)
         if (!Array.isArray(payload.actions) || payload.actions.length > 2 || payload.actions.some(action => !action || typeof action !== 'object' || Array.isArray(action))) fail('INVALID_ACTION', '행동을 다시 선택해주세요.')
-        const actions = engine.validateRankedAction(match.state, side, payload.actions.map(action => mapAction(action, side)))
+        const battleEngine = await loadEngine()
+        const actions = battleEngine.validateRankedAction(match.state, side, payload.actions.map(action => mapAction(action, side)))
         match.pendingActions[side] = actions
         if (match.pendingActions.player && match.pendingActions.opponent) {
-          await afterEngine(tx, match, engine.resolveRankedTurn(match.state, match.pendingActions, seededRandom(seed)), timestamp)
+          await afterEngine(tx, match, battleEngine.resolveRankedTurn(match.state, match.pendingActions, seededRandom(seed)), timestamp)
         } else tx.set('matches', match.id, match)
       } else if (action === 'replace') {
         if (match.phase !== 'battle' || match.state.pendingHumanSwitch?.sideId !== side) fail('WRONG_PHASE', '현재 교체 포켓몬을 선택할 차례가 아닙니다.', 409)
         if (!Number.isInteger(payload.targetIndex) || payload.targetIndex < 0 || payload.targetIndex >= getRankedFormat(match.format).battleSize) fail('INVALID_REPLACEMENT', '교체할 포켓몬을 다시 선택해주세요.')
-        await afterEngine(tx, match, engine.resolveRankedReplacement(match.state, side, payload.targetIndex, seededRandom(seed)), timestamp)
+        await afterEngine(tx, match, (await loadEngine()).resolveRankedReplacement(match.state, side, payload.targetIndex, seededRandom(seed)), timestamp)
       }
       return snapshot(tx, player.uid, { knownMatchId: match.id })
     })

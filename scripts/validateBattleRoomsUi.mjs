@@ -32,11 +32,12 @@ async function check(name, run) {
 const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'mobileLandscape', 'ranked']
 const entry = `import React,{useMemo,useState} from 'react';import{createRoot}from'react-dom/client';
 import BattleRoomsScreen from '/src/BattleRoomsScreen.jsx';import BattleHub from '/src/BattleHub.jsx';import{createRankedClient}from'/src/rankedClient.js';import'/src/mobileViewport.js';
+import{mergeRankedMatchSnapshot}from'/src/rankedSnapshot.js';
 ${styles.map(name => `import '/src/${name}.css';`).join('\n')}
 const fixture=window.__roomsFixture;window.__roomEvents={requests:[],opened:0,saved:0};
 function Harness(){const[activeTeamId,setActiveTeamId]=useState('team-1');const[battleActive,setBattleActive]=useState(false);const[inRooms,setInRooms]=useState(!fixture.startAtHub);
 const client=useMemo(()=>{const actual=createRankedClient({getIdToken:async()=>'ranked-test-'+fixture.identity,apiUrl:fixture.apiUrl});
-const request=async(...args)=>{window.__roomEvents.requests.push({action:args[0],payload:args[1]});const value=await actual.request(...args);window.__lastRoomsSnapshot=value;return value};
+const request=async(...args)=>{window.__roomEvents.requests.push({action:args[0],payload:args[1]});const value=await actual.request(...args);window.__lastRoomsSnapshot={...value,match:mergeRankedMatchSnapshot(window.__lastRoomsSnapshot?.match,value.match)};return value};
 const result={request,status:(payload,options)=>request('status',payload,options)};window.__roomsClient=result;return result},[]);
 return React.createElement('div',{className:'app-shell'+(inRooms?' rooms-view':'')+(battleActive?' battle-view':'')},
 React.createElement('header',{className:'topbar'},React.createElement('div',{className:'brand'},React.createElement('span',{className:'brand-mark'},React.createElement('img',{src:'/assets/brand/champions-arena-emblem.png',alt:''})),React.createElement('strong',null,'CHAMPIONS ARENA · 대전 방'))),
@@ -188,11 +189,12 @@ async function runScenario(browser, scenario) {
   try {
     for (const identity of identities.slice(0, scenario.participantCount)) players.push(await openPlayer(browser, api, scenario, identity))
     const host = players[0]
-    await check(`${scenario.id}: actual four-card battle hub enters rooms within viewport`, async () => {
-      assert.equal(await host.page.locator('.battle-hub-card').count(), 4)
-      await assertViewport(host, `${scenario.id}-hub`, ['.battle-hub-heading', '.battle-hub-card'])
+    await check(`${scenario.id}: battle hub enters rooms within viewport`, async () => {
+      assert.equal(await host.page.locator('.battle-hub-tab').count(), 4)
+      await assertViewport(host, `${scenario.id}-hub`, ['.battle-hub-header', '.battle-hub-tab'])
       await host.page.screenshot({ path: path.join(output, `${scenario.id}-hub.png`) })
-      await host.click(host.page.locator('.battle-hub-card.rooms'))
+      await host.click(host.page.locator('.battle-hub-tab.rooms'))
+      await host.click(host.page.locator('.battle-hub-enter'))
       for (const player of players) await waitSnapshot(player, () => Boolean(window.__lastRoomsSnapshot?.rooms))
       await host.page.locator('.rooms-list-panel').waitFor()
       await assertViewport(host, `${scenario.id}-list`, ['.rooms-screen', '.rooms-header', '.rooms-list-panel > .ranked-primary'])

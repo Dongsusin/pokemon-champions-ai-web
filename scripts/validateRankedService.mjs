@@ -54,11 +54,12 @@ const fakeEngine = () => {
   }
 }
 function environment(options = {}) {
+  const { engine: suppliedEngine, omitEngine = false, ...overrides } = options
   const store = options.store ?? createMemoryRankedStore()
-  const engine = options.engine ?? fakeEngine()
+  const engine = suppliedEngine ?? fakeEngine()
   let current = 1_000_000
   let id = 0
-  const service = createRankedService({ store, engine, now: () => current, newId: () => `test-match-${++id}`, makeSeed: () => 1, timeouts: { selection: 1000, turn: 1000, replacement: 1000, playbackGrace: 0 }, ...options })
+  const service = createRankedService({ store, ...(omitEngine ? {} : { engine }), now: () => current, newId: () => `test-match-${++id}`, makeSeed: () => 1, timeouts: { selection: 1000, turn: 1000, replacement: 1000, playbackGrace: 0 }, ...overrides })
   let request = 0
   const call = (who, action, payload = {}) => service.execute(identities[who], { action, ...(action === 'status' ? {} : { requestId: `request-${++request}` }), ...payload })
   return { store, service, engine, call, advance: milliseconds => { current += milliseconds } }
@@ -76,6 +77,84 @@ async function battle(env, format = 'single') {
 }
 const command = (match, action = {}) => ({ matchId: match.id, revision: match.revision, actions: [{ type: 'move', ...action }] })
 const rejectsCode = async (promise, code) => assert.rejects(promise, error => error.code === code)
+
+test('passive ranked requests defer battle engine loading until a team or live battle needs it', async () => {
+  const engine = fakeEngine()
+  let loads = 0
+  let loaded
+  const env = environment({ engine, omitEngine: true, loadEngine: () => (loaded ??= Promise.resolve().then(() => { loads += 1; return engine })) })
+  await env.call('alice', 'status')
+  await env.call('alice', 'queueCounts')
+  await env.call('alice', 'factoryLeaderboard')
+  await env.call('alice', 'rankedLeaderboard')
+  await env.call('alice', 'rooms')
+  assert.equal(loads, 0)
+  const match = await paired(env)
+  assert.equal(loads, 1)
+  assert.equal(match.phase, 'select')
+  await env.call('alice', 'select', { matchId: match.id, revision: match.revision, selection: [0, 1, 2] })
+  const active = (await env.call('bob', 'select', { matchId: match.id, revision: match.revision, selection: [0, 1, 2] })).match
+  assert.equal(active.phase, 'battle')
+  assert.equal(loads, 1)
+  assert.equal((await env.call('alice', 'status')).match.state.turn, 1)
+  await env.call('alice', 'submit', command(active, { replacement: true }))
+  const waiting = (await env.call('bob', 'submit', command(active))).match
+  assert.equal(waiting.state.pendingHumanSwitch?.sideId, 'opponent')
+  const replaced = (await env.call('alice', 'replace', { matchId: match.id,
+    revision: waiting.revision, targetIndex: 1 })).match
+  assert.equal(replaced.state.pendingHumanSwitch, null)
+  assert.equal(loads, 1)
+
+  const roomEngine = fakeEngine()
+  let roomLoads = 0
+  let roomLoaded
+  const roomEnv = environment({ engine: roomEngine, omitEngine: true,
+    loadEngine: () => (roomLoaded ??= Promise.resolve().then(() => { roomLoads += 1; return roomEngine })) })
+  await roomEnv.call('alice', 'rooms')
+  assert.equal(roomLoads, 0)
+  const created = await roomEnv.call('alice', 'roomCreate', { title: '지연 로딩 대회',
+    mode: 'tournament', format: 'single', team: team('room-a') })
+  assert.equal(roomLoads, 1)
+  await roomEnv.call('bob', 'roomJoin', { roomId: created.room.id, team: team('room-b') })
+  const roomMatch = (await roomEnv.call('alice', 'roomStart', { roomId: created.room.id })).match
+  await roomEnv.call('alice', 'select', { matchId: roomMatch.id,
+    revision: roomMatch.revision, selection: [0, 1, 2] })
+  const activeRoom = (await roomEnv.call('bob', 'select', { matchId: roomMatch.id,
+    revision: roomMatch.revision, selection: [0, 1, 2] })).match
+  assert.equal(activeRoom.phase, 'battle')
+  assert.equal(roomLoads, 1)
+})
+
+test('unchanged match revision omits state and team preview, while changed or unknown revisions send them', async () => {
+  const env = environment()
+  const match = await battle(env)
+  const full = await env.call('alice', 'status', { matchId: match.id })
+  assert.equal(Object.hasOwn(full.match, 'state'), true)
+  assert.equal(Object.hasOwn(full.match, 'teamPreview'), true)
+  const delta = await env.call('alice', 'status', { matchId: match.id,
+    matchRevision: full.match.revision, timelineRevision: full.match.timelineRevision })
+  assert.equal(delta.match.id, full.match.id)
+  assert.equal(delta.match.revision, full.match.revision)
+  assert.equal(Object.hasOwn(delta.match, 'state'), false)
+  assert.equal(Object.hasOwn(delta.match, 'teamPreview'), false)
+  assert.deepEqual(delta.match.timeline, [])
+  for (const payload of [
+    { matchRevision: full.match.revision },
+    { matchId: match.id, matchRevision: 'invalid' },
+    { matchId: match.id, matchRevision: -1 },
+  ]) {
+    const response = await env.call('alice', 'status', payload)
+    assert.equal(Object.hasOwn(response.match, 'state'), true)
+    assert.equal(Object.hasOwn(response.match, 'teamPreview'), true)
+  }
+  await env.call('alice', 'submit', command(match))
+  await env.call('bob', 'submit', command(match))
+  const advanced = await env.call('alice', 'status', { matchId: match.id,
+    matchRevision: full.match.revision, timelineRevision: full.match.timelineRevision })
+  assert(advanced.match.revision > full.match.revision)
+  assert.equal(Object.hasOwn(advanced.match, 'state'), true)
+  assert.equal(Object.hasOwn(advanced.match, 'teamPreview'), true)
+})
 
 test('VP reward policy awards completed battles and protects prebattle or abandoned matches', () => {
   assert.deepEqual(RANKED_VP_REWARDS, { win: 600, loss: 200, draw: 300 })
@@ -933,6 +1012,17 @@ test('HTTP rejects unauthorized, oversized, malformed, foreign-origin, and GET m
   const accepted = await handler(new Request(base, { headers: { ...headers, Origin: 'http://localhost:5173' } }))
   assert.equal(accepted.status, 200)
   assert.equal(accepted.headers.get('Access-Control-Allow-Origin'), 'http://localhost:5173')
+})
+test('HTTP status forwards the optional match revision for compact polling', async () => {
+  let received
+  const handler = createRankedHttpHandler({ enabled: true, authenticate: async () => identities.alice,
+    service: { execute: async (_identity, payload) => { received = payload; return { ok: true } } } })
+  const request = new Request('https://game.example/api/ranked?action=status&matchId=match-1&matchRevision=4&timelineRevision=7',
+    { headers: { Authorization: 'Bearer valid-token-123' } })
+  assert.equal((await handler(request)).status, 200)
+  assert.equal(received.matchId, 'match-1')
+  assert.equal(received.matchRevision, '4')
+  assert.equal(received.timelineRevision, '7')
 })
 test('two independent HTTP clients match, choose teams, play, reconnect, and receive one result', async () => {
   const env = environment()

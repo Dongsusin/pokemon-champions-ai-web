@@ -12,6 +12,7 @@ import { getSpeciesProfile } from './data/trainingData'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
 import { startRankedPolling } from './rankedPolling'
+import { knownMatchRevision, mergeRankedMatchSnapshot } from './rankedSnapshot'
 import './ranked.css'
 
 const EMPTY = { profile: null, queue: null, match: null }
@@ -154,13 +155,8 @@ export default function RankedBattleScreen({
     // Only a match observed in this visit may play its final turn. Old servers
     // can still return a completed match while a rolling deployment settles.
     if (next.match?.phase === 'finished' && previous.match?.id !== next.match.id) next.match = null
-    if (previous.match?.id === next.match?.id) {
-      if (previous.match?.revision > next.match?.revision) next = previous
-      else if (previous.match?.timelineRevision === next.match?.timelineRevision
-        && previous.match?.timeline?.length && !next.match?.timeline?.length) {
-        next.match = { ...next.match, timeline: previous.match.timeline }
-      }
-    }
+    if (previous.match?.id && previous.match.id === next.match?.id && previous.match.revision > next.match.revision) next = previous
+    else next.match = mergeRankedMatchSnapshot(previous.match, next.match)
     snapshotRef.current = next
     setSnapshot(next)
     setConnected(true)
@@ -189,7 +185,11 @@ export default function RankedBattleScreen({
       const generation = generationRef.current
       try {
         const known = snapshotRef.current.match
-        const value = await client.status(known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}, { signal: controller.signal })
+        const value = await client.status(known ? {
+          matchId: known.id,
+          timelineRevision: known.timelineRevision,
+          ...(knownMatchRevision(known) !== null ? { matchRevision: known.revision } : {}),
+        } : {}, { signal: controller.signal })
         if (active) receiveVpRewards(value.vpRewards)
         if (active && generation === generationRef.current) accept(value)
         return active && generation === generationRef.current

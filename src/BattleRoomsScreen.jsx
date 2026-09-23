@@ -10,6 +10,7 @@ import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { getSpeciesProfile } from './data/trainingData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled } from './rankedClient'
 import { startRankedPolling } from './rankedPolling'
+import { knownMatchRevision, mergeRankedMatchSnapshot } from './rankedSnapshot'
 import './ranked.css'
 import './battleRooms.css'
 
@@ -110,12 +111,7 @@ export default function BattleRoomsScreen({
     if (Number.isFinite(value.serverTime)) setServerOffset(value.serverTime - Date.now())
     const previous = snapshotRef.current
     let next = { ...EMPTY, ...value, match: maskRankedMatch(value.match), spectator: maskRankedMatch(value.spectator) }
-    if (previous.match?.id && previous.match.id === next.match?.id) {
-      if (previous.match.revision > next.match.revision) next = { ...next, match: previous.match }
-      else if (previous.match.timelineRevision === next.match.timelineRevision && previous.match.timeline?.length && !next.match.timeline?.length) {
-        next.match = { ...next.match, timeline: previous.match.timeline }
-      }
-    }
+    next.match = mergeRankedMatchSnapshot(previous.match, next.match)
     const target = spectateRef.current
     const watchable = target && next.room?.phase === 'active' && !next.roomResult
       && !(next.match && next.match.phase !== 'finished')
@@ -160,7 +156,8 @@ export default function BattleRoomsScreen({
         const target = spectateRef.current
         const spectator = snapshotRef.current.spectator
         const value = await client.request('rooms', {
-          ...(!target && known ? { matchId: known.id, timelineRevision: known.timelineRevision } : {}),
+          ...(!target && known ? { matchId: known.id, timelineRevision: known.timelineRevision,
+            ...(knownMatchRevision(known) !== null ? { matchRevision: known.revision } : {}) } : {}),
           ...(target ? { spectateMatchId: target,
             ...(spectator?.id === target ? { spectateTimelineRevision: spectator.timelineRevision } : {}) } : {}),
         }, { signal: controller.signal })

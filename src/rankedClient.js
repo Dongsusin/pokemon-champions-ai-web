@@ -50,6 +50,9 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
         if (action === 'factoryLeaderboard' && payload.mode) url.searchParams.set('mode', payload.mode)
         if (payload.matchId) url.searchParams.set('matchId', payload.matchId)
         if (Number.isSafeInteger(payload.timelineRevision)) url.searchParams.set('timelineRevision', String(payload.timelineRevision))
+        if (Number.isSafeInteger(payload.matchRevision) && payload.matchRevision >= 0) {
+          url.searchParams.set('matchRevision', String(payload.matchRevision))
+        }
         if (action === 'rooms' && payload.spectateMatchId) {
           url.searchParams.set('spectateMatchId', payload.spectateMatchId)
           if (Number.isSafeInteger(payload.spectateTimelineRevision) && payload.spectateTimelineRevision >= 0) {

@@ -19,6 +19,7 @@ class FixturePool extends EventEmitter {
   ended = false
   countError = null
   countReply = undefined
+  leaseErrors = []
   constructor(config) { super(); this.config = config; this.options = config }
   async connect() {
     const id = ++this.connectCount
@@ -28,6 +29,19 @@ class FixturePool extends EventEmitter {
         const config = typeof text === 'object' ? text : null
         if (config) { values = config.values ?? []; text = config.text }
         this.calls.push({ id, text, values: copy(values), ...(config ? { queryTimeout: config.query_timeout } : {}) })
+        if (text.startsWith('WITH guest_deletion AS')) {
+          const code = this.leaseErrors.shift()
+          if (code) throw sqlError(code)
+          const [namespace, uid, ownerId, expectedVersion, nextVersion, expiresAt, nowMs, deletionKey] = values
+          const guestDeleted = deletionKey !== null && this.rows.has(`${namespace}/guestDeletions/${deletionKey}`)
+          const key = `${namespace}/sessions/${uid}`
+          const previous = this.rows.get(key)
+          const canRenew = !guestDeleted && previous?.ownerId === ownerId && previous.version === expectedVersion
+            && typeof previous.expiresAt === 'number' && previous.expiresAt > nowMs
+          if (canRenew) this.rows.set(key, { ...previous, version: nextVersion, expiresAt })
+          return { rows: [{ guest_deleted: guestDeleted, owner_id: canRenew ? ownerId : null,
+            version: canRenew ? nextVersion : null, expires_at: canRenew ? String(expiresAt) : null }] }
+        }
         if (text.startsWith('SELECT COUNT(*)')) {
           if (this.countError) throw this.countError
           const count = [...this.rows].filter(([key, value]) => key.startsWith(`${values[0]}/${values[1]}/`)
@@ -410,6 +424,60 @@ test('online session COUNT is namespace filtered, bounded, private and outside a
   assert.equal(pool.connectCount, 1)
   await store.close()
   await assert.rejects(store.countActiveSessions(1000), /closed/)
+})
+
+test('account heartbeats renew with one fenced SQL statement and preserve save ordering', async () => {
+  const { pool, store } = fixture({ namespace: 'account' })
+  let timestamp = 1000, revision = 0
+  const service = createAccountService({ store, now: () => timestamp, newVersion: () => `renew-version-${++revision}` })
+  const identity = { uid: 'account_a', isGuest: false }
+  const ownerId = 'account-owner-1234567890'
+  const execute = command => service.execute(identity, { ownerId, ...command })
+  const first = await execute({ action: 'sessionAcquire' })
+  pool.rows.set('account/sessions/account_a', { ...pool.rows.get('account/sessions/account_a'), lastSaveSequence: 7 })
+  timestamp += 30_000
+  pool.calls.length = 0
+  const second = await execute({ action: 'sessionHeartbeat', version: first.version })
+  assert.equal(second.version, 'renew-version-2')
+  assert.equal(second.expiresAt, timestamp + 90_000)
+  assert.equal(pool.rows.get('account/sessions/account_a').lastSaveSequence, 7)
+  const renewal = pool.calls.filter(call => call.text.startsWith('WITH guest_deletion AS'))
+  assert.equal(renewal.length, 1)
+  assert.equal(renewal[0].queryTimeout, 8000)
+  assert.equal(renewal[0].values[0], 'account')
+  assert.equal(renewal[0].values[7], null)
+  assert(!pool.calls.some(call => call.text.startsWith('BEGIN') || call.text === 'COMMIT'
+    || /^SELECT payload FROM/.test(call.text)), 'Renewal must not read or return the full session document')
+  assert(!JSON.stringify(pool.calls).includes('lastSaveSequence'))
+  await assert.rejects(execute({ action: 'sessionHeartbeat', version: first.version }), error => error.code === 'account-session/lost')
+  await assert.rejects(execute({ action: 'sessionHeartbeat', version: second.version, ownerId: 'another-owner-1234567890' }), error => error.code === 'account-session/lost')
+  assert.equal(pool.rows.get('account/sessions/account_a').version, second.version)
+  timestamp = second.expiresAt
+  await assert.rejects(execute({ action: 'sessionHeartbeat', version: second.version }), error => error.code === 'account-session/lost')
+  assert.equal(pool.rows.get('account/sessions/account_a').version, second.version)
+})
+
+test('atomic renewal obeys the guest deletion fence and retries transient lock errors', async () => {
+  const { pool, store } = fixture({ namespace: 'account' })
+  const uid = 'guest_a', ownerId = 'guest-owner-1234567890', guestDeletionKey = 'guest-deletion-key'
+  const session = { ownerId, version: 'version-first', expiresAt: 91_000, lastSaveSequence: 4 }
+  const options = { uid, ownerId, expectedVersion: session.version, nextVersion: 'version-second',
+    nowMs: 1000, expiresAt: 91_500, guestDeletionKey }
+  pool.rows.set(`account/sessions/${uid}`, session)
+  pool.rows.set(`account/guestDeletions/${guestDeletionKey}`, { status: 'deleting' })
+  assert.deepEqual(await store.renewSessionLease(options), { guestDeleted: true, session: null })
+  assert.deepEqual(pool.rows.get(`account/sessions/${uid}`), session)
+  pool.rows.delete(`account/guestDeletions/${guestDeletionKey}`)
+  pool.leaseErrors.push('40P01')
+  assert.deepEqual(await store.renewSessionLease(options), { guestDeleted: false,
+    session: { ownerId, version: 'version-second', expiresAt: 91_500 } })
+  assert.equal(pool.rows.get(`account/sessions/${uid}`).lastSaveSequence, 4)
+  assert.equal(pool.calls.filter(call => call.text.startsWith('WITH guest_deletion AS')).length, 3)
+  assert.deepEqual(await store.renewSessionLease(options), { guestDeleted: false, session: null })
+  await assert.rejects(store.renewSessionLease({ ...options, uid: '../outside' }), /address/)
+  await assert.rejects(store.renewSessionLease({ ...options, expiresAt: 1000 }), /renewal/)
+  await store.close()
+  await assert.rejects(store.renewSessionLease(options), /closed/)
 })
 
 test('failed or malformed session counts discard their socket without issuing rollback or writes', async () => {

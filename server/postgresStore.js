@@ -360,6 +360,61 @@ export function createPostgresStore({
     } finally { client.release(discard) }
   }
 
+  async function renewSessionLease({ uid, ownerId, expectedVersion, nextVersion, nowMs, expiresAt, guestDeletionKey = null }) {
+    if (closed) throw new Error('Postgres document store is closed')
+    checkAddress('sessions', uid)
+    if (guestDeletionKey !== null) checkAddress('guestDeletions', guestDeletionKey)
+    if (typeof ownerId !== 'string' || typeof expectedVersion !== 'string' || typeof nextVersion !== 'string'
+      || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isSafeInteger(expiresAt) || expiresAt <= nowMs) {
+      throw new TypeError('Invalid account session renewal')
+    }
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const client = await pool.connect()
+      let discard = false, retry = false
+      try {
+        // A lease heartbeat only changes two small JSON fields. One conditional
+        // statement avoids a serializable BEGIN/read/write/COMMIT round trip,
+        // while PostgreSQL still locks the row and rechecks owner/version/expiry.
+        // Keep the guest-deletion fence in the same statement snapshot.
+        const result = await client.query({
+          text: `WITH guest_deletion AS (
+              SELECT $8::text IS NOT NULL AND EXISTS (
+                SELECT 1 FROM ${TABLE} WHERE namespace = $1 AND collection = 'guestDeletions' AND key = $8
+              ) AS blocked
+            ), renewed AS (
+              UPDATE ${TABLE} AS session SET payload =
+                jsonb_set(jsonb_set(session.payload, '{version}', to_jsonb($5::text)), '{expiresAt}', to_jsonb($6::bigint))
+              WHERE session.namespace = $1 AND session.collection = 'sessions' AND session.key = $2
+                AND session.payload->>'ownerId' = $3 AND session.payload->>'version' = $4
+                AND CASE WHEN jsonb_typeof(session.payload->'expiresAt') = 'number'
+                  THEN (session.payload->>'expiresAt')::numeric > $7::numeric ELSE FALSE END
+                AND NOT (SELECT blocked FROM guest_deletion)
+              RETURNING session.payload->>'ownerId' AS owner_id, session.payload->>'version' AS version,
+                session.payload->>'expiresAt' AS expires_at
+            )
+            SELECT (SELECT blocked FROM guest_deletion) AS guest_deleted,
+              (SELECT owner_id FROM renewed) AS owner_id,
+              (SELECT version FROM renewed) AS version,
+              (SELECT expires_at FROM renewed) AS expires_at`,
+          values: [namespace, uid, ownerId, expectedVersion, nextVersion, expiresAt, nowMs, guestDeletionKey],
+          query_timeout: 8_000,
+        })
+        const row = result.rows[0]
+        const updatedExpiry = row?.expires_at == null ? null : Number(row.expires_at)
+        if (!row || (row.version !== null && (!Number.isSafeInteger(updatedExpiry) || updatedExpiry !== expiresAt
+          || row.owner_id !== ownerId || row.version !== nextVersion))) throw new Error('Invalid account session renewal result')
+        return { guestDeleted: row.guest_deleted === true,
+          session: row.version === null ? null : { ownerId: row.owner_id, version: row.version, expiresAt: updatedExpiry } }
+      } catch (error) {
+        discard = true
+        retry = RETRYABLE.has(error?.code) && attempt + 1 < maxAttempts
+        if (!retry) throw error
+      } finally { client.release(discard) }
+      if (retry) await retryDelay(attempt)
+    }
+    throw new Error('Postgres session renewal retry limit exceeded')
+  }
+
   return {
     transaction(work) {
       const operation = transact(work)
@@ -369,6 +424,12 @@ export function createPostgresStore({
     },
     countActiveSessions(timestamp) {
       const operation = countActiveSessions(timestamp)
+      active.add(operation)
+      void operation.then(() => active.delete(operation), () => active.delete(operation))
+      return operation
+    },
+    renewSessionLease(options) {
+      const operation = renewSessionLease(options)
       active.add(operation)
       void operation.then(() => active.delete(operation), () => active.delete(operation))
       return operation
