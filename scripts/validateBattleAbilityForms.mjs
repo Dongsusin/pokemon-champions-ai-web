@@ -874,6 +874,34 @@ for (const [sourceSlug, expectedGmaxSlug] of [
 
 {
   let state = battle(
+    [pokemon('snorlax', ['protect']), pokemon('ditto', ['transform'], { ability: '괴짜' })],
+    [pokemon('mewtwo', ['calmmind'])],
+  )
+  const copiedStages = {
+    ...state.opponent.team[0].statStages,
+    attack: 2, defense: -1, specialAttack: 3, accuracy: -2, evasion: 1,
+  }
+  state.opponent.team[0].statStages = { ...copiedStages }
+  state = turn(state, { type: 'switch', targetIndex: 1 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[1].speciesId, profileBySlug.get('mewtwo').id)
+  assert.deepEqual(state.player.team[1].statStages, copiedStages, 'Imposter copies all seven stages at entry')
+  assert.equal(state.opponent.team[0].statStages.specialAttack, copiedStages.specialAttack + 1)
+
+  state = turn(state, { type: 'switch', targetIndex: 0 }, { type: 'move', moveIndex: 0 })
+  assert.equal(state.player.team[1].speciesId, profileBySlug.get('ditto').id)
+  assert.equal(state.player.team[1].ability, '괴짜')
+  assert.deepEqual(state.player.team[1].statStages,
+    Object.fromEntries(Object.keys(copiedStages).map((key) => [key, 0])),
+    'Switching out restores Ditto and clears every copied stage')
+
+  const currentTargetStages = { ...state.opponent.team[0].statStages }
+  state = turn(state, { type: 'switch', targetIndex: 1 }, { type: 'move', moveIndex: 0 })
+  assert.deepEqual(state.player.team[1].statStages, currentTargetStages,
+    'Imposter copies the target again on re-entry')
+}
+
+{
+  let state = battle(
     [pokemon('meloetta', ['relicsong'])],
     [pokemon('snorlax', ['tackle'])],
   )

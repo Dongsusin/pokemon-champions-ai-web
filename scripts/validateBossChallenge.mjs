@@ -225,6 +225,25 @@ test('damage cap covers the whole attack and 75% raises all six stats only once'
   assert.equal(state.raid.firedMechanics.filter(gate => gate === 75).length, 1)
 })
 
+test('bench Imposter Ditto copies Mewtwo boss stat stages after the 75% boost', () => {
+  const ditto = createBossOpponent({ speciesId: 132, ability: '괴짜', moves: ['transform'] }, 'owned-imposter')
+  const state = createBossChallengeBattle({
+    bossId: 'mewtwo', round: 3, party: [party[0], ditto, ...party.slice(2)], random: () => .1,
+  })
+  assert.deepEqual(state.player.activeIndexes, [0], 'Ditto starts on the bench')
+
+  reach(state, 75)
+  for (const stat of ['attack', 'defense', 'specialAttack', 'specialDefense', 'speed']) {
+    assert.equal(boss(state).statStages[stat], 1, `${stat} was raised by the boss mechanic`)
+  }
+
+  const switched = playBattleTurnWithActions(state, [{ type: 'switch', targetIndex: 1, actorSlot: 0 }], [], () => .1)
+  const transformed = switched.player.team[1]
+  assert.equal(switched.player.activeIndexes[0], 1)
+  assert(transformed.transformSnapshot, 'Imposter transforms Ditto on entry')
+  assert.deepEqual(transformed.statStages, boss(switched).statStages)
+})
+
 test('Mewtwo transforms at 50% and uses real Mega X/Y stats, types and sprites at 25%', () => {
   for (const random of [() => .1, () => .9]) {
     let state = make('mewtwo', random)

@@ -98,6 +98,8 @@ const transformBattle = createBattle({
     strategy: {},
   },
 })
+transformBattle.opponent.team[0].statStages.attack = 2
+transformBattle.opponent.team[0].statStages.accuracy = -1
 const transformedTurn = createBattleTurnTimeline(
   transformBattle,
   { type: 'move', moveIndex: 0, actorSlot: 0, targetSlot: 0 },
@@ -106,6 +108,7 @@ const transformedTurn = createBattleTurnTimeline(
 assert.equal(transformedTurn.state.player.team[0].speciesId, 1)
 assert.equal(transformedTurn.state.player.team[0].moves[0].id, 'tackle')
 assert.equal(transformedTurn.state.player.team[0].moves[0].currentPp, 5)
+assert.deepEqual(transformedTurn.state.player.team[0].statStages, transformBattle.opponent.team[0].statStages)
 
 const emptyProfiles = profiles.filter((profile) => getLearnableMoves(profile.id).length === 0)
 console.log(`Training move validation passed: ${battleMoveData.moves.length - unsupportedMoves.length} supported, ${unsupportedMoves.length} excluded.`)

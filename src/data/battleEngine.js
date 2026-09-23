@@ -4267,6 +4267,7 @@ function applyTransform(state, attacker, defender) {
       originalTypes: [...attacker.originalTypes],
       ability: attacker.ability,
       stats: { ...attacker.stats },
+      statStages: { ...attacker.statStages },
       moves: attacker.moves.map((move) => ({ ...move })),
       spriteFront: attacker.spriteFront,
       spriteBack: attacker.spriteBack,
@@ -4282,6 +4283,7 @@ function applyTransform(state, attacker, defender) {
   attacker.originalTypes = [...defender.types]
   attacker.ability = defender.ability
   attacker.stats = { ...defender.stats, hp: originalHpStat }
+  attacker.statStages = { ...defender.statStages }
   attacker.moves = defender.moves.map((move, index) => ({
     ...moveRuntime(move, index),
     maxPp: 5,
