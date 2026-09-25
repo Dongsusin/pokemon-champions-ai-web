@@ -1,5 +1,5 @@
 import SpriteImage from './SpriteImage'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownAZ,
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   Crown,
   Dna,
   Gem,
+  GripVertical,
   LockKeyhole,
   Maximize2,
   Package,
@@ -135,6 +136,7 @@ function BoxScreen({
   onSetDynamaxMode,
   onSelectTeam,
   onToggleTeam,
+  onReorderTeam,
   onAutoTeam,
   onConfirmTeam,
   onOpenHatch,
@@ -153,6 +155,11 @@ function BoxScreen({
   const [itemTooltip, setItemTooltip] = useState(null)
   const [teraPickerOpen, setTeraPickerOpen] = useState(false)
   const [dynamaxPickerOpen, setDynamaxPickerOpen] = useState(false)
+  const [reorderOpen, setReorderOpen] = useState(false)
+  const [draggedPartyIndex, setDraggedPartyIndex] = useState(null)
+  const [dropPartyIndex, setDropPartyIndex] = useState(null)
+  const [reorderMessage, setReorderMessage] = useState('')
+  const partyDragRef = useRef(null)
   const [itemSearch, setItemSearch] = useState('')
   const [itemCategory, setItemCategory] = useState('all')
   const shinyCount = trainingPokemon.filter((entry) => entry.shinyObtained).length
@@ -281,6 +288,89 @@ function BoxScreen({
     }).sort((left, right) => (recommendationRanks.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (recommendationRanks.get(right.id) ?? Number.MAX_SAFE_INTEGER))
   }, [itemCategory, itemSearch, ownedItems, recommendationRanks])
   const partySlots = Array.from({ length: PARTY_SIZE }, (_, index) => teamPokemon[index] ?? null)
+  const partySlotAt = (x, y, presentation) => {
+    const element = document.elementFromPoint(x, y)?.closest('[data-party-slot]')
+    if (element?.dataset.partyPresentation !== presentation) return null
+    const index = Number(element.dataset.partySlot)
+    return Number.isInteger(index) && index >= 0 && index < teamPokemon.length ? index : null
+  }
+  const clearPartyDrag = () => {
+    partyDragRef.current = null
+    setDraggedPartyIndex(null)
+    setDropPartyIndex(null)
+  }
+  const partyDragHandlers = (index, presentation, name) => ({
+    onPointerDown: (event) => {
+      if (teamPokemon.length < 2 || (event.pointerType === 'mouse' && event.button !== 0)) return
+      event.preventDefault()
+      event.currentTarget.setPointerCapture(event.pointerId)
+      partyDragRef.current = {
+        pointerId: event.pointerId,
+        teamId: activeTeam?.id,
+        fromIndex: index,
+        presentation,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+      }
+    },
+    onPointerMove: (event) => {
+      const drag = partyDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return
+      drag.moved = true
+      setDraggedPartyIndex(drag.fromIndex)
+      setDropPartyIndex(partySlotAt(event.clientX, event.clientY, drag.presentation))
+    },
+    onPointerUp: (event) => {
+      const drag = partyDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      const targetIndex = drag.moved ? partySlotAt(event.clientX, event.clientY, drag.presentation) : null
+      clearPartyDrag()
+      if (drag.teamId === activeTeam?.id && targetIndex !== null && targetIndex !== drag.fromIndex) {
+        onReorderTeam?.(drag.fromIndex, targetIndex)
+        setReorderMessage(`${name}을(를) ${targetIndex + 1}번으로 이동했습니다.`)
+      }
+    },
+    onPointerCancel: clearPartyDrag,
+    onKeyDown: (event) => {
+      const targetIndex = event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+        ? Math.max(0, index - 1)
+        : event.key === 'ArrowDown' || event.key === 'ArrowRight'
+          ? Math.min(teamPokemon.length - 1, index + 1)
+          : event.key === 'Home' ? 0 : event.key === 'End' ? teamPokemon.length - 1 : null
+      if (targetIndex === null) return
+      event.preventDefault()
+      if (targetIndex === index) return
+      onReorderTeam?.(index, targetIndex)
+      setReorderMessage(`${name}을(를) ${targetIndex + 1}번으로 이동했습니다.`)
+    },
+  })
+  const renderMobileParty = (className = '') => (
+    <div className={`team-box-mobile-party${className ? ` ${className}` : ''}`} aria-label={`현재 팀 ${teamPokemon.length}마리`}>
+      {partySlots.map((entry, index) => (
+        entry ? (
+          <div
+            className={`team-box-mobile-party-card${entry.captureId === selectedCaptureId ? ' selected' : ''}${draggedPartyIndex === index ? ' is-dragging' : ''}${dropPartyIndex === index ? ' is-drop-target' : ''}`}
+            data-party-slot={index}
+            data-party-presentation="mobile"
+            key={entry.captureId}
+          >
+            <button className="team-box-mobile-party-select" type="button" aria-label={`팀 ${index + 1}번 ${entry.name} 선택`} onClick={() => setSelectedCaptureId(entry.captureId)}>
+              <span>{index + 1}</span>
+              <SpriteImage src={entry.icon} alt="" fallbackSrc={entry.iconFallback} />
+              <strong>{entry.name}</strong>
+            </button>
+            <button className="pc-party-drag-handle" type="button" aria-label={`${entry.name} 순서 변경`} title="드래그하거나 방향키로 순서 변경" disabled={teamPokemon.length < 2} {...partyDragHandlers(index, 'mobile', entry.name)}>
+              <GripVertical size={13} />
+            </button>
+          </div>
+        ) : (
+          <span className="empty" key={`mobile-party-empty-${index}`}><b>{index + 1}</b><Plus size={15} /></span>
+        )
+      ))}
+    </div>
+  )
   const selectedSprite = selectedProfile
     ? showShiny ? selectedProfile.spriteFrontShiny : selectedProfile.spriteFront
     : null
@@ -306,7 +396,7 @@ function BoxScreen({
   }, [selectedCaptureId])
 
   useEffect(() => {
-    if (!itemPickerOpen && !teraPickerOpen && !dynamaxPickerOpen) return undefined
+    if (!itemPickerOpen && !teraPickerOpen && !dynamaxPickerOpen && !reorderOpen) return undefined
 
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') {
@@ -314,12 +404,13 @@ function BoxScreen({
         setItemTooltip(null)
         setTeraPickerOpen(false)
         setDynamaxPickerOpen(false)
+        setReorderOpen(false)
       }
     }
 
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [dynamaxPickerOpen, itemPickerOpen, teraPickerOpen])
+  }, [dynamaxPickerOpen, itemPickerOpen, reorderOpen, teraPickerOpen])
 
   const refreshItemUsage = pokemonUsage?.refresh
   useEffect(() => {
@@ -473,7 +564,12 @@ function BoxScreen({
           <div className="pc-party-list">
             {partySlots.map((entry, index) => (
               entry ? (
-                <div className={`pc-party-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedPokemon?.captureId ? ' selected' : ''}`} key={entry.captureId}>
+                <div
+                  className={`pc-party-card${entry.isShiny ? ' is-shiny' : ''}${entry.captureId === selectedPokemon?.captureId ? ' selected' : ''}${draggedPartyIndex === index ? ' is-dragging' : ''}${dropPartyIndex === index ? ' is-drop-target' : ''}`}
+                  data-party-slot={index}
+                  data-party-presentation="desktop"
+                  key={entry.captureId}
+                >
                   <button type="button" onClick={() => setSelectedCaptureId(entry.captureId)}>
                     <span className="pc-party-index">{index + 1}</span>
                     {entry.isShiny && <span className="pokemon-shiny-mark" aria-hidden="true">★</span>}
@@ -518,6 +614,9 @@ function BoxScreen({
                     onClick={() => onToggleTeam(entry.captureId)}
                   >
                     <X size={14} />
+                  </button>
+                  <button className="pc-party-drag-handle" type="button" aria-label={`${entry.name} 순서 변경`} title="드래그하거나 방향키로 순서 변경" disabled={teamPokemon.length < 2} {...partyDragHandlers(index, 'desktop', entry.name)}>
+                    <GripVertical size={13} />
                   </button>
                 </div>
               ) : (
@@ -622,6 +721,9 @@ function BoxScreen({
                 </button>
               ))}
             </div>
+            <button className="team-box-reorder-open" type="button" onClick={() => setReorderOpen(true)} disabled={teamPokemon.length < 2}>
+              <GripVertical size={14} /> 순서 변경
+            </button>
             <button
               className="team-box-mobile-command"
               type="button"
@@ -643,25 +745,7 @@ function BoxScreen({
             </button>
           </div>
 
-          <div className="team-box-mobile-party" aria-label={`현재 팀 ${teamPokemon.length}마리`}>
-            {partySlots.map((entry, index) => (
-              entry ? (
-                <button
-                  className={entry.captureId === selectedCaptureId ? 'selected' : ''}
-                  type="button"
-                  aria-label={`팀 ${index + 1}번 ${entry.name} 선택`}
-                  key={entry.captureId}
-                  onClick={() => setSelectedCaptureId(entry.captureId)}
-                >
-                  <span>{index + 1}</span>
-                  <SpriteImage src={entry.icon} alt="" fallbackSrc={entry.iconFallback} />
-                  <strong>{entry.name}</strong>
-                </button>
-              ) : (
-                <span className="empty" key={`mobile-party-empty-${index}`}><b>{index + 1}</b><Plus size={15} /></span>
-              )
-            ))}
-          </div>
+          {renderMobileParty()}
 
           <div className="team-box-result-bar">
             <span className="team-box-result-note">직접 획득한 포켓몬과 진화 계열 대표 목록</span>
@@ -861,6 +945,15 @@ function BoxScreen({
           </div>
         </section>
       </section>
+      {reorderOpen && (
+        <div className="team-box-reorder-overlay" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setReorderOpen(false) }}>
+          <section className="team-box-reorder-dialog" role="dialog" aria-modal="true" aria-label="팀 순서 변경">
+            <header><strong>팀 순서 변경</strong><span>손잡이를 드래그해 순서를 바꾸세요.</span><button type="button" aria-label="순서 변경 닫기" onClick={() => setReorderOpen(false)}><X size={18} /></button></header>
+            {renderMobileParty('is-reordering')}
+          </section>
+        </div>
+      )}
+      <span className="team-box-reorder-announcement" role="status" aria-live="polite">{reorderMessage}</span>
 
       {itemPickerOpen && selectedPokemon && (
         <div
