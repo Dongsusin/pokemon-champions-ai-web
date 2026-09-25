@@ -1123,6 +1123,22 @@ export function GameApp({
     showNotice(`${targetPokemon.name}을(를) ${activeTeam.name}에 추가했습니다.`)
   }
 
+  const reorderTeamPokemon = (fromIndex, toIndex) => {
+    const teamId = activeTeam?.id
+    if (!teamId || !Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return
+
+    setTeams((currentTeams) => currentTeams.map((team) => {
+      if (team.id !== teamId || fromIndex === toIndex
+        || fromIndex < 0 || toIndex < 0
+        || fromIndex >= team.pokemonIds.length || toIndex >= team.pokemonIds.length) return team
+
+      const pokemonIds = [...team.pokemonIds]
+      const [movedId] = pokemonIds.splice(fromIndex, 1)
+      pokemonIds.splice(toIndex, 0, movedId)
+      return { ...team, pokemonIds }
+    }))
+  }
+
   const confirmTeam = () => {
     if (teamIds.length === 0) {
       gameAudioRef.current?.playEvent('error')
@@ -1449,6 +1465,7 @@ export function GameApp({
           onSetDynamaxMode={setPokemonDynamaxMode}
           onSelectTeam={selectSavedTeam}
           onToggleTeam={toggleTeamPokemon}
+          onReorderTeam={reorderTeamPokemon}
           onAutoTeam={autoBuildTeam}
           onConfirmTeam={confirmTeam}
           onOpenHatch={enterHatchScreen}

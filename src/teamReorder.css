@@ -1,0 +1,201 @@
+.pc-party-card > .pc-party-drag-handle,
+.team-box-mobile-party-card > .pc-party-drag-handle {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(84, 72, 184, .33);
+  border-radius: 6px;
+  color: #514aa4;
+  background: rgba(235, 231, 255, .94);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.pc-party-drag-handle:active { cursor: grabbing; }
+.pc-party-drag-handle:disabled { opacity: .35; cursor: default; }
+html .app-shell .pc-party-drag-handle { touch-action: none !important; }
+.pc-party-drag-handle:focus-visible,
+.team-box-reorder-open:focus-visible {
+  outline: 2px solid #6154e7;
+  outline-offset: 2px;
+}
+
+.pc-party-card > .pc-party-drag-handle {
+  right: 6px;
+  bottom: 3px;
+  width: 20px;
+  height: 20px;
+}
+
+.pc-party-card.is-dragging,
+.team-box-mobile-party-card.is-dragging { opacity: .56; }
+
+.pc-party-card.is-drop-target,
+.team-box-mobile-party-card.is-drop-target {
+  border-color: #6254d8;
+  box-shadow: inset 0 0 0 2px #6254d8, 0 0 0 2px rgba(98, 84, 216, .25);
+}
+
+.team-box-reorder-open { display: none; }
+
+.team-box-mobile-party > .team-box-mobile-party-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 52px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .66);
+  border-radius: 7px;
+  color: #46557b;
+  background: rgba(251, 252, 255, .82);
+}
+
+.team-box-mobile-party > .team-box-mobile-party-card.selected {
+  border-color: #b9e51f;
+  background: #e6f880;
+  box-shadow: inset 0 0 0 1px rgba(160, 197, 17, .2);
+}
+
+.team-box-mobile-party-card > .team-box-mobile-party-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 2px 3px 4px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.team-box-mobile-party-card > .pc-party-drag-handle {
+  top: 2px;
+  right: 2px;
+  width: 25px;
+  height: 25px;
+}
+
+.team-box-mobile-party-card .team-box-mobile-party-select > span {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  color: #69759b;
+  font-size: 7px;
+}
+
+.team-box-mobile-party-card strong {
+  width: 100%;
+  overflow: hidden;
+  font-size: 7px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-box-reorder-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+html[data-mobile-layout="landscape"] .team-box-reorder-open {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid rgba(79, 87, 151, .35);
+  border-radius: 7px;
+  color: #354371;
+  background: rgba(255, 255, 255, .9);
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.team-box-reorder-open:disabled { opacity: .45; cursor: default; }
+
+.team-box-reorder-overlay {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 17, 39, .72);
+}
+
+.team-box-reorder-dialog {
+  width: min(720px, 100%);
+  max-height: 100%;
+  padding: 12px;
+  border: 1px solid #72c8e8;
+  border-radius: 14px;
+  color: #e8f8ff;
+  background: #142a43;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+}
+
+.team-box-reorder-dialog > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.team-box-reorder-dialog > header strong { font-size: 17px; }
+.team-box-reorder-dialog > header span { color: #a7c6d8; font-size: 12px; }
+.team-box-reorder-dialog > header button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border: 1px solid #55758b;
+  border-radius: 7px;
+  color: #d5eaff;
+  background: #1c3b54;
+  cursor: pointer;
+}
+
+html[data-mobile-layout="landscape"] .team-box-reorder-dialog .team-box-mobile-party.is-reordering,
+.team-box-reorder-dialog .team-box-mobile-party.is-reordering {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  min-height: 100px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.team-box-reorder-dialog .team-box-mobile-party-card,
+.team-box-reorder-dialog .team-box-mobile-party > .empty { min-height: 100px; }
+.team-box-reorder-dialog .team-box-mobile-party-select { min-height: 100px; padding-top: 20px; }
+.team-box-reorder-dialog .team-box-mobile-party-card strong { font-size: 11px; }
+.team-box-reorder-dialog .team-box-mobile-party-card > .pc-party-drag-handle {
+  top: 4px;
+  right: 4px;
+  width: 32px;
+  height: 32px;
+}
+
+@media (max-height: 390px) {
+  .team-box-reorder-dialog .team-box-mobile-party-card,
+  .team-box-reorder-dialog .team-box-mobile-party > .empty,
+  .team-box-reorder-dialog .team-box-mobile-party-select { min-height: 76px; }
+}

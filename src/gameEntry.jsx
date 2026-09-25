@@ -25,6 +25,7 @@ import './mobileUiV2.css'
 import './mobileReferenceLayout.css'
 import './installApp.css'
 import './gameFrameContent.css'
+import './teamReorder.css'
 import { loadGameSettings } from './gameSettings'
 import { applyGameTextScale } from './gameTextScale'
 
