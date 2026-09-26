@@ -1,5 +1,5 @@
 import SpriteImage from './SpriteImage'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownAZ,
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   Dna,
   Eye,
   Gauge,
+  GripVertical,
   Info,
   LockKeyhole,
   Minus,
@@ -50,6 +51,7 @@ import { getTrainingCostBreakdown, TRAINING_COSTS } from './data/trainingCosts'
 import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
 import { useIsCompactLayout } from './useMobileLayout'
 import './trainingEmptyMoves.css'
+import './trainingMoveReorder.css'
 
 const MOVE_CATEGORY_FILTERS = ['전체', '물리', '특수', '변화']
 const STAT_LABEL_BY_KEY = Object.fromEntries(STAT_META.map(({ key, label }) => [key, label]))
@@ -154,6 +156,17 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
   const [movePickerTooltip, setMovePickerTooltip] = useState(null)
   const [abilityPickerTooltip, setAbilityPickerTooltip] = useState(null)
   const [previewSpeciesId, setPreviewSpeciesId] = useState(null)
+  const moveDragRef = useRef(null)
+  const [draggedMoveIndex, setDraggedMoveIndex] = useState(null)
+  const [dropMoveIndex, setDropMoveIndex] = useState(null)
+  const [moveReorderMessage, setMoveReorderMessage] = useState('')
+
+  useEffect(() => {
+    moveDragRef.current = null
+    setDraggedMoveIndex(null)
+    setDropMoveIndex(null)
+    setMoveReorderMessage('')
+  }, [selectedId, previewSpeciesId])
   const teamMembershipByCaptureId = useMemo(() => {
     const pokemonByCaptureId = new Map(pokemon.map((entry) => [entry.captureId, entry]))
     const membershipMap = new Map()
@@ -329,6 +342,79 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
     const speciesId = resolveMoveTriggeredFormSpeciesId(editableSpecies.id, moves)
     updateSelected({ moves, speciesId })
   }
+
+  const reorderMove = (fromIndex, toIndex) => {
+    const moves = editablePokemon?.moves
+    if (isPreviewForm || !Array.isArray(moves) || moves.length < 2
+      || fromIndex < 0 || fromIndex >= moves.length
+      || toIndex < 0 || toIndex >= moves.length || fromIndex === toIndex) return
+
+    const reorderedMoves = [...moves]
+    const [movedMove] = reorderedMoves.splice(fromIndex, 1)
+    reorderedMoves.splice(toIndex, 0, movedMove)
+    updateSelected({ moves: reorderedMoves })
+    setMoveReorderMessage(`${movedMove}을(를) ${toIndex + 1}번 기술로 이동했습니다.`)
+  }
+
+  const moveSlotAt = (x, y) => {
+    const card = document.elementFromPoint(x, y)?.closest('.training-move-card[data-move-slot]')
+    const index = Number(card?.dataset.moveSlot)
+    return card && Number.isInteger(index) && index >= 0 && index < (editablePokemon?.moves.length ?? 0)
+      ? index : null
+  }
+
+  const clearMoveDrag = () => {
+    moveDragRef.current = null
+    setDraggedMoveIndex(null)
+    setDropMoveIndex(null)
+  }
+
+  const moveDragHandlers = (index) => ({
+    onPointerDown: (event) => {
+      if (isPreviewForm || (editablePokemon?.moves.length ?? 0) < 2
+        || (event.pointerType === 'mouse' && event.button !== 0)) return
+      event.preventDefault()
+      event.currentTarget.setPointerCapture(event.pointerId)
+      setActiveTooltipId(null)
+      moveDragRef.current = {
+        pointerId: event.pointerId,
+        captureId: editablePokemon.captureId,
+        fromIndex: index,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+      }
+    },
+    onPointerMove: (event) => {
+      const drag = moveDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return
+      drag.moved = true
+      setDraggedMoveIndex(drag.fromIndex)
+      setDropMoveIndex(moveSlotAt(event.clientX, event.clientY))
+    },
+    onPointerUp: (event) => {
+      const drag = moveDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      const targetIndex = drag.moved ? moveSlotAt(event.clientX, event.clientY) : null
+      clearMoveDrag()
+      if (drag.captureId === editablePokemon?.captureId && targetIndex !== null) {
+        reorderMove(drag.fromIndex, targetIndex)
+      }
+    },
+    onPointerCancel: clearMoveDrag,
+    onKeyDown: (event) => {
+      const targetIndex = event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+        ? Math.max(0, index - 1)
+        : event.key === 'ArrowDown' || event.key === 'ArrowRight'
+          ? Math.min((editablePokemon?.moves.length ?? 1) - 1, index + 1)
+          : event.key === 'Home' ? 0
+            : event.key === 'End' ? (editablePokemon?.moves.length ?? 1) - 1 : null
+      if (targetIndex === null) return
+      event.preventDefault()
+      reorderMove(index, targetIndex)
+    },
+  })
 
   const clearMove = () => {
     if (!canClearMove || movePickerSlot === null) return
@@ -1033,12 +1119,12 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                 <div className="training-move-column">
                   <div className="training-section-title">
                     <span>배틀 기술</span>
-                    <strong>1개 변경 · {TRAINING_COSTS.move} VP</strong>
+                    <strong>기술 교체 {TRAINING_COSTS.move} VP · 순서 변경 무료</strong>
                   </div>
                   <div className="training-move-list">
                     {moveSlots.map((moveName, index) => {
                       if (!moveName) return (
-                        <div className="training-move-card is-empty" key={`empty-${index}`}>
+                        <div className="training-move-card is-empty" data-move-slot={index} key={`empty-${index}`}>
                           <span className="training-move-slot">0{index + 1}</span>
                           <div className="training-move-select">
                             <span className="training-move-select-heading"><small>MOVE {index + 1}</small></span>
@@ -1067,11 +1153,21 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
 
                       return (
                         <div
-                          className={`training-move-card training-tooltip-anchor move-type-${typeClassName(move.type)}`}
+                          className={`training-move-card training-tooltip-anchor move-type-${typeClassName(move.type)}${draggedMoveIndex === index ? ' is-dragging' : ''}${dropMoveIndex === index ? ' is-drop-target' : ''}`}
+                          data-move-slot={index}
                           key={`${index}-${moveName}`}
                           {...tooltipAnchorProps(tooltipId)}
                         >
-                          <span className="training-move-slot">0{index + 1}</span>
+                          <button
+                            className="training-move-reorder-handle"
+                            type="button"
+                            aria-label={`${index + 1}번 기술 ${moveName} 순서 변경`}
+                            title="드래그하거나 방향키로 기술 순서 변경"
+                            disabled={isPreviewForm || selectedPokemon.moves.length < 2}
+                            {...moveDragHandlers(index)}
+                          >
+                            <span>0{index + 1}</span><GripVertical size={12} aria-hidden="true" />
+                          </button>
                           <span className={`training-move-type type-${typeClassName(move.type)}`}>{move.type}</span>
                           <div className="training-move-select">
                             <span className="training-move-select-heading">
@@ -1133,6 +1229,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                       )
                     })}
                   </div>
+                  <span className="training-move-reorder-announcement" role="status" aria-live="polite">{moveReorderMessage}</span>
                   <div
                     className="training-ability-preview training-tooltip-anchor"
                     {...tooltipAnchorProps(`ability-preview-tooltip-${selectedPokemon.captureId}`)}

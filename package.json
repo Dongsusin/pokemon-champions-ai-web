@@ -73,6 +73,7 @@
     "validate:training-moves": "node scripts/validateTrainingMoves.mjs",
     "validate:training-move-slots": "node scripts/validateTrainingMoveSlots.mjs",
     "validate:training-move-slots-ui": "node scripts/validateEmptyTrainingMovesUi.mjs",
+    "validate:training-move-reorder-ui": "node scripts/validateTrainingMoveReorderUi.mjs",
     "validate:draw-pool": "node scripts/validatePokemonDrawPool.mjs",
     "validate:test-unlocks": "node scripts/validateTestUnlocks.mjs",
     "validate:account-sync": "node scripts/validateAccountGameData.mjs",

@@ -1214,7 +1214,7 @@ export function GameApp({
     setVp(nextVp)
     gameAudioRef.current?.playEvent('save')
     showNotice(trainingCost.total === 0
-      ? `${normalizedPokemon.name} 설정 저장 완료 · 외형 변경 무료`
+      ? `${normalizedPokemon.name} 설정 저장 완료 · 무료`
       : `${normalizedPokemon.name} 트레이닝 완료 · ${trainingCost.total.toLocaleString()} VP 사용 · 남은 ${nextVp.toLocaleString()} VP`)
     return true
   }
