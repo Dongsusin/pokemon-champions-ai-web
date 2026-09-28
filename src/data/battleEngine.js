@@ -8088,6 +8088,22 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
   pushTimelineStep(timeline, state, { phase: 'announce', ...moveStep })
 
+  // Z-Power belongs to the user and still applies when the base move fails.
+  // Capture its result before a called move can replace the visible message.
+  if (applyZPower(state, sideId, attacker, move)) {
+    pushTimelineStep(timeline, state, {
+      ...moveStep,
+      phase: 'status',
+      targetSideId: sideId,
+      targetSlot: actorSlot,
+      targetName: attacker.name,
+      targetSpeciesId: attacker.speciesId,
+      targetOriginalSpeciesId: attacker.originalSpeciesId,
+      result: 'z-power',
+      message: latestLogMessage(state, `${attacker.name}에게 Z파워의 효과가 적용되었다!`),
+    })
+  }
+
   if (!action.dancerCopy && !attacker.usedMoveIds.includes(move.id)) attacker.usedMoveIds.push(move.id)
   if (!isAvailableFieldPokemon(defender)
     && (SELECTABLE_MOVE_TARGETS.has(targetingMove.target) || targetingMove.target === 'randomNormal' || isSkyDropContinuation)) {
@@ -8221,7 +8237,6 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
   }
 
   pushTimelineStep(timeline, state, { phase: 'attack', ...moveStep })
-  applyZPower(state, sideId, attacker, move)
 
   if (isSkyDropContinuation && defender.types.includes('비행')) {
     appendLog(state, `${defender.name}은(는) 비행타입이라 프리폴의 데미지를 받지 않는다!`, 'muted')
@@ -8554,8 +8569,11 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       }
       if (CALL_MOVE_IDS.has(move.id)) {
         const called = resolveCalledMove(state, attacker, defender, move, random, previousBattleMove)
-        if (!called) appendLog(state, `${move.name}으로 불러낼 기술이 없어 실패했다!`, 'muted')
-        else executeMove(state, called.sideId, called.action, random, timeline, actionOrder)
+        if (!called) {
+          const message = `${move.name}으로 불러낼 기술이 없어 실패했다!`
+          appendLog(state, message, 'muted')
+          pushTimelineStep(timeline, state, { phase: 'resolve', ...moveStep, result: 'failed', message })
+        } else executeMove(state, called.sideId, called.action, random, timeline, actionOrder)
         return
       }
       const snatcher = getActivePokemonList(state, getOtherSide(state, sideId).id).find((pokemon) => (
