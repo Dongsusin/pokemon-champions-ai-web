@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MAX_CHARACTERS, createGlobalChatClient } from './globalChatClient'
+import { hasLauncherOnline } from './local/launcherBridge.js'
 
 const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sendError: '', sendErrorCode: '', sending: false })
 const CLOSED_POLL_MS = 30_000
 const OPEN_POLL_MS = 4_000
 
 export default function useGlobalChat(user, expanded) {
-  const available = Boolean(user?.uid && !user.isLocalGuest && typeof user.getIdToken === 'function')
+  const available = Boolean(user?.uid && hasLauncherOnline('chat'))
   const [state, setState] = useState(fresh)
   const sessionRef = useRef(null)
   const userRef = useRef(user)
@@ -25,7 +26,7 @@ export default function useGlobalChat(user, expanded) {
     sessionRef.current = session
     const current = () => session.active && userRef.current?.uid === session.uid
     const client = createGlobalChatClient({
-      getIdToken: () => userRef.current?.getIdToken(), isCurrent: current,
+      userId: user.uid, isCurrent: current,
     })
     session.apply = (snapshot) => {
       if (!current() || snapshot.revision < session.revision) return

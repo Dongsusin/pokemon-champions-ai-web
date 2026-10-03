@@ -1,3 +1,4 @@
+import { gameStorage } from './local/gameStorage.js'
 import { useId, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowLeft, ArrowUp, BarChart3, Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, Database, Info, RefreshCw, Search, Swords, Trophy, UsersRound, X } from 'lucide-react'
 import SpriteImage from './SpriteImage'
@@ -12,7 +13,7 @@ const EMPTY_BUCKET = createUsageBucket()
 const LEADERS_COLLAPSED_KEY = 'champions-usage-top-three-collapsed-v1'
 function initialLeadersCollapsed() {
   try {
-    const saved = localStorage.getItem(LEADERS_COLLAPSED_KEY)
+    const saved = gameStorage.getItem(LEADERS_COLLAPSED_KEY)
     if (saved === 'true' || saved === 'false') return saved === 'true'
   } catch { /* Display preferences remain usable when storage is unavailable. */ }
   return typeof window !== 'undefined' && window.matchMedia('(max-height: 620px) and (min-width: 650px), (max-height: 510px) and (orientation: landscape)').matches
@@ -128,7 +129,7 @@ export default function PokemonUsageScreen({ snapshot, loading = false, error = 
   const toggleLeaders = () => {
     const next = !leadersCollapsed
     setLeadersCollapsed(next)
-    try { localStorage.setItem(LEADERS_COLLAPSED_KEY, String(next)) } catch { /* The toggle still works without persistence. */ }
+    try { gameStorage.setItem(LEADERS_COLLAPSED_KEY, String(next)) } catch { /* The toggle still works without persistence. */ }
   }
   const handleModeKeys = (event, index) => {
     let next
@@ -146,8 +147,8 @@ export default function PokemonUsageScreen({ snapshot, loading = false, error = 
   return <Container className={`pokemon-usage-screen${embedded ? ' pokemon-usage-embedded' : ''}`} aria-label="포켓몬 사용률" data-usage-source={snapshot?.source ?? 'pending'}>
     <header className="pokemon-usage-header">
       {!embedded && onBack && <button className="pokemon-usage-back" type="button" onClick={onBack}><ArrowLeft size={17} /><span>돌아가기</span></button>}
-      <div className="pokemon-usage-heading"><span>POKÉMON USAGE REPORT</span>{embedded ? <h2>포켓몬 사용률 <small>TOP 100</small></h2> : <h1>포켓몬 사용률 <small>TOP 100</small></h1>}<p>지금, 트레이너들이 선택한 포켓몬</p></div>
-      <div className="pokemon-usage-source"><span className={isDemo ? 'is-demo' : ''}><Database size={12} />{isDemo ? '로컬 테스트 · 임의 표본 포함' : snapshot?.source === 'local' ? '로컬 플레이 집계' : snapshot ? '전체 유저 집계' : '집계 확인 중'}</span><small><Clock3 size={11} />{updatedLabel(bucket?.updatedAt ?? snapshot?.updatedAt)}</small></div>
+      <div className="pokemon-usage-heading"><span>POKÉMON USAGE REPORT</span>{embedded ? <h2>포켓몬 사용률 <small>TOP 100</small></h2> : <h1>포켓몬 사용률 <small>TOP 100</small></h1>}<p>내 대전에서 선택한 포켓몬 · 개인 기록</p></div>
+      <div className="pokemon-usage-source"><span className={isDemo ? 'is-demo' : ''}><Database size={12} />{isDemo ? '로컬 테스트 · 임의 표본 포함' : snapshot?.source === 'local' ? '내 로컬 대전 기록' : snapshot ? '개인 대전 집계' : '집계 확인 중'}</span><small><Clock3 size={11} />{updatedLabel(bucket?.updatedAt ?? snapshot?.updatedAt)}</small></div>
       {onRefresh && <button className={`pokemon-usage-refresh${loading ? ' is-loading' : ''}`} onClick={onRefresh} type="button" disabled={loading} aria-label={loading ? '사용률 집계 새로고침 중' : '사용률 집계 새로고침'} title="사용률 집계 새로고침"><RefreshCw size={16} /></button>}
     </header>
 

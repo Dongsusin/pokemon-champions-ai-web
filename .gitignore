@@ -8,3 +8,6 @@ dist
 !.env.example
 scripts/.cache
 public/resource-manifest.json
+public/assets/vendor
+local-data
+release-local

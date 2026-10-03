@@ -6,7 +6,7 @@
   "scripts": {
     "predev": "npm run generate:resource-manifest",
     "dev": "vite",
-    "prebuild": "npm run generate:resource-manifest",
+    "prebuild": "npm run prepare:local-assets && npm run validate:local-assets && npm run generate:resource-manifest",
     "build": "vite build",
     "preview": "vite preview",
     "app:icons": "node scripts/buildAppIcons.mjs",
@@ -150,25 +150,23 @@
     "validate:account-session-supabase": "node scripts/validateAccountSession.mjs --supabase",
     "validate:battle-retention": "node scripts/validateBattleRetention.mjs",
     "validate:boss-achievements": "node scripts/validateBossAchievements.mjs",
-    "validate:factory-challenge-achievements": "node scripts/validateFactoryChallengeAchievements.mjs"
+    "validate:factory-challenge-achievements": "node scripts/validateFactoryChallengeAchievements.mjs",
+    "prepare:local-assets": "node scripts/prepareLocalAssets.mjs",
+    "validate:local-data": "node --test scripts/localData.test.mjs scripts/localRuntime.test.mjs",
+    "validate:local-assets": "node scripts/validateLocalAssets.mjs",
+    "local:run": "node local-runtime/server.mjs",
+    "build:local": "npm run build"
   },
   "dependencies": {
-    "@vercel/functions": "3.9.7",
-    "firebase": "^12.18.0",
-    "firebase-admin": "^14.4.0",
     "lucide-react": "^0.468.0",
-    "pg": "^8.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "google-auth-library": "10.9.1",
     "vite": "^6.0.5"
   },
-  "overrides": {
-    "gaxios@6.7.1": {
-      "uuid": "^11.1.1"
-    }
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

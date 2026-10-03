@@ -167,7 +167,7 @@ export default function GlobalChat({ user }) {
     return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom
   }
 
-  const preview = latest?.text || (loading ? '채팅을 불러오는 중…' : errorText ? '연결 상태를 확인해 주세요' : available ? '트레이너들과 이야기를 나눠 보세요' : '채팅 연결을 기다리는 중…')
+  const preview = latest?.text || (loading ? '채팅을 불러오는 중…' : errorText ? '연결 상태를 확인해 주세요' : available ? '트레이너들과 이야기를 나눠 보세요' : '런처 채팅 서비스 연결 전')
 
   return <>
     <div className="global-chat">
@@ -230,7 +230,7 @@ export default function GlobalChat({ user }) {
 
         <form className="global-chat-composer" onSubmit={handleSubmit}>
           {errorText && <div className="global-chat-error" role="alert"><span>{errorText}</span>{!contentRejected && <button type="button" aria-label="채팅 다시 연결" disabled={loading} onClick={retry}><RefreshCw size={15} aria-hidden="true" />다시 연결</button>}</div>}
-          {!available && !errorText && <p className="global-chat-unavailable" role="status">채팅에 연결되면 메시지를 보낼 수 있습니다.</p>}
+          {!available && !errorText && <p className="global-chat-unavailable" role="status">개인 운영 채팅 서비스가 런처에 연결되면 이 게스트로 이용할 수 있습니다.</p>}
           <div className="global-chat-input-row">
             <textarea
               aria-label="전체 채팅 메시지"

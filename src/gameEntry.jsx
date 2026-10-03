@@ -7,6 +7,7 @@ import { isPokemonUsageDemo } from './pokemonUsageClient'
 import UsageTestApp from './UsageTestApp'
 import { AuthProvider } from './auth/AuthProvider'
 import ResourceBootstrap from './ResourceBootstrap'
+import LocalStorageBootstrap from './local/LocalStorageBootstrap.jsx'
 import './styles.css'
 import './screenRedesign.css'
 import './battleGen5.css'
@@ -26,17 +27,14 @@ import './mobileReferenceLayout.css'
 import './installApp.css'
 import './gameFrameContent.css'
 import './teamReorder.css'
-import { loadGameSettings } from './gameSettings'
-import { applyGameTextScale } from './gameTextScale'
-
-applyGameTextScale(loadGameSettings().game.textScale)
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ResourceBootstrap>
-      {isPokemonUsageDemo ? <UsageTestApp /> : isRankedLocalTest ? <RankedTestApp /> : <AuthProvider>
-        <App />
-      </AuthProvider>}
-    </ResourceBootstrap>
+    <LocalStorageBootstrap>
+      <ResourceBootstrap>
+        {isPokemonUsageDemo ? <UsageTestApp /> : isRankedLocalTest ? <RankedTestApp /> : <AuthProvider>
+          <App />
+        </AuthProvider>}
+      </ResourceBootstrap>
+    </LocalStorageBootstrap>
   </StrictMode>,
 )

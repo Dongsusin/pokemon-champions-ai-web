@@ -47,7 +47,7 @@ function ResourceLoadingScreen({ state }) {
               <span><ShieldCheck size={15} /> 캐시 {state.cached.toLocaleString()}</span>
             </div>
             <small className="resource-loading-note">
-              로그인에 필요한 화면을 먼저 준비합니다. 배틀 리소스는 대전별로 필요한 항목만 준비됩니다.
+              로컬 게임 화면을 먼저 준비합니다. 배틀 리소스는 대전별로 필요한 항목만 준비됩니다.
             </small>
           </>
         ) : (

@@ -1,3 +1,4 @@
+import { gameStorage } from './local/gameStorage.js'
 export const SETTINGS_STORAGE_KEY = 'champions-settings-v1'
 export const GAME_TEXT_SCALES = Object.freeze([0.5, 1, 1.5, 2])
 
@@ -74,7 +75,7 @@ export function normalizeGameSettings(value = {}) {
 export function loadGameSettings() {
   if (typeof window === 'undefined') return createDefaultGameSettings()
   try {
-    const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+    const stored = gameStorage.getItem(SETTINGS_STORAGE_KEY)
     return normalizeGameSettings(stored ? JSON.parse(stored) : null)
   } catch {
     return createDefaultGameSettings()

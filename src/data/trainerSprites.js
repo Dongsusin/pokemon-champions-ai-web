@@ -1,4 +1,5 @@
-const TRAINER_SPRITE_ROOT = 'https://play.pokemonshowdown.com/sprites/trainers'
+import { localAssetUrl } from '../local/localAssets.js'
+const TRAINER_SPRITE_ROOT = '/assets/vendor/showdown/trainers'
 
 export const PLAYER_TRAINER_SPRITES = {
   male: '/assets/trainers/generated/player-male-gen5.png',
@@ -260,7 +261,7 @@ function spriteUrl(slug) {
 }
 
 export function getTrainerSpriteCandidates(trainer = {}) {
-  if (trainer.spriteSources?.length) return trainer.spriteSources
+  if (trainer.spriteSources?.length) return trainer.spriteSources.map(localAssetUrl).filter(Boolean)
   const localSprite = TRAINER_LOCAL_SPRITES[trainer.name]
   const primarySlug = TRAINER_SPRITE_SLUGS[trainer.name]
   return [localSprite, primarySlug ? spriteUrl(primarySlug) : null].filter(Boolean)

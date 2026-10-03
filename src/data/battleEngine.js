@@ -389,10 +389,10 @@ function showdownVisualForm(speciesId, slug, name) {
     speciesId,
     slug,
     name,
-    spriteFront: `https://play.pokemonshowdown.com/sprites/gen5ani/${slug}.gif`,
-    spriteBack: `https://play.pokemonshowdown.com/sprites/gen5ani-back/${slug}.gif`,
-    spriteFrontFallback: `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`,
-    spriteBackFallback: `https://play.pokemonshowdown.com/sprites/gen5-back/${slug}.png`,
+    spriteFront: `/assets/vendor/showdown/gen5ani/${slug}.gif`,
+    spriteBack: `/assets/vendor/showdown/gen5ani-back/${slug}.gif`,
+    spriteFrontFallback: `/assets/vendor/showdown/gen5/${slug}.png`,
+    spriteBackFallback: `/assets/vendor/showdown/gen5-back/${slug}.png`,
   })
 }
 

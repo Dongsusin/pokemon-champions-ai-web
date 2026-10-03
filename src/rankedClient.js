@@ -1,10 +1,15 @@
+import { hasLauncherOnline, requestLauncherOnline } from './local/launcherBridge.js'
+
 const environment = import.meta.env ?? {}
 const loopback = hostname => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname)
 const pageUrl = typeof window === 'undefined' ? 'http://localhost' : window.location.href
-const configuredEndpoint = new URL(environment.VITE_RANKED_API_URL || '/api/ranked', pageUrl)
+// Only the explicit development test mode may use the old HTTP harness.
+// Production transport is injected by the launcher, never by cloud env files.
+const configuredEndpoint = new URL(environment.DEV && environment.MODE === 'ranked-test'
+  ? environment.VITE_RANKED_API_URL || '/api/ranked' : '/__launcher-online', pageUrl)
 if (configuredEndpoint.pathname === '/') configuredEndpoint.pathname = '/api/ranked'
 export const rankedApiUrl = configuredEndpoint.href
-export const isRankedEnabled = environment.VITE_RANKED_ENABLED === 'true'
+export const isRankedEnabled = hasLauncherOnline('ranked') || Boolean(environment.DEV && environment.MODE === 'ranked-test' && environment.VITE_RANKED_ENABLED === 'true')
 export const isRankedLocalTest = Boolean(environment.DEV && environment.MODE === 'ranked-test'
   && environment.VITE_RANKED_LOCAL_TEST === 'true' && typeof window !== 'undefined'
   && loopback(window.location.hostname) && loopback(new URL(rankedApiUrl).hostname))
@@ -22,9 +27,9 @@ export function createRankedRequestId() {
   return globalThis.crypto?.randomUUID?.() ?? `ranked-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-// Authentication is supplied at request time, so refreshed Firebase credentials
-// and identity changes never reuse a captured ID token.
-export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = fetch, apiUrl = rankedApiUrl } = {}) {
+// Guests use the launcher transport. The explicit endpoint/token options are
+// retained only for the standalone server regression harness.
+export function createRankedClient({ userId, getIdToken, localTestIdentity, fetchImpl = globalThis.fetch, apiUrl = rankedApiUrl } = {}) {
   const endpoint = new URL(apiUrl, pageUrl)
   if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password
     || (endpoint.protocol === 'http:' && !loopback(endpoint.hostname))) {
@@ -35,6 +40,12 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
     throw new RankedRequestError('로컬 테스트 계정은 지정된 로컬 테스트 모드에서만 사용할 수 있습니다.', 'local-test-only')
   }
   async function request(action, payload = {}, { signal, requestId } = {}) {
+    if (hasLauncherOnline('ranked') && !localTestIdentity) {
+      const result = await requestLauncherOnline('ranked', action, payload, { signal, requestId: requestId ?? createRankedRequestId(), userId })
+      if (!result || typeof result !== 'object' || result.error) throw new RankedRequestError(result?.error?.message ?? '온라인 요청을 처리하지 못했습니다.', result?.error?.code ?? 'invalid-response')
+      return result
+    }
+    if (!localTestIdentity && !getIdToken) throw new RankedRequestError('개인 운영 서버가 런처에 연결되면 게스트로 참가할 수 있습니다.', 'launcher-service-unavailable')
     const controller = new AbortController()
     const abort = () => controller.abort()
     if (signal?.aborted) controller.abort()
@@ -42,7 +53,7 @@ export function createRankedClient({ getIdToken, localTestIdentity, fetchImpl = 
     const timeout = setTimeout(abort, 12_000)
     try {
       const token = localTestIdentity ? `ranked-test-${localTestIdentity}` : await getIdToken?.()
-      if (!token) throw new RankedRequestError('게스트 또는 Google 로그인 연결을 확인한 뒤 다시 시도해주세요.', 'authentication-required', 401)
+      if (!token) throw new RankedRequestError('게스트 연결을 확인한 뒤 다시 시도해주세요.', 'authentication-required', 401)
       const url = new URL(endpoint)
       const readOnly = action === 'status' || action === 'rooms' || action === 'fixtures' || action === 'usage' || action === 'factoryLeaderboard' || action === 'rankedLeaderboard' || action === 'queueCounts'
       if (readOnly) {

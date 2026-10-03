@@ -42,20 +42,17 @@ function sleep(duration) {
 }
 
 async function ensureResourceWorker() {
-  if (!('serviceWorker' in navigator) || !window.isSecureContext) return false
+  // The launcher ships the complete resource directory. Never install a web
+  // service worker that could keep serving a previous version of the game.
   try {
-    await navigator.serviceWorker.register('/resource-worker.js', { updateViaCache: 'none' })
-    await navigator.serviceWorker.ready
-    if (!navigator.serviceWorker.controller) {
-      await Promise.race([
-        new Promise((resolve) => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true })),
-        sleep(1600),
-      ])
+    const registrations = await navigator.serviceWorker?.getRegistrations() ?? []
+    for (const registration of registrations) {
+      const worker = registration.active ?? registration.waiting ?? registration.installing
+      if (worker && new URL(worker.scriptURL).pathname === '/resource-worker.js') await registration.unregister()
     }
-    return true
-  } catch {
-    return false
-  }
+    await globalThis.caches?.delete('champions-arena-shell-cache-v1')
+  } catch { /* Old shell cleanup must not block the installed game. */ }
+  return false
 }
 
 async function fetchWithTimeout(url, options = {}) {

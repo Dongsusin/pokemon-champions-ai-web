@@ -4,7 +4,6 @@ import BattleScreen from './BattleScreen'
 import SpriteImage from './SpriteImage'
 import RankedTeamRoster from './RankedTeamRoster'
 import RankedLeaderboard from './RankedLeaderboard'
-import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS, RANKED_TIERS, createRankedProfile, getRankedTier } from './data/rankedRules'
 import { RANKED_VP_REWARDS } from './data/rankedRewards'
 import { maskRankedMatch } from './data/rankedPrivacy'
@@ -13,6 +12,7 @@ import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
 import { startRankedPolling } from './rankedPolling'
 import { knownMatchRevision, mergeRankedMatchSnapshot } from './rankedSnapshot'
+import { rankedUsageReport } from './local/localUsage.js'
 import './ranked.css'
 
 const EMPTY = { profile: null, queue: null, match: null }
@@ -53,7 +53,7 @@ function RankBadge({ record, compact = false }) {
 export default function RankedBattleScreen({
   user, teams = [], boxPokemon = [], activeTeamId, onSelectTeam, onOpenBox, onBack, onBeforeJoin,
   soundEnabled = true, gameSettings = {}, playerGender = 'male', audioSettings = {},
-  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards, onOpenRooms, onRankedPoints,
+  onToggleSound, onOpenSettings, onBattleActiveChange, onVpRewards, onOpenRooms, onRankedPoints, onBattleRecorded,
 }) {
   const [identity, setIdentity] = useState(initialIdentity)
   const [format, setFormat] = useState('single')
@@ -138,15 +138,10 @@ export default function RankedBattleScreen({
     if (!isRankedLocalTest) return
     try { window.sessionStorage.setItem(LOCAL_IDENTITY_KEY, identity) } catch { /* Storage is optional in local tests. */ }
   }, [identity])
-  const canAuthenticate = isRankedLocalTest || Boolean(user?.uid && !user.isLocalGuest)
+  const canAuthenticate = isRankedLocalTest || Boolean(user?.uid)
   const client = useMemo(() => createRankedClient({
     localTestIdentity: isRankedLocalTest ? identity : undefined,
-    getIdToken: async () => {
-      const current = firebaseAuth?.currentUser
-      if (!current || current.uid !== user?.uid) return null
-      const token = await current.getIdToken()
-      return firebaseAuth?.currentUser?.uid === user?.uid ? token : null
-    },
+    userId: user?.uid,
   }), [identity, user?.uid])
   const accept = useCallback(value => {
     if (Number.isFinite(value.serverTime)) setServerOffset(value.serverTime - Date.now())
@@ -215,6 +210,10 @@ export default function RankedBattleScreen({
 
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   const match = snapshot.match
+  useEffect(() => {
+    const report = rankedUsageReport(match)
+    if (report && onBattleRecorded?.(report) === false) setError('개인 대전 기록을 로컬에 저장하지 못했습니다. 저장 상태를 확인해주세요.')
+  }, [match, onBattleRecorded])
   useEffect(() => { setSelection([]); setPlayedRevision(null); setConfirmForfeit(false); if (match?.id) setShowLeaderboard(false) }, [match?.id])
   const resultReady = match?.phase === 'finished' && (!match.state || !match.timeline?.length
     || playedRevision === (match.timelineRevision ?? match.revision))
@@ -229,7 +228,7 @@ export default function RankedBattleScreen({
     setBusy(true)
     setError('')
     try {
-      if (before && await before() === false) throw new Error('팀을 계정에 저장하지 못했습니다. 저장 상태를 확인한 뒤 다시 참가해 주세요.')
+      if (before && await before() === false) throw new Error('팀을 로컬에 저장하지 못했습니다. 저장 상태를 확인한 뒤 다시 참가해 주세요.')
       if (!mountedRef.current || generation !== generationRef.current) return null
       const value = await client.request(action, payload, { requestId: createRankedRequestId() })
       if (mountedRef.current) receiveVpRewards(value.vpRewards)
@@ -362,8 +361,8 @@ export default function RankedBattleScreen({
         <span className="ranked-mode-tag">{isRankedLocalTest ? '로컬 테스트' : '온라인 대전'}</span>
       </aside></header>
     {notices}
-    {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>현재 환경에서는 참가할 수 없습니다.</p></section>
-      : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>온라인 계정으로 참가하세요</h2><p>게스트 또는 Google 로그인 후 레이팅과 경기 기록을 저장하며 참가할 수 있습니다.</p></section>
+    {!isRankedEnabled ? <section className="ranked-empty"><Shield size={40} /><h2>레이팅 배틀을 준비하고 있습니다</h2><p>개인 운영 서버가 런처에 연결되면 이 게스트로 참가할 수 있습니다. 로컬 게임과 저장 기록은 그대로 이용할 수 있습니다.</p></section>
+      : !canAuthenticate ? <section className="ranked-empty"><UsersRound size={40} /><h2>로컬 트레이너를 선택해주세요</h2><p>시작 화면에서 게스트로 이어서 플레이해주세요.</p></section>
       : resultReady ? <section className={`ranked-result outcome-${match.result?.outcome}`}>
         <Trophy size={48} /><span>{currentFormat.label} · 결과 확정</span><h2>{resultNames[match.result?.outcome] ?? '대전 종료'}</h2>
         <p>{reasonNames[match.result?.reason] ?? '서버에서 대전 결과를 확정했습니다.'}</p>

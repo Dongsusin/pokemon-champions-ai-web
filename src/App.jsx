@@ -18,7 +18,6 @@ import {
   Zap,
 } from 'lucide-react'
 import BattleSelectScreen from './BattleSelectScreen'
-import InstallAppButton from './InstallAppButton'
 import BattleHub from './BattleHub'
 import RaidScreen from './RaidScreen'
 import RankedBattleScreen from './RankedBattleScreen'
@@ -48,7 +47,6 @@ import TrainingScreen from './TrainingScreen'
 import LoginScreen, { AccountDataErrorScreen, AuthLoadingScreen } from './LoginScreen'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { useAccountGameData } from './auth/useAccountGameData'
-import { hasActiveAccountSession } from './auth/accountSession'
 import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { createGameAudio } from './gameAudio'
 import { applyGameTextScale } from './gameTextScale'
@@ -101,6 +99,8 @@ import {
   selectPlayerBattlePokemon,
 } from './data/battleRules'
 import { selectCounterBattlePokemon } from './data/aiTeamSelection'
+import { gameStorage } from './local/gameStorage.js'
+import LocalSaveBadge from './local/LocalSaveBadge.jsx'
 
 const BOX_STORAGE_KEY = 'champions-dex-v2'
 const LEGACY_BOX_STORAGE_KEY = 'champions-box-v1'
@@ -120,7 +120,7 @@ function interactiveSoundKind(element) {
 
 function loadStoredArray(key) {
   try {
-    const storedValue = window.localStorage.getItem(key)
+    const storedValue = gameStorage.getItem(key)
     const parsedValue = storedValue ? JSON.parse(storedValue) : []
     return Array.isArray(parsedValue) ? parsedValue : []
   } catch {
@@ -129,7 +129,7 @@ function loadStoredArray(key) {
 }
 
 function loadStoredBox(progress) {
-  const hasCurrentCollection = window.localStorage.getItem(BOX_STORAGE_KEY) !== null
+  const hasCurrentCollection = gameStorage.getItem(BOX_STORAGE_KEY) !== null
   const storedPokemon = hasCurrentCollection
     ? loadStoredArray(BOX_STORAGE_KEY)
     : loadStoredArray(LEGACY_BOX_STORAGE_KEY)
@@ -142,7 +142,7 @@ function loadStoredBox(progress) {
 }
 
 function loadLegacyTeamIds(collection) {
-  const hasCurrentTeam = window.localStorage.getItem(TEAM_STORAGE_KEY) !== null
+  const hasCurrentTeam = gameStorage.getItem(TEAM_STORAGE_KEY) !== null
   const storedTeam = hasCurrentTeam
     ? loadStoredArray(TEAM_STORAGE_KEY)
     : loadStoredArray(LEGACY_TEAM_STORAGE_KEY)
@@ -166,7 +166,7 @@ function loadStoredTeamState(collection) {
   const availableCaptureIds = collection.map((pokemon) => pokemon.captureId)
 
   try {
-    const storedValue = window.localStorage.getItem(TEAMS_STORAGE_KEY)
+    const storedValue = gameStorage.getItem(TEAMS_STORAGE_KEY)
     const storedState = storedValue ? JSON.parse(storedValue) : null
     const hasStoredTeams = Array.isArray(storedState?.teams) && storedState.teams.length > 0
     const legacyTeamIds = hasStoredTeams ? [] : loadLegacyTeamIds(collection)
@@ -204,7 +204,7 @@ function removeEvolutionFamilyDuplicates(teams, collection) {
 
 function loadStoredItems() {
   try {
-    const storedItems = window.localStorage.getItem(ITEM_STORAGE_KEY)
+    const storedItems = gameStorage.getItem(ITEM_STORAGE_KEY)
     return normalizeItemInventory(storedItems ? JSON.parse(storedItems) : {})
   } catch {
     return {}
@@ -215,7 +215,7 @@ function shouldStartDrawTutorial(collection, balance) {
   try {
     return collection.length === 0
       && balance >= STANDARD_DRAW_PRICE
-      && window.localStorage.getItem(DRAW_TUTORIAL_STORAGE_KEY) !== 'complete'
+      && gameStorage.getItem(DRAW_TUTORIAL_STORAGE_KEY) !== 'complete'
   } catch {
     return false
   }
@@ -223,7 +223,7 @@ function shouldStartDrawTutorial(collection, balance) {
 
 function saveDrawTutorialCompletion() {
   try {
-    window.localStorage.setItem(DRAW_TUTORIAL_STORAGE_KEY, 'complete')
+    gameStorage.setItem(DRAW_TUTORIAL_STORAGE_KEY, 'complete')
   } catch {}
 }
 
@@ -326,8 +326,6 @@ export function GameApp({
   authBusy,
   autoLogin,
   onAutoLoginChange,
-  onConnectGoogle,
-  onDeleteAccount,
   onSetNickname,
   onSetTitle,
   onPlayerDataChanged,
@@ -429,9 +427,7 @@ export function GameApp({
   const displayedTrainerName = trainerName
 
   const receiveRankedVpRewards = useCallback(async rewards => {
-    if (user.isLocalGuest || !hasActiveAccountSession(user.uid)) {
-      throw new Error('계정 연결을 확인한 뒤 레이팅 보상을 다시 받아주세요.')
-    }
+    if (!user?.uid) throw new Error('로컬 트레이너를 확인한 뒤 보상을 다시 받아주세요.')
     const result = creditRankedVpRewards(achievementProgressRef.current, vpBalance.current, rewards, user.uid)
     if (result.granted > 0) {
       vpBalance.current = result.balance
@@ -441,7 +437,7 @@ export function GameApp({
     }
     if (rankedRewardSyncPending.current) {
       if (onSyncBeforeRanked && await onSyncBeforeRanked() === false) {
-        throw new Error('VP는 이 기기에 지급됐습니다. 계정 저장을 다시 시도해주세요.')
+        throw new Error('VP는 이 기기에 지급됐습니다. 로컬 저장을 다시 시도해주세요.')
       }
       rankedRewardSyncPending.current = false
     }
@@ -605,18 +601,18 @@ export function GameApp({
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(BOX_STORAGE_KEY, JSON.stringify(boxPokemon))
+      gameStorage.setItem(BOX_STORAGE_KEY, JSON.stringify(boxPokemon))
     } catch {}
   }, [boxPokemon])
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify({
+      gameStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify({
         version: 1,
         activeTeamId: activeTeam?.id,
         teams,
       }))
-      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(teamIds))
+      gameStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(teamIds))
     } catch {}
   }, [activeTeam?.id, teamIds, teams])
 
@@ -629,13 +625,13 @@ export function GameApp({
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(ITEM_STORAGE_KEY, JSON.stringify(itemInventory))
+      gameStorage.setItem(ITEM_STORAGE_KEY, JSON.stringify(itemInventory))
     } catch {}
   }, [itemInventory])
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+      gameStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
     } catch {}
   }, [settings])
 
@@ -1270,12 +1266,12 @@ export function GameApp({
               {user.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : trainerInitial}
             </span>
             <span className="player-account-copy">
-              <small>{accountError ? 'SYNC ERROR' : isGuest ? 'GUEST TRAINER' : 'GOOGLE TRAINER'}</small>
+              <small>{accountError ? 'SAVE ERROR' : 'LOCAL GUEST'}</small>
               <strong>{displayedTrainerName}</strong>
             </span>
           </div>
 
-          <InstallAppButton />
+          <LocalSaveBadge onOpen={() => openSettings('account')} />
 
           <button
             className="icon-button"
@@ -1375,7 +1371,7 @@ export function GameApp({
           soundEnabled={soundEnabled} gameSettings={settings.game} playerGender={settings.game.playerGender}
           audioSettings={settings.audio} onToggleSound={toggleSound} onOpenSettings={() => openSettings()}
           onBattleActiveChange={setRankedBattleActive} onBeforeJoin={onSyncBeforeRanked} onVpRewards={receiveRankedVpRewards}
-          onRankedPoints={settleRankedAchievements} />
+          onRankedPoints={settleRankedAchievements} onBattleRecorded={pokemonUsage.recordRankedBattle} />
       ) : screen === 'factory' ? (
         <BattleFactoryScreen user={user} run={factoryRun} restoreError={factoryRestoreError.current} onRunChange={changeFactoryRun} onBack={() => setScreen('battle-hub')}
           onVpReward={receiveFactoryVpReward} onFactoryBestFloor={settleFactoryAchievements}
@@ -1518,8 +1514,6 @@ export function GameApp({
           authBusy={authBusy}
           autoLogin={autoLogin}
           onAutoLoginChange={onAutoLoginChange}
-          onConnectGoogle={onConnectGoogle}
-          onDeleteAccount={onDeleteAccount}
           onSetNickname={onSetNickname}
           onSetTitle={onSetTitle}
           onChange={updateSetting}
@@ -1567,16 +1561,11 @@ function App() {
     ready,
     busy,
     error,
-    profileSyncError,
-    configured,
-    missingConfiguration,
     autoLogin,
     setAutoLogin,
-    signInWithGoogle,
-    connectGuestToGoogle,
-    signInAsGuest,
+    startGuest,
+    savedProfile,
     signOut,
-    deleteAccount,
     setNickname,
     setTitle,
   } = useAuth()
@@ -1595,14 +1584,12 @@ function App() {
       <>
         <LandscapeOrientationGate />
         <LoginScreen
-          configured={configured}
           busy={busy}
           error={error}
-          missingConfiguration={missingConfiguration}
           autoLogin={autoLogin}
           onAutoLoginChange={setAutoLogin}
-          onGoogleSignIn={signInWithGoogle}
-          onGuestSignIn={signInAsGuest}
+          onGuestSignIn={startGuest}
+          savedProfile={savedProfile}
         />
       </>
     )
@@ -1614,12 +1601,10 @@ function App() {
       <AccountGameApp
         key={user.uid}
         user={user}
-        accountError={profileSyncError || error}
+        accountError={error}
         authBusy={busy}
         autoLogin={autoLogin}
         onAutoLoginChange={setAutoLogin}
-        onConnectGoogle={connectGuestToGoogle}
-        onDeleteAccount={deleteAccount}
         onSetNickname={setNickname}
         onSetTitle={setTitle}
         onSignOut={signOut}
@@ -1631,8 +1616,6 @@ function App() {
 function AccountGameApp({ user, accountError, ...props }) {
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState('')
-  const [guestDeletionStarted, setGuestDeletionStarted] = useState(false)
-  const isGuest = Boolean(user.isAnonymous || user.isLocalGuest)
   const signOutPending = useRef(false)
   const {
     ready: gameDataReady,
@@ -1640,7 +1623,6 @@ function AccountGameApp({ user, accountError, ...props }) {
     flush,
     scheduleSave,
     retry,
-    pauseForGuestDeletion,
   } = useAccountGameData(user)
 
   const leaveAccount = async (saveFirst) => {
@@ -1649,26 +1631,16 @@ function AccountGameApp({ user, accountError, ...props }) {
     setSigningOut(true)
     setSignOutError('')
     try {
-      if (isGuest) {
-        setGuestDeletionStarted(true)
-        await pauseForGuestDeletion()
-        if (await props.onSignOut?.() === false) {
-          setSignOutError('게스트 정보 삭제를 완료하지 못했습니다. 연결을 확인한 뒤 다시 시도해주세요.')
-        }
-      } else if (!saveFirst || await flush()) await props.onSignOut?.()
+      if (!saveFirst || await flush()) await props.onSignOut?.()
+      else setSignOutError('로컬 저장을 완료하지 못했습니다. 저장 공간을 확인하고 다시 시도해주세요.')
     } catch {
-      setSignOutError('로그아웃하지 못했습니다. 다시 시도해 주세요.')
+      setSignOutError('시작 화면으로 돌아가지 못했습니다. 저장 상태를 확인해주세요.')
     } finally {
       signOutPending.current = false
       setSigningOut(false)
     }
   }
 
-  if (guestDeletionStarted) {
-    if (signingOut || props.authBusy) return <AuthLoadingScreen />
-    return <AccountDataErrorScreen message={signOutError || accountError || '게스트 정보 삭제를 다시 시도해주세요.'}
-      deletingGuest busy={false} onRetry={() => leaveAccount(false)} onSignOut={() => leaveAccount(false)} />
-  }
 
   if (!gameDataReady && syncError) {
     return <AccountDataErrorScreen message={signOutError || accountError || syncError}
@@ -1686,7 +1658,6 @@ function AccountGameApp({ user, accountError, ...props }) {
       onPlayerDataChanged={scheduleSave}
       onSyncBeforeRanked={flush}
       onSignOut={() => leaveAccount(true)}
-      onDeleteAccount={isGuest ? () => leaveAccount(false) : props.onDeleteAccount}
     />
   )
 }

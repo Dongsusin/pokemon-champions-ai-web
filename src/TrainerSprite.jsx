@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { UserRound } from 'lucide-react'
+import { localAssetUrl } from './local/localAssets.js'
 import {
   getPlayerTrainerSpriteCandidates,
   getTrainerSpriteCandidates,
 } from './data/trainerSprites.js'
 
 function TrainerSprite({ trainer, isPlayer = false, playerGender = 'male', className = '', alt }) {
-  const candidates = isPlayer
+  const candidates = (isPlayer
     ? getPlayerTrainerSpriteCandidates(playerGender)
-    : getTrainerSpriteCandidates(trainer)
+    : getTrainerSpriteCandidates(trainer)).map(localAssetUrl).filter(Boolean)
   const candidateKey = candidates.join('|')
   const [sourceIndex, setSourceIndex] = useState(0)
 

@@ -1,3 +1,4 @@
+import { gameStorage } from './local/gameStorage.js'
 import { useId, useRef, useState } from 'react'
 import { ArrowLeft, Building2, Check, ChevronRight, Crown, Swords, Trophy, UsersRound } from 'lucide-react'
 import SpriteImage from './SpriteImage'
@@ -9,7 +10,7 @@ import './battleHub.css'
 const SELECTION_KEY = 'champions-battle-hub-mode-v1'
 
 function initialMode() {
-  try { return sessionStorage.getItem(SELECTION_KEY) || 'ranked' } catch { return 'ranked' }
+  try { return gameStorage.getItem(SELECTION_KEY) || 'ranked' } catch { return 'ranked' }
 }
 
 function ModeArtwork({ mode }) {
@@ -74,7 +75,7 @@ export default function BattleHub({ user, onBack, onSelectAi, onSelectRanked, on
   function selectMode(index, focus = false) {
     const mode = modes[index]
     setSelectedId(mode.id)
-    try { sessionStorage.setItem(SELECTION_KEY, mode.id) } catch { /* Selection still works without storage. */ }
+    try { gameStorage.setItem(SELECTION_KEY, mode.id) } catch { /* Selection still works without storage. */ }
     if (focus) tabRefs.current[index]?.focus()
   }
 
