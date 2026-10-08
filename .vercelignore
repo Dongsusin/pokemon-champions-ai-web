@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.vite
+.env
+.env.*
+*.local
+scripts/.cache
+public/assets/vendor
+local-data
+release-local
+promo
+artifacts
+docs/WEB_RESTORE_BACKUP.json
+scripts/prepareWebRestore.mjs
+scripts/restoreWebBackend.mjs

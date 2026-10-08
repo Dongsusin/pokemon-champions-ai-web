@@ -1,4 +1,3 @@
-import { gameStorage } from '../local/gameStorage.js'
 import { ACHIEVEMENT_STORAGE_KEY, normalizeAchievementState } from './achievementData.js'
 import { INITIAL_VP_BALANCE } from './pokemonPool.js'
 import { getBattleFactoryVpReward } from './battleFactoryRewards.js'
@@ -42,7 +41,7 @@ function readFactoryVpRewards(storage, tolerateCorruption = false) {
   }
 }
 
-export function loadAchievementWallet(storage = gameStorage) {
+export function loadAchievementWallet(storage = globalThis.localStorage) {
   let saved = null
   let legacyBalance = INITIAL_VP_BALANCE
   try {
@@ -60,7 +59,7 @@ export function loadAchievementWallet(storage = gameStorage) {
   }
 }
 
-export function saveAchievementWallet(progress, balance, storage = gameStorage) {
+export function saveAchievementWallet(progress, balance, storage = globalThis.localStorage) {
   if (!storage || !validBalance(balance)) throw new Error('Cannot save an invalid achievement wallet')
   const rankedVpRewards = readRankedVpRewards(storage, true)
   writeAchievementWallet(progress, balance, rankedVpRewards, storage)
@@ -80,7 +79,7 @@ function writeAchievementWallet(progress, balance, rankedVpRewards, storage, fac
 // Factory battles currently run locally. Record the highest paid floor for
 // each run in the same atomic wallet write as its VP, so repeated completion
 // callbacks and interrupted saves cannot pay the same floor again.
-export function creditBattleFactoryVpReward(progress, balance, result, uid, storage = gameStorage) {
+export function creditBattleFactoryVpReward(progress, balance, result, uid, storage = globalThis.localStorage) {
   if (!storage || !validBalance(balance) || typeof uid !== 'string' || !uid
     || result?.uid !== uid || typeof result?.runId !== 'string'
     || !/^[a-zA-Z0-9_:-]{8,128}$/.test(result.runId)
@@ -106,7 +105,7 @@ export function creditBattleFactoryVpReward(progress, balance, result, uid, stor
 // The server total never expires with match history. Persist its receipt in the
 // same record as spendable VP so a repeated response or restored cloud save can
 // only credit the still-missing difference. Other wallet saves retain the receipt.
-export function creditRankedVpRewards(progress, balance, rewards, uid, storage = gameStorage) {
+export function creditRankedVpRewards(progress, balance, rewards, uid, storage = globalThis.localStorage) {
   if (!storage || !validBalance(balance) || typeof uid !== 'string' || !uid
     || rewards?.uid !== uid || !validBalance(rewards?.total)) {
     throw new Error('레이팅 보상 정보를 확인하지 못했습니다. 다시 연결해주세요.')

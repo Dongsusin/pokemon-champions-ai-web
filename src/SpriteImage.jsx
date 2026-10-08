@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { localAssetUrl } from './local/localAssets.js'
 
 // Sprites render from their original files. A source that fails is remembered so
 // the next fallback is tried once rather than on every re-render.
@@ -9,7 +8,7 @@ export default function SpriteImage({
 }) {
   const [failedSources, setFailedSources] = useState([])
   const fallbackSources = Array.isArray(fallbackSrc) ? fallbackSrc : [fallbackSrc]
-  const candidates = [...new Set([src, ...fallbackSources].map(localAssetUrl).filter(Boolean))]
+  const candidates = [...new Set([src, ...fallbackSources].filter(Boolean))]
   const displaySrc = candidates.find((candidate) => !failedSources.includes(candidate))
   if (!displaySrc) return null
 

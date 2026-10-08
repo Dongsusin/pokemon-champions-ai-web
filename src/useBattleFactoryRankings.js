@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { gameStorage } from './local/gameStorage.js'
+import { firebaseAuth } from './auth/firebaseClient'
+import { isRankedEnabled } from './rankedClient.js'
 import {
+  createFactoryRankingClient,
   createFactoryRankingSession,
   createLocalFactoryRankingClient,
+  isFactoryRankingLocalTest,
 } from './battleFactoryRankingClient.js'
 import { FACTORY_DEFAULT_MODE, getFactoryMode } from './data/battleFactoryChallenge.js'
 
@@ -12,9 +15,9 @@ const empty = () => ({ entries: [], ownBest: null })
 // and a record can never be reported to the other board.
 export default function useBattleFactoryRankings(user, mode = FACTORY_DEFAULT_MODE) {
   const boardMode = getFactoryMode(mode).id
-  const localGuest = true
-  const source = 'local'
-  const scope = 'local'
+  const localGuest = Boolean(user?.isLocalGuest) && !isFactoryRankingLocalTest
+  const source = localGuest || isFactoryRankingLocalTest ? 'local' : 'global'
+  const scope = localGuest ? 'guest' : isFactoryRankingLocalTest ? 'test' : 'global'
   const uid = user?.uid
   const identity = `${scope}:${boardMode}:${uid ?? ''}`
   const identityRef = useRef(identity)
@@ -37,9 +40,17 @@ export default function useBattleFactoryRankings(user, mode = FACTORY_DEFAULT_MO
     if (!uid) return undefined
     let current
     try {
-      const storage = gameStorage
-      const client = createLocalFactoryRankingClient({ uid, trainerName: user.displayName ?? '트레이너',
-        nickname: user.nickname || user.displayName, isGuest: false, storage, mode: boardMode })
+      const storage = window.localStorage
+      const client = localGuest
+        ? createLocalFactoryRankingClient({ uid, trainerName: user.displayName ?? '트레이너', nickname: user.nickname,
+          isGuest: Boolean(user.isAnonymous || user.isLocalGuest), storage, mode: boardMode })
+        : createFactoryRankingClient({ uid, getIdToken: async () => {
+          if (!isRankedEnabled) throw new Error('온라인 순위 서버가 아직 준비되지 않았습니다.')
+          const active = firebaseAuth?.currentUser
+          if (identityRef.current !== identity || active?.uid !== uid) return null
+          const token = await active.getIdToken()
+          return identityRef.current === identity && firebaseAuth?.currentUser?.uid === uid ? token : null
+        }, mode: boardMode })
       current = createFactoryRankingSession({ uid, storage, client, scope, mode: boardMode,
         isCurrent: () => identityRef.current === identity,
         onSnapshot: value => setSnapshot({ identity, value }), onLoading: setLoading, onError: setError, onRecordError: setRecordError })

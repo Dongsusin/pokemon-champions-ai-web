@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronRight, Clock3, Crown, Eye, Flag, L
 import BattleScreen from './BattleScreen'
 import RankedTeamRoster from './RankedTeamRoster'
 import SpriteImage from './SpriteImage'
+import { firebaseAuth } from './auth/firebaseClient'
 import { RANKED_FORMATS } from './data/rankedRules'
 import { maskRankedMatch } from './data/rankedPrivacy'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
@@ -99,8 +100,13 @@ export default function BattleRoomsScreen({
   const refreshRef = useRef(null)
   const match = snapshot.match
   const room = snapshot.room
-  const canAuthenticate = Boolean(suppliedClient || (user?.uid))
-  const client = useMemo(() => suppliedClient ?? createRankedClient({ userId: user?.uid }), [suppliedClient, user?.uid])
+  const canAuthenticate = Boolean(suppliedClient || (user?.uid && !user.isLocalGuest))
+  const client = useMemo(() => suppliedClient ?? createRankedClient({ getIdToken: async () => {
+    const current = firebaseAuth?.currentUser
+    if (!current || current.uid !== user?.uid) return null
+    const token = await current.getIdToken()
+    return firebaseAuth?.currentUser?.uid === user?.uid ? token : null
+  } }), [suppliedClient, user?.uid])
   const accept = useCallback(value => {
     if (Number.isFinite(value.serverTime)) setServerOffset(value.serverTime - Date.now())
     const previous = snapshotRef.current
@@ -315,7 +321,7 @@ export default function BattleRoomsScreen({
       <div><span>FRIENDLY COMPETITION</span><h1>대전방</h1></div><span className="rooms-mode-badge"><UsersRound size={16} /> 최대 4명</span></header>
     {!dialog && notice}
     {joinBlocked && <div className="rooms-conflict" role="status"><Shield size={18} /><span>{snapshot.rankedConflict ? '진행 중인 레이팅 배틀을 마친 뒤 방에 참가할 수 있습니다.' : '레이팅 상대 검색을 먼저 취소한 뒤 방에 참가할 수 있습니다.'} 배틀 선택에서 레이팅으로 돌아가 주세요.</span></div>}
-    {!enabled || !canAuthenticate ? <section className="rooms-empty"><Shield size={40} /><h2>{!enabled ? '친선 대전을 준비하고 있습니다' : '로컬 트레이너를 선택해주세요'}</h2><p>{!enabled ? '개인 운영 서버가 런처에 연결되면 이 게스트로 참가할 수 있습니다. 로컬 게임과 저장 기록은 그대로 이용할 수 있습니다.' : '시작 화면에서 게스트를 선택해주세요.'}</p></section>
+    {!enabled || !canAuthenticate ? <section className="rooms-empty"><Shield size={40} /><h2>{!enabled ? '친선 대전을 준비하고 있습니다' : '온라인 계정으로 참가하세요'}</h2><p>{!enabled ? '현재 환경에서는 참가할 수 없습니다.' : '게스트 또는 Google 로그인 연결이 필요합니다.'}</p></section>
       : resultReady ? <section className={`rooms-match-result outcome-${match.result?.outcome}`}><Trophy size={45} /><span>친선 대전 · 결과 확정</span><h2>{resultNames[match.result?.outcome] ?? '경기 종료'}</h2><p>{match.result?.reason === 'forfeit' ? '기권으로 종료된 경기입니다.' : '이번 경기 결과를 대회에 반영했습니다.'}</p><button className="ranked-primary" type="button" onClick={closeMatchResult}>{snapshot.roomResult ? '대회 최종 결과' : '대회 진행 확인'}<ArrowRight size={17} /></button>{returnSeconds !== null && <small className="rooms-result-countdown">{returnSeconds}초 후 대회로 이동</small>}</section>
       : match?.phase === 'select' ? <section className="rooms-selection ranked-selection">
         <div className="ranked-selection-heading"><div><span>{modeName(room?.mode)} · {currentFormat.label}</span><h2>{currentFormat.battleSize}마리를 출전 순서대로 선택하세요</h2><p>앞의 {currentFormat.activeSlots}마리가 선봉입니다. 매 경기 새로 선출합니다.</p></div><strong className={secondsLeft !== null && secondsLeft <= 15 ? 'is-urgent' : ''}><Clock3 size={19} />{secondsLeft === null ? '—' : clockText(secondsLeft)}</strong></div>

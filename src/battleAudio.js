@@ -3,7 +3,7 @@ import { getMoveSoundProfile } from './data/moveSoundData.js'
 const BATTLE_AUDIO_ROOT = '/assets/audio/battle'
 const BATTLE_MOVE_AUDIO_ROOT = `${BATTLE_AUDIO_ROOT}/moves`
 const BATTLE_MUSIC_PATH = `${BATTLE_AUDIO_ROOT}/battle-theme.ogg`
-const POKEMON_CRY_ROOT = '/assets/vendor/cries/pokemon'
+const POKEMON_CRY_ROOT = 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon'
 const RETRO_SAMPLE_NAMES = [
   'retroNormal', 'retroFire', 'retroWater', 'retroElectric', 'retroGrass',
   'retroIce', 'retroFighting', 'retroPoison', 'retroGround', 'retroFlying',

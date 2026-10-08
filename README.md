@@ -1,40 +1,20 @@
-# Pokémon Champions Arena — 로컬 게스트 버전
+# 포켓몬 챔피언스 아레나
 
-기존 게임과 메뉴를 유지하고, 트레이너와 모든 개인 진행 기록을 로컬에 저장한다.
-Google 로그인, Firebase 저장 및 Vercel API가 없어도 플레이할 수 있다.
-별도로 개발 중인 런처는 저장 연결 규격과 선택적인 개인 온라인 서비스를 연결하면 된다.
+브라우저에서 Google 계정 또는 게스트로 플레이하는 웹 게임입니다.
 
-## 실행
+## 실행과 빌드
 
-Node.js 22 이상에서 다음 명령을 실행한다.
+Node.js 24에서 `npm ci` 후 `npm run dev`로 개발 화면을 실행하고, `npm run build`로 웹 배포 파일을 만듭니다.
 
-```powershell
-npm ci
-npm run build:local
-npm run local:run
-```
+인증은 기존 Firebase 프로젝트를 사용합니다. 운영 플레이 기록과 계정 세션은 기존 계정 API와 PostgreSQL 저장소를 사용하며, Vercel에 설정된 운영 환경 변수를 유지합니다. 개인 환경 파일과 플레이 데이터 백업은 저장소나 배포에 포함하지 않습니다.
 
-`http://127.0.0.1:4173/`를 열면 로컬 파일 저장으로 실행된다.
-Windows의 기본 저장 파일은 `%LOCALAPPDATA%\ChampionsArena\saves\main.json`이다.
-첫 빌드에서는 이미지·울음소리를 내려받는다. 완성된 `dist/`를 포함해 배포하면 플레이 중 인터넷 다운로드가 필요 없다.
+## 주요 검증
 
-환경 설정의 **저장 · 트레이너**에서 백업 파일을 내보내거나 한 번 가져올 수 있다.
-시작 화면으로 돌아가도 같은 게스트와 기록이 유지된다.
+- `npm run validate:z-mirror-move`
+- `npm run validate:account-api`
+- `npm run validate:account-session`
+- `npm run validate:account-sync`
+- `npm run validate:guest-identity`
+- `npm run validate:guest-identity-client`
 
-랭크·대전방·채팅 메뉴도 유지한다. 개인 서버를 런처에 연결하기 전에는 준비 안내를 표시한다.
-온라인 서비스의 게임 상태는 개인 서버가 판정하며, 개인 진행 기록을 클라우드에 자동 동기화하지 않는다.
-
-[런처 저장/개인 서버 연결 규격과 검증 결과](docs/LOCAL_LAUNCHER.md)를 참고한다.
-Vercel 자동 Git 배포는 `vercel.json`에서 전체 브랜치에 대해 비활성화했다.
-
-## 로컬 버전 검증
-
-```powershell
-npm run validate:local-data
-npm run validate:local-assets
-npm run validate:z-mirror-move
-npm run validate:battle-factory
-```
-
-`legacy/cloud/`의 API와 기존 클라우드 검증 명령은 이전 웹 서비스 참고 자료다.
-현재 게임을 실행하는 데 클라우드 SDK나 인증 환경 변수가 필요하지 않다.
+런처 전용 저장 브리지는 웹 실행에서 사용하지 않습니다. 기존 로컬 기록은 별도로 보관한 백업에서 복구할 수 있으며, 웹 복원 과정에서 Google 계정 기록을 삭제하지 않습니다.

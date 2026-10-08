@@ -1,4 +1,3 @@
-import { gameStorage } from '../local/gameStorage.js'
 export const FACTORY_RUN_STORAGE_KEY = 'champions-factory-run-v1'
 
 function validRun(run) {
@@ -13,7 +12,7 @@ function validRun(run) {
     && (run.phase !== 'battle' || (run.battleId === `${run.id}:floor:${run.floor}` && run.opponentTeam?.pokemon?.length === 3))
 }
 
-export function loadFactoryRun(storage = gameStorage) {
+export function loadFactoryRun(storage = window.localStorage) {
   const raw = storage.getItem(FACTORY_RUN_STORAGE_KEY)
   if (!raw) return null
   const run = JSON.parse(raw)
@@ -21,7 +20,7 @@ export function loadFactoryRun(storage = gameStorage) {
   return run
 }
 
-export function saveFactoryRun(run, storage = gameStorage) {
+export function saveFactoryRun(run, storage = window.localStorage) {
   if (!validRun(run)) throw new Error('팩토리 진행 기록이 올바르지 않습니다.')
   // Persist synchronously before changing the screen. A storage failure must
   // leave the previous checkpoint intact, not silently advance an unsaved run.

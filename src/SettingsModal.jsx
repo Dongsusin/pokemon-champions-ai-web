@@ -1,4 +1,3 @@
-import LocalDataTools from './local/LocalDataTools.jsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChartNoAxesCombined,
@@ -8,6 +7,7 @@ import {
   Hash,
   HeartPulse,
   Headphones,
+  Link2,
   LogOut,
   Megaphone,
   Mic2,
@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Swords,
+  Trash2,
   Trophy,
   Type,
   BadgeCheck,
@@ -30,7 +31,8 @@ import { AchievementCatalog } from './AchievementsScreen'
 import PokemonUsagePanel from './PokemonUsagePanel'
 import { GAME_TEXT_SCALES } from './gameSettings'
 import { isGameTextScaleLocked } from './gameTextScale'
-import { NICKNAME_MIN_LENGTH, NICKNAME_MAX_LENGTH, normalizeTrainerNickname } from './data/trainerNickname'
+import { maskRankedTrainerName } from './data/rankedPrivacy'
+import { NICKNAME_MIN_LENGTH, NICKNAME_MAX_LENGTH, normalizeTrainerNickname, readTrainerNickname } from './data/trainerNickname'
 import { getEarnedTrainerTitles, readTrainerTitle } from './data/titleData'
 import './trainerNickname.css'
 
@@ -136,7 +138,7 @@ function TrainerTitleEditor({ title, titles, authBusy, saving, onSetTitle }) {
 
   return <section className="settings-title" aria-label="트레이너 칭호 설정" aria-busy={saving}>
     <div className="settings-nickname-heading"><BadgeCheck size={19} aria-hidden="true" /><strong>트레이너 칭호</strong></div>
-    <p className="settings-nickname-description">업적으로 얻은 칭호를 트레이너 이름 옆에 표시합니다.</p>
+    <p className="settings-nickname-description">업적으로 얻은 칭호를 닉네임 옆에 표시합니다. 채팅에도 함께 보입니다.</p>
     {titles.length === 0
       ? <p className="settings-title-empty">아직 획득한 칭호가 없습니다. 업적을 달성하면 여기에서 선택할 수 있습니다.</p>
       : <>
@@ -194,7 +196,7 @@ function TrainerNicknameEditor({ nickname, accountName, authBusy, saving, onSetN
   return <form className="settings-nickname" aria-label="트레이너 닉네임 설정" aria-busy={saving}
     onSubmit={event => { event.preventDefault(); if (draft.trim()) void submit(draft) }}>
     <div className="settings-nickname-heading"><UserRound size={19} aria-hidden="true" /><strong>트레이너 닉네임</strong></div>
-    <p className="settings-nickname-description">이 기기의 게스트 트레이너 이름입니다. 변경한 이름과 칭호도 로컬에 저장합니다.</p>
+    <p className="settings-nickname-description">설정한 닉네임은 게임에서 그대로 표시됩니다. 해제하면 이름의 첫 글자와 **로 표시됩니다.</p>
     <div className="settings-nickname-current"><span>현재 표시 이름</span><strong>{accountName}</strong></div>
     <label className="settings-nickname-label" htmlFor="settings-trainer-nickname">닉네임</label>
     <div className="settings-nickname-input-row">
@@ -219,25 +221,154 @@ function TrainerNicknameEditor({ nickname, accountName, authBusy, saving, onSetN
   </form>
 }
 
-function AccountPanel({ user, accountError, authBusy, autoLogin, onAutoLoginChange,
-  onSignOut, onSetNickname, nicknameSaving, onSetTitle, titleSaving, earnedTitles = [] }) {
-  const accountName = user?.nickname || user?.displayName || '로컬 트레이너'
-  return <div className="settings-panel settings-account-panel" id="settings-account-panel" role="tabpanel" aria-labelledby="settings-account-tab">
-    <div className="settings-account-card"><span className="settings-account-avatar">{Array.from(accountName)[0]}</span>
-      <span className="settings-account-copy"><small>LOCAL GUEST</small><strong>{accountName}</strong><span>이 기기의 게스트 · 진행 기록 유지</span></span>
-      <span className="settings-account-badge"><ShieldCheck size={15} /> 로컬 저장</span></div>
-    <TrainerNicknameEditor key={user?.uid} nickname={user?.nickname ?? ''} accountName={accountName}
-      authBusy={authBusy} saving={nicknameSaving} onSetNickname={onSetNickname} />
-    <TrainerTitleEditor key={`${user?.uid}:title`} title={readTrainerTitle(user?.title)} titles={earnedTitles}
-      authBusy={authBusy} saving={titleSaving} onSetTitle={onSetTitle} />
-    <LocalDataTools />
-    <div className="settings-account-persistence"><span className="settings-option-label"><Clock3 size={19} /><span><strong>자동으로 이어서 시작</strong><small>다음 실행에서 이 게스트의 기록을 불러옵니다.</small></span></span>
-      <button className={`settings-account-toggle${autoLogin ? ' enabled' : ''}`} type="button" role="switch" aria-checked={autoLogin} disabled={authBusy}
-        onClick={() => { void onAutoLoginChange(!autoLogin).catch(() => {}) }}><i /><span>{autoLogin ? 'ON' : 'OFF'}</span></button></div>
-    {accountError && <p className="settings-account-error" role="alert">{accountError}</p>}
-    <div className="settings-account-actions"><button className="settings-sign-out-button" type="button" disabled={authBusy || nicknameSaving || titleSaving} onClick={onSignOut}><LogOut size={19} /> 저장하고 시작 화면으로</button></div>
-    <p className="settings-nickname-description">시작 화면으로 돌아가거나 게임을 종료해도 게스트와 모든 진행 기록이 유지됩니다.</p>
-  </div>
+function AccountPanel({
+  user,
+  accountError,
+  authBusy,
+  autoLogin,
+  onAutoLoginChange,
+  onConnectGoogle,
+  onDeleteAccount,
+  onSignOut,
+  onSetNickname,
+  nicknameSaving,
+  onSetTitle,
+  titleSaving,
+  earnedTitles = [],
+}) {
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false)
+  const isGuest = Boolean(user?.isAnonymous || user?.isLocalGuest)
+  const localGuest = Boolean(user?.isLocalGuest)
+  const accountActionsBusy = authBusy || nicknameSaving || titleSaving
+  const baseName = user?.displayName?.trim()
+    || user?.email?.split('@')[0]
+    || (isGuest ? '게스트 트레이너' : '트레이너')
+  const nickname = isGuest ? '' : readTrainerNickname(user?.nickname)
+  const accountName = isGuest ? baseName : nickname || maskRankedTrainerName(baseName, false)
+  const accountInitial = Array.from(accountName)[0]?.toUpperCase() ?? 'T'
+
+  return (
+    <div
+      className="settings-panel settings-account-panel"
+      id="settings-account-panel"
+      role="tabpanel"
+      aria-labelledby="settings-account-tab"
+    >
+      <div className="settings-account-card">
+        <span className="settings-account-avatar">
+          {user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : accountInitial}
+        </span>
+        <span className="settings-account-copy">
+          <small>{isGuest ? 'GUEST TRAINER' : 'GOOGLE TRAINER'}</small>
+          <strong>{accountName}</strong>
+          <span>{localGuest ? '이 PC 브라우저에만 저장' : isGuest ? '온라인 게스트 · 레이팅과 통계 이용 가능' : user?.email}</span>
+        </span>
+        <span className="settings-account-badge">
+          <ShieldCheck size={15} />
+          {localGuest ? '로컬 저장' : '클라우드 동기화'}
+        </span>
+      </div>
+
+      {isGuest ? <p className="settings-nickname-guest">게스트는 현재 트레이너 이름을 사용합니다. Google 계정에 연결하면 닉네임과 칭호를 설정할 수 있습니다.</p>
+        : <>
+          <TrainerNicknameEditor key={user?.uid} nickname={nickname} accountName={accountName}
+            authBusy={authBusy} saving={nicknameSaving} onSetNickname={onSetNickname} />
+          <TrainerTitleEditor key={`${user?.uid}:title`} title={readTrainerTitle(user?.title)} titles={earnedTitles}
+            authBusy={authBusy} saving={titleSaving} onSetTitle={onSetTitle} />
+        </>}
+
+      <div className="settings-account-persistence">
+        <span className="settings-option-label">
+          <Clock3 size={19} />
+          <span>
+            <strong>자동 로그인</strong>
+            <small>다음 방문에도 현재 계정을 유지합니다.</small>
+          </span>
+        </span>
+        <button
+          className={`settings-account-toggle${autoLogin ? ' enabled' : ''}`}
+          type="button"
+          role="switch"
+          aria-checked={autoLogin}
+          disabled={accountActionsBusy}
+          onClick={() => onAutoLoginChange(!autoLogin)}
+        >
+          <i aria-hidden="true" />
+          <span>{autoLogin ? 'ON' : 'OFF'}</span>
+        </button>
+      </div>
+
+      {isGuest && (
+        <p className="settings-account-warning">
+          {localGuest ? '오프라인 게스트 데이터는 이 브라우저에만 저장됩니다.' : '게스트의 진행 기록과 대전 기록은 서버에 저장됩니다.'}
+          {' '}로그아웃하면 게스트 계정과 진행 기록, 대전 기록이 삭제됩니다. Google 계정에 연결하면 진행 기록을 보관하고 다른 기기에서도 이어서 플레이할 수 있습니다.
+        </p>
+      )}
+
+      {accountError && <p className="settings-account-error" role="alert">{accountError}</p>}
+
+      <div className="settings-account-actions">
+        {isGuest && (
+          <button className="settings-connect-account-button" type="button" disabled={accountActionsBusy} onClick={onConnectGoogle}>
+            <Link2 size={19} />
+            {authBusy ? 'Google 연결 중' : 'Google 계정에 연결'}
+          </button>
+        )}
+        <button className="settings-sign-out-button" type="button" disabled={accountActionsBusy} onClick={onSignOut}>
+          <LogOut size={19} />
+          {authBusy ? '계정 전환 중' : '로그아웃하고 계정 전환'}
+        </button>
+      </div>
+
+      <div className={`settings-account-danger-zone${deleteConfirmationOpen ? ' confirming' : ''}`}>
+        <div className="settings-account-danger-copy">
+          <span><Trash2 size={18} /></span>
+          <span>
+            <strong>계정 삭제</strong>
+            <small>계정과 이 기기에 저장된 모든 게임 진행 데이터를 영구 삭제합니다.</small>
+          </span>
+        </div>
+
+        {deleteConfirmationOpen ? (
+          <div className="settings-account-delete-confirmation" role="alert">
+            <p>
+              {isGuest
+                ? '게스트 계정, 포켓몬, 팀, 아이템과 VP가 모두 삭제되며 복구할 수 없습니다.'
+                : '이 게임의 Google 로그인 계정, 서버 프로필, 포켓몬, 팀, 아이템과 VP가 모두 삭제되며 복구할 수 없습니다. Google 계정 자체는 삭제되지 않습니다.'}
+            </p>
+            <div>
+              <button
+                className="settings-account-delete-cancel"
+                type="button"
+                disabled={accountActionsBusy}
+                onClick={() => setDeleteConfirmationOpen(false)}
+              >
+                취소
+              </button>
+              <button
+                className="settings-account-delete-confirm"
+                type="button"
+                disabled={accountActionsBusy}
+                onClick={onDeleteAccount}
+              >
+                <Trash2 size={17} />
+                {authBusy ? '삭제 처리 중' : '영구 삭제'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="settings-delete-account-button"
+            type="button"
+            disabled={accountActionsBusy}
+            onClick={() => setDeleteConfirmationOpen(true)}
+          >
+            계정 삭제
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function SettingsModal({
@@ -252,6 +383,8 @@ function SettingsModal({
   authBusy,
   autoLogin,
   onAutoLoginChange,
+  onConnectGoogle,
+  onDeleteAccount,
   onChange,
   onClose,
   onReset,
@@ -409,7 +542,7 @@ function SettingsModal({
             tabIndex={activeTab === 'account' ? 0 : -1}
             onClick={() => setActiveTab('account')}
           >
-            <UserRound size={20} /> 저장 · 트레이너
+            <UserRound size={20} /> 계정
           </button>
         </nav>
 
@@ -510,6 +643,8 @@ function SettingsModal({
               authBusy={authBusy}
               autoLogin={autoLogin}
               onAutoLoginChange={onAutoLoginChange}
+              onConnectGoogle={onConnectGoogle}
+              onDeleteAccount={onDeleteAccount}
               onSignOut={onSignOut}
               onSetNickname={setNickname}
               nicknameSaving={nicknameSaving}

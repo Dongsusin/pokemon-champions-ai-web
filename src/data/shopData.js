@@ -1,6 +1,5 @@
 import generatedBattleItems, { GENERATED_BATTLE_ITEM_META } from './generatedBattleItems.js'
 import { RARE_BATTLE_ITEMS } from './rareRewards.js'
-import { localAssetUrl } from '../local/localAssets.js'
 
 export const MAX_ITEM_QUANTITY = 1
 
@@ -11,7 +10,7 @@ export const SHOP_CATEGORIES = [
   { id: 'gimmick', label: '배틀 기믹', eyebrow: 'BATTLE GIMMICK' },
 ]
 
-export const BATTLE_ITEMS = generatedBattleItems.map(item => ({ ...item, sprite: localAssetUrl(item.sprite) }))
+export const BATTLE_ITEMS = generatedBattleItems
 export const REWARD_BATTLE_ITEMS = RARE_BATTLE_ITEMS
 export const ALL_BATTLE_ITEMS = [...BATTLE_ITEMS, ...REWARD_BATTLE_ITEMS]
 export const BATTLE_ITEM_META = GENERATED_BATTLE_ITEM_META

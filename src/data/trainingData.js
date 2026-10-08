@@ -2,7 +2,6 @@ import pokemonData from './generatedPokemonData.json' with { type: 'json' }
 import pokemonGenderData from './generatedPokemonGenderData.json' with { type: 'json' }
 import gen5SpriteManifest from './generatedGen5SpriteManifest.json' with { type: 'json' }
 import battleMoveData from './generatedBattleMoves.json' with { type: 'json' }
-import localAssetChoices from './generatedLocalAssetChoices.json' with { type: 'json' }
 import { isBattleMoveSupported } from './moveSupportData.js'
 import {
   createVirtualPokemonFormProfiles,
@@ -11,8 +10,8 @@ import {
   isSavablePokemonForm as isSavableFormProfile,
 } from './pokemonFormData.js'
 
-const POKEAPI_SPRITE_ROOT = '/assets/vendor/pokeapi/pokemon'
-const SHOWDOWN_SPRITE_ROOT = '/assets/vendor/showdown'
+const POKEAPI_SPRITE_ROOT = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon'
+const SHOWDOWN_SPRITE_ROOT = 'https://play.pokemonshowdown.com/sprites'
 const ANIMATED_FRONT = 1
 const ANIMATED_BACK = 2
 const ANIMATED_FRONT_SHINY = 4
@@ -57,7 +56,7 @@ const spriteSetFor = (entry) => {
     : uniqueSpriteSources(pokeApiBackShiny, showdownBackShiny, parentBackShiny)
   const staticBackShiny = staticBackShinySources[0]
 
-  const sprites = {
+  return {
     icon: isVirtualProfile
       ? staticFront
       : `${POKEAPI_SPRITE_ROOT}/versions/generation-viii/icons/${entry.id}.png`,
@@ -87,10 +86,6 @@ const spriteSetFor = (entry) => {
     spriteFrontShinyFallback: staticFrontShiny,
     spriteBackShinyFallback: staticBackShinySources,
   }
-  for (const key of ['icon', 'spriteFront', 'spriteBack', 'spriteFrontShiny', 'spriteBackShiny']) {
-    sprites[key] = localAssetChoices[`pokemon:${entry.id}:${key}`] ?? sprites[key]
-  }
-  return sprites
 }
 
 export const TYPE_CLASS = {

@@ -1,8 +1,8 @@
 import { getTrainerTitle } from './data/titleData.js'
-import { hasLauncherOnline, requestLauncherOnline } from './local/launcherBridge.js'
 
+const environment = import.meta.env ?? {}
 const pageUrl = typeof window === 'undefined' ? 'http://localhost/' : window.location.href
-export const globalChatApiUrl = new URL('/__launcher-chat', pageUrl).href
+export const globalChatApiUrl = new URL(environment.VITE_CHAT_API_URL || '/api/chat', pageUrl).href
 export const CHAT_MAX_MESSAGES = 30
 export const CHAT_MAX_CHARACTERS = 200
 
@@ -35,7 +35,7 @@ export function validateChatSnapshot(body) {
   return body
 }
 
-export function createGlobalChatClient({ userId, getIdToken, isCurrent = () => true,
+export function createGlobalChatClient({ getIdToken, isCurrent = () => true,
   fetchImpl = globalThis.fetch?.bind(globalThis), apiUrl = globalChatApiUrl } = {}) {
   const endpoint = new URL(apiUrl, pageUrl)
   if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password
@@ -43,17 +43,10 @@ export function createGlobalChatClient({ userId, getIdToken, isCurrent = () => t
     throw new GlobalChatError('채팅 서버 주소가 올바르지 않습니다.', 'CHAT_INVALID_ENDPOINT')
   }
   const assertCurrent = () => {
-    if (!isCurrent()) throw new GlobalChatError('로컬 트레이너가 변경되었습니다.', 'CHAT_IDENTITY_CHANGED', 401)
+    if (!isCurrent()) throw new GlobalChatError('로그인 계정이 변경되었습니다.', 'CHAT_IDENTITY_CHANGED', 401)
   }
   return {
     async request(action, payload = {}, { signal } = {}) {
-      assertCurrent()
-      if (hasLauncherOnline('chat')) {
-        const result = await requestLauncherOnline('chat', action, payload, { signal, userId })
-        assertCurrent()
-        return validateChatSnapshot(result)
-      }
-      if (!getIdToken) throw new GlobalChatError('런처의 채팅 서비스가 아직 연결되지 않았습니다.')
       const controller = new AbortController()
       const abort = () => controller.abort()
       if (signal?.aborted) abort()

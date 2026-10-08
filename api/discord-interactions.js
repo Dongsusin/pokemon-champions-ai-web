@@ -1,5 +1,5 @@
 import { waitUntil } from '@vercel/functions'
-import { createDiscordInteractionHandler } from '../../../server/discordInteractionHttp.js'
+import { createDiscordInteractionHandler } from '../server/discordInteractionHttp.js'
 
 // Web Standard Request preserves the signed raw body. Server-only integration:
 // no Discord token or community configuration is included in the Vite client.

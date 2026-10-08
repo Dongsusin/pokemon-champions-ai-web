@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["icn1"],
   "git": {
-    "deploymentEnabled": false
+    "deploymentEnabled": {
+      "codex/battle-factory": false,
+      "codex/fixed-aspect-frame": false,
+      "codex/boss-achievements": false
+    }
   }
 }
