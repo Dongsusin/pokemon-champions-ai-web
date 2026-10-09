@@ -3,6 +3,7 @@ import { createGuestIdentityRegistry, rankedIdentityFromVerifiedToken } from './
 import { readTrainerNickname } from '../src/data/trainerNickname.js'
 import { readTrainerTitle } from '../src/data/titleData.js'
 import { containsChatProfanity } from './chatModeration.js'
+import { createHash } from 'node:crypto'
 
 export const NICKNAME_CACHE_MS = 15_000
 const NICKNAME_CACHE_MAX_ENTRIES = 2000
@@ -80,6 +81,18 @@ export async function initializeProductionServices({ env = process.env, loadModu
   } else options.credential = applicationDefault()
   const app = getApps().find(candidate => candidate.name === 'ranked-server') ?? initializeApp(options, 'ranked-server')
   const auth = getAuth(app)
+  // Share only overlapping checks. Completed results are never cached: the
+  // next request still detects revoked tokens and disabled/deleted accounts.
+  const pendingVerifications = new Map()
+  const verifyToken = token => {
+    const key = createHash('sha256').update(token).digest('hex')
+    if (pendingVerifications.has(key)) return pendingVerifications.get(key)
+    const pending = Promise.resolve().then(() => auth.verifyIdToken(token, true)).finally(() => {
+      if (pendingVerifications.get(key) === pending) pendingVerifications.delete(key)
+    })
+    if (pendingVerifications.size < 2000) pendingVerifications.set(key, pending)
+    return pending
+  }
   let rankedStore, accountStore = null, firestore = null, pool = null
   if (provider === 'supabase') {
     const { createPostgresPool, createPostgresStore } = await startupModule('postgres-store', loadModule('./postgresStore.js'))
@@ -95,15 +108,15 @@ export async function initializeProductionServices({ env = process.env, loadModu
   const readNickname = createVerifiedNicknameReader({ accountStore, now })
   return {
     provider, rankedStore, accountStore, firestore, guestRegistry,
-    async authenticate(request, token, { freshNickname = false } = {}) {
-      const verified = await auth.verifyIdToken(token, true)
+    async authenticate(request, token, { freshNickname = false, includePublicLabels = true } = {}) {
+      const verified = await verifyToken(token)
       const identity = rankedIdentityFromVerifiedToken(verified)
       const providerId = verified.firebase?.sign_in_provider
       // Account actions already read the canonical profile when needed. In
       // particular, lease heartbeats and autosaves must add no nickname query.
       let accountRequest = false
       try { accountRequest = new URL(request?.url).pathname === '/api/account' } catch { /* Direct service tests have no URL. */ }
-      const labels = identity.isGuest || accountRequest
+      const labels = identity.isGuest || accountRequest || (includePublicLabels === false && freshNickname !== true)
         ? { nickname: '', title: '' }
         : await readNickname(identity.uid, { fresh: freshNickname === true })
       return { ...identity, nickname: labels.nickname, title: labels.title, accountProfile: {

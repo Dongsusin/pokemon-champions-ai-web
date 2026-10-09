@@ -44,7 +44,7 @@ export default function RankedQueueCounts({ user }) {
   const pendingText = !canRead || state?.failed ? '인원 확인 불가' : '인원 확인 중'
   return <span className={`ranked-queue-counts${counts ? '' : ' is-pending'}`} role="status" aria-live="polite" aria-atomic="true"
     aria-label={counts ? `레이팅 매칭 대기 총 ${counts.total}명, 싱글 ${counts.single}명, 더블 ${counts.double}명` : `레이팅 매칭 대기 ${pendingText}`}
-    title="현재 상대를 찾는 유저 수 · 약 1분마다 갱신 · 매칭 성사·취소·대기 만료 시 집계에서 제외됩니다.">
+    title="현재 상대를 찾는 유저 수 · 약 2분마다 갱신 · 매칭 성사·취소·대기 만료 시 집계에서 제외됩니다.">
     <span className="ranked-queue-counts-heading"><UsersRound size={16} aria-hidden="true" /><span>레이팅 매칭 대기</span>
       <b>{counts ? `${counts.total.toLocaleString('ko-KR')}명` : '—'}</b></span>
     <span className="ranked-queue-counts-formats">{counts ? <>

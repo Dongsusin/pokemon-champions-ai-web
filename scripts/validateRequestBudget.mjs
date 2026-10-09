@@ -30,20 +30,20 @@ async function measure(interval, { snapshot = {}, hidden = false, duration = 600
   return calls
 }
 
-test('main queue counter makes at most ten repeat reads in ten minutes', async () => {
+test('main queue counter makes at most five repeat reads in ten minutes', async () => {
   const calls = await measure(() => QUEUE_COUNT_POLL_MS)
-  assert(calls.length <= 11, `Queue counter made ${calls.length - 1} repeat requests; budget is 10`)
+  assert(calls.length <= 6, `Queue counter made ${calls.length - 1} repeat requests; budget is 5`)
 })
-test('ranked lobby without a queue makes at most ten repeat reads in ten minutes', async () => {
+test('ranked lobby without a queue makes at most five repeat reads in ten minutes', async () => {
   const calls = await measure(() => rankedPollDelay({}))
-  assert(calls.length <= 11, `Idle ranked lobby made ${calls.length - 1} repeat requests; budget is 10`)
+  assert(calls.length <= 6, `Idle ranked lobby made ${calls.length - 1} repeat requests; budget is 5`)
 })
-test('empty room browser makes at most ten repeat reads in ten minutes', async () => {
+test('empty room browser makes at most five repeat reads in ten minutes', async () => {
   const calls = await measure(() => roomPollDelay({ rooms: [] }))
-  assert(calls.length <= 11, `Empty room browser made ${calls.length - 1} repeat requests; budget is 10`)
+  assert(calls.length <= 6, `Empty room browser made ${calls.length - 1} repeat requests; budget is 5`)
 })
-test('closed chat waits two minutes, including when its retry cap applies', () => {
-  assert(chatPollDelay(false) >= 120_000, 'Closed chat is still polling more often than two minutes')
+test('closed chat waits five minutes, including when its retry cap applies', () => {
+  assert(chatPollDelay(false) >= 300_000, 'Closed chat is still polling more often than five minutes')
   assert(chatPollDelay(false, 1) >= chatPollDelay(false))
   assert(chatPollDelay(false, 20) <= 300_000, 'A failed connection must remain recoverable')
 })
@@ -53,10 +53,11 @@ test('open chat halves background reads while retaining timely delivery', () => 
   assert(chatPollDelay(true, 1) > delay)
 })
 for (const snapshot of [{ queue: {} }, { match: { phase: 'select' } }, { match: { phase: 'battle' } }]) {
-  test(`active ${snapshot.queue ? 'queue' : snapshot.match.phase} retains forty repeat reads per minute`, async () => {
+  test(`active ${snapshot.queue ? 'queue' : snapshot.match.phase} makes twenty repeat reads per minute within the lease`, async () => {
     const original = structuredClone(snapshot)
     const calls = await measure(() => rankedPollDelay(snapshot), { snapshot, duration: 60_000 })
-    assert.equal(calls.length, 41)
+    assert.equal(calls.length, 21)
+    assert(calls.slice(1).every((at, i) => at - calls[i] < 10_000))
     assert.deepEqual(snapshot, original)
   })
 }
@@ -65,7 +66,7 @@ test('joined waiting rooms and busy actions keep their existing responsiveness',
   const calls = await measure(() => roomPollDelay(snapshot), { snapshot, duration: 60_000 })
   assert.equal(calls.length, 13)
   assert.equal(roomPollDelay(snapshot, true), 500)
-  assert.equal(roomPollDelay({ room: { phase: 'active' } }), 1500)
+  assert.equal(roomPollDelay({ room: { phase: 'active' } }), 3000)
 })
 test('room browser keeps renewing an existing ranked queue before its lease expires', async () => {
   const snapshot = { room: null, match: null, queue: { expiresAt: 30_000 } }
