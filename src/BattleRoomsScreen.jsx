@@ -10,6 +10,7 @@ import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { getSpeciesProfile } from './data/trainingData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled } from './rankedClient'
 import { startRankedPolling } from './rankedPolling'
+import { roomPollDelay } from './requestCadence.js'
 import { knownMatchRevision, mergeRankedMatchSnapshot } from './rankedSnapshot'
 import './ranked.css'
 import './battleRooms.css'
@@ -184,7 +185,7 @@ export default function BattleRoomsScreen({
       }
     }
     const polling = startRankedPolling({ refresh, getSnapshot: () => snapshotRef.current,
-      visibleInterval: () => operationRef.current ? 500 : snapshotRef.current.room?.phase === 'active' || snapshotRef.current.match ? 1500 : 5000,
+      visibleInterval: () => roomPollDelay(snapshotRef.current, operationRef.current),
     })
     refreshRef.current = polling.refresh
     return () => { active = false; mountedRef.current = false; generationRef.current += 1; controller.abort(); polling.stop(); refreshRef.current = null }

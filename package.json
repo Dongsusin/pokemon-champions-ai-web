@@ -114,6 +114,7 @@
     "validate:vp-economy": "node scripts/validateVpEconomy.mjs",
     "validate:ranked-ratings": "node scripts/validateRankedRatings.mjs",
     "validate:ranked-polling": "node scripts/validateRankedPolling.mjs",
+    "validate:request-budget": "node scripts/validateRequestBudget.mjs",
     "validate:guest-deletion": "node scripts/validateGuestAccountDeletion.mjs",
     "validate:guest-cleanup-storage": "node scripts/validateGuestCleanupStorage.mjs",
     "validate:ranked-leaderboard": "node scripts/validateRankedLeaderboard.mjs",

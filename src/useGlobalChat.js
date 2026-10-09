@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MAX_CHARACTERS, createGlobalChatClient } from './globalChatClient'
+import { chatPollDelay } from './requestCadence.js'
 
 const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sendError: '', sendErrorCode: '', sending: false })
-const CLOSED_POLL_MS = 30_000
-const OPEN_POLL_MS = 4_000
 
 export default function useGlobalChat(user, expanded) {
   const available = Boolean(user?.uid && !user.isLocalGuest && typeof user.getIdToken === 'function')
@@ -37,8 +36,7 @@ export default function useGlobalChat(user, expanded) {
     const schedule = () => {
       clearTimeout(session.timer)
       if (!current() || document.visibilityState === 'hidden') return
-      const interval = expandedRef.current ? OPEN_POLL_MS : CLOSED_POLL_MS
-      session.timer = setTimeout(() => session.refresh(), Math.min(60_000, interval * 2 ** Math.min(session.failureCount, 4)))
+      session.timer = setTimeout(() => session.refresh(), chatPollDelay(expandedRef.current, session.failureCount))
     }
     session.refresh = async () => {
       clearTimeout(session.timer)
