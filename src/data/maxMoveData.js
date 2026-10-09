@@ -366,6 +366,7 @@ function maxMoveBase(move, definition, options) {
     volatileStatus: null,
     boosts: null,
     self: null,
+    selfBoost: null,
     heal: null,
     drain: null,
     recoil: null,
