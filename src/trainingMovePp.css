@@ -1,0 +1,105 @@
+html .training-move-card:not(.is-empty) {
+  grid-template-areas: "slot type select metrics info" ". . pp pp .";
+  row-gap: 3px;
+}
+
+.training-move-pp-guide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: -2px 2px 6px;
+  color: #63568f;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.training-move-pp-guide > strong { font-weight: 800; }
+.training-move-pp-guide details { position: relative; }
+.training-move-pp-guide summary {
+  color: #5c49a4;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.training-move-pp-rule-body {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 65;
+  width: min(320px, 70vw);
+  padding: 9px 11px;
+  border: 1px solid #c7bce9;
+  border-radius: 8px;
+  color: #4f4870;
+  background: #fbf9ff;
+  box-shadow: 0 7px 18px #3b327328;
+}
+.training-move-pp-rule-body p { margin: 0; font-size: 11px; line-height: 1.6; }
+.training-move-pp-rule-body p + p { margin-top: 6px; }
+
+.training-move-pp {
+  grid-area: pp;
+  display: flex;
+  align-items: center;
+  gap: 5px 8px;
+  min-width: 0;
+  padding: 3px 5px 0;
+  border-top: 1px solid #6955b71a;
+  color: #65588e;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.training-move-pp-value,
+.training-move-pp-count,
+.training-move-pp-actions { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.training-move-pp-value small { color: #84809d; font-size: inherit; }
+.training-move-pp-value strong { color: #49388f; font-size: 11px; }
+.training-move-pp-count strong { font-weight: 850; }
+.training-move-pp-count em { color: #4e8a75; font-size: 7px; font-style: normal; font-weight: 900; }
+.training-move-pp-actions { margin-left: auto; }
+.training-move-pp-actions button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #9a88cf;
+  border-radius: 5px;
+  color: #5b439c;
+  background: #fff9;
+  cursor: pointer;
+}
+.training-move-pp-actions .training-move-pp-increase { color: #fff; background: #6b50ad; }
+.training-move-pp-actions button:disabled { opacity: .4; cursor: default; }
+.training-move-pp-actions button:focus-visible { outline: 2px solid #54bde2; outline-offset: 2px; }
+.training-move-pp-actions button:not(:disabled):hover { filter: brightness(1.12); }
+
+@media (max-width: 1400px) {
+  html .training-move-card:not(.is-empty) {
+    grid-template-areas: "slot type select info" ". metrics metrics metrics" ". pp pp pp";
+  }
+}
+
+html[data-mobile-layout="landscape"] .training-move-card:not(.is-empty) {
+  grid-template-areas: "slot type select metrics info" ". . pp pp pp";
+  grid-template-rows: auto auto;
+  row-gap: 1px;
+}
+
+html[data-mobile-layout="landscape"] .training-move-pp-guide {
+  margin: 0 2px;
+  font-size: 8px;
+}
+html[data-mobile-layout="landscape"] .training-move-pp { gap: 5px; padding: 1px 3px 0; font-size: 8px; }
+html[data-mobile-layout="landscape"] .training-move-pp-value strong { font-size: 9px; }
+html[data-mobile-layout="landscape"] .training-move-pp-actions button {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+}

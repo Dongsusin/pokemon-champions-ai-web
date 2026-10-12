@@ -72,6 +72,8 @@
     "validate:pokemon-learnsets": "node scripts/validatePokemonLearnsets.mjs",
     "validate:pokemon-forms": "node scripts/validatePokemonForms.mjs",
     "validate:training-moves": "node scripts/validateTrainingMoves.mjs",
+    "validate:move-pp-training": "node scripts/validateMovePpTraining.mjs",
+    "validate:move-pp-training-ui": "node scripts/validateMovePpTrainingUi.mjs",
     "validate:training-move-slots": "node scripts/validateTrainingMoveSlots.mjs",
     "validate:training-move-slots-ui": "node scripts/validateEmptyTrainingMovesUi.mjs",
     "validate:training-move-reorder-ui": "node scripts/validateTrainingMoveReorderUi.mjs",

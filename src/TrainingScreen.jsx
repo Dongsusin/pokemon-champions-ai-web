@@ -33,6 +33,8 @@ import {
   getFormMetadata,
   getLearnableMoves,
   getMove,
+  getMovePpTrainingCount,
+  getMovePpTrainingLimit,
   getPokemonGenderOptions,
   getPersistentFormOptions,
   getSpeciesProfile,
@@ -52,6 +54,7 @@ import { getZaMegaStoneByFormSlug } from './data/zaMegaData'
 import { useIsCompactLayout } from './useMobileLayout'
 import './trainingEmptyMoves.css'
 import './trainingMoveReorder.css'
+import './trainingMovePp.css'
 
 const MOVE_CATEGORY_FILTERS = ['전체', '물리', '특수', '변화']
 const STAT_LABEL_BY_KEY = Object.fromEntries(STAT_META.map(({ key, label }) => [key, label]))
@@ -88,6 +91,10 @@ function trainingSignature(pokemon) {
     nature: pokemon.nature,
     ability: pokemon.ability,
     moves: pokemon.moves,
+    movePpUps: pokemon.moves.map((moveName) => {
+      const move = getMove(moveName)
+      return [move.id, getMovePpTrainingCount(move, pokemon)]
+    }),
     hiddenPowerType: pokemon.hiddenPowerType,
     hiddenPowerTypeConfigured: pokemon.hiddenPowerTypeConfigured,
     trainingPoints: STAT_META.map(({ key }) => Number(pokemon.trainingPoints?.[key] ?? 0)),
@@ -286,7 +293,7 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
     () => (selectedPokemon
       ? getLearnableMoves(selectedPokemon.speciesId).map((move) => resolveMoveForPokemon(move, selectedPokemon))
       : []),
-    [selectedPokemon?.hiddenPowerType, selectedPokemon?.speciesId],
+    [selectedPokemon?.hiddenPowerType, selectedPokemon?.movePpUps, selectedPokemon?.speciesId],
   )
   const filteredMoves = useMemo(() => {
     const query = moveSearch.trim().toLocaleLowerCase('ko-KR')
@@ -340,7 +347,32 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
     const moves = [...selectedPokemon.moves]
     moves[slotIndex] = moveName
     const speciesId = resolveMoveTriggeredFormSpeciesId(editableSpecies.id, moves)
-    updateSelected({ moves, speciesId })
+    const move = getMove(moveName)
+    const ppTrainingCount = Math.max(
+      getMovePpTrainingCount(move, selectedPokemon),
+      getMovePpTrainingCount(move, savedPokemon),
+    )
+    updateSelected({
+      moves,
+      speciesId,
+      movePpUps: { ...selectedPokemon.movePpUps, [move.id]: ppTrainingCount },
+    })
+  }
+
+  const adjustMovePpTraining = (moveName, amount) => {
+    if (!editablePokemon || isPreviewForm) return
+    const move = getMove(moveName)
+    const currentCount = getMovePpTrainingCount(move, editablePokemon)
+    const savedCount = getMovePpTrainingCount(move, savedPokemon)
+    const nextCount = amount > 0
+      ? Math.min(getMovePpTrainingLimit(move), currentCount + 1)
+      : Math.max(savedCount, currentCount - 1)
+    if (nextCount === currentCount) return
+
+    setActiveTooltipId(null)
+    updateSelected({
+      movePpUps: { ...editablePokemon.movePpUps, [move.id]: nextCount },
+    })
   }
 
   const reorderMove = (fromIndex, toIndex) => {
@@ -1121,6 +1153,16 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                     <span>배틀 기술</span>
                     <strong>기술 교체 {TRAINING_COSTS.move} VP · 순서 변경 무료</strong>
                   </div>
+                  <div className="training-move-pp-guide">
+                    <strong>PP 강화 · 1회 +1 PP / {TRAINING_COSTS.movePp} VP</strong>
+                    <details>
+                      <summary>강화 규칙</summary>
+                      <div className="training-move-pp-rule-body">
+                        <p>기본 PP 10 이하 또는 위력 100 이상은 최대 3회, 기본 PP 20 이상 · 위력 60 이하는 최대 5회, 나머지는 최대 4회 강화할 수 있습니다. 변화 기술도 기본 PP에 따라 적용됩니다.</p>
+                        <p>기술을 교체하거나 비우면 해당 기술의 PP 강화가 초기화됩니다. − 버튼은 저장 전 추가한 강화만 취소합니다.</p>
+                      </div>
+                    </details>
+                  </div>
                   <div className="training-move-list">
                     {moveSlots.map((moveName, index) => {
                       if (!moveName) return (
@@ -1145,6 +1187,9 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                         </div>
                       )
                       const move = resolveMoveForPokemon(getMove(moveName), selectedPokemon)
+                      const ppTrainingCount = getMovePpTrainingCount(move, selectedPokemon)
+                      const ppTrainingLimit = getMovePpTrainingLimit(move)
+                      const savedPpTrainingCount = getMovePpTrainingCount(move, savedPokemon)
                       const tooltipId = `move-tooltip-${selectedPokemon.captureId}-${index}`
                       const accuracy = move.accuracyLabel ?? move.accuracy ?? '—'
                       const categoryClass = move.category === '물리'
@@ -1204,6 +1249,38 @@ function TrainingScreen({ balance = 0, pokemon, teams = [], activeTeamId, progre
                             <span><small>명중</small><strong>{accuracy}</strong></span>
                             <span><small>PP</small><strong>{move.pp}</strong></span>
                           </span>
+                          <div
+                            className={`training-move-pp${ppTrainingCount === ppTrainingLimit ? ' is-maxed' : ''}`}
+                            role="group"
+                            aria-label={`${moveName} PP 트레이닝`}
+                            onMouseEnter={() => setActiveTooltipId(null)}
+                            onFocus={(event) => { event.stopPropagation(); setActiveTooltipId(null) }}
+                          >
+                            <span className="training-move-pp-value">PP <small>{move.basePp}</small><span aria-hidden="true">→</span><strong>{move.pp}</strong></span>
+                            <span className="training-move-pp-count">강화 <strong>{ppTrainingCount}/{ppTrainingLimit}</strong>{ppTrainingCount === ppTrainingLimit && <em>MAX</em>}</span>
+                            <span className="training-move-pp-actions">
+                              <button
+                                className="training-move-pp-cancel"
+                                type="button"
+                                aria-label={`${moveName} PP 강화 취소`}
+                                title="저장 전 추가한 PP 강화 1회 취소"
+                                disabled={isPreviewForm || ppTrainingCount <= savedPpTrainingCount}
+                                onClick={() => adjustMovePpTraining(moveName, -1)}
+                              >
+                                <Minus size={12} aria-hidden="true" />
+                              </button>
+                              <button
+                                className="training-move-pp-increase"
+                                type="button"
+                                aria-label={`${moveName} PP 강화`}
+                                title={ppTrainingCount === ppTrainingLimit ? 'PP 강화 완료' : `PP +1 · ${TRAINING_COSTS.movePp} VP`}
+                                disabled={isPreviewForm || ppTrainingCount >= ppTrainingLimit}
+                                onClick={() => adjustMovePpTraining(moveName, 1)}
+                              >
+                                <Plus size={12} aria-hidden="true" />
+                              </button>
+                            </span>
+                          </div>
                           <button
                             className="training-tooltip-trigger"
                             type="button"

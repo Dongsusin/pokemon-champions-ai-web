@@ -74,6 +74,7 @@ export function canonicalizeRankedTeam(entries, { format = 'single', requireRegi
     const pokemon = normalizePokemon({
       captureId, speciesId: profile.id, dexSpeciesId: dexId,
       moves: canonicalMoves.map((move) => move.name),
+      movePpUps: entry.movePpUps,
       ability: entry.ability, nature: entry.nature, trainingPoints,
       teraType: entry.teraType, dynamaxMode: entry.dynamaxMode,
       hiddenPowerType: entry.hiddenPowerType,

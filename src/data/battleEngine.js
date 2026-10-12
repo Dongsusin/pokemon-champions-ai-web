@@ -569,9 +569,11 @@ function moveRuntime(move, fallbackIndex) {
 function crownedMoveRuntime(move, formSlug) {
   const signatureId = CROWNED_SIGNATURE_MOVES[formSlug]
   if (move.id !== 'ironhead' || !signatureId) return move
-  // Replace the whole move definition: Iron Head's flinch effect and 15 PP
-  // must not survive the Crowned form's signature move (5 PP, 100 power).
-  const signature = moveRuntime(getMoveById(signatureId))
+  // Replace Iron Head's definition while carrying its training count across
+  // to the signature move's own base PP and (stricter) training limit.
+  const signature = moveRuntime(resolveMoveForPokemon(getMoveById(signatureId), {
+    movePpUps: { [signatureId]: move.ppTrainingCount ?? 0 },
+  }))
   const spentPp = Math.max(0, move.maxPp - move.currentPp)
   return { ...signature, currentPp: Math.max(0, signature.maxPp - spentPp) }
 }

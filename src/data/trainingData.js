@@ -733,12 +733,50 @@ export function getMoveById(moveId) {
   return MOVE_BY_ID[moveId] ?? null
 }
 
+// Use the catalog definition even when a caller resolves an already trained
+// runtime move, so repeated resolution cannot add the PP bonus twice.
+export function getMovePpTrainingLimit(move) {
+  if (!move || move.id === 'struggle') return 0
+  const source = MOVE_BY_ID[move.id] ?? move
+  const basePp = Number(source.basePp ?? source.pp) || 1
+  const power = Number(source.power) || 0
+  if (basePp <= 10 || power >= 100) return 3
+  if (basePp >= 20 && power <= 60) return 5
+  return 4
+}
+
+export function getMovePpTrainingCount(move, pokemon) {
+  const count = pokemon?.movePpUps?.[move?.id]
+  return Number.isSafeInteger(count) && count > 0
+    ? Math.min(count, getMovePpTrainingLimit(move))
+    : 0
+}
+
+function normalizeMovePpUps(movePpUps, moves) {
+  return Object.fromEntries(moves.flatMap((name) => {
+    const move = MOVE_BY_NAME[name]
+    const count = getMovePpTrainingCount(move, { movePpUps })
+    return count > 0 ? [[move.id, count]] : []
+  }))
+}
+
 export function resolveMoveForPokemon(move, pokemon) {
-  if (!move || move.id !== 'hiddenpower') return move
+  if (!move) return move
+  const source = MOVE_BY_ID[move.id] ?? move
+  const basePp = Math.max(1, Number(source.basePp ?? source.pp) || 1)
+  const ppTrainingCount = getMovePpTrainingCount(move, pokemon)
+  const resolved = {
+    ...move,
+    basePp,
+    ppTrainingCount,
+    ppTrainingLimit: getMovePpTrainingLimit(move),
+    pp: basePp + ppTrainingCount,
+  }
+  if (move.id !== 'hiddenpower') return resolved
 
   const { hiddenPowerType: type } = resolveHiddenPowerConfiguration(pokemon)
   return {
-    ...move,
+    ...resolved,
     type,
     typeId: TYPE_CLASS[type],
     description: `개체의 잠재력에 따라 타입이 달라지는 위력 60의 특수 기술이다. 현재 설정은 ${type}타입이다.`,
@@ -949,6 +987,7 @@ export function normalizePokemon(pokemon) {
     gender,
     nature,
     moves,
+    movePpUps: normalizeMovePpUps(pokemon.movePpUps, moves),
     ...(Array.isArray(pokemon.moveIds) ? { moveIds: moves.map((name) => MOVE_BY_NAME[name].id) } : {}),
     trainingPoints,
     level: BATTLE_LEVEL,

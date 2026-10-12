@@ -1,8 +1,9 @@
-import { arePokemonGenderCounterparts, getSpeciesProfile, STAT_META } from './trainingData.js'
+import { arePokemonGenderCounterparts, getMove, getMovePpTrainingCount, getSpeciesProfile, STAT_META } from './trainingData.js'
 
 export const TRAINING_COSTS = Object.freeze({
   trainingPoint: 2,
   move: 100,
+  movePp: 100,
   nature: 200,
   ability: 400,
   shiny: 0,
@@ -37,6 +38,11 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
   const removedMoves = savedMoves.filter((move) => !draftMoves.includes(move))
   const addedMoves = draftMoves.filter((move) => !savedMoves.includes(move))
   const changedMoveCount = Math.max(removedMoves.length, addedMoves.length)
+  const movePpUnits = draftMoves.reduce((total, name) => {
+    const move = getMove(name)
+    const savedCount = savedMoves.includes(name) ? getMovePpTrainingCount(move, savedPokemon) : 0
+    return total + Math.max(0, getMovePpTrainingCount(move, draftPokemon) - savedCount)
+  }, 0)
 
   const hiddenPowerConfigurationChanged = (
     savedPokemon.hiddenPowerType !== draftPokemon.hiddenPowerType
@@ -72,6 +78,14 @@ export function getTrainingCostBreakdown(savedPokemon, draftPokemon) {
       unitLabel: '개',
       unitCost: TRAINING_COSTS.move,
       cost: moveUnits * TRAINING_COSTS.move,
+    },
+    {
+      id: 'move-pp',
+      label: 'PP 강화',
+      units: movePpUnits,
+      unitLabel: '회',
+      unitCost: TRAINING_COSTS.movePp,
+      cost: movePpUnits * TRAINING_COSTS.movePp,
     },
     {
       id: 'nature',
