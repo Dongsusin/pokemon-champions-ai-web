@@ -84,10 +84,10 @@ export async function loadPlayerGameData(userId) {
   if (isServerGameStorage) {
     const ownerId = requireAccountSessionOwner(userId)
     saveBaseline = null
-    const result = await createPlayerAccountClient(userId).request('load', { ownerId, patchVersion: 1 })
+    const result = await createPlayerAccountClient(userId).request('load', { ownerId, patchVersion: 2 })
     const data = validateServerGameData(result.gameData)
-    if (result.savePatchVersion === 1 && getActiveAccountSessionOwnerId(userId) === ownerId) {
-      saveBaseline = { userId, ownerId, revision: data?.revision ?? null, payload: { ...data?.payload } }
+    if ([1, 2].includes(result.savePatchVersion) && getActiveAccountSessionOwnerId(userId) === ownerId) {
+      saveBaseline = { userId, ownerId, revision: data?.revision ?? null, patchVersion: result.savePatchVersion, payload: { ...data?.payload } }
     }
     return data
   }
@@ -127,8 +127,8 @@ export async function savePlayerGameData(userId, payload) {
     const client = createPlayerAccountClient(userId)
     const nextPayload = { ...payload }
     const baseline = saveBaseline?.userId === userId && saveBaseline.ownerId === ownerId ? saveBaseline : null
-    const delta = baseline?.revision ? createAccountSavePatch(baseline.payload, nextPayload) : null
-    if (delta && !Object.keys(delta.patch).length && !delta.removed.length) return { revision: baseline.revision }
+    const delta = baseline?.revision ? createAccountSavePatch(baseline.payload, nextPayload, { splices: baseline.patchVersion === 2 }) : null
+    if (delta && !Object.keys(delta.patch).length && !delta.removed.length && !Object.keys(delta.splices ?? {}).length) return { revision: baseline.revision }
     const revision = createRevision()
     // A timed-out HTTP request can still reach the database. Ordering belongs to
     // the entire lease, so a late older save cannot replace a newer confirmed one.
@@ -153,7 +153,7 @@ export async function savePlayerGameData(userId, payload) {
       }
       if (result.revision !== revision) throw new AccountRequestError('서버 저장 결과를 확인하지 못했습니다.', 'account/invalid-response')
       if (baseline && getActiveAccountSessionOwnerId(userId) === ownerId && accountSaveSequences.get(ownerId) === saveSequence) {
-        saveBaseline = { userId, ownerId, revision, payload: nextPayload }
+        saveBaseline = { userId, ownerId, revision, patchVersion: baseline.patchVersion, payload: nextPayload }
       }
     } catch (error) {
       if (saveBaseline?.ownerId === ownerId && accountSaveSequences.get(ownerId) === saveSequence) saveBaseline = null

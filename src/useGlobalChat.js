@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MAX_CHARACTERS, createGlobalChatClient } from './globalChatClient'
+import { chatPollDelay } from './networkBudget'
 
 const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sendError: '', sendErrorCode: '', sending: false })
-const CLOSED_POLL_MS = 30_000
-const OPEN_POLL_MS = 4_000
 
 export default function useGlobalChat(user, expanded) {
   const available = Boolean(user?.uid && !user.isLocalGuest && typeof user.getIdToken === 'function')
@@ -21,7 +20,7 @@ export default function useGlobalChat(user, expanded) {
       return undefined
     }
     const session = { uid: user.uid, active: true, timer: null, read: null, send: null,
-      revision: -1, messagesRevision: -1, pendingSend: null, failureCount: 0 }
+      revision: -1, messagesRevision: -1, pendingSend: null, failureCount: 0, unchangedReads: 0 }
     sessionRef.current = session
     const current = () => session.active && userRef.current?.uid === session.uid
     const client = createGlobalChatClient({
@@ -36,13 +35,13 @@ export default function useGlobalChat(user, expanded) {
     }
     const schedule = () => {
       clearTimeout(session.timer)
-      if (!current() || document.visibilityState === 'hidden') return
-      const interval = expandedRef.current ? OPEN_POLL_MS : CLOSED_POLL_MS
-      session.timer = setTimeout(() => session.refresh(), Math.min(60_000, interval * 2 ** Math.min(session.failureCount, 4)))
+      if (!current() || document.visibilityState === 'hidden' || navigator.onLine === false) return
+      session.timer = setTimeout(() => session.refresh(), chatPollDelay({ expanded: expandedRef.current,
+        unchanged: session.unchangedReads, failures: session.failureCount }))
     }
     session.refresh = async () => {
       clearTimeout(session.timer)
-      if (!current() || session.read || document.visibilityState === 'hidden') return
+      if (!current() || session.read || document.visibilityState === 'hidden' || navigator.onLine === false) return
       const controller = new AbortController()
       session.read = controller
       const includeMessages = expandedRef.current
@@ -51,6 +50,7 @@ export default function useGlobalChat(user, expanded) {
         const snapshot = await client.request('read', { expanded: includeMessages,
           ...(revision >= 0 ? { revision } : {}) }, { signal: controller.signal })
         if (!current()) return
+        session.unchangedReads = snapshot.revision === session.revision ? Math.min(3, session.unchangedReads + 1) : 0
         session.apply(snapshot)
         session.failureCount = 0
         setState(previous => ({ ...previous, error: '' }))
@@ -85,6 +85,8 @@ export default function useGlobalChat(user, expanded) {
         session.apply(snapshot)
         session.pendingSend = null
         session.failureCount = 0
+        session.unchangedReads = 0
+        schedule()
         setState(previous => ({ ...previous, error: '', sendError: '', sendErrorCode: '' }))
         return true
       } catch (error) {
@@ -97,11 +99,12 @@ export default function useGlobalChat(user, expanded) {
     }
     const visibility = () => {
       clearTimeout(session.timer)
-      if (document.visibilityState === 'hidden') session.read?.abort()
+      if (document.visibilityState === 'hidden' || navigator.onLine === false) session.read?.abort()
       else void session.refresh()
     }
     document.addEventListener('visibilitychange', visibility)
     window.addEventListener('online', visibility)
+    window.addEventListener('offline', visibility)
     void session.refresh()
     return () => {
       session.active = false
@@ -111,6 +114,7 @@ export default function useGlobalChat(user, expanded) {
       if (sessionRef.current === session) sessionRef.current = null
       document.removeEventListener('visibilitychange', visibility)
       window.removeEventListener('online', visibility)
+      window.removeEventListener('offline', visibility)
     }
   }, [user?.uid, available])
 

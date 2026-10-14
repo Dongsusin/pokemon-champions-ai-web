@@ -12,6 +12,7 @@ import { getSpeciesProfile } from './data/trainingData'
 import { BATTLE_TEAM_SIZE, normalizeSavedTeamState } from './data/teamData'
 import { createRankedClient, createRankedRequestId, isRankedEnabled, isRankedLocalTest } from './rankedClient'
 import { startRankedPolling } from './rankedPolling'
+import { RANKED_IDLE_POLL_MS } from './networkBudget'
 import { knownMatchRevision, mergeRankedMatchSnapshot } from './rankedSnapshot'
 import './ranked.css'
 
@@ -199,7 +200,7 @@ export default function RankedBattleScreen({
       }
     }
     const polling = startRankedPolling({ refresh, getSnapshot: () => snapshotRef.current,
-      visibleInterval: () => snapshotRef.current.queue || (snapshotRef.current.match && snapshotRef.current.match.phase !== 'finished') ? 1500 : 10_000 })
+      visibleInterval: () => snapshotRef.current.queue || (snapshotRef.current.match && snapshotRef.current.match.phase !== 'finished') ? 1500 : RANKED_IDLE_POLL_MS })
     refreshRef.current = polling.refresh
     if (isRankedLocalTest) client.request('fixtures', {}, { signal: controller.signal }).then(value => {
       if (active) { setFixtures(value.teams ?? []); setFixtureTeamId(value.teams?.[0]?.id ?? null) }

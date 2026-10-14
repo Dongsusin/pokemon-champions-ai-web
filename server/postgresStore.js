@@ -46,7 +46,9 @@ export function createPostgresPool({
     connectionString: url.href,
     max: 3,
     connectionTimeoutMillis: 5_000,
-    idleTimeoutMillis: 5_000,
+    // The Vercel adapter waits idleTimeoutMillis + 100ms via waitUntil.
+    // Keep a brief burst-reuse window without holding every request five seconds.
+    idleTimeoutMillis: 500,
     maxLifetimeSeconds: 300,
     allowExitOnIdle: true,
     statement_timeout: 8_000,
@@ -60,6 +62,21 @@ export function createPostgresPool({
   pool.on('error', () => {})
   if (process.env.VERCEL) attachDatabasePool(pool)
   return pool
+}
+
+// JSONB values stay in PostgreSQL. Never return the collection just to edit one
+// Pokemon, and use character offsets rather than UTF-16 byte positions.
+function splicePayloadSQL(splicesArg) {
+  const merged = "((payload->'payload' || $4::jsonb) - $5::text[])"
+  return "CASE WHEN " + splicesArg + "::jsonb = '{}'::jsonb THEN " + merged + " ELSE (SELECT COALESCE(jsonb_object_agg(entry.key, CASE WHEN "
+    + splicesArg + "::jsonb ? entry.key THEN to_jsonb(substring(entry.value, 1, (" + splicesArg + "::jsonb->entry.key->>0)::integer) || ("
+    + splicesArg + "::jsonb->entry.key->>2) || substring(entry.value, (" + splicesArg + "::jsonb->entry.key->>0)::integer + ("
+    + splicesArg + "::jsonb->entry.key->>1)::integer + 1)) ELSE to_jsonb(entry.value) END), '{}'::jsonb) FROM jsonb_each_text("
+    + merged + ") AS entry(key, value)) END"
+}
+function validSplicesSQL(splicesArg) {
+  return "NOT EXISTS (SELECT 1 FROM jsonb_each(" + splicesArg + "::jsonb) AS edit(key, value) WHERE jsonb_typeof(payload->'payload'->edit.key) IS DISTINCT FROM 'string'"
+    + " OR char_length(payload->'payload'->>edit.key) < (edit.value->>0)::integer + (edit.value->>1)::integer)"
 }
 
 /**
@@ -121,26 +138,28 @@ export function createPostgresStore({
           }
           return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
         },
-        async readGameDataPatch(key, patch, removed) {
+        async readGameDataPatch(key, patch, removed, splices = {}) {
           assertActive(); checkAddress('gameData', key)
           if (writes.has(`gameData/${key}`)) throw new Error('Cannot patch a buffered game save')
           const result = await client.query(`SELECT payload->>'revision' AS revision,
             payload->>'patchHash' AS patch_hash,
-            octet_length(((payload->'payload' || $4::jsonb) - $5::text[])::text) AS merged_bytes
+            octet_length((${splicePayloadSQL('$6')})::text) AS merged_bytes,
+            ${validSplicesSQL('$6')} AS splices_valid
             FROM ${TABLE} WHERE namespace = $1 AND collection = $2 AND key = $3`,
-          [namespace, 'gameData', key, jsonDocument(patch, maxDocumentBytes).encoded, removed])
+          [namespace, 'gameData', key, jsonDocument(patch, maxDocumentBytes).encoded, removed, jsonDocument(splices, maxDocumentBytes).encoded])
           const row = result.rows[0]
-          return row ? { revision: row.revision, patchHash: row.patch_hash, mergedBytes: Number(row.merged_bytes) } : null
+          return row ? { revision: row.revision, patchHash: row.patch_hash, mergedBytes: Number(row.merged_bytes), splicesValid: row.splices_valid !== false } : null
         },
-        async writeGameDataPatch(key, patch, removed, metadata, baseRevision) {
+        async writeGameDataPatch(key, patch, removed, metadata, baseRevision, splices = {}) {
           assertActive(); checkAddress('gameData', key)
           // Merge inside the same SERIALIZABLE transaction: neither direction
           // transfers the unchanged collection, and a rollback includes this write.
           const result = await client.query(`UPDATE ${TABLE} SET payload = $6::jsonb ||
-            jsonb_build_object('payload', (payload->'payload' || $4::jsonb) - $5::text[])
-            WHERE namespace = $1 AND collection = $2 AND key = $3 AND payload->>'revision' = $7`,
+            jsonb_build_object('payload', ${splicePayloadSQL('$8')})
+            WHERE namespace = $1 AND collection = $2 AND key = $3 AND payload->>'revision' = $7
+              AND ${validSplicesSQL('$8')}`,
           [namespace, 'gameData', key, jsonDocument(patch, maxDocumentBytes).encoded, removed,
-            jsonDocument(metadata, maxDocumentBytes).encoded, baseRevision])
+            jsonDocument(metadata, maxDocumentBytes).encoded, baseRevision, jsonDocument(splices, maxDocumentBytes).encoded])
           if (result.rowCount !== 1) throw new Error('Game save changed during transaction')
           reads.delete(`gameData/${key}`)
         },

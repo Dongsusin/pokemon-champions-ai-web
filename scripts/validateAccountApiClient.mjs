@@ -201,6 +201,28 @@ try {
     await api.savePlayerGameData(user.uid, { 'champions-vp-v1': '7' })
     assert.equal(requests.at(-1).action, 'save', 'An uncertain baseline never skips the recovery write')
   })
+
+  await check('version two uploads a sparse Unicode collection edit and skips an identical subsequent save', async () => {
+    const original = responseBody
+    const values = Array.from({ length: 1000 }, (_, index) => ({ captureId: 'unicode-' + index, name: '포켓몬🐉', power: 20 }))
+    const payload = { 'champions-dex-v2': JSON.stringify(values), 'champions-vp-v1': '30' }
+    responseBody = body => body.action === 'load' ? { gameData: { ...validData, payload }, savePatchVersion: 2 } : { revision: body.revision }
+    await api.loadPlayerGameData(user.uid)
+    values[500].power = 21
+    const next = { ...payload, 'champions-dex-v2': JSON.stringify(values) }
+    await api.savePlayerGameData(user.uid, next)
+    const sent = requests.at(-1)
+    assert.equal(sent.action, 'savePatch')
+    assert(sent.splices?.['champions-dex-v2'])
+    assert.equal(sent.patch['champions-dex-v2'], undefined)
+    const [start, removed, inserted] = sent.splices['champions-dex-v2']
+    assert.equal([...payload['champions-dex-v2']].slice(0, start).join('') + inserted + [...payload['champions-dex-v2']].slice(start + removed).join(''), next['champions-dex-v2'])
+    assert(wires.at(-1).bytes < 1000)
+    const before = requests.length
+    await api.savePlayerGameData(user.uid, next)
+    assert.equal(requests.length, before)
+    responseBody = original
+  })
   await check('unsafe HTTP endpoints and embedded credentials are rejected', async () => {
     for (const apiUrl of ['http://example.invalid/api/account', 'https://name:password@example.invalid/api/account', 'file:///api/account']) {
       assert.throws(() => api.createAccountApiClient({ apiUrl }), { code: 'account/invalid-endpoint' })

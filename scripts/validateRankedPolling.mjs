@@ -8,8 +8,8 @@ function setup({ hidden = false, snapshot = {}, interval = () => 1500, request =
   let now = 0, serial = 0
   const documentRef = new EventTarget(), windowRef = new EventTarget(), timers = new Map(), calls = []
   documentRef.hidden = hidden
-  const state = { snapshot }
-  const polling = startRankedPolling({ documentRef, windowRef,
+  const state = { snapshot }, navigatorRef = { onLine: true }
+  const polling = startRankedPolling({ documentRef, windowRef, navigatorRef,
     getSnapshot: () => state.snapshot, visibleInterval: interval,
     setTimer: (callback, delay) => { const id = ++serial; timers.set(id, { at: now + delay, callback }); return id },
     clearTimer: id => timers.delete(id),
@@ -17,7 +17,8 @@ function setup({ hidden = false, snapshot = {}, interval = () => 1500, request =
   })
   return { polling, calls, state, timers,
     visible(value) { documentRef.hidden = !value; documentRef.dispatchEvent(new Event('visibilitychange')) },
-    online() { windowRef.dispatchEvent(new Event('online')) },
+    online() { navigatorRef.onLine = true; windowRef.dispatchEvent(new Event('online')) },
+    offline() { navigatorRef.onLine = false; windowRef.dispatchEvent(new Event('offline')) },
     async advance(amount) {
       await flush()
       const until = now + amount
@@ -157,6 +158,18 @@ test('handled network failures retain paced retries and recover immediately on f
   assert.equal(failed, 4)
   await env.advance(1)
   assert.equal(failed, 5)
+  env.polling.stop()
+})
+
+test('a hidden active queue resumes its heartbeat immediately when connectivity returns', async () => {
+  const env = setup({ hidden:true, snapshot:{ queue:{ expiresAt:30000 } } })
+  await env.advance(1000)
+  env.offline()
+  await env.advance(1000)
+  assert.equal(env.timers.size,0)
+  env.online()
+  await env.advance(10000)
+  assert.deepEqual(env.calls,[0,2000,7000,12000])
   env.polling.stop()
 })
 

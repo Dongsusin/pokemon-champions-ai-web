@@ -1,11 +1,33 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["icn1"],
+  "regions": [
+    "icn1"
+  ],
   "git": {
     "deploymentEnabled": {
       "codex/battle-factory": false,
       "codex/fixed-aspect-frame": false,
       "codex/boss-achievements": false
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/assets/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/assets/:file([\\w-]+-[\\w-]{8}\\.(?:m?js|css))",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
 }

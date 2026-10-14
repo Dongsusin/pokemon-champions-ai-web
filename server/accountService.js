@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
+import { applyAccountSaveSplices } from '../src/auth/accountSavePatch.js'
 import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
 import { normalizeTrainerNickname, readTrainerNickname } from '../src/data/trainerNickname.js'
 import { hasTrainerTitle, normalizeTrainerTitle, readTrainerTitle } from '../src/data/titleData.js'
@@ -110,14 +111,24 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         return { deleted: true, uid: identity.uid }
       }
       const payload = action === 'save' && !patchSave ? validateAccountPayload(command.payload) : null
-      let patch, patchHash
+      let patch, patchHash, splices = {}
       if (patchSave) {
         if (!validVersion(command.baseRevision)) fail('INVALID_SAVE_REVISION', '기준 저장 버전이 올바르지 않습니다.')
         patch = validateAccountPayload(command.patch)
         if (!Array.isArray(command.removed) || command.removed.length > keys.size
           || command.removed.some(key => !keys.has(key) || Object.hasOwn(patch, key))
           || new Set(command.removed).size !== command.removed.length) fail('INVALID_SAVE', '삭제할 저장 항목이 올바르지 않습니다.')
-        patchHash = createHash('sha256').update(JSON.stringify([command.baseRevision, Object.entries(patch).sort(), [...command.removed].sort()])).digest('hex')
+        splices = command.splices ?? {}
+        if (!plain(splices) || Object.keys(splices).length > keys.size || Object.entries(splices).some(([key, edit]) =>
+          !keys.has(key) || Object.hasOwn(patch, key) || command.removed.includes(key) || !Array.isArray(edit) || edit.length !== 3
+          || !Number.isSafeInteger(edit[0]) || edit[0] < 0 || edit[0] > ACCOUNT_PAYLOAD_MAX_BYTES
+          || !Number.isSafeInteger(edit[1]) || edit[1] < 0 || edit[1] > ACCOUNT_PAYLOAD_MAX_BYTES || typeof edit[2] !== 'string')) {
+          fail('INVALID_SAVE', '변경할 저장 구간이 올바르지 않습니다.')
+        }
+        if (Buffer.byteLength(JSON.stringify(splices), 'utf8') > ACCOUNT_PAYLOAD_MAX_BYTES) fail('SAVE_TOO_LARGE', '게임 저장 데이터가 허용 크기를 넘었습니다.', 413)
+        const hashParts = [command.baseRevision, Object.entries(patch).sort(), [...command.removed].sort()]
+        if (Object.keys(splices).length) hashParts.push(Object.entries(splices).sort())
+        patchHash = createHash('sha256').update(JSON.stringify(hashParts)).digest('hex')
       }
       let nickname
       if (action === 'setNickname') {
@@ -200,12 +211,12 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         if (action === 'load') {
           const saved = await tx.get('gameData', uid)
           return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null,
-            ...(command.patchVersion === 1 ? { savePatchVersion: 1 } : {}) }
+            ...([1, 2].includes(command.patchVersion) ? { savePatchVersion: command.patchVersion } : {}) }
         }
         if (action === 'save') {
           if (patchSave) {
             const sqlPatch = typeof tx.readGameDataPatch === 'function' && typeof tx.writeGameDataPatch === 'function'
-            const saved = sqlPatch ? await tx.readGameDataPatch(uid, patch, command.removed) : await tx.get('gameData', uid)
+            const saved = sqlPatch ? await tx.readGameDataPatch(uid, patch, command.removed, splices) : await tx.get('gameData', uid)
             const lastSequence = Number.isSafeInteger(session.lastSaveSequence) ? session.lastSaveSequence : 0
             if (command.saveSequence < lastSequence) fail('STALE_SAVE', '더 최신 게임 데이터가 이미 저장됐습니다.', 409)
             if (saved?.revision === command.revision) {
@@ -217,12 +228,16 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
             if (!saved || saved.revision !== command.baseRevision) fail('SAVE_BASE_MISMATCH', '저장 기준 버전이 변경됐습니다.', 409)
             const metadata = { schemaVersion: 1, revision: command.revision, updatedAtMs: now(), patchHash }
             if (sqlPatch) {
+              if (saved.splicesValid === false) fail('INVALID_SAVE', '변경할 저장 구간이 올바르지 않습니다.')
               if (!Number.isSafeInteger(saved.mergedBytes) || saved.mergedBytes > ACCOUNT_PAYLOAD_MAX_BYTES) fail('SAVE_TOO_LARGE', '게임 저장 데이터가 허용 크기를 넘었습니다.', 413)
-              await tx.writeGameDataPatch(uid, patch, command.removed, metadata, command.baseRevision)
+              await tx.writeGameDataPatch(uid, patch, command.removed, metadata, command.baseRevision, splices)
             } else {
               const merged = { ...saved.payload, ...patch }
               for (const key of command.removed) delete merged[key]
-              tx.set('gameData', uid, { ...metadata, payload: validateAccountPayload(merged) })
+              let edited
+              try { edited = applyAccountSaveSplices(merged, splices) }
+              catch { fail('INVALID_SAVE', '변경할 저장 구간이 올바르지 않습니다.') }
+              tx.set('gameData', uid, { ...metadata, payload: validateAccountPayload(edited) })
             }
             tx.set('sessions', uid, { ...session, lastSaveSequence: command.saveSequence })
             return { revision: command.revision }

@@ -200,8 +200,10 @@ try {
     })
     await context.route('**/global-chat.html?*', route => route.fulfill({ contentType: 'text/html', body: html }))
     const page = await context.newPage()
-    page.setDefaultTimeout(20_000)
+    // Idle open chat may wait up to 30 seconds between unchanged snapshots.
+    page.setDefaultTimeout(40_000)
     page.on('pageerror', error => errors.push({ source: `${device.id}-${scale}x-${letter}`, message: error.message }))
+    await page.clock.install()
     await page.goto(`${origin}/global-chat.html?client=${letter}`)
     await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
     await trigger(page).waitFor()
@@ -215,6 +217,23 @@ try {
     const reads = requests.filter(r => r.action === 'read' && !r.expanded && r.status === 200)
     assert(reads.length >= 2)
     assert(reads.every(r => !r.hasMessages), JSON.stringify(reads))
+  })
+  await test('closed chat waits two minutes between reads and offline tabs issue none', async () => {
+    const uid = identities['global-chat-ui-a-token'].uid
+    const reads = () => requests.filter(r => r.uid === uid && r.action === 'read').length
+    const initial = reads()
+    await a.page.clock.fastForward(60_000)
+    assert.equal(reads(), initial)
+    const response = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
+    await a.page.clock.fastForward(60_100)
+    await response
+    assert.equal(reads(), initial + 1)
+    await a.page.evaluate(() => { Object.defineProperty(navigator, 'onLine', { configurable:true, get:()=>false }); window.dispatchEvent(new Event('offline')) })
+    await a.page.clock.fastForward(180_000)
+    assert.equal(reads(), initial + 1)
+    const resumed = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
+    await a.page.evaluate(() => { delete navigator.onLine; window.dispatchEvent(new Event('online')) })
+    await resumed
   })
   await test('expansion keeps only the latest 30 of 35 messages with server names and times', async () => {
     await expanded(a.page)

@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { isDeepStrictEqual } from 'node:util'
+import { applyAccountSaveSplices, createAccountSavePatch } from '../src/auth/accountSavePatch.js'
 import { createPostgresPool, createPostgresStore } from '../server/postgresStore.js'
 import { createAccountService } from '../server/accountService.js'
 
@@ -61,14 +62,15 @@ class FixturePool extends EventEmitter {
           if (!saved) return { rows: [] }
           const merged = { ...saved.payload, ...JSON.parse(values[3]) }
           for (const key of values[4]) delete merged[key]
-          return { rows: [{ revision: saved.revision, patch_hash: saved.patchHash, merged_bytes: Buffer.byteLength(JSON.stringify(merged)) }] }
+          const result = applyAccountSaveSplices(merged, JSON.parse(values[5] ?? '{}'))
+          return { rows: [{ revision: saved.revision, patch_hash: saved.patchHash, merged_bytes: Buffer.byteLength(JSON.stringify(result)), splices_valid: true }] }
         }
         if (text.startsWith('UPDATE') && text.includes("jsonb_build_object('payload'")) {
           const saved = draft.get(address(values))
           if (saved?.revision !== values[6]) return { rows: [], rowCount: 0 }
           const merged = { ...saved.payload, ...JSON.parse(values[3]) }
           for (const key of values[4]) delete merged[key]
-          draft.set(address(values), { ...JSON.parse(values[5]), payload: merged })
+          draft.set(address(values), { ...JSON.parse(values[5]), payload: applyAccountSaveSplices(merged, JSON.parse(values[7] ?? '{}')) })
           return { rows: [], rowCount: 1 }
         }
         if (text.startsWith("SELECT payload->>'revision'")) {

@@ -342,6 +342,34 @@ test('patch saves preserve untouched data, delete keys, and reject stale, invali
   assert.equal((await env.call(alice, 'load')).gameData.revision, 'large-revision')
 })
 
+test('version two edits preserve exact Unicode data and protect retries, bounds and ownership', async () => {
+  const env = environment()
+  await env.call(alice, 'sessionAcquire')
+  const before = '한글🐉'.repeat(1000)
+  await env.call(alice, 'save', { revision: 'splice-base', saveSequence: 1, payload: { 'champions-dex-v2': before, 'champions-vp-v1': '100' } })
+  assert.equal((await env.call(alice, 'load', { patchVersion: 2 })).savePatchVersion, 2)
+  const change = { baseRevision: 'splice-base', revision: 'splice-next', saveSequence: 2, patch: {}, removed: [],
+    splices: { 'champions-dex-v2': [1500, 3, '진화🦊'] } }
+  await env.call(alice, 'savePatch', change)
+  await env.call(alice, 'savePatch', change)
+  assert.deepEqual((await env.call(alice, 'load')).gameData.payload,
+    { 'champions-dex-v2': [...before].slice(0, 1500).join('') + '진화🦊' + [...before].slice(1503).join(''), 'champions-vp-v1': '100' })
+  await rejectCode(env.call(alice, 'savePatch', { ...change, splices: { 'champions-dex-v2': [1500, 3, '다른변경'] } }), 'SAVE_REVISION_REUSED')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, revision: 'splice-stale', saveSequence: 1 }), 'STALE_SAVE')
+  await rejectCode(env.call(alice, 'savePatch', { ...change, ownerId: ownerB }), 'account-session/lost')
+  const validNext = { ...change, baseRevision: 'splice-next', revision: 'splice-invalid', saveSequence: 3 }
+  for (const splices of [{ unknown: [0, 0, 'x'] }, { 'champions-dex-v2': [-1, 0, 'x'] },
+    { 'champions-dex-v2': [999999, 0, 'x'] }, { 'champions-dex-v2': [0, 999999, ''] },
+    { 'champions-dex-v2': [0, 1.5, 'x'] }, { 'champions-dex-v2': [0, 1, 123] },
+    { 'champions-settings-v1': [0, 0, 'x'] }]) {
+    await rejectCode(env.call(alice, 'savePatch', { ...validNext, splices }), 'INVALID_SAVE')
+  }
+  await rejectCode(env.call(alice, 'savePatch', { ...validNext, patch: { 'champions-dex-v2': 'x' } }), 'INVALID_SAVE')
+  await rejectCode(env.call(alice, 'savePatch', { ...validNext, removed: ['champions-dex-v2'] }), 'INVALID_SAVE')
+  await rejectCode(env.call(alice, 'savePatch', { ...validNext, splices: { 'champions-dex-v2': [0, 0, 'x'.repeat(ACCOUNT_PAYLOAD_MAX_BYTES)] } }), 'SAVE_TOO_LARGE')
+  assert.equal((await env.call(alice, 'load')).gameData.revision, 'splice-next')
+})
+
 for (const { name, run } of tests) {
   await run()
   console.log(`PASS ${name}`)
