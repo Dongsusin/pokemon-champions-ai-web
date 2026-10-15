@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MAX_CHARACTERS, createGlobalChatClient } from './globalChatClient'
-import { chatPollDelay } from './networkBudget'
 
 const fresh = () => ({ latest: null, messages: [], loading: true, error: '', sendError: '', sendErrorCode: '', sending: false })
 
-export default function useGlobalChat(user, expanded) {
+export default function useGlobalChat(user, expanded, pageKey) {
   const available = Boolean(user?.uid && !user.isLocalGuest && typeof user.getIdToken === 'function')
   const [state, setState] = useState(fresh)
   const sessionRef = useRef(null)
@@ -19,8 +18,8 @@ export default function useGlobalChat(user, expanded) {
       setState({ ...fresh(), loading: false })
       return undefined
     }
-    const session = { uid: user.uid, active: true, timer: null, read: null, send: null,
-      revision: -1, messagesRevision: -1, pendingSend: null, failureCount: 0, unchangedReads: 0 }
+    const session = { uid: user.uid, active: true, read: null, send: null,
+      revision: -1, messagesRevision: -1, pendingSend: null, refreshPending: false }
     sessionRef.current = session
     const current = () => session.active && userRef.current?.uid === session.uid
     const client = createGlobalChatClient({
@@ -33,15 +32,14 @@ export default function useGlobalChat(user, expanded) {
       setState(previous => ({ ...previous, latest: snapshot.latest,
         ...(snapshot.messages ? { messages: snapshot.messages } : {}), loading: false }))
     }
-    const schedule = () => {
-      clearTimeout(session.timer)
-      if (!current() || document.visibilityState === 'hidden' || navigator.onLine === false) return
-      session.timer = setTimeout(() => session.refresh(), chatPollDelay({ expanded: expandedRef.current,
-        unchanged: session.unchangedReads, failures: session.failureCount }))
-    }
-    session.refresh = async () => {
-      clearTimeout(session.timer)
-      if (!current() || session.read || document.visibilityState === 'hidden' || navigator.onLine === false) return
+    session.refresh = async ({ queue = false } = {}) => {
+      if (!current()) return
+      if (session.read) { if (queue) session.refreshPending = true; return }
+      if (navigator.onLine === false) {
+        setState(previous => ({ ...previous, loading: false, error: '인터넷 연결 후 새로고침해 주세요.' }))
+        return
+      }
+      session.refreshPending = false
       const controller = new AbortController()
       session.read = controller
       const includeMessages = expandedRef.current
@@ -50,20 +48,16 @@ export default function useGlobalChat(user, expanded) {
         const snapshot = await client.request('read', { expanded: includeMessages,
           ...(revision >= 0 ? { revision } : {}) }, { signal: controller.signal })
         if (!current()) return
-        session.unchangedReads = snapshot.revision === session.revision ? Math.min(3, session.unchangedReads + 1) : 0
         session.apply(snapshot)
-        session.failureCount = 0
         setState(previous => ({ ...previous, error: '' }))
       } catch (error) {
         if (!current() || error.name === 'AbortError') return
-        session.failureCount += 1
         setState(previous => ({ ...previous, loading: false, error: error.message }))
       } finally {
         if (session.read === controller) session.read = null
         if (current()) {
           // Opening while the compact request was in flight still fetches the list.
-          if (!controller.signal.aborted && !includeMessages && expandedRef.current) void session.refresh()
-          else schedule()
+          if (!controller.signal.aborted && (session.refreshPending || (!includeMessages && expandedRef.current))) void session.refresh()
         }
       }
     }
@@ -84,9 +78,6 @@ export default function useGlobalChat(user, expanded) {
         if (!current()) return false
         session.apply(snapshot)
         session.pendingSend = null
-        session.failureCount = 0
-        session.unchangedReads = 0
-        schedule()
         setState(previous => ({ ...previous, error: '', sendError: '', sendErrorCode: '' }))
         return true
       } catch (error) {
@@ -97,34 +88,29 @@ export default function useGlobalChat(user, expanded) {
         if (current()) setState(previous => ({ ...previous, sending: false }))
       }
     }
-    const visibility = () => {
-      clearTimeout(session.timer)
-      if (document.visibilityState === 'hidden' || navigator.onLine === false) session.read?.abort()
-      else void session.refresh()
-    }
-    document.addEventListener('visibilitychange', visibility)
-    window.addEventListener('online', visibility)
-    window.addEventListener('offline', visibility)
     void session.refresh()
     return () => {
       session.active = false
-      clearTimeout(session.timer)
       session.read?.abort()
       session.send?.abort()
       if (sessionRef.current === session) sessionRef.current = null
-      document.removeEventListener('visibilitychange', visibility)
-      window.removeEventListener('online', visibility)
-      window.removeEventListener('offline', visibility)
     }
   }, [user?.uid, available])
 
-  useEffect(() => { void sessionRef.current?.refresh() }, [expanded])
-  const refresh = useCallback(() => { void sessionRef.current?.refresh() }, [])
+  useEffect(() => { if (expanded) void sessionRef.current?.refresh() }, [expanded])
+  const pageRef = useRef(pageKey)
+  useEffect(() => {
+    if (pageRef.current !== pageKey) {
+      pageRef.current = pageKey
+      void sessionRef.current?.refresh({ queue: true })
+    }
+  }, [pageKey])
+  const refresh = useCallback(() => sessionRef.current?.refresh({ queue: true }), [])
   const sendMessage = useCallback(text => sessionRef.current?.sendMessage(text) ?? Promise.resolve(false), [])
   const clearSendError = useCallback(() => setState(previous => ({ ...previous, sendError: '', sendErrorCode: '' })), [])
   // Do not show one account's private isOwn flags while another signs in.
   const view = sessionRef.current?.uid === user?.uid && available ? state : { ...fresh(), loading: false }
-  // Background polling can recover a connection, but must not erase a rejected
+  // A manual read must not erase a rejected
   // send's explanation before the player has a chance to edit the message.
   return { ...view, error: view.sendError || view.error, available, refresh, sendMessage, clearSendError }
 }

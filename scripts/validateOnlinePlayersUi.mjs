@@ -50,7 +50,7 @@ const server = await createServer({ root, mode: 'online-count-validation', logLe
   }], server: { host: '127.0.0.1', port, strictPort: true, hmr: false } })
 await server.listen()
 const require = createRequire(new URL('../promo/package.json', import.meta.url))
-const { chromium } = require('playwright')
+const { chromium } = require(process.env.GLOBAL_CHAT_PLAYWRIGHT_MODULE ?? 'playwright')
 const localSprite = await fs.readFile(path.join(root, 'scripts/fixtures/test-sprite-96.gif'))
 const checks = [], errors = [], requests = [], blockedMedia = [], metrics = []
 async function test(name, run) {
@@ -92,7 +92,9 @@ let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const html = await server.transformIndexHtml('/online-players.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/online-players-entry.js"></script></body></html>')
-  for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }]) {
+  // The current compact mobile header hides presence; real mobile chat/layout
+  // coverage lives in validateGlobalChatUi with the production CSS import list.
+  for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }]) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     const settings = createDefaultGameSettings()
     settings.audio.enabled = false
@@ -117,7 +119,15 @@ try {
     const click = locator => device.hasTouch ? locator.tap() : locator.click()
     await page.goto(`http://127.0.0.1:${port}/online-players.html`)
     await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
+    const enterBattleMode = async mode => {
+      await click(page.locator('.battle-hub-tab.' + mode))
+      await click(page.locator('.battle-hub-enter'))
+    }
     const badge = page.locator('.online-players-badge')
+    const revisit = async () => {
+      await click(page.locator('.mode-shop'))
+      await click(page.getByRole('button', { name: '로비로 돌아가기', exact: true }))
+    }
     const chooseScale = async scale => {
       await click(page.getByRole('button', { name: '설정', exact: true }))
       await click(page.getByRole('group', { name: '글자 크기', exact: true }).getByRole('button', { name: `${scale}배`, exact: true }))
@@ -129,14 +139,15 @@ try {
       metrics.push({ device: device.id, screen, scale, ...geometry })
       assertHeaderFits(geometry)
     }
-    await test(`${device.id}: lobby shows an unknown count until a verified sample arrives`, async () => {
+    await test(`${device.id}: lobby shows an unknown count when no verified entry sample exists`, async () => {
       await badge.waitFor()
       assert.match(await badge.innerText(), /확인 중|--|—/)
       assert.doesNotMatch(await badge.innerText(), /(?:^|\s)0\s*명/)
       assert.equal(await badge.locator('button').count(), 0)
     })
-    await test(`${device.id}: confirmed 1,234 players appear beside the logo with usable header controls`, async () => {
+    await test(`${device.id}: next page entry shows 1,234 players beside the logo with usable controls`, async () => {
       await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+      await revisit()
       await badge.getByText(/1,234/).waitFor()
       const geometry = await headerGeometry(page)
       metrics.push({ device: device.id, scale: 1, ...geometry })
@@ -157,7 +168,7 @@ try {
     })
     await test(`${device.id}: battle selection retains the same count outside the main lobby`, async () => {
       await click(page.locator('.mode-card.mode-start'))
-      await page.getByRole('heading', { name: '어떤 배틀에 도전할까요?', exact: true }).waitFor()
+      await page.getByRole('heading', { name: '모드 선택', exact: true }).waitFor()
       await assertPageHeader('battle-hub', 1)
       await click(page.getByRole('button', { name: '로비', exact: true }))
       await badge.getByText(/1,234/).waitFor()
@@ -184,7 +195,7 @@ try {
       await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
       await click(page.locator('.mode-card.mode-start'))
       for (const mode of ['ranked', 'rooms', 'factory', 'ai']) {
-        await click(page.locator(`.battle-hub-card.${mode}`))
+        await enterBattleMode(mode)
         const back = mode === 'ai' ? page.getByRole('button', { name: '배틀 종류 선택으로 돌아가기', exact: true }) : page.getByRole('button', { name: '배틀 선택', exact: true })
         await back.waitFor()
         await assertPageHeader(mode, 1)
@@ -209,7 +220,7 @@ try {
         for (const mode of ['ai', 'factory']) {
           await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
           await click(page.locator('.mode-card.mode-start'))
-          await click(page.locator(`.battle-hub-card.${mode}`))
+          await enterBattleMode(mode)
           if (mode === 'ai') {
             await click(page.locator('.ai-battle-format-options button').filter({ hasText: '싱글배틀' }))
             await click(page.locator('.battle-mode-option-card').filter({ hasText: '128강 토너먼트' }))
@@ -234,24 +245,30 @@ try {
           await page.reload()
           await page.getByRole('heading', { name: '플레이 메뉴', exact: true }).waitFor()
           await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+          await revisit()
           await assertPageHeader(`${mode}-reload-lobby`, 1)
         }
       })
-      await test('cleared or unavailable samples never masquerade as zero connected players', async () => {
+      await test('counts remain page snapshots; next entry with an unavailable sample never fabricates zero', async () => {
         await page.evaluate(() => window.__onlinePlayersUi.clear())
+        assert.match(await badge.innerText(), /1,234/)
+        await revisit()
         await page.waitForFunction(() => !document.querySelector('.online-players-badge').textContent.includes('1,234'))
         assert.match(await badge.innerText(), /확인 중|--|—/)
         assert.doesNotMatch(await badge.innerText(), /(?:^|\s)0\s*명/)
         await page.evaluate(() => window.__onlinePlayersUi.publish(0))
+        await revisit()
         await badge.getByText(/^0명$/).waitFor()
       })
       await test('switching accounts hides the previous account sample until refreshed', async () => {
         await page.evaluate(() => window.__onlinePlayersUi.publish(1234))
+        await revisit()
         await badge.getByText(/1,234/).waitFor()
         await page.evaluate(() => window.__onlinePlayersUi.switchUser())
         await page.waitForFunction(() => !document.querySelector('.online-players-badge').textContent.includes('1,234'))
         assert.match(await badge.innerText(), /확인 중|--|—/)
         await page.evaluate(() => window.__onlinePlayersUi.publish(42))
+        await revisit()
         await badge.getByText(/^42명$/).waitFor()
       })
     }

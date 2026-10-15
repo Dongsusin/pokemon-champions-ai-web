@@ -1241,10 +1241,10 @@ export function GameApp({
             </span>
           </div>
 
-          {!battleMusicActive && <OnlinePlayersBadge userId={user.uid} />}
+          {!battleMusicActive && <OnlinePlayersBadge user={user} pageKey={screen} />}
         </div>
 
-        {!battleMusicActive && <GlobalChat key={user.uid} user={user} />}
+        {!battleMusicActive && <GlobalChat key={user.uid} user={user} pageKey={screen} />}
 
         <div className="top-status">
           <button

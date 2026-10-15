@@ -76,7 +76,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
       const { ownerId } = command
       const patchSave = command.action === 'savePatch'
       const action = patchSave ? 'save' : command.action
-      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'setNickname', 'setTitle', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount'].includes(action)) {
+      if (!['sessionAcquire', 'sessionHeartbeat', 'sessionRelease', 'load', 'save', 'ensureProfile', 'setNickname', 'setTitle', 'deleteGameData', 'deleteProfile', 'deleteGuestAccount', 'onlinePlayers'].includes(action)) {
         fail('UNKNOWN_ACTION', '지원하지 않는 계정 요청입니다.')
       }
       if (action === 'sessionHeartbeat' || action === 'sessionRelease') {
@@ -176,7 +176,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         if (renewed.guestDeleted) fail('GUEST_ACCOUNT_DELETED', '삭제가 진행된 게스트입니다. 로그아웃을 다시 시도해주세요.', 410)
         if (!renewed.session) fail('account-session/lost', '로그인 세션 상태가 바뀌었습니다. 다시 접속해주세요.', 409)
         const result = sessionView(renewed.session)
-        const onlinePlayers = await readOnlinePlayers()
+        const onlinePlayers = command.includeOnlinePlayers === false ? undefined : await readOnlinePlayers()
         return onlinePlayers ? { ...result, onlinePlayers } : result
       }
       const result = await store.transaction(async tx => {
@@ -208,6 +208,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           tx.set('sessions', uid, next)
           return sessionView(next)
         }
+        if (action === 'onlinePlayers') return {}
         if (action === 'load') {
           const saved = await tx.get('gameData', uid)
           return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null,
@@ -287,7 +288,8 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         tx.delete(action === 'deleteGameData' ? 'gameData' : 'profiles', uid)
         return { deleted: true }
       })
-      if (action !== 'sessionAcquire' && action !== 'sessionHeartbeat') return result
+      if (action !== 'sessionAcquire' && action !== 'sessionHeartbeat' && action !== 'onlinePlayers') return result
+      if (action === 'sessionHeartbeat' && command.includeOnlinePlayers === false) return result
       // Count only after COMMIT. Aggregating all leases inside a SERIALIZABLE
       // renewal would create conflicts between otherwise independent players.
       const onlinePlayers = await readOnlinePlayers()

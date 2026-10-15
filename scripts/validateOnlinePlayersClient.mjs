@@ -58,6 +58,7 @@ function sessionFixture() {
     fetchImpl: async (_url, init) => {
       const command = JSON.parse(init.body)
       if (command.action === 'sessionRelease') { releaseCalls++; return Response.json({ released: true }) }
+      if (command.action === 'sessionHeartbeat') assert.equal(command.includeOnlinePlayers, false, 'Lease renewal must skip passive count queries')
       const body = { ownerId: command.ownerId, version: `test-version-${++revision}`, expiresAt: 190_000, leaseMs: 90_000, onlinePlayers: nextCount }
       const wait = afterResponse; afterResponse = null
       if (wait) await wait()

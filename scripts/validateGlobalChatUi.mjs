@@ -17,7 +17,7 @@ const output = path.join(root, 'scripts/.cache/global-chat-ui')
 await fs.mkdir(output, { recursive: true })
 const port = Number(process.env.GLOBAL_CHAT_UI_PORT ?? 5254)
 const origin = `http://127.0.0.1:${port}`
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
+const styles = [...(await fs.readFile(path.join(root, 'src/gameEntry.jsx'), 'utf8')).matchAll(/import '\.\/([^']+)\.css'/g)].map(match => match[1])
 const owned = migratePokemonCollection([6, 9, 3, 25, 94, 149].map(speciesId => normalizePokemon({ speciesId, captureId: `chat-ui-${speciesId}`, directDrawCount: 1 })))
 const teams = createSavedTeams(owned.map(pokemon => pokemon.captureId), owned.map(pokemon => pokemon.captureId))
 const identities = {
@@ -35,6 +35,7 @@ process.env.VITE_POKEMON_USAGE_ENABLED = 'false'
 process.env.VITE_POKEMON_USAGE_DEMO = 'false'
 process.env.VITE_RANKED_LOCAL_TEST = 'false'
 const checks = [], errors = [], unexpectedRequests = [], requests = [], metrics = []
+let heldRead = null
 let service, handler, serviceClock = Date.now() - 240_000, rejectNextSendUid = null
 const advance = (ms = 6000) => { serviceClock += ms }
 async function setupService() {
@@ -59,6 +60,7 @@ async function localRequest(token, payload) {
   return body
 }
 async function test(name, run) {
+  if (process.env.GLOBAL_CHAT_UI_FILTER && !name.includes(process.env.GLOBAL_CHAT_UI_FILTER)) return
   try { await run(); checks.push({ name, passed: true }); console.log(`PASS ${name}`) }
   catch (error) { checks.push({ name, passed: false, error: error.stack }); console.error(`FAIL ${name}: ${error.message}`) }
 }
@@ -96,7 +98,7 @@ async function geometry(page) {
     }
     const dialog = document.querySelector('.global-chat-dialog[open]')
     return { width: innerWidth, height: innerHeight, documentWidth: document.documentElement.scrollWidth,
-      header: rect('.topbar'), main: rect('.app-shell > main'), brand: rect('.brand'), badge: rect('.online-players-badge'), status: rect('.top-status'), chat: rect('.global-chat-trigger'),
+      header: rect('.topbar'), main: rect('.app-shell > main'), brand: rect('.brand'), badge: document.querySelector('.online-players-badge')?.getBoundingClientRect().width ? rect('.online-players-badge') : null, status: rect('.top-status'), chat: rect('.global-chat-trigger'),
       controls: [...document.querySelectorAll('.top-status > *')].map(element => {
         const r = element.getBoundingClientRect(); return { label: element.getAttribute('aria-label') || element.textContent, left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }
       }),
@@ -107,18 +109,22 @@ async function geometry(page) {
 function assertFits(g) {
   assert(g.documentWidth <= g.width + 1, `Page overflows horizontally: ${JSON.stringify(g)}`)
   for (const [name, r] of [['brand', g.brand], ['online count', g.badge], ['chat', g.chat], ...g.controls.map(c => [c.label, c])]) {
+    if (!r || !r.width) continue
     assert(r.width > 0 && r.height > 0 && r.left >= -1 && r.right <= g.width + 1 && r.top >= -1 && r.bottom <= g.height + 1, `${name} is clipped: ${JSON.stringify(g)}`)
     assert(r.top >= g.header.top - 1 && r.bottom <= g.header.bottom + 1, `${name} exceeds its header`)
   }
   assert(g.main.top >= g.header.bottom - 1, `Main overlaps header: ${JSON.stringify(g)}`)
+  assert(g.chat.width <= 362, 'Collapsed chat exceeds compact width')
   assert(!overlaps(g.brand, g.chat), 'Chat overlaps logo')
-  assert(!overlaps(g.badge, g.chat), 'Chat overlaps online count')
+  assert(!g.badge || !overlaps(g.badge, g.chat), 'Chat overlaps online count')
   g.controls.forEach((a, i) => g.controls.slice(i + 1).forEach(b => assert(!overlaps(a, b), `${a.label} overlaps ${b.label}`)))
   if (g.dialog) {
     for (const key of ['dialog', 'input', 'send', 'list']) {
       const r = g[key]
       assert(r.width > 0 && r.height > 0 && r.left >= -1 && r.right <= g.width + 1 && r.top >= -1 && r.bottom <= g.height + 1, `${key} is outside the viewport: ${JSON.stringify(g)}`)
     }
+    assert(g.dialog.width <= 462, 'Chat dialog exceeds compact width')
+    assert(g.dialog.height <= 422, 'Chat dialog exceeds compact height')
     assert(!overlaps(g.input, g.send), 'Message input and send button overlap')
   }
 }
@@ -160,6 +166,9 @@ try {
           const resultText = await result.text()
           const parsed = JSON.parse(resultText)
           Object.assign(observed, { status: result.status, errorCode: parsed.error?.code, hasMessages: Array.isArray(parsed.messages), messageCount: parsed.messages?.length, revision: parsed.revision })
+          if (payload.action === 'read' && heldRead?.uid === uid) {
+            const held = heldRead; heldRead = null; held.arrived(); await held.wait
+          }
           response.writeHead(result.status, Object.fromEntries(result.headers))
           response.end(resultText)
         } catch (error) {
@@ -178,8 +187,9 @@ try {
   // Any external image request is answered with this 1x1 GIF, so the test does
   // not depend on a particular sprite shipping with the game.
   const sprite = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
-  async function client(letter, device = { id: 'desktop', viewport: { width: 1920, height: 900 } }, scale = 1) {
+  async function client(letter, device = { id: 'desktop', viewport: { width: 1920, height: 900 } }, scale = 1, initiallyHidden = false) {
     const context = await browser.newContext({ viewport: device.viewport, hasTouch: Boolean(device.hasTouch), isMobile: Boolean(device.hasTouch), reducedMotion: 'reduce' })
+    if (initiallyHidden) await context.addInitScript(() => Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' }))
     const settings = createDefaultGameSettings()
     settings.audio.enabled = false
     settings.game.textScale = scale
@@ -200,8 +210,7 @@ try {
     })
     await context.route('**/global-chat.html?*', route => route.fulfill({ contentType: 'text/html', body: html }))
     const page = await context.newPage()
-    // Idle open chat may wait up to 30 seconds between unchanged snapshots.
-    page.setDefaultTimeout(40_000)
+    page.setDefaultTimeout(15_000)
     page.on('pageerror', error => errors.push({ source: `${device.id}-${scale}x-${letter}`, message: error.message }))
     await page.clock.install()
     await page.goto(`${origin}/global-chat.html?client=${letter}`)
@@ -218,22 +227,52 @@ try {
     assert(reads.length >= 2)
     assert(reads.every(r => !r.hasMessages), JSON.stringify(reads))
   })
-  await test('closed chat waits two minutes between reads and offline tabs issue none', async () => {
+  await test('idle chat issues no timed, focus or reconnect reads; opening and manual refresh fetch once', async () => {
     const uid = identities['global-chat-ui-a-token'].uid
     const reads = () => requests.filter(r => r.uid === uid && r.action === 'read').length
     const initial = reads()
-    await a.page.clock.fastForward(60_000)
+    await a.page.clock.fastForward(3_600_000)
+    await a.page.evaluate(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      window.dispatchEvent(new Event('offline'))
+      window.dispatchEvent(new Event('online'))
+    })
+    await a.page.waitForTimeout(150)
     assert.equal(reads(), initial)
-    const response = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
-    await a.page.clock.fastForward(60_100)
-    await response
+    await expanded(a.page)
+    await a.page.locator(selectors.message).last().waitFor()
     assert.equal(reads(), initial + 1)
-    await a.page.evaluate(() => { Object.defineProperty(navigator, 'onLine', { configurable:true, get:()=>false }); window.dispatchEvent(new Event('offline')) })
-    await a.page.clock.fastForward(180_000)
+    await a.page.clock.fastForward(3_600_000)
+    await a.page.waitForTimeout(150)
     assert.equal(reads(), initial + 1)
-    const resumed = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
-    await a.page.evaluate(() => { delete navigator.onLine; window.dispatchEvent(new Event('online')) })
-    await resumed
+    const refreshed = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
+    await a.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
+    await refreshed
+    assert.equal(reads(), initial + 2)
+    await expanded(a.page, false)
+    await a.page.waitForTimeout(150)
+    assert.equal(reads(), initial + 2)
+  })
+  await test('navigating to another actual game page refreshes chat once without clearing the draft', async () => {
+    const uid = identities['global-chat-ui-a-token'].uid
+    const reads = () => requests.filter(r => r.uid === uid && r.action === 'read').length
+    await expanded(a.page)
+    await input(a.page).fill('페이지 이동 후에도 유지할 초안')
+    await expanded(a.page, false)
+    const before = reads()
+    const entered = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
+    await a.page.locator('.mode-shop').click()
+    await entered
+    assert.equal(reads(), before + 1)
+    await a.page.clock.fastForward(3_600_000)
+    assert.equal(reads(), before + 1)
+    const returned = a.page.waitForResponse(r => r.url() === origin + '/api/chat' && r.request().postDataJSON()?.action === 'read')
+    await a.page.getByRole('button', { name: '로비로 돌아가기', exact: true }).click()
+    await returned
+    assert.equal(reads(), before + 2)
+    await expanded(a.page)
+    assert.equal(await input(a.page).inputValue(), '페이지 이동 후에도 유지할 초안')
+    await input(a.page).fill('')
   })
   await test('expansion keeps only the latest 30 of 35 messages with server names and times', async () => {
     await expanded(a.page)
@@ -245,16 +284,15 @@ try {
     assert.match(await last.locator('time').innerText(), /\d{1,2}:\d{2}/)
     assert(Number.isFinite(Date.parse(await last.locator('time').getAttribute('datetime'))))
   })
-  await test('two isolated browser users exchange authenticated messages and update the collapsed preview', async () => {
+  await test('two isolated browser users exchange authenticated messages on open or manual refresh', async () => {
     await send(a.page, '두 브라우저 실시간 전달 확인')
-    await b.page.evaluate(() => window.dispatchEvent(new Event('online')))
-    await trigger(b.page).getByText(/두 브라우저 실시간 전달 확인/).waitFor()
     await expanded(b.page)
+    await trigger(b.page).getByText(/두 브라우저 실시간 전달 확인/).waitFor()
     const received = b.page.locator(selectors.message).filter({ hasText: '두 브라우저 실시간 전달 확인' })
     await received.waitFor()
     assert.equal(await received.locator('.global-chat-message-name').innerText(), '가**')
     await send(b.page, '다른 트레이너의 응답 확인')
-    await a.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await a.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
     await a.page.locator(selectors.message).filter({ hasText: '다른 트레이너의 응답 확인' }).waitFor()
   })
   await test('Korean IME composition Enter does not send or lose the draft; final Enter sends once', async () => {
@@ -286,7 +324,7 @@ try {
     await a.page.waitForFunction(() => document.querySelector('textarea[aria-label="전체 채팅 메시지"]')?.value === '')
     assert.equal(await a.page.locator(selectors.text).filter({ hasText: '연결 오류 후에도 남아야 하는 초안' }).count(), 1)
   })
-  await test('server rejects profanity at the 200-codepoint boundary, keeps the draft and guidance through polling, and accepts an edited message', async () => {
+  await test('server rejects profanity at the 200-codepoint boundary, keeps the draft and guidance through manual refresh, and accepts an edited message', async () => {
     advance()
     await expanded(a.page)
     await expanded(b.page)
@@ -311,10 +349,10 @@ try {
     assert.equal(await input(a.page).isEditable(), true)
 
     // Exercise the hook's normal read path in both browsers after rejection.
-    // A successful poll must not silently erase the sending user's guidance.
+    // A successful read must not silently erase the sending user's guidance.
     const readCompleted = [a.page, b.page].map(page => page.waitForResponse(response => response.url() === `${origin}/api/chat`
       && response.request().method() === 'POST' && response.request().postDataJSON()?.action === 'read'))
-    await Promise.all([a.page, b.page].map(page => page.evaluate(() => window.dispatchEvent(new Event('online')))))
+    await Promise.all([a.page, b.page].map(page => page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()))
     for (const response of await Promise.all(readCompleted)) {
       assert.equal(response.status(), 200)
       await response.finished()
@@ -337,7 +375,7 @@ try {
     await alert.waitFor({ state: 'hidden' })
     await sendButton(a.page).click()
     await a.page.waitForFunction(() => document.querySelector('textarea[aria-label="전체 채팅 메시지"]')?.value === '')
-    await b.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await b.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
     await b.page.locator(selectors.text).filter({ hasText: correctedText }).waitFor()
     assert.equal(await b.page.locator(selectors.text).filter({ hasText: correctedText }).count(), 1)
     assert.equal(await b.page.locator(selectors.text).filter({ hasText: blockedText }).count(), 0)
@@ -345,12 +383,12 @@ try {
   })
   await test('an earned trainer title renders beside the sender name and an unset one renders nothing', async () => {
     await send(a.page, '칭호가 보이는 메시지')
-    await b.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await b.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
     const titled = b.page.locator(selectors.message).filter({ hasText: '칭호가 보이는 메시지' }).last()
     await titled.locator('.global-chat-title-tag').waitFor()
     assert.equal(await titled.locator('.global-chat-title-tag').innerText(), '도감 마스터')
     await send(b.page, '칭호가 없는 메시지')
-    await a.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await a.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
     const plain = a.page.locator(selectors.message).filter({ hasText: '칭호가 없는 메시지' }).last()
     await plain.waitFor()
     assert.equal(await plain.locator('.global-chat-title-tag').count(), 0)
@@ -361,7 +399,7 @@ try {
   await test('message markup stays literal text and never creates executable HTML', async () => {
     const text = '<img src=x onerror="window.__chatXss=1"> & <script>window.__chatXss=1</script>'
     await send(a.page, text)
-    await b.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await b.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
     await b.page.locator(selectors.text).filter({ hasText: text }).waitFor()
     assert.equal(await b.page.locator(selectors.messages).locator('img, script, iframe').count(), 0)
     assert.equal(await b.page.evaluate(() => window.__chatXss), undefined)
@@ -372,7 +410,7 @@ try {
     await list.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')) })
     assert(await list.evaluate(element => element.scrollHeight > element.clientHeight + 50))
     await send(b.page, '이전 대화를 읽는 동안 도착한 새 메시지')
-    await a.page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await a.page.getByRole('button', { name: '채팅 새로고침', exact: true }).click()
     await a.page.locator(selectors.text).filter({ hasText: '이전 대화를 읽는 동안 도착한 새 메시지' }).waitFor()
     assert(await list.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop > 50), 'New messages pulled the reader to the bottom')
     await a.page.locator('.global-chat-jump').click()
@@ -395,6 +433,36 @@ try {
     await a.page.keyboard.press('Escape')
     await a.page.locator(selectors.dialog).waitFor({ state: 'hidden' })
     assert(await trigger(a.page).evaluate(element => element === document.activeElement))
+  })
+  await test('page_entry: navigating while the initial response is held fetches the new page snapshot', async () => {
+    const uid = identities['global-chat-ui-a-token'].uid
+    const before = requests.filter(r => r.uid === uid && r.action === 'read').length
+    let release, arrived
+    const wait = new Promise(resolve => { release = resolve })
+    const started = new Promise(resolve => { arrived = resolve })
+    heldRead = { uid, wait, arrived }
+    const pending = await client('a')
+    try {
+      await started
+      advance()
+      await localRequest('global-chat-ui-a-token', { action: 'send', text: '이전 대화를 읽는 동안 도착한 새 메시지', requestId: 'chat-page-entry-race-test' })
+      await pending.page.locator('.mode-shop').click()
+      release()
+      await trigger(pending.page).getByText(/이전 대화를 읽는 동안 도착한 새 메시지/).waitFor()
+      assert.equal(requests.filter(r => r.uid === uid && r.action === 'read').length, before + 2)
+    } finally { release(); await pending.context.close() }
+  })
+  await test('page_entry: a background tab loads its initial chat once without waiting for focus', async () => {
+    const uid = identities['global-chat-ui-a-token'].uid
+    const before = requests.filter(r => r.uid === uid && r.action === 'read').length
+    const hidden = await client('a', { id: 'background', viewport: { width: 1366, height: 768 } }, 1, true)
+    try {
+      await trigger(hidden.page).getByText(/이전 대화를 읽는 동안 도착한 새 메시지/).waitFor()
+      assert.equal(requests.filter(r => r.uid === uid && r.action === 'read').length, before + 1)
+      await hidden.page.evaluate(() => { delete document.visibilityState; document.dispatchEvent(new Event('visibilitychange')) })
+      await hidden.page.clock.fastForward(3_600_000)
+      assert.equal(requests.filter(r => r.uid === uid && r.action === 'read').length, before + 1)
+    } finally { await hidden.context.close() }
   })
   await a.context.close(); await b.context.close()
   for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }, { id: 'mobile', viewport: { width: 844, height: 390 }, hasTouch: true }]) {

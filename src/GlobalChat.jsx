@@ -32,9 +32,9 @@ function TrainerTitleTag({ titleId }) {
   return <span className="global-chat-title-tag" title={title.description}>{title.name}</span>
 }
 
-export default function GlobalChat({ user }) {
+export default function GlobalChat({ user, pageKey }) {
   const [expanded, setExpanded] = useState(false)
-  const { latest, messages, loading, error, sendErrorCode, sending, sendMessage, refresh, available, clearSendError } = useGlobalChat(user, expanded)
+  const { latest, messages, loading, error, sendErrorCode, sending, sendMessage, refresh, available, clearSendError } = useGlobalChat(user, expanded, pageKey)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState('')
@@ -210,7 +210,8 @@ export default function GlobalChat({ user }) {
       >
         <header className="global-chat-heading">
           <span className="global-chat-heading-icon" aria-hidden="true"><MessageCircle size={23} /></span>
-          <div><h2 id={`${id}-title`}>전체 채팅</h2><p id={`${id}-description`}>최근 메시지 30개 · 모든 트레이너와 함께</p></div>
+          <div><h2 id={`${id}-title`}>전체 채팅</h2><p id={`${id}-description`}>최근 30개 · 새로고침으로 갱신</p></div>
+          <button type="button" className="global-chat-refresh" aria-label="채팅 새로고침" title="새 메시지 불러오기" disabled={loading || !available} onClick={retry}><RefreshCw size={18} aria-hidden="true" /></button>
           <button ref={closeRef} type="button" className="global-chat-close" aria-label="전체 채팅 닫기" onClick={() => setExpanded(false)}><X size={22} aria-hidden="true" /></button>
         </header>
 

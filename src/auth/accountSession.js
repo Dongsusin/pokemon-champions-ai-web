@@ -218,7 +218,7 @@ export async function acquireAccountSession(user, options = {}) {
     const { response, data } = serverStorage ? await request(apiUrl, {
       method: 'POST',
       body: JSON.stringify({ action: expectedVersion ? 'sessionHeartbeat' : 'sessionAcquire', ownerId,
-        ...(expectedVersion ? { version: expectedVersion } : {}) }),
+        ...(expectedVersion ? { version: expectedVersion, includeOnlinePlayers: false } : {}) }),
     }) : await request(commitUrl, {
       method: 'POST',
       body: JSON.stringify({ writes: [{

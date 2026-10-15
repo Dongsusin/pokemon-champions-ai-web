@@ -133,7 +133,7 @@ html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat{
   display:flex;
   width:100%;
   min-width:0;
-  max-width:none;
+  max-width:360px;
   margin:0;
   overflow:hidden;
 }

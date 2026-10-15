@@ -7,18 +7,18 @@ export function hasRankedSession(snapshot) {
 }
 
 // Polling never changes server deadlines. Hidden active sessions still renew
-// their 30-second queue lease; an idle hidden lobby waits for visibility again.
-export function startRankedPolling({ refresh, getSnapshot, visibleInterval,
+// their 30-second queue lease. Idle pages read once and wait for user actions.
+export function startRankedPolling({ refresh, getSnapshot, visibleInterval, keepPolling = () => hasRankedSession(getSnapshot()),
   documentRef = document, windowRef = window, navigatorRef = globalThis.navigator, setTimer = setTimeout, clearTimer = clearTimeout,
 }) {
-  let timer = null, running = false, stopped = false, initialized = false, failures = 0
+  let timer = null, running = false, stopped = false, failures = 0
   const clear = () => { if (timer !== null) clearTimer(timer); timer = null }
-  const shouldPause = () => navigatorRef?.onLine === false || (initialized && documentRef.hidden && !hasRankedSession(getSnapshot()))
+  const shouldPause = () => navigatorRef?.onLine === false
   const schedule = () => {
     clear()
-    if (stopped || running || shouldPause()) return
+    if (stopped || running || shouldPause() || !keepPolling()) return
     const base = documentRef.hidden ? HIDDEN_SESSION_INTERVAL : visibleInterval()
-    const maximum = !initialized || hasRankedSession(getSnapshot()) ? HIDDEN_SESSION_INTERVAL : 120_000
+    const maximum = HIDDEN_SESSION_INTERVAL
     const interval = failures ? Math.min(maximum, base * 2 ** Math.min(failures, 4)) : base
     timer = setTimer(() => { timer = null; void run() }, interval)
   }
@@ -26,17 +26,16 @@ export function startRankedPolling({ refresh, getSnapshot, visibleInterval,
     clear()
     if (stopped || running || shouldPause()) return
     running = true
-    // A failed bootstrap cannot establish that the account has no active
-    // queue. Keep its paced retry until a successful snapshot is available.
+    // Passive read failures wait for manual retry; active sessions keep their lease.
     try {
-      if (await refresh() !== false) { initialized = true; failures = 0 }
+      if (await refresh() !== false) { failures = 0 }
       else failures++
     } catch { failures++ }
     finally { running = false; schedule() }
   }
   const refreshNow = () => { void run() }
-  const onVisibility = () => { if (documentRef.hidden) schedule(); else refreshNow() }
-  const onOnline = () => { refreshNow() }
+  const onVisibility = () => { if (keepPolling() && !documentRef.hidden) refreshNow(); else schedule() }
+  const onOnline = () => { if (keepPolling()) refreshNow() }
   documentRef.addEventListener('visibilitychange', onVisibility)
   windowRef.addEventListener('online', onOnline)
   windowRef.addEventListener('offline', clear)

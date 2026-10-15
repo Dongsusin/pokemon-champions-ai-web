@@ -38,7 +38,11 @@ try{
   const invalid=await call('account','savePatch',{...command,baseRevision:command.revision,revision:'cost-bad-'+started,saveSequence:3,splices:{'champions-dex-v2':[999999,0,'x']}},400);assert.equal(invalid.error.code,'INVALID_SAVE')
   assert.deepEqual((await call('account','load')).gameData.payload,expected)
   pass('wrong owners and invalid splice ranges are rejected without modifying the save')
-  lease=await call('account','sessionHeartbeat',{version:lease.version});assert.equal(lease.leaseMs,90000)
+  lease=await call('account','sessionHeartbeat',{version:lease.version,includeOnlinePlayers:false});assert.equal(lease.leaseMs,90000);assert.equal(lease.onlinePlayers,undefined)
+  const presence=await call('account','onlinePlayers');assert(Number.isSafeInteger(presence.onlinePlayers?.count));assert(presence.onlinePlayers.count>=1)
+  assert.deepEqual(Object.keys(presence.onlinePlayers).sort(),['count','sampledAt','staleAfterMs'])
+  const foreignPresence=await call('account','onlinePlayers',{ownerId:'foreign-cost-owner-'+randomUUID()},409);assert.equal(foreignPresence.error.code,'account-session/lost')
+  pass('page-entry presence is owner-protected and opted-out heartbeat omits aggregate metadata')
   const chat=await call('chat','read',{expanded:false});assert(Number.isSafeInteger(chat.revision));assert(!chat.messages)
   pass('session renewal and compact chat reads still work; no chat messages were posted')
 }catch(error){failed=true;console.error('FAIL '+JSON.stringify({code:typeof error.code==='string'?error.code:'ASSERTION_FAILED',apiCode:error.apiCode}))}

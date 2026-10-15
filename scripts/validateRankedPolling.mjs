@@ -4,13 +4,13 @@ import { startRankedPolling } from '../src/rankedPolling.js'
 const tests = []
 const test = (name, run) => tests.push({ name, run })
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve() }
-function setup({ hidden = false, snapshot = {}, interval = () => 1500, request = async () => {} } = {}) {
+function setup({ hidden = false, snapshot = {}, interval = () => 1500, keepPolling, request = async () => {} } = {}) {
   let now = 0, serial = 0
   const documentRef = new EventTarget(), windowRef = new EventTarget(), timers = new Map(), calls = []
   documentRef.hidden = hidden
   const state = { snapshot }, navigatorRef = { onLine: true }
   const polling = startRankedPolling({ documentRef, windowRef, navigatorRef,
-    getSnapshot: () => state.snapshot, visibleInterval: interval,
+    getSnapshot: () => state.snapshot, visibleInterval: interval, keepPolling,
     setTimer: (callback, delay) => { const id = ++serial; timers.set(id, { at: now + delay, callback }); return id },
     clearTimer: id => timers.delete(id),
     refresh: async () => { calls.push(now); return request(state, now) },
@@ -22,7 +22,7 @@ function setup({ hidden = false, snapshot = {}, interval = () => 1500, request =
     async advance(amount) {
       await flush()
       const until = now + amount
-      for (let limit = 0; limit < 1000; limit++) {
+      for (let limit = 0; limit < 10000; limit++) {
         const next = [...timers].sort((a, b) => a[1].at - b[1].at)[0]
         if (!next || next[1].at > until) { now = until; await flush(); return }
         now = next[1].at; timers.delete(next[0]); next[1].callback(); await flush()
@@ -32,22 +32,16 @@ function setup({ hidden = false, snapshot = {}, interval = () => 1500, request =
   }
 }
 
-test('visible ranked lobby keeps its cadence, hidden idle sends no polls, focus refreshes once', async () => {
+test('idle page reads once per visit; focus and reconnect do not fetch, manual refresh works', async () => {
   const env = setup()
-  await env.advance(6000)
-  assert.deepEqual(env.calls, [0, 1500, 3000, 4500, 6000])
-  env.visible(false)
-  await env.advance(60_000)
-  env.online()
+  await env.advance(3_600_000)
+  assert.deepEqual(env.calls, [0])
+  env.visible(false); env.offline(); env.online(); env.visible(true)
   await flush()
-  assert.equal(env.calls.length, 5)
-  env.visible(true)
-  env.online()
+  assert.deepEqual(env.calls, [0])
   env.polling.refresh()
-  await flush()
-  assert.deepEqual(env.calls, [0, 1500, 3000, 4500, 6000, 66000])
-  await env.advance(1500)
-  assert.equal(env.calls.at(-1), 67500)
+  await env.advance(3_600_000)
+  assert.deepEqual(env.calls, [0, 3_600_000])
   env.polling.stop()
 })
 
@@ -62,19 +56,22 @@ test('initial hidden visit fetches once to discover a resumable session before p
   restored.polling.stop()
 })
 
-test('failed hidden bootstrap retries until it knows whether a queue must be renewed', async () => {
+test('failed passive bootstrap waits for a manual retry rather than polling forever', async () => {
   const env = setup({ hidden: true, request: async (state, now) => {
-    if (now < 10000) return false
-    state.snapshot = { queue: { expiresAt: now + 30000 } }
+    if (!now) return false
+    state.snapshot = { queue: {} }
     return true
   } })
-  await env.advance(20000)
-  assert.deepEqual(env.calls, [0, 5000, 10000, 15000, 20000])
+  await env.advance(20_000)
+  assert.deepEqual(env.calls, [0])
+  env.polling.refresh()
+  await env.advance(10_000)
+  assert.deepEqual(env.calls, [0, 20000, 25000, 30000])
   env.polling.stop()
 })
 
-test('an unexpectedly rejected refresh remains contained and does not stop bootstrap retries', async () => {
-  const env = setup({ hidden: true, request: async (state, now) => {
+test('an unexpectedly rejected active refresh remains contained and retries', async () => {
+  const env = setup({ hidden: true, snapshot: { queue: {} }, request: async (state, now) => {
     if (!now) throw new Error('rejected refresh fixture')
     state.snapshot = { queue: {} }
   } })
@@ -109,7 +106,7 @@ for (const [name, snapshot] of Object.entries({
   env.polling.stop()
 })
 
-test('hidden match completion stops reads; a visible return can reconcile its result', async () => {
+test('match completion stops automatic reads, including focus events', async () => {
   const env = setup({ hidden: true, snapshot: { match: { phase: 'battle' } }, request: async (state, now) => {
     if (now >= 5000) state.snapshot = { match: { phase: 'finished' } }
   } })
@@ -117,7 +114,7 @@ test('hidden match completion stops reads; a visible return can reconcile its re
   assert.deepEqual(env.calls, [0, 5000])
   env.visible(true)
   await flush()
-  assert.equal(env.calls.at(-1), 60000)
+  assert.deepEqual(env.calls, [0, 5000])
   env.polling.stop()
 })
 
@@ -175,9 +172,9 @@ test('a hidden active queue resumes its heartbeat immediately when connectivity 
 
 test('room lobby and operation retry intervals stay dynamic while visible', async () => {
   let busy = false, active = false
-  const env = setup({ interval: () => busy ? 500 : active ? 1500 : 5000 })
+  const env = setup({ keepPolling: () => busy || active, interval: () => busy ? 500 : 1500 })
   await env.advance(5000)
-  assert.deepEqual(env.calls, [0, 5000])
+  assert.deepEqual(env.calls, [0])
   busy = true
   env.polling.refresh()
   await env.advance(1000)

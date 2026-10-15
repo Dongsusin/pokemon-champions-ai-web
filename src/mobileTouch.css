@@ -255,8 +255,8 @@
   }
 
   html[data-mobile-layout="landscape"] .global-chat-dialog {
-    width: calc(100vw - 16px);
-    height: calc(100dvh - 12px);
+    width: min(460px, calc(100vw - 16px));
+    height: min(420px, calc(100dvh - 12px));
     max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 12px);
   }

@@ -167,5 +167,21 @@ test('failed lease authorization does not trigger a count and a clock rollback c
   assert.equal((await env.call('alice', 'sessionHeartbeat')).onlinePlayers, undefined)
 })
 
+test('page-entry count uses an active owner and opted-out heartbeats perform no count queries', async () => {
+  const env = environment()
+  await env.call('alice', 'sessionAcquire')
+  const before = env.countCalls()
+  env.advance(30_000)
+  const heartbeat = await env.call('alice', 'sessionHeartbeat', { includeOnlinePlayers: false })
+  assert(heartbeat.version)
+  assert.equal(heartbeat.onlinePlayers, undefined)
+  assert.equal(env.countCalls(), before)
+  const page = await env.call('alice', 'onlinePlayers')
+  assertAggregate(page.onlinePlayers, 1, env.now())
+  assert.equal(env.countCalls(), before + 1)
+  await assert.rejects(env.call('alice', 'onlinePlayers', { ownerId: 'foreign-window-1234567890' }), error => error.code === 'account-session/lost')
+  assert.equal(env.countCalls(), before + 1)
+})
+
 for (const { name, run } of tests) { await run(); console.log(`PASS ${name}`) }
 console.log(`Online player server validation passed: ${tests.length}/${tests.length}`)
