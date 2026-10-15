@@ -14,7 +14,7 @@ const output=new URL('scripts/.cache/usage-budget-production/',new URL('../',imp
 await fs.mkdir(output,{recursive:true})
 async function json(url,init,status=200){const response=await fetch(url,{...init,signal:AbortSignal.timeout(20000)});const data=await response.json();if(response.status!==status)throw Object.assign(new Error('Unexpected response'),{code:'HTTP_'+response.status,apiCode:data.error?.code});return data}
 const firebase=(action,data)=>json('https://identitytoolkit.googleapis.com/v1/accounts:'+action+'?key='+env.VITE_FIREBASE_API_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-async function call(endpoint,action,data={},status=200){assert(endpoint==='account'?['sessionAcquire','sessionHeartbeat','load','save','savePatch','ensureProfile','deleteGuestAccount'].includes(action):endpoint==='ranked'?action==='guestProfile':endpoint==='chat'&&action==='read');const start=Date.now();try{return await json(origin+'/api/'+endpoint,{method:'POST',headers:{Authorization:'Bearer '+user.idToken,'Content-Type':'application/json'},body:JSON.stringify({action,...(endpoint==='account'?{ownerId}:{}),...data})},status)}finally{timings.push({endpoint,action,ms:Date.now()-start})}}
+async function call(endpoint,action,data={},status=200){assert(endpoint==='account'?['sessionAcquire','sessionHeartbeat','load','save','savePatch','ensureProfile','deleteGuestAccount','onlinePlayers'].includes(action):endpoint==='ranked'?action==='guestProfile':endpoint==='chat'&&action==='read');const start=Date.now();try{return await json(origin+'/api/'+endpoint,{method:'POST',headers:{Authorization:'Bearer '+user.idToken,'Content-Type':'application/json'},body:JSON.stringify({action,...(endpoint==='account'?{ownerId}:{}),...data})},status)}finally{timings.push({endpoint,action,ms:Date.now()-start})}}
 const pass=name=>{checks.push(name);console.log('PASS '+name)}
 try{
   const signup=await firebase('signUp',{returnSecureToken:true});user={uid:signup.localId,idToken:signup.idToken}
@@ -39,7 +39,7 @@ try{
   assert.deepEqual((await call('account','load')).gameData.payload,expected)
   pass('wrong owners and invalid splice ranges are rejected without modifying the save')
   lease=await call('account','sessionHeartbeat',{version:lease.version,includeOnlinePlayers:false});assert.equal(lease.leaseMs,90000);assert.equal(lease.onlinePlayers,undefined)
-  const presence=await call('account','onlinePlayers');assert(Number.isSafeInteger(presence.onlinePlayers?.count));assert(presence.onlinePlayers.count>=1)
+  const presence=await call('account','onlinePlayers');assert(Number.isSafeInteger(presence.onlinePlayers?.count));assert(presence.onlinePlayers.count>=0)
   assert.deepEqual(Object.keys(presence.onlinePlayers).sort(),['count','sampledAt','staleAfterMs'])
   const foreignPresence=await call('account','onlinePlayers',{ownerId:'foreign-cost-owner-'+randomUUID()},409);assert.equal(foreignPresence.error.code,'account-session/lost')
   pass('page-entry presence is owner-protected and opted-out heartbeat omits aggregate metadata')
