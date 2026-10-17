@@ -53,7 +53,6 @@ import { maskRankedTrainerName } from './data/rankedPrivacy'
 import { createGameAudio } from './gameAudio'
 import { applyGameTextScale } from './gameTextScale'
 import OnlinePlayersBadge from './OnlinePlayersBadge'
-import GlobalChat from './GlobalChat'
 import {
   SETTINGS_STORAGE_KEY,
   createDefaultGameSettings,
@@ -1224,7 +1223,7 @@ export function GameApp({
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
-      <header className={`topbar${!battleMusicActive ? ' has-online-players has-global-chat' : ''}`}>
+      <header className={`topbar${!battleMusicActive ? ' has-online-players' : ''}`}>
         <div className="topbar-brand-group">
           <div className="brand" aria-label="Pokémon Champions Arena">
             <span className="brand-mark">
@@ -1243,8 +1242,6 @@ export function GameApp({
 
           {!battleMusicActive && <OnlinePlayersBadge user={user} pageKey={screen} />}
         </div>
-
-        {!battleMusicActive && <GlobalChat key={user.uid} user={user} pageKey={screen} />}
 
         <div className="top-status">
           <button

@@ -1007,6 +1007,31 @@ function heldItemEffectsActive(pokemon) {
   )
 }
 
+// Seeds are item effects, independent of grounding and entry hazard immunity.
+const TERRAIN_SEED_RULES = {
+  'electric-seed': { terrain: 'electric', boosts: { defense: 1 } },
+  'grassy-seed': { terrain: 'grassy', boosts: { defense: 1 } },
+  'misty-seed': { terrain: 'misty', boosts: { specialDefense: 1 } },
+  'psychic-seed': { terrain: 'psychic', boosts: { specialDefense: 1 } },
+}
+
+function activateTerrainSeed(state, pokemon) {
+  if (!pokemon || pokemon.fainted || pokemon.hp <= 0 || !heldItemEffectsActive(pokemon)) return false
+  const rule = TERRAIN_SEED_RULES[pokemon.heldItemId]
+  if (!rule || rule.terrain !== state.rules?.terrain?.id) return false
+  const itemName = pokemon.heldItemName || pokemon.heldItemId
+  consumeHeldItem(state, pokemon)
+  changeStages(state, pokemon, rule.boosts, { source: pokemon })
+  appendLog(state, `${pokemon.name}의 ${itemName}이(가) 발동했다!`, 'item')
+  return true
+}
+
+function refreshActiveTerrainSeeds(state) {
+  ;['player', 'opponent'].forEach((sideId) => {
+    getActivePokemonList(state, sideId).forEach((pokemon) => activateTerrainSeed(state, pokemon))
+  })
+}
+
 function hasHeldItem(pokemon, itemId = null) {
   return Boolean(
     pokemon
@@ -1115,6 +1140,7 @@ function activateSymbiosis(state, recipient) {
   recipient.hadHeldItem = true
   clearHeldItem(donor)
   appendLog(state, `${donor.name}의 공생! ${recipient.name}에게 지닌물건을 건넸다!`, 'ability')
+  activateTerrainSeed(state, recipient)
   return true
 }
 
@@ -1212,6 +1238,7 @@ function stealHeldItem(state, thief, holder, sourceName, { ignoreHolderAbility =
   clearHeldItem(holder)
   appendLog(state, `${thief.name}의 ${sourceName}! 상대의 지닌물건을 빼앗았다!`, 'ability')
   activateSymbiosis(state, holder)
+  activateTerrainSeed(state, thief)
   return true
 }
 
@@ -1509,6 +1536,7 @@ function setTemporaryEnvironment(state, kind, environmentId, sourceName, sourceP
     nonce: state.eventNonce += 1,
   }
   refreshEnvironmentDependentAbilities(state, kind)
+  if (kind === 'terrain') refreshActiveTerrainSeeds(state)
   return true
 }
 
@@ -4408,6 +4436,8 @@ function swapHeldItems(state, first, second, sourceName, { ignoreSecondAbility =
   first.hadHeldItem ||= Boolean(first.heldItemId)
   second.hadHeldItem ||= Boolean(second.heldItemId)
   appendLog(state, `${sourceName}으로 서로의 지닌물건을 바꿨다!`, 'item')
+  activateTerrainSeed(state, first)
+  activateTerrainSeed(state, second)
   return true
 }
 
@@ -4680,6 +4710,7 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
     defender.consumedItem = false
     clearHeldItem(attacker)
     appendLog(state, `${attacker.name}은(는) ${defender.name}에게 지닌물건을 건넸다!`, 'item')
+    activateTerrainSeed(state, defender)
     return true
   }
   if (move.id === 'recycle') {
@@ -4687,6 +4718,7 @@ function applyAdvancedStatusMove(state, attacker, defender, move, random, contex
     else {
       attacker.consumedItem = false
       appendLog(state, `${attacker.name}은(는) 사용한 도구를 재생했다!`, 'item')
+      activateTerrainSeed(state, attacker)
     }
     return true
   }
@@ -7152,48 +7184,58 @@ function applyCrashDamage(state, attacker, move) {
 
 function applyMindBlownRecoil(state, attacker, move) {
   if (!move.mindBlownRecoil || attacker.ability === '매직가드') return 0
-  return loseHp(
+  if (attacker.hp <= 0) {
+    recordDoubleKnockoutWinner(state, attacker, false)
+    return 0
+  }
+  const damage = loseHp(
     state,
     attacker,
     Math.ceil(attacker.maxHp / 2),
     `${attacker.name}은(는) 자신의 HP를 크게 소모했다!`,
   )
+  // These moves spend HP as a move cost, so their user loses a final double KO.
+  if (damage > 0) recordDoubleKnockoutWinner(state, attacker, false)
+  return damage
+}
+
+function recordDoubleKnockoutWinner(state, pokemon, userWins) {
+  if (remainingCount(state.player) > 0 || remainingCount(state.opponent) > 0) return
+  const sideId = getPokemonSide(state, pokemon).id
+  state.doubleKnockoutWinner = userWins ? sideId : sideId === 'player' ? 'opponent' : 'player'
 }
 
 function applyMoveRecoil(state, attacker, move, damageDealt) {
   if (damageDealt <= 0) return 0
+  let amount
+  let message = `${attacker.name}은(는) 반동으로 {damage}의 데미지를 입었다.`
   if (move.struggleRecoil) {
-    return loseHp(
-      state,
-      attacker,
-      Math.floor(attacker.originalMaxHp / 4 + 0.5),
-      `${attacker.name}은(는) 발버둥의 반동으로 {damage}의 데미지를 입었다.`,
-    )
-  }
-  if (move.chloroblastRecoil) {
+    amount = Math.floor(attacker.originalMaxHp / 4 + 0.5)
+    message = `${attacker.name}은(는) 발버둥의 반동으로 {damage}의 데미지를 입었다.`
+  } else if (move.chloroblastRecoil) {
     if (RECOIL_IMMUNE_ABILITIES.has(attacker.ability)) return 0
-    return loseHp(
-      state,
-      attacker,
-      Math.floor(attacker.maxHp / 2 + 0.5),
-      `${attacker.name}은(는) 클로로블라스트의 반동으로 {damage}의 데미지를 입었다.`,
-    )
+    amount = Math.floor(attacker.maxHp / 2 + 0.5)
+    message = `${attacker.name}은(는) 클로로블라스트의 반동으로 {damage}의 데미지를 입었다.`
+  } else {
+    if (!move.recoil || RECOIL_IMMUNE_ABILITIES.has(attacker.ability)) return 0
+    const [numerator, denominator] = move.recoil
+    amount = Math.floor(damageDealt * numerator / denominator + 0.5)
   }
-  if (!move.recoil || RECOIL_IMMUNE_ABILITIES.has(attacker.ability)) return 0
-  const [numerator, denominator] = move.recoil
-  const amount = Math.floor(damageDealt * numerator / denominator + 0.5)
-  return loseHp(
-    state,
-    attacker,
-    amount,
-    `${attacker.name}은(는) 반동으로 {damage}의 데미지를 입었다.`,
-  )
+  const damage = loseHp(state, attacker, amount, message)
+  // The final opponent faints before the attacker's recoil, so the user wins.
+  if (damage > 0) recordDoubleKnockoutWinner(state, attacker, true)
+  return damage
 }
 
 function applySelfDestruct(state, attacker, move, didHit) {
-  if (!move.selfdestruct || (move.selfdestruct === 'ifHit' && !didHit) || attacker.hp <= 0) return false
+  if (!move.selfdestruct || (move.selfdestruct === 'ifHit' && !didHit)) return false
+  if (attacker.hp <= 0) {
+    recordDoubleKnockoutWinner(state, attacker, false)
+    return false
+  }
   applyBattleHpLoss(state, attacker, attacker.hp)
   appendLog(state, `${attacker.name}은(는) 모든 힘을 다 써버렸다!`, 'damage')
+  recordDoubleKnockoutWinner(state, attacker, false)
   return true
 }
 
@@ -7325,6 +7367,7 @@ function reviveBattlePokemon(state, sideId, target, timeline, actionOrder) {
       actorOriginalSpeciesId: target.originalSpeciesId, message: `${target.name}이(가) 다시 배틀에 나왔다!`,
     })
     activateEntryAbility(state, sideId, slot)
+    activateTerrainSeed(state, target)
     markActiveFaints(state, timeline, actionOrder)
     resolvePendingEjectPacks(state, timeline, actionOrder)
   }
@@ -9106,6 +9149,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
           && attacker.hp > 0
         ) {
           loseHp(state, attacker, baseMaxHp(attacker) / 10, `${attacker.name}은(는) 생명의구슬로 HP가 줄었다.`, 'item')
+          recordDoubleKnockoutWinner(state, attacker, true)
         }
 
         if (GEM_ITEM_TYPES[attacker.heldItemId] === move.type && heldItemEffectsActive(attacker)) {
@@ -9137,7 +9181,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
       } else if (spreading) spreadSummary.destinyBondSource = defender.name
       else {
         if (isRaidBoss(state, attacker)) raidEvent(state, 'boss-immunity', '보스에게 길동무의 강제 처치는 통하지 않는다.')
-        else { applyBattleHpLoss(state, attacker, attacker.hp); appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status') }
+        else { applyBattleHpLoss(state, attacker, attacker.hp); recordDoubleKnockoutWinner(state, attacker, true); appendLog(state, `${defender.name}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status') }
       }
     }
 
@@ -9192,7 +9236,7 @@ function executeMove(state, sideId, action, random, timeline = null, actionOrder
     applyMindBlownRecoil(state, attacker, preparedMove)
     if (spreadSummary.destinyBondSource && attacker.hp > 0) {
       if (isRaidBoss(state, attacker)) raidEvent(state, 'boss-immunity', '보스에게 길동무의 강제 처치는 통하지 않는다.')
-      else { applyBattleHpLoss(state, attacker, attacker.hp); appendLog(state, `${spreadSummary.destinyBondSource}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status') }
+      else { applyBattleHpLoss(state, attacker, attacker.hp); recordDoubleKnockoutWinner(state, attacker, true); appendLog(state, `${spreadSummary.destinyBondSource}의 길동무! ${attacker.name}도 함께 쓰러진다!`, 'status') }
     }
     applySelfDestruct(state, attacker, preparedMove, spreadSummary.damage > 0)
     if (state.log.length > postEffectLogLength) pushTimelineStep(timeline, state, {
@@ -9738,19 +9782,6 @@ function applyEntryHazards(state, side, pokemon) {
     applyBattleHpLoss(state, pokemon, damage)
     appendLog(state, `${pokemon.name}은(는) ${name}에 데미지를 입었다!`, 'damage')
   })
-
-  const terrainSeedRules = {
-    'electric-seed': { terrain: 'electric', boosts: { defense: 1 } },
-    'grassy-seed': { terrain: 'grassy', boosts: { defense: 1 } },
-    'misty-seed': { terrain: 'misty', boosts: { specialDefense: 1 } },
-    'psychic-seed': { terrain: 'psychic', boosts: { specialDefense: 1 } },
-  }
-  const seedRule = terrainSeedRules[pokemon.heldItemId]
-  if (seedRule?.terrain === state.rules?.terrain?.id && heldItemEffectsActive(pokemon)) {
-    consumeHeldItem(state, pokemon)
-    changeStages(state, pokemon, seedRule.boosts)
-    appendLog(state, `${pokemon.name}의 ${pokemon.heldItemName || pokemon.heldItemId}이(가) 발동했다!`, 'item')
-  }
 }
 
 function performSwitch(
@@ -9861,6 +9892,7 @@ function performSwitch(
     message: switchMessage,
   })
   activateEntryAbility(state, sideId, resolvedSlot)
+  activateTerrainSeed(state, target)
   return true
 }
 
@@ -10259,6 +10291,7 @@ function residualEffects(state, sideId, timeline = null, activeSlot = null, rand
       pokemon.hadHeldItem = true
       appendLog(state, `${pokemon.name}의 픽업! ${pokemon.heldItemName || pokemon.heldItemId}을(를) 주웠다!`, 'ability')
       state.lastConsumedItem = null
+      activateTerrainSeed(state, pokemon)
     }
 
     if (pokemon.hp > 0) refreshHpFormAbility(state, pokemon, 'residual')
@@ -10525,8 +10558,9 @@ function settleFaints(state, timeline = null) {
   const opponentRemaining = remainingCount(state.opponent)
 
   if (playerRemaining === 0 || opponentRemaining === 0) {
-    state.winner = state.rules?.pvp && playerRemaining === 0 && opponentRemaining === 0
-      ? 'draw' : playerRemaining > 0 ? 'player' : 'opponent'
+    state.winner = playerRemaining === 0 && opponentRemaining === 0
+      ? state.doubleKnockoutWinner ?? (state.rules?.pvp ? 'draw' : 'opponent')
+      : playerRemaining > 0 ? 'player' : 'opponent'
     state.phase = 'complete'
     appendLog(
       state,
@@ -13225,6 +13259,7 @@ export function createBattle({ playerPokemon, opponent, opponentTeam, rules = nu
     getActivePokemonList(state, 'opponent').forEach((_, slot) => activateEntryAbility(state, 'opponent', slot))
     getActivePokemonList(state, 'player').forEach((_, slot) => activateEntryAbility(state, 'player', slot))
   }
+  refreshActiveTerrainSeeds(state)
   resolvePendingEjectPacks(state)
   resolveRequestedSwitches(state)
   return state
@@ -13353,7 +13388,7 @@ function continueBattleTurn(nextState, random, timeline) {
     }
     resolvePendingEjectPacks(nextState, timeline, actionOrder)
     finishRaidDamageRoot(nextState, {
-      onSummon: (slot) => { const summoned = getActivePokemon(nextState, 'opponent', slot); activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, summoned) },
+      onSummon: (slot) => { const summoned = getActivePokemon(nextState, 'opponent', slot); activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, summoned); activateTerrainSeed(nextState, summoned) },
       onMega: (boss, form) => changeRaidBossMegaForm(nextState, boss, form),
       onWeather: () => refreshEnvironmentDependentAbilities(nextState, 'weather'),
       onPurge: () => { updateMagicRoomSuppression(nextState, false); refreshEnvironmentDependentAbilities(nextState, 'weather'); refreshEnvironmentDependentAbilities(nextState, 'terrain') },
@@ -13393,7 +13428,7 @@ function continueBattleTurn(nextState, random, timeline) {
 
     runResidualEffects(nextState, timeline, random)
     finishRaidDamageRoot(nextState, {
-      onSummon: (slot) => { activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, getActivePokemon(nextState, 'opponent', slot)) },
+      onSummon: (slot) => { const summoned = getActivePokemon(nextState, 'opponent', slot); activateEntryAbility(nextState, 'opponent', slot); applyEntryHazards(nextState, nextState.opponent, summoned); activateTerrainSeed(nextState, summoned) },
       onMega: (boss, form) => changeRaidBossMegaForm(nextState, boss, form),
       onWeather: () => refreshEnvironmentDependentAbilities(nextState, 'weather'),
       onPurge: () => { updateMagicRoomSuppression(nextState, false); refreshEnvironmentDependentAbilities(nextState, 'weather'); refreshEnvironmentDependentAbilities(nextState, 'terrain') },

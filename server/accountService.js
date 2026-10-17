@@ -5,7 +5,7 @@ import { PLAYER_STORAGE_KEYS } from '../src/auth/accountStorage.js'
 import { normalizeTrainerNickname, readTrainerNickname } from '../src/data/trainerNickname.js'
 import { hasTrainerTitle, normalizeTrainerTitle, readTrainerTitle } from '../src/data/titleData.js'
 import { ACHIEVEMENT_STORAGE_KEY } from '../src/data/achievementData.js'
-import { containsChatProfanity } from './chatModeration.js'
+import { containsNicknameProfanity } from './nicknameModeration.js'
 
 export const ACCOUNT_LEASE_MS = 90_000
 export const ACCOUNT_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024
@@ -138,7 +138,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         }
         try { nickname = normalizeTrainerNickname(command.nickname) }
         catch (error) { fail('INVALID_NICKNAME', error.message) }
-        if (containsChatProfanity(nickname)) fail('NICKNAME_PROFANITY', '욕설이나 비속어가 포함된 닉네임은 사용할 수 없습니다.', 422)
+        if (containsNicknameProfanity(nickname)) fail('NICKNAME_PROFANITY', '욕설이나 비속어가 포함된 닉네임은 사용할 수 없습니다.', 422)
       }
       let titleId
       if (action === 'setTitle') {
@@ -277,7 +277,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           const previousTitle = readTrainerTitle(previous?.title)
           const profile = { ...metadata,
             ...(!identity.isGuest ? {
-              nickname: action === 'setNickname' ? nickname : containsChatProfanity(previousNickname) ? '' : previousNickname,
+              nickname: action === 'setNickname' ? nickname : containsNicknameProfanity(previousNickname) ? '' : previousNickname,
               title: action === 'setTitle' ? titleId : previousTitle,
             } : {}),
             createdAtMs: Number.isSafeInteger(previous?.createdAtMs) ? previous.createdAtMs : now(), lastSeenAtMs: now(),

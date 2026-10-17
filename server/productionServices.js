@@ -2,13 +2,12 @@ import { createFirestoreRankedStore } from './rankedStore.js'
 import { createGuestIdentityRegistry, rankedIdentityFromVerifiedToken } from './guestIdentity.js'
 import { readTrainerNickname } from '../src/data/trainerNickname.js'
 import { readTrainerTitle } from '../src/data/titleData.js'
-import { containsChatProfanity } from './chatModeration.js'
+import { containsNicknameProfanity } from './nicknameModeration.js'
 
 export const NICKNAME_CACHE_MS = 15_000
 const NICKNAME_CACHE_MAX_ENTRIES = 2000
 
-// One profile read serves both public labels: the nickname and the title shown
-// beside it in chat.
+// One profile read serves the verified public nickname and trainer title.
 export function createVerifiedNicknameReader({ accountStore, now = Date.now }) {
   const cache = new Map()
   const empty = { nickname: '', title: '' }
@@ -28,7 +27,7 @@ export function createVerifiedNicknameReader({ accountStore, now = Date.now }) {
     entry.pending = accountStore.transaction(tx => tx.get('profiles', uid)).then(profile => {
       const normalized = readTrainerNickname(profile?.nickname)
       const labels = {
-        nickname: containsChatProfanity(normalized) ? '' : normalized,
+        nickname: containsNicknameProfanity(normalized) ? '' : normalized,
         title: readTrainerTitle(profile?.title),
       }
       if (cache.get(uid) === entry) {

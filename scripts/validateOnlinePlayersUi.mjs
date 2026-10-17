@@ -92,8 +92,8 @@ let browser
 try {
   browser = await chromium.launch({ executablePath: await resolveChromiumExecutable(chromium), headless: true })
   const html = await server.transformIndexHtml('/online-players.html', '<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/online-players-entry.js"></script></body></html>')
-  // The current compact mobile header hides presence; real mobile chat/layout
-  // coverage lives in validateGlobalChatUi with the production CSS import list.
+  // The compact mobile header hides presence; this presence harness covers
+  // desktop and laptop layouts where the badge is displayed.
   for (const device of [{ id: 'desktop', viewport: { width: 1920, height: 900 } }, { id: 'laptop', viewport: { width: 1366, height: 768 } }]) {
     const context = await browser.newContext({ ...device, reducedMotion: 'reduce' })
     const settings = createDefaultGameSettings()

@@ -6,8 +6,6 @@ import { normalizePokemon, getMoveById } from '../src/data/trainingData.js'
 import { createRankedProfile } from '../src/data/rankedRules.js'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
 import { createRankedService } from '../server/rankedService.js'
-import { createGlobalChatService } from '../server/globalChatService.js'
-import { createGuestIdentityRegistry } from '../server/guestIdentity.js'
 import * as engine from '../server/rankedBattle.js'
 import {
   createFactoryRun, selectFactoryRentals, selectFactoryLead, beginFactoryBattle, resolveFactoryBattle,
@@ -188,19 +186,6 @@ test('room members, scheduled matches, battle snapshots and final standings use 
   noRawNames([created, joined, started, ended])
 })
 
-test('new chat messages reflect nickname changes and clearing; old messages remain honest snapshots', async () => {
-  const store = createMemoryRankedStore()
-  let time = 1000000, id = 0
-  const service = createGlobalChatService({ store, now: () => time, newId: () => `nickname-chat-${++id}` })
-  const send = async (nickname, extra = {}) => { time += 3000; return service.execute({ ...alice, nickname },
-    { action: 'send', text: '배틀을 시작해요', requestId: `nickname-chat-request-${id + 1}`, ...extra }) }
-  await send('피카츄', { nickname: '위조된닉네임', name: '위조이름' })
-  await send('파도타기왕')
-  const snapshot = await send('')
-  assert.deepEqual(snapshot.messages.map(message => message.name), ['피카츄', '파도타기왕', '홍**'])
-  noRawNames(snapshot)
-})
-
 test('renaming an existing room member updates its next view and next scheduled match without rejoining', async () => {
   for (const refresh of ['rooms', 'rankedLeaderboard']) {
     const env = environment()
@@ -217,18 +202,6 @@ test('renaming an existing room member updates its next view and next scheduled 
     assert.equal(selected.state.opponent.name, alice.nickname)
     noRawNames([refreshed, started, selected])
   }
-})
-
-test('verified guest chat IDs cannot be replaced by any supplied nickname', async () => {
-  const store = createMemoryRankedStore()
-  const guestRegistry = createGuestIdentityRegistry({ store, number: () => 123456 })
-  const identity = { uid: 'nickname-guest', name: '위조이름', nickname: '위조된닉네임', isGuest: true }
-  const guest = await guestRegistry.create(identity)
-  const service = createGlobalChatService({ store, guestRegistry, newId: () => 'nickname-guest-message' })
-  const result = await service.execute(identity, { action: 'send', text: '안녕하세요', requestId: 'nickname-guest-request' })
-  assert.equal(result.latest.name, guest.displayName)
-  assert.match(result.latest.name, /^guest-\d{6}$/)
-  noRawNames(result)
 })
 
 test('ranked leaderboard refresh changes only the authenticated viewer name, preserves scores and is write-free when unchanged', async () => {

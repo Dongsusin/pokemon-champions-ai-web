@@ -1,9 +1,24 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { sortFactoryRankingEntries } from '../src/data/battleFactoryRanking.js'
-import { eraseGuestGlobalChat } from './globalChatService.js'
 
 const hashOwner = (prefix, uid) => createHash('sha256').update(`${prefix}:${uid}`).digest('hex')
 const deletedName = '탈퇴한 게스트'
+
+// Chat was retired. Keep only account-deletion cleanup for messages stored by
+// older releases; there is no route or service that can read or send them.
+async function eraseLegacyGuestMessages(tx, uid) {
+  const owner = hashOwner('global-chat-owner', uid)
+  const metadata = await tx.get('globalChat', 'metadata')
+  const feed = await tx.get('globalChat', 'feed')
+  const messages = (feed?.messages ?? []).filter(message => message.owner !== owner)
+  tx.delete('globalChatSenders', owner)
+  if (messages.length !== (feed?.messages ?? []).length) {
+    tx.set('globalChat', 'feed', { messages })
+    tx.set('globalChat', 'metadata', {
+      revision: (metadata?.revision ?? 0) + 1, latest: messages.at(-1) ?? null,
+    })
+  }
+}
 
 // This runs only after the account service has authenticated an anonymous user
 // and committed its deletion fence. Results shared with opponents retain their
@@ -16,7 +31,7 @@ export async function eraseGuestRankedData({ store, guestRegistry, rooms, settle
   await guestRegistry.beginDeletion(identity)
   return store.transaction(async tx => {
     await guestRegistry.erase(identity, tx)
-    await eraseGuestGlobalChat(tx, uid)
+    await eraseLegacyGuestMessages(tx, uid)
     await lobbyLock(tx)
     tx.delete('queue', uid)
     await rooms.eraseGuest(tx, uid, surrogate, timestamp)

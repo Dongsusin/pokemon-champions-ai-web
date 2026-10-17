@@ -1,7 +1,5 @@
 // This deliberately small, deterministic list is kept on the server. Normal
-// criticism is allowed; these entries target common profanity and its usual
-// spelling disguises, rather than classifying a player's sentiment.
-export const CHAT_PROFANITY_MESSAGE = '욕설이나 비속어가 포함된 메시지는 보낼 수 없습니다. 내용을 수정해주세요.'
+// nickname entries target common profanity and its usual spelling disguises.
 
 const koreanWords = [
   '시발', '씨발', '시팔', '씨팔', '시벌', '씨벌', '쉬발', '쉬벌', '쉬팔', '슈발',
@@ -75,10 +73,10 @@ function containsEnglishProfanity(text) {
   })
 }
 
-export function containsChatProfanity(value) {
+export function containsNicknameProfanity(value) {
   if (typeof value !== 'string') return false
   const normalized = value.normalize('NFKC').toLowerCase()
-  // Protect only these literal, ordinary spans, never the whole message. A
+  // Protect only these literal, ordinary spans, never the whole nickname. A
   // separate insult next to "시발점" must still be rejected. The marker remains
   // a letter in the skeleton so surrounding fragments cannot join across it.
   const koreanComparison = normalized.replace(/시발(?:점|역)|시\s+발동|졸라매|졸라맨/gu, 'x')

@@ -187,15 +187,46 @@ test('human opponent can activate Tera before a faster enemy move', () => {
   assert.equal(result.state.opponent.team[0].teraActive, true)
   assert.equal(result.state.opponent.team[0].hp, result.state.opponent.team[0].maxHp)
 })
-test('mutual last-Pokemon knockout produces a draw rather than awarding a fixed side', () => {
-  const state = battle([mon(235, ['explosion']), mon(6), mon(9)], [mon(143, ['tackle']), mon(68), mon(131)])
+for (const attackerSide of ['player', 'opponent']) {
+  test('last-Pokemon Explosion user loses on the ' + attackerSide + ' server side', () => {
+    const attackerTeam = [mon(235, ['explosion']), mon(6), mon(9)]
+    const defenderTeam = [mon(143, ['tackle']), mon(68), mon(131)]
+    const state = attackerSide === 'player' ? battle(attackerTeam, defenderTeam) : battle(defenderTeam, attackerTeam)
+    for (const sideId of ['player', 'opponent']) {
+      state[sideId].team.slice(1).forEach((pokemon) => { pokemon.hp = 0; pokemon.fainted = true })
+      state[sideId].team[0].hp = 1
+    }
+    state[attackerSide].team[0].stats.speed = 500
+    const winnerSide = attackerSide === 'player' ? 'opponent' : 'player'
+    const result = turn(state, act(state, 'player', attackerSide === 'player' ? 'explosion' : 'tackle'),
+      act(state, 'opponent', attackerSide === 'opponent' ? 'explosion' : 'tackle')).state
+    assert.equal(result.player.team[0].hp, 0)
+    assert.equal(result.opponent.team[0].hp, 0)
+    assert.equal(result.winner, winnerSide)
+    assert.equal(getRankedBattleView(result, attackerSide).winner, 'opponent')
+    assert.equal(getRankedBattleView(result, winnerSide).winner, 'player')
+  })
+}
+
+test('Leech Seed and Liquid Ooze final residual knockouts remain a draw for both perspectives', () => {
+  const state = battle([mon(3, ['protect']), mon(6), mon(9)],
+    [mon(73, ['protect'], { ability: '해감액' }), mon(68), mon(131)])
   for (const sideId of ['player', 'opponent']) {
     state[sideId].team.slice(1).forEach((pokemon) => { pokemon.hp = 0; pokemon.fainted = true })
     state[sideId].team[0].hp = 1
   }
-  state.player.team[0].stats.speed = 500
-  assert.equal(turn(state, act(state, 'player', 'explosion'), act(state, 'opponent', 'tackle')).state.winner, 'draw')
+  state.opponent.team[0].leechSeedSourceSideId = 'player'
+  state.opponent.team[0].leechSeedSourceSlot = 0
+  const result = turn(state, act(state, 'player'), act(state, 'opponent')).state
+  assert.equal(result.player.team[0].hp, 0)
+  assert.equal(result.opponent.team[0].hp, 0)
+  assert(result.log.some((entry) => entry.message.includes('씨뿌리기')))
+  assert(result.log.some((entry) => entry.message.includes('해감액')))
+  assert.equal(result.winner, 'draw')
+  assert.equal(getRankedBattleView(result, 'player').winner, 'draw')
+  assert.equal(getRankedBattleView(result, 'opponent').winner, 'draw')
 })
+
 test('perspectives hide bench selection, moves, abilities, item, Tera type, pending turn and future snapshots', () => {
   const state = battle()
   state.opponent.team[0].heldItemId = 'secret-item'

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
 import { createVerifiedNicknameReader, initializeProductionServices, NICKNAME_CACHE_MS } from '../server/productionServices.js'
-import { createGlobalChatHttpHandler } from '../server/globalChatHttp.js'
 import { createRankedHttpHandler } from '../server/rankedHttp.js'
 
 const tests = []
@@ -108,15 +107,15 @@ test('production authentication takes nickname from server profile, skips accoun
     assert.equal(identity.nickname, '')
   }
   assert.equal(env.reads(), 0, 'Account session heartbeats add zero nickname queries')
-  const first = await services.authenticate(new Request('https://game.test/api/chat'), 'google-token')
+  const first = await services.authenticate(new Request('https://game.test/api/ranked'), 'google-token')
   assert.equal(first.name, '김실제이름')
   assert.equal(first.nickname, '서버별명')
   assert.equal(first.accountProfile.displayName, '김실제이름')
-  await services.authenticate(new Request('https://game.test/api/chat'), 'google-token')
+  await services.authenticate(new Request('https://game.test/api/ranked'), 'google-token')
   await services.authenticate(new Request('https://game.test/api/ranked'), 'guest-token', { freshNickname: true })
   assert.equal(env.reads(), 1)
   await env.save('verified-google', '즉시반영')
-  assert.equal((await services.authenticate(new Request('https://game.test/api/chat'), 'google-token', { freshNickname: true })).nickname, '즉시반영')
+  assert.equal((await services.authenticate(new Request('https://game.test/api/ranked'), 'google-token', { freshNickname: true })).nickname, '즉시반영')
   assert.equal(env.reads(), 2)
   assert(verified.every(Boolean), 'Revoked-token verification remains enabled')
   await services.close()
@@ -126,16 +125,14 @@ test('HTTP alone decides freshness for public actions and ignores forged freshne
   const calls = []
   const authenticate = async (_request, _token, options) => { calls.push(options.freshNickname); return { uid: 'verified-google' } }
   const service = { execute: async () => ({ revision: 0, latest: null }) }
-  const chat = createGlobalChatHttpHandler({ service, authenticate })
   const ranked = createRankedHttpHandler({ service, authenticate, enabled: true })
   const request = (path, action, method = 'POST') => new Request(`https://game.test/api/${path}${method === 'GET' ? `?action=${action}` : ''}`, {
     method, headers: { authorization: 'Bearer verified-token', 'content-type': 'application/json' },
     ...(method === 'POST' ? { body: JSON.stringify({ action, freshNickname: false, nickname: 'forged-input' }) } : {}),
   })
-  for (const action of ['read', 'send']) assert.equal((await chat(request('chat', action))).status, 200)
   for (const action of ['status', 'rooms', 'factoryLeaderboard', 'rankedLeaderboard']) assert.equal((await ranked(request('ranked', action, 'GET'))).status, 200)
   for (const action of ['join', 'roomCreate', 'roomJoin', 'reportFactoryRun', 'action']) assert.equal((await ranked(request('ranked', action))).status, 200)
-  assert.deepEqual(calls, [false, true, false, false, true, true, true, true, true, true, false])
+  assert.deepEqual(calls, [false, false, true, true, true, true, true, true, false])
 })
 
 for (const { name, run } of tests) { await run(); console.log(`PASS ${name}`) }

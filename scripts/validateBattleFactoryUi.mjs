@@ -7,6 +7,9 @@ import { createServer } from 'vite'
 import { normalizePokemon } from '../src/data/trainingData.js'
 import { createSavedTeams } from '../src/data/teamData.js'
 import { getBattleItem } from '../src/data/shopData.js'
+import { getBattleFactoryVpReward } from '../src/data/battleFactoryRewards.js'
+import { applyFactoryAchievements, normalizeAchievementState } from '../src/data/achievementData.js'
+import { FACTORY_RUN_STORAGE_KEY, loadFactoryRun } from '../src/data/battleFactoryStorage.js'
 import { resolveChromiumExecutable } from '../promo/scripts/browserRuntime.mjs'
 
 // Full GameApp integration on an isolated loopback origin. Firebase is offline,
@@ -22,7 +25,9 @@ const port = Number(process.env.FACTORY_UI_PORT ?? 5283)
 const origin = `http://127.0.0.1:${port}`
 const owned = [normalizePokemon({ speciesId: 131, captureId: 'factory-ui-owned-lapras', directDrawCount: 1 })]
 const teams = createSavedTeams(owned.map(pokemon => pokemon.captureId), owned.map(pokemon => pokemon.captureId))
-const styles = ['styles', 'screenRedesign', 'battleGen5', 'titleCleanup', 'battleGimmicks', 'moveAnimationDirector', 'settings', 'auth', 'mobileLandscape', 'gameTextScale', 'scaledBoxCards', 'scaledBattleCards', 'scaledTrainingEditor']
+const gameEntry = await fs.readFile(path.join(root, 'src/gameEntry.jsx'), 'utf8')
+const styles = [...gameEntry.matchAll(/import '\.\/([^']+)\.css'/g)].map(match => match[1])
+assert(styles.includes('mobileUiV2') && styles.includes('gameFrameContent'), 'Use the complete current production CSS import order')
 const entry = `import React,{StrictMode} from 'react';import{createRoot}from'react-dom/client';import{GameApp}from'/src/App.jsx';import '/src/mobileViewport.js';
 ${styles.map(name => `import '/src/${name}.css';`).join('\n')}
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(GameApp,{
@@ -86,6 +91,7 @@ try {
         sessionStorage.setItem('factory-ui-initialized', 'true')
       }
       window.__factoryFixtureWins = 0
+      window.__factoryRunSerial = 0
     }, seedStorage)
     await context.route('**/*', async route => {
       const url = new URL(route.request().url())
@@ -102,8 +108,8 @@ try {
     await context.route('**/src/App.jsx', async route => {
       const response = await route.fetch()
       const original = await response.text()
-      const body = original.replace(/const \[factoryRun, setFactoryRun\] = useState\(null\);?/g,
-        '$&\nwindow.__readFactoryRun = () => structuredClone(factoryRun);')
+      const body = original.replace(/const changeFactoryRun = useCallback/,
+        'window.__readFactoryRun = () => structuredClone(factoryRun);\n$&')
       assert.notEqual(body, original, 'The GameApp test observation hook must be installed')
       hooks.app++
       await route.fulfill({ response, body })
@@ -111,7 +117,8 @@ try {
     await context.route('**/src/BattleFactoryScreen.jsx', async route => {
       const response = await route.fetch()
       const original = await response.text()
-      const body = original.replace(/createFactoryRun\(\)/g, 'createFactoryRun({seed:"integration-ui"})')
+      const body = original.replace(/createFactoryRun\(\{\s*mode(?:\s*:\s*chosen)?\s*\}\)/g,
+        call => call.replace('{', '{seed:"integration-ui",id:"factory-ui-'+device.id+'-"+(++window.__factoryRunSerial),'))
       assert.notEqual(body, original, 'The deterministic rental test seed must be installed')
       hooks.factory++
       await route.fulfill({ response, body })
@@ -119,7 +126,7 @@ try {
     await context.route('**/src/BattleScreen.jsx', async route => {
       const response = await route.fetch()
       const original = await response.text()
-      const body = original.replace(/const \[introVisible, setIntroVisible\] = useState\(!online\);?/,
+      const body = original.replace(/const \[introVisible, setIntroVisible\] = useState\(!online && !skipIntro\);?/,
         `$&
 window.__readFactoryBattle = () => structuredClone(battle);
 window.__fixtureFactoryVictory = () => {
@@ -135,6 +142,10 @@ window.__fixtureFactoryVictory = () => {
     page.setDefaultTimeout(15_000)
     page.on('pageerror', error => browserErrors.push({ device: device.id, error: error.message }))
     const click = locator => device.hasTouch ? locator.tap() : locator.click()
+    const enterFactory = async () => {
+      await click(page.getByRole('tab', { name: '배틀팩토리', exact: true }))
+      await click(page.getByRole('button', { name: '팩토리에 도전', exact: true }))
+    }
     const readRun = () => page.evaluate(() => window.__readFactoryRun())
     const readBattle = () => page.evaluate(() => window.__readFactoryBattle())
     const checkTrainerCutout = async image => {
@@ -200,12 +211,13 @@ window.__fixtureFactoryVictory = () => {
     try {
       await page.goto(`${origin}/factory-ui.html`)
       await page.getByRole('button', { name: /시작하기/ }).waitFor()
+      assert.equal(await page.locator('[class*="global-chat"]').count(), 0, 'The GameApp lobby must not mount chat controls')
 
-      await check(`${device.id}: one-owned-Pokemon account enters the four-mode hub and receives six rentals`, 'real-ui', async () => {
+      await check(`${device.id}: one-owned-Pokemon account enters the five-mode hub and receives six rentals`, 'real-ui', async () => {
         assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('champions-dex-v2')).length), 1)
         await click(page.getByRole('button', { name: /시작하기/ }))
-        assert.equal(await page.locator('.battle-hub-card').count(), 4)
-        await click(page.locator('.battle-hub-card.factory'))
+        assert.deepEqual(await page.getByRole('tablist', { name: '배틀 종류' }).getByRole('tab').allTextContents(), ['레이팅 배틀', 'AI 대전', '배틀팩토리', '보스전', '대전방'])
+        await enterFactory()
         await page.getByLabel('렌탈 후보 6마리').waitFor()
         assert.equal(await page.locator('.factory-rental-select').count(), 6)
         assert(await page.getByRole('button', { name: /렌탈 팀 확정/ }).isDisabled())
@@ -237,11 +249,11 @@ window.__fixtureFactoryVictory = () => {
         assert.equal(await page.getByRole('button', { name: `${ready.party[2].name} 선봉 선택`, exact: true }).getAttribute('aria-pressed'), 'true')
         assert(!(await page.getByRole('button', { name: '1층 배틀 시작', exact: true }).isDisabled()))
         await click(page.locator('.factory-back'))
-        await click(page.locator('.battle-hub-card.factory'))
+        await enterFactory()
         await page.locator('.battle-factory.phase-ready').waitFor()
         assert.deepEqual(await readRun(), selectedThird)
-        await click(page.getByRole('button', { name: `${ready.party[1].name} 선봉 선택`, exact: true }))
-        expectedBattleLead = ready.party[1].captureId
+        await click(page.getByRole('button', { name: `${ready.party[0].name} 선봉 선택`, exact: true }))
+        expectedBattleLead = ready.party[0].captureId
         assert.equal((await readRun()).leadCaptureId, expectedBattleLead)
         assert.deepEqual((await readRun()).party, ready.party)
         assert.equal(await page.getByRole('button', { name: `${ready.party[2].name} 선봉 선택`, exact: true }).getAttribute('aria-pressed'), 'false')
@@ -281,8 +293,12 @@ window.__fixtureFactoryVictory = () => {
         const before = await readBattle()
         const partyBefore = (await readRun()).party
         await click(page.locator('.battle-command-buttons .fight'))
-        await click(page.locator('.battle-move-button:not(:disabled)').first())
+        const active = before.player.team[before.player.activeIndexes[0]]
+        const protect = active.moves.findIndex(move => move.id === 'protect')
+        assert(protect >= 0, 'The deterministic real-turn lead carries Protect, so it acts before the opponent and has no automatic charge turn')
+        await click(page.locator('.battle-move-button').nth(protect))
         await page.waitForFunction(turn => window.__readFactoryBattle().turn > turn, before.turn, { timeout: 20_000 })
+        await waitCommands()
         await page.waitForFunction(() => document.querySelector('.battle-command-panel')?.getAttribute('aria-busy') === 'false')
         const after = await readBattle()
         assert(after.player.team.some((pokemon, index) => pokemon.moves.some((move, moveIndex) => move.currentPp < before.player.team[index].moves[moveIndex].currentPp)))
@@ -403,27 +419,48 @@ window.__fixtureFactoryVictory = () => {
         assert.equal(await page.evaluate(() => window.__factoryFixtureWins), 2)
       })
 
-      await check(`${device.id}: factory leaves owned box, inventory, VP, achievements and usage unchanged without API calls or browser errors`, 'isolation', async () => {
-        assert.deepEqual(await snapshotProtectedStorage(), protectedBefore)
+      await check(`${device.id}: factory preserves owned box, inventory and usage, credits exactly 650 VP and best floor three without API calls or browser errors`, 'isolation', async () => {
+        const after = await snapshotProtectedStorage()
+        const invariant = storage => Object.fromEntries(Object.entries(storage).filter(([key]) => !['champions-vp-v1', 'champions-achievements-v1'].includes(key)))
+        assert.deepEqual(invariant(after), invariant(protectedBefore))
+        const reward = getBattleFactoryVpReward(1) + getBattleFactoryVpReward(2)
+        assert.equal(reward, 650)
+        assert.equal(Number(after['champions-vp-v1']), Number(protectedBefore['champions-vp-v1']) + reward)
+        const beforeProgress = normalizeAchievementState(JSON.parse(protectedBefore['champions-achievements-v1']))
+        const expected = applyFactoryAchievements(beforeProgress, 3, 0, 'standard')
+        assert.equal(expected.rewardVp, 0, 'Floors one through three unlock no milestone reward')
+        const wallet = JSON.parse(after['champions-achievements-v1'])
+        assert.deepEqual(normalizeAchievementState(wallet), expected.state)
+        assert.equal(wallet.walletBalance, 8427)
+        assert.deepEqual(wallet.factoryVpRewards, { uid: 'factory-ui-offline', runs: [{ id: (await readRun()).id, floor: 2 }] })
+        assert.equal(await page.locator('[class*="global-chat"]').count(), 0, 'Factory navigation must not mount chat controls')
+        assert.equal(network.filter(request => new URL(request.url).pathname.startsWith('/api/chat')).length, 0, 'GameApp must not request or poll the removed chat API')
         assert.deepEqual(deniedApis, [])
         assert.deepEqual(browserErrors.filter(error => error.device === device.id), [])
         assert(hooks.app > 0 && hooks.battle > 0 && hooks.factory > 0)
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
       })
 
-      await check(`${device.id}: completed local ranking survives reload while an unfinished tower does not replace it`, 'ranking-persistence', async () => {
+      await check(`${device.id}: completed local ranking and current floor-three run both survive reload without duplicate VP`, 'ranking-persistence', async () => {
         const records = await page.evaluate(() => JSON.parse(localStorage.getItem('champions-factory-local-rankings-v1')))
         assert.equal(records.length, 1)
         assert.equal(records[0].floor, 1)
         assert.equal(records[0].wins, 0)
+        const currentRun = await readRun()
+        const savedRun = await page.evaluate(key => localStorage.getItem(key), FACTORY_RUN_STORAGE_KEY)
+        assert.deepEqual(loadFactoryRun({ getItem: () => savedRun }), currentRun)
+        const walletBeforeReload = await snapshotProtectedStorage()
         await page.reload()
         await click(page.getByRole('button', { name: /시작하기/ }))
-        await click(page.locator('.battle-hub-card.factory'))
+        await enterFactory()
         await click(page.getByRole('button', { name: 'TOP 10 랭킹', exact: true }))
         await page.locator('.factory-ranking-record').waitFor()
         assert.equal(await page.locator('.factory-ranking-record').count(), 1)
         assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('champions-factory-local-rankings-v1'))), records)
-        assert.equal((await readRun()).phase, 'selection')
+        assert.deepEqual(await readRun(), currentRun)
+        assert.equal((await readRun()).phase, 'ready')
+        assert.equal((await readRun()).floor, 3)
+        assert.deepEqual(await snapshotProtectedStorage(), walletBeforeReload)
       })
     } catch (error) {
       if (!checks.some(result => !result.passed && result.name.startsWith(`${device.id}:`))) {

@@ -12,7 +12,7 @@ assert(css.includes('(hover: none) and (pointer: coarse) and (orientation: lands
 assert(css.includes('.app-shell:not(.raid-view)'))
 assert(css.includes('min-height: 44px'))
 assert(css.includes('.battle-game-screen'))
-assert(css.includes('.global-chat-dialog'))
+assert(!css.includes('.global-chat'))
 assert(css.includes('.settings-modal'))
 
 console.log('Validated device-width mobile viewport, touch targets, overlays, and raid isolation.')

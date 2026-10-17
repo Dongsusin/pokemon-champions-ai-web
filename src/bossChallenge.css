@@ -126,10 +126,8 @@ html:is([data-game-text-scale="1.5"],[data-game-text-scale="2"]) .boss-selection
  .app-shell.raid-view > .topbar { display: flex; flex: 0 0 48px; height: 48px; min-height: 48px; max-height: 48px; align-items: center; gap: 8px; padding: 4px 10px; flex-wrap: nowrap; }
  .app-shell.raid-view .topbar-brand-group { flex: 0 0 auto; }
  .app-shell.raid-view .brand-mark { width: 34px; height: 34px; flex-basis: 34px; }
- .app-shell.raid-view :is(.brand-title,.online-players-badge,.global-chat-label,.global-chat-chevron) { display: none; }
- .app-shell.raid-view .global-chat { flex: 1; min-width: 70px; width: auto; margin: 0; }
- .app-shell.raid-view .global-chat-trigger { min-height: 36px; height: 36px; padding: 4px 8px; }
- .app-shell.raid-view .top-status { flex: 0 0 auto; margin: 0; gap: 5px; }
+ .app-shell.raid-view :is(.brand-title,.online-players-badge) { display: none; }
+ .app-shell.raid-view .top-status { flex: 0 0 auto; margin: 0 0 0 auto; gap: 5px; }
  .app-shell.raid-view :is(.status-card,.player-account) { height: 36px; min-height: 36px; min-width: 0; padding: 3px 7px; }
  .app-shell.raid-view :is(.status-icon,.player-account-avatar) { width: 26px; height: 26px; flex-basis: 26px; }
  .app-shell.raid-view :is(.currency-card small,.player-account-copy small) { display: none; }

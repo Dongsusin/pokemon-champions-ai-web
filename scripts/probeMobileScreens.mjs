@@ -246,22 +246,6 @@ try {
 
     try {
       await page.goto(`${origin}/mobile-screens.html`)
-      // CHAT_PREVIEW reproduces a topbar carrying a real message, whose author
-      // line makes the chat trigger two lines tall.
-      if (process.env.CHAT_PREVIEW) {
-        await page.addInitScript(() => {
-          const fill = () => {
-            const preview = document.querySelector('.global-chat-preview')
-            if (preview && !preview.querySelector('.global-chat-preview-meta')) {
-              const meta = document.createElement('span')
-              meta.className = 'global-chat-preview-meta'
-              meta.innerHTML = '<strong>개발자</strong><time>23:01</time>'
-              preview.prepend(meta)
-            }
-          }
-          setInterval(fill, 300)
-        })
-      }
       // FORCE_LAYOUT pins the frame the CSS keys off, which is how a device that
       // reports portrait while its window is wide ends up with no phone rules.
       if (process.env.FORCE_LAYOUT) {

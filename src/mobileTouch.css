@@ -11,7 +11,7 @@
 
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) > .topbar {
     display: grid;
-    grid-template-columns: auto minmax(90px, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px;
     width: 100%;
     min-height: var(--mobile-topbar-height);
@@ -61,25 +61,6 @@
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .online-players-copy strong span {
     font-size: 9px;
   }
-
-  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat {
-    width: auto;
-    min-width: 90px;
-    max-width: none;
-    margin: 0;
-  }
-
-  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-trigger {
-    min-height: 40px;
-    padding: 5px 8px;
-  }
-
-  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-label,
-  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-preview-meta time,
-  html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .global-chat-chevron {
-    display: none;
-  }
-
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .top-status {
     gap: 5px;
     min-width: 0;
@@ -253,14 +234,6 @@
     max-height: calc(100dvh - 20px);
     font-size: 13px;
   }
-
-  html[data-mobile-layout="landscape"] .global-chat-dialog {
-    width: min(460px, calc(100vw - 16px));
-    height: min(420px, calc(100dvh - 12px));
-    max-width: calc(100vw - 16px);
-    max-height: calc(100dvh - 12px);
-  }
-
   html[data-mobile-layout="landscape"] .settings-modal-backdrop {
     padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
   }
@@ -284,7 +257,7 @@
 
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-width: 760px) {
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) > .topbar {
-    grid-template-columns: auto minmax(70px, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   html[data-mobile-layout="landscape"] .app-shell:not(.raid-view) .player-account {

@@ -168,14 +168,17 @@ assert.equal(state.opponent.team[0].syrupBombTurns, 0)
 
 state = singleBattle(
   battlePokemon('gardevoir', ['psychicnoise', 'calmmind']),
-  battlePokemon('blissey', ['softboiled']),
+  battlePokemon('blissey', ['softboiled', 'calmmind']),
 )
 state.opponent.team[0].hp = Math.floor(state.opponent.team[0].maxHp / 2)
 state = playBattleTurnWithActions(state, [moveAction(0)], [moveAction(0)], fixedRandom)
 const healBlockedHp = state.opponent.team[0].hp
 assert.equal(state.opponent.team[0].healBlockTurns, 1)
 assert(state.log.some((entry) => entry.message.includes('회복봉인 때문에')))
-state = playBattleTurnWithActions(state, [moveAction(1)], [moveAction(0)], fixedRandom)
+// Keep a selectable non-healing action while Heal Block is active; otherwise
+// an all-recovery moveset is forced to use Struggle and loses HP to recoil.
+state = playBattleTurnWithActions(state, [moveAction(1)], [moveAction(1)], fixedRandom)
+assert.equal(state.opponent.team[0].statStages.specialDefense, 1)
 assert.equal(state.opponent.team[0].hp, healBlockedHp)
 assert.equal(state.opponent.team[0].healBlockTurns, 0)
 state = playBattleTurnWithActions(state, [moveAction(1)], [moveAction(0)], fixedRandom)

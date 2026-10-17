@@ -3,18 +3,15 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
-import { containsChatProfanity } from '../server/chatModeration.js'
-import { createGlobalChatService, normalizeGlobalChatText } from '../server/globalChatService.js'
-import { createGlobalChatHttpHandler } from '../server/globalChatHttp.js'
-import { createMemoryRankedStore } from '../server/rankedStore.js'
+import { containsNicknameProfanity } from '../server/nicknameModeration.js'
 import { SPECIES_PROFILES, MOVE_CATALOG, ABILITY_CATALOG, NATURE_OPTIONS } from '../src/data/trainingData.js'
 import { ALL_BATTLE_ITEMS } from '../src/data/shopData.js'
 import { STANDARD_Z_MOVES, SIGNATURE_Z_MOVES } from '../src/data/zMoveData.js'
 
-// Independently chosen chat-moderation examples. This is a bounded lexical
+// Independently chosen nickname-moderation examples. This is a bounded lexical
 // regression corpus, not a claim to classify every offensive sentence.
-// Neither external moderation services nor production chat are contacted.
-const output = fileURLToPath(new URL('./.cache/chat-moderation/', import.meta.url))
+// No external service is contacted.
+const output = fileURLToPath(new URL('./.cache/nickname-moderation/', import.meta.url))
 await fs.mkdir(output, { recursive: true })
 const blocked = new Map()
 const addBlocked = (text, category) => blocked.set(text, category)
@@ -64,11 +61,11 @@ addNames('Item names', ALL_BATTLE_ITEMS.flatMap(item => [item.name, item.english
 addNames('Nature names', NATURE_OPTIONS.flatMap(nature => [nature.label, nature.name, nature.englishName]))
 addNames('Z-Move names', [...Object.values(STANDARD_Z_MOVES), ...Object.values(SIGNATURE_Z_MOVES)].flatMap(move => [move.name, move.englishName]))
 
-const misses = [...blocked].filter(([text]) => !containsChatProfanity(text)).map(([text, category]) => ({ text, category }))
-const falsePositives = ordinary.filter(text => containsChatProfanity(text)).map(text => ({ text, category: 'Ordinary conversation' }))
+const misses = [...blocked].filter(([text]) => !containsNicknameProfanity(text)).map(([text, category]) => ({ text, category }))
+const falsePositives = ordinary.filter(text => containsNicknameProfanity(text)).map(text => ({ text, category: 'Ordinary conversation' }))
 for (const [name, category] of canonical) {
   for (const text of [name, `${name} 좋아요`, `${name.normalize('NFD')} 추천해요`]) {
-    if (containsChatProfanity(text)) falsePositives.push({ text, category })
+    if (containsNicknameProfanity(text)) falsePositives.push({ text, category })
   }
 }
 const inventory = {
@@ -80,49 +77,8 @@ await fs.writeFile(path.join(output, 'corpus-results.json'), JSON.stringify({ in
 console.log(`Moderation corpus: ${blocked.size} blocked examples, ${ordinary.length} ordinary examples, ${canonical.size} canonical names (${canonical.size * 3} contexts).`)
 
 test('curated Korean and English profanity variants are blocked', () => {
-  assert.deepEqual(misses, [], `${misses.length} blocked examples were missed; see .cache/chat-moderation/corpus-results.json`)
+  assert.deepEqual(misses, [], `${misses.length} blocked examples were missed; see .cache/nickname-moderation/corpus-results.json`)
 })
 test('ordinary conversations and complete Pokemon game name catalogs remain allowed', () => {
-  assert.deepEqual(falsePositives, [], `${falsePositives.length} ordinary/catalog strings were overblocked; see .cache/chat-moderation/corpus-results.json`)
-})
-test('server normalization rejects every blocked variant with the stable 422 error', () => {
-  const failures = []
-  for (const [text, category] of blocked) {
-    try { normalizeGlobalChatText(text); failures.push({ text, category, reason: 'accepted' }) }
-    catch (error) { if (error.code !== 'CHAT_PROFANITY' || error.status !== 422) failures.push({ text, category, reason: `${error.code}:${error.status}` }) }
-  }
-  assert.deepEqual(failures, [])
-})
-test('server normalization preserves allowed game messages, Unicode and emoji', () => {
-  for (const text of ordinary) assert.equal(normalizeGlobalChatText(text), text.normalize('NFC'))
-  for (const name of canonical.keys()) assert.equal(normalizeGlobalChatText(name), name.normalize('NFC'))
-})
-test('rejected sends never enter a storage transaction or consume a sender cooldown', async () => {
-  let transactions = 0, createdIds = 0
-  const database = createMemoryRankedStore()
-  const store = { transaction: work => { transactions += 1; return database.transaction(work) } }
-  const service = createGlobalChatService({ store, now: () => 1_000_000, newId: () => `moderation-${++createdIds}` })
-  const identity = { uid: 'moderation-test-user', name: '테스트', isGuest: false }
-  await assert.rejects(service.execute(identity, { action: 'send', text: '씨 발', requestId: 'blocked-message-001' }), error => error.status === 422 && error.code === 'CHAT_PROFANITY')
-  assert.equal(transactions, 0)
-  assert.equal(createdIds, 0)
-  assert.deepEqual((await database.inspect()).collections, {})
-  const accepted = await service.execute(identity, { action: 'send', text: '병상첨병을 사용해요', requestId: 'allowed-message-001' })
-  assert.equal(accepted.revision, 1)
-  assert.equal(accepted.latest.text, '병상첨병을 사용해요')
-})
-test('an HTTP client cannot bypass moderation and a subsequent valid send still succeeds', async () => {
-  const store = createMemoryRankedStore()
-  const service = createGlobalChatService({ store, now: () => 2_000_000, newId: () => 'http-moderation-message' })
-  const handler = createGlobalChatHttpHandler({ service, authenticate: async () => ({ uid: 'http-moderation-user', name: '유저', isGuest: false }) })
-  const post = (text, requestId) => handler(new Request('http://localhost/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer local-only-test-token', Origin: 'http://localhost' }, body: JSON.stringify({ action: 'send', text, requestId }) }))
-  const blockedResponse = await post('ＦＵＣＫ', 'http-blocked-001')
-  assert.equal(blockedResponse.status, 422)
-  const body = await blockedResponse.json()
-  assert.equal(body.error.code, 'CHAT_PROFANITY')
-  assert.doesNotMatch(JSON.stringify(body), /ＦＵＣＫ|http-moderation-user/)
-  assert.deepEqual((await store.inspect()).collections, {})
-  const accepted = await post('시드플레어와 씨뿌리기', 'http-allowed-001')
-  assert.equal(accepted.status, 200)
-  assert.equal((await accepted.json()).revision, 1)
+  assert.deepEqual(falsePositives, [], `${falsePositives.length} ordinary/catalog strings were overblocked; see .cache/nickname-moderation/corpus-results.json`)
 })
