@@ -462,6 +462,24 @@ export function createRankedService({ store, engine, loadEngine = async () => en
     const requestHash = digest(payload)
     const response = await transaction(async tx => {
       const existingPlayer = await tx.get('players', identity.uid)
+      // For an unchanged ranked poll, keep the heavy state/team JSON inside
+      // Postgres. Submission flags and the deadline are always read afresh.
+      const revision = value => /^(0|[1-9]\d*)$/.test(String(value)) && Number.isSafeInteger(Number(value))
+      if (action === 'status' && !existingPlayer?.activeRoomId && isId(payload.matchId)
+        && existingPlayer?.activeMatchId === payload.matchId && revision(payload.matchRevision)
+        && revision(payload.timelineRevision) && typeof tx.readUnchangedMatch === 'function') {
+        const compact = await tx.readUnchangedMatch(payload.matchId, identity.uid,
+          Number(payload.matchRevision), Number(payload.timelineRevision), timestamp)
+        if (compact && !compact.roomId && ['select','battle'].includes(compact.phase)
+          && compact.id === payload.matchId && compact.revision === Number(payload.matchRevision)
+          && compact.timelineRevision === Number(payload.timelineRevision) && compact.deadlineAt > timestamp
+          && indexOf(compact, identity.uid) >= 0 && !await tx.get('queue', identity.uid)) {
+          const player = await loadPlayer(tx, identity)
+          return { profile: clone(player.profiles), vpRewards: { uid: identity.uid, total: vpRewardTotal(player.vpRewardTotal) },
+            queue: null, match: await viewMatch(compact, identity.uid, [], true), serverTime: now(),
+            room: null, roomResult: clone(player.roomResult ?? null) }
+        }
+      }
       if (!['status', 'rooms'].includes(action) && (action.startsWith('room') || existingPlayer?.activeRoomId)) await rooms.cleanup(tx, timestamp, existingPlayer?.activeRoomId)
       if (action === 'status' || action === 'rooms') {
         if (action === 'rooms' && payload.spectateMatchId !== undefined && !isId(payload.spectateMatchId)) fail('INVALID_SPECTATOR_MATCH', '관전할 경기 식별자가 올바르지 않습니다.')

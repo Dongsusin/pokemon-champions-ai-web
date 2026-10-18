@@ -138,6 +138,25 @@ export function createPostgresStore({
           }
           return [...rows].map(([id, value]) => ({ id, ...clone(value) }))
         },
+        async readUnchangedMatch(key, uid, revision, timelineRevision, timestamp) {
+          assertActive(); checkAddress('matches', key); checkAddress('players', uid)
+          if (!Number.isSafeInteger(revision) || revision < 0 || !Number.isSafeInteger(timelineRevision)
+            || timelineRevision < 0 || !Number.isSafeInteger(timestamp)) return null
+          // A partial snapshot must never enter reads/writes: mutations still
+          // fetch the complete row and cannot erase state or request receipts.
+          if (writes.has('matches/' + key)) return null
+          const result = await client.query(`SELECT (payload - 'state' - 'requests' - 'players')
+            || jsonb_build_object('players', (SELECT jsonb_agg(p.value - 'team' ORDER BY p.ordinality)
+              FROM jsonb_array_elements(payload->'players') WITH ORDINALITY p(value, ordinality))) AS status_match
+            FROM ${TABLE} WHERE namespace = $1 AND collection = $2 AND key = $3
+              AND payload->'players' @> jsonb_build_array(jsonb_build_object('uid', $4::text))
+              AND payload->>'roomId' IS NULL AND payload->>'phase' IN ('select','battle')
+              AND payload->'revision' = to_jsonb($5::bigint) AND payload->'timelineRevision' = to_jsonb($6::bigint)
+              AND CASE WHEN jsonb_typeof(payload->'deadlineAt') = 'number'
+                THEN (payload->>'deadlineAt')::numeric > $7::numeric ELSE false END`,
+          [namespace, 'matches', key, uid, revision, timelineRevision, timestamp])
+          return clone(result.rows[0]?.status_match ?? null)
+        },
         async readGameDataPatch(key, patch, removed, splices = {}) {
           assertActive(); checkAddress('gameData', key)
           if (writes.has(`gameData/${key}`)) throw new Error('Cannot patch a buffered game save')
