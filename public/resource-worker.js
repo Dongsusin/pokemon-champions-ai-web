@@ -29,7 +29,7 @@ async function precacheBuildGraph(cache, roots) {
     }
     await Promise.all(batch.map(async url => {
       try {
-        const response = await fetch(new Request(url, { cache: 'reload' }))
+        const response = await cache.match(url) ?? await fetch(new Request(url, { cache: 'force-cache' }))
         if (!response.ok) return
         await cache.put(url, response.clone())
         // Follow only quoted, hashed JS/CSS build references. This captures
@@ -103,22 +103,53 @@ async function handleNavigation(request) {
 // too, so both are served from the cache first. The lookup spans every cache
 // because the build bundle lives under /assets/ yet is precached with the
 // shell, and only the fill is directed at one of them.
+const pendingAssets = new Map()
 async function cacheFirst(request, cacheName) {
-  const cachedResponse = await caches.match(request, { ignoreSearch: true, ignoreVary: true })
+  const cachedResponse = await caches.match(request, { ignoreVary: true })
   if (cachedResponse) return cachedResponse
-  const networkResponse = await fetch(request)
-  if (networkResponse.ok) {
-    const cache = await caches.open(cacheName)
-    cache.put(request, networkResponse.clone()).catch(() => undefined)
+  // Concurrent audio range requests share one complete download.
+  const key = request.url
+  let pending = pendingAssets.get(key)
+  if (!pending) {
+    pending = (async () => {
+      const response = await fetch(request)
+      if (response.status === 200 && !response.headers.get('content-type')?.includes('text/html')) {
+        try { const cache = await caches.open(cacheName); await cache.put(request, response.clone()) } catch { /* Storage may be full; playback still works. */ }
+      }
+      return response
+    })()
+    pendingAssets.set(key, pending)
+    pending.finally(() => { if (pendingAssets.get(key) === pending) pendingAssets.delete(key) }).catch(() => {})
   }
-  return networkResponse
+  return (await pending).clone()
+}
+
+// Audio replays and seeking reuse a complete cached file. Only a bounded,
+// single byte range is synthesized; API and cross-origin requests bypass this.
+async function audioRange(request) {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') ?? '')
+  if (!match || (!match[1] && !match[2])) return fetch(request)
+  const headers = new Headers(request.headers)
+  headers.delete('range')
+  const whole = await cacheFirst(new Request(request.url, { headers, credentials: request.credentials }), RESOURCE_CACHE_NAME)
+  if (whole.status !== 200 || !/^(audio\/|application\/octet-stream)/i.test(whole.headers.get('content-type') ?? '')) return whole
+  const bytes = await whole.arrayBuffer(), size = bytes.byteLength
+  const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]))
+  const end = match[1] && match[2] ? Math.min(size - 1, Number(match[2])) : size - 1
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || start >= size)
+    return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + size } })
+  const responseHeaders = new Headers(whole.headers)
+  responseHeaders.delete('Content-Encoding')
+  responseHeaders.set('Content-Range', 'bytes ' + start + '-' + end + '/' + size)
+  responseHeaders.set('Content-Length', String(end - start + 1))
+  responseHeaders.set('Accept-Ranges', 'bytes')
+  return new Response(bytes.slice(start, end + 1), { status: 206, headers: responseHeaders })
 }
 
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (
     request.method !== 'GET'
-    || request.headers.has('range')
     || request.headers.get('x-champions-preload') === '1'
   ) return
 
@@ -128,7 +159,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url)
-  if (url.origin !== self.location.origin) return
+  if (url.origin !== self.location.origin || request.cache === 'no-store' || /^\/(?:api|__)(?:\/|$)/.test(url.pathname)) return
+  if (request.headers.has('range')) {
+    if (url.pathname.startsWith('/assets/') && /\.(?:ogg|mp3|wav|m4a)$/i.test(url.pathname)) event.respondWith(audioRange(request))
+    return
+  }
   // Vite emits the hashed bundle under /assets/ in production and serves the
   // entry module from the root in development, so both shapes are handled.
   const isBuildFile = /\.(?:js|mjs|css|json|webmanifest|woff2?)$/.test(url.pathname)

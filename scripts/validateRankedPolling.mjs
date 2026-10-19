@@ -52,7 +52,7 @@ test('initial hidden visit fetches once to discover a resumable session before p
   idle.polling.stop()
   const restored = setup({ hidden: true, request: async state => { state.snapshot = { queue: { expiresAt: 30000 } } } })
   await restored.advance(15000)
-  assert.deepEqual(restored.calls, [0, 5000, 10000, 15000])
+  assert.deepEqual(restored.calls, [0, 12000])
   restored.polling.stop()
 })
 
@@ -66,7 +66,7 @@ test('failed passive bootstrap waits for a manual retry rather than polling fore
   assert.deepEqual(env.calls, [0])
   env.polling.refresh()
   await env.advance(10_000)
-  assert.deepEqual(env.calls, [0, 20000, 25000, 30000])
+  assert.deepEqual(env.calls, [0, 20000])
   env.polling.stop()
 })
 
@@ -75,8 +75,8 @@ test('an unexpectedly rejected active refresh remains contained and retries', as
     if (!now) throw new Error('rejected refresh fixture')
     state.snapshot = { queue: {} }
   } })
-  await env.advance(10000)
-  assert.deepEqual(env.calls, [0, 5000, 10000])
+  await env.advance(24000)
+  assert.deepEqual(env.calls, [0, 12000, 24000])
   env.polling.stop()
 })
 
@@ -89,7 +89,7 @@ test('a join completed after hiding the lobby can wake its paused heartbeat', as
   env.state.snapshot = { queue: { expiresAt: 31000 } }
   env.polling.refresh()
   await env.advance(15000)
-  assert.deepEqual(env.calls, [0, 1000, 6000, 11000, 16000])
+  assert.deepEqual(env.calls, [0, 1000, 13000])
   env.polling.stop()
 })
 
@@ -97,10 +97,10 @@ for (const [name, snapshot] of Object.entries({
   queue: { queue: { expiresAt: 30000 } }, selection: { match: { phase: 'select', deadlineAt: 90000 } },
   battle: { match: { phase: 'battle', deadlineAt: 60000 } }, waitingRoom: { room: { phase: 'waiting', startDeadlineAt: 60000 } },
   activeRoom: { room: { phase: 'active' } }, spectator: { spectator: { phase: 'battle', deadlineAt: 60000 } },
-})) test(`hidden ${name} polls every five seconds and leaves server deadlines untouched`, async () => {
+})) test(`hidden ${name} polls every twelve seconds and leaves server deadlines untouched`, async () => {
   const original = structuredClone(snapshot), env = setup({ hidden: true, snapshot })
   await env.advance(60_000)
-  assert.deepEqual(env.calls, Array.from({ length: 13 }, (_, index) => index * 5000))
+  assert.deepEqual(env.calls, Array.from({ length: 6 }, (_, index) => index * 12000))
   assert.deepEqual(env.state.snapshot, original)
   assert(env.calls.slice(1).every((at, index) => at - env.calls[index] < 30_000), 'Queue lease renewal gap exceeded')
   env.polling.stop()
@@ -111,10 +111,10 @@ test('match completion stops automatic reads, including focus events', async () 
     if (now >= 5000) state.snapshot = { match: { phase: 'finished' } }
   } })
   await env.advance(60_000)
-  assert.deepEqual(env.calls, [0, 5000])
+  assert.deepEqual(env.calls, [0, 12000])
   env.visible(true)
   await flush()
-  assert.deepEqual(env.calls, [0, 5000])
+  assert.deepEqual(env.calls, [0, 12000])
   env.polling.stop()
 })
 
@@ -147,14 +147,14 @@ test('handled network failures retain paced retries and recover immediately on f
   } })
   env.visible(false)
   await env.advance(10000)
-  assert.equal(failed, 3)
+  assert.equal(failed, 1)
   env.visible(true)
   await flush()
-  assert.equal(failed, 4)
-  await env.advance(1499)
-  assert.equal(failed, 4)
+  assert.equal(failed, 2)
+  await env.advance(3499)
+  assert.equal(failed, 2)
   await env.advance(1)
-  assert.equal(failed, 5)
+  assert.equal(failed, 3)
   env.polling.stop()
 })
 
@@ -166,23 +166,27 @@ test('a hidden active queue resumes its heartbeat immediately when connectivity 
   assert.equal(env.timers.size,0)
   env.online()
   await env.advance(10000)
-  assert.deepEqual(env.calls,[0,2000,7000,12000])
+  assert.deepEqual(env.calls,[0,2000])
   env.polling.stop()
 })
 
-test('room lobby and operation retry intervals stay dynamic while visible', async () => {
+test('operation refresh is immediate while background retries respect the request budget', async () => {
   let busy = false, active = false
   const env = setup({ keepPolling: () => busy || active, interval: () => busy ? 500 : 1500 })
-  await env.advance(5000)
-  assert.deepEqual(env.calls, [0])
-  busy = true
-  env.polling.refresh()
-  await env.advance(1000)
-  assert.deepEqual(env.calls.slice(-3), [5000, 5500, 6000])
+  await env.advance(5000); assert.deepEqual(env.calls, [0])
+  busy = true; env.polling.refresh()
+  await env.advance(3500); assert.deepEqual(env.calls, [0,5000,8500])
   busy = false; active = true
-  await env.advance(2000)
-  assert.deepEqual(env.calls.slice(-2), [6500, 8000])
+  await env.advance(3500); assert.deepEqual(env.calls, [0,5000,8500,12000])
   env.polling.stop()
+})
+test('active and hidden hour-long polling each cut repeated reads by more than half', async () => {
+ for (const [hidden, oldInterval] of [[false,1500],[true,5000]]) {
+  const env=setup({hidden,snapshot:{queue:{}}});await env.advance(3600000);
+  assert.ok(env.calls.length < (1+3600000/oldInterval)/2);
+  assert.ok(env.calls.slice(1).every((at,i)=>at-env.calls[i]+12000<30000), 'Request timeout leaves time in queue lease');
+  env.polling.stop()
+ }
 })
 
 let passed = 0

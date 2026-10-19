@@ -1,4 +1,5 @@
-const HIDDEN_SESSION_INTERVAL = 5_000
+export const MIN_ACTIVE_POLL_INTERVAL = 3_500
+export const HIDDEN_SESSION_INTERVAL = 12_000
 
 export function hasRankedSession(snapshot) {
   return Boolean(snapshot?.queue || snapshot?.room
@@ -7,7 +8,8 @@ export function hasRankedSession(snapshot) {
 }
 
 // Polling never changes server deadlines. Hidden active sessions still renew
-// their 30-second queue lease. Idle pages read once and wait for user actions.
+// their 30-second queue lease, including the 12-second request timeout.
+// Explicit user actions still refresh immediately. Idle pages read once.
 export function startRankedPolling({ refresh, getSnapshot, visibleInterval, keepPolling = () => hasRankedSession(getSnapshot()),
   documentRef = document, windowRef = window, navigatorRef = globalThis.navigator, setTimer = setTimeout, clearTimer = clearTimeout,
 }) {
@@ -17,7 +19,7 @@ export function startRankedPolling({ refresh, getSnapshot, visibleInterval, keep
   const schedule = () => {
     clear()
     if (stopped || running || shouldPause() || !keepPolling()) return
-    const base = documentRef.hidden ? HIDDEN_SESSION_INTERVAL : visibleInterval()
+    const base = documentRef.hidden ? HIDDEN_SESSION_INTERVAL : Math.max(MIN_ACTIVE_POLL_INTERVAL, visibleInterval())
     const maximum = HIDDEN_SESSION_INTERVAL
     const interval = failures ? Math.min(maximum, base * 2 ** Math.min(failures, 4)) : base
     timer = setTimer(() => { timer = null; void run() }, interval)
