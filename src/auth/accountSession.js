@@ -103,6 +103,8 @@ export async function acquireAccountSession(user, options = {}) {
   // Never persist this ID: duplicated tabs can inherit sessionStorage.
   const ownerId = globalThis.crypto?.randomUUID?.()
     ?? `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
+  const lifecycleWindows = [windowObject]
+  try { if (windowObject?.top && windowObject.top !== windowObject && windowObject.top.location.origin === windowObject.location.origin) lifecycleWindows.push(windowObject.top) } catch {}
   const documentName = `projects/${projectId}/databases/(default)/documents/accountSessions/${user.uid}`
   const documentUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/accountSessions/${encodeURIComponent(user.uid)}`
   const commitUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents:commit`
@@ -156,7 +158,7 @@ export async function acquireAccountSession(user, options = {}) {
     try {
       // A delayed close request must never remove a replacement session.
       if (serverStorage) {
-        await request(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'sessionRelease', ownerId, version: expectedVersion }) }, { keepalive })
+        await request(apiUrl, { method: 'POST', body: JSON.stringify({ action: 'sessionRelease', ownerId, version: expectedVersion, ...(keepalive && ended ? { closing: true } : {}) }) }, { keepalive })
         return
       }
       await request(`${documentUrl}?currentDocument.updateTime=${encodeURIComponent(expectedVersion)}`, {
@@ -170,7 +172,7 @@ export async function acquireAccountSession(user, options = {}) {
   function detach() {
     clearTimeoutImpl(heartbeatTimer)
     clearTimeoutImpl(expiryTimer)
-    windowObject?.removeEventListener('pagehide', onPageHide)
+    for (const target of lifecycleWindows) { target?.removeEventListener('pagehide', onPageHide); target?.removeEventListener('beforeunload', onPageHide) }
     windowObject?.removeEventListener('offline', onOffline)
     documentObject?.removeEventListener('visibilitychange', onVisibilityChange)
   }
@@ -284,7 +286,7 @@ export async function acquireAccountSession(user, options = {}) {
     return heartbeatPromise
   }
 
-  windowObject?.addEventListener('pagehide', onPageHide)
+  for (const target of lifecycleWindows) { target?.addEventListener('pagehide', onPageHide); target?.addEventListener('beforeunload', onPageHide) }
   windowObject?.addEventListener('offline', onOffline)
   documentObject?.addEventListener('visibilitychange', onVisibilityChange)
 

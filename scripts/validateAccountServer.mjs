@@ -370,6 +370,16 @@ test('version two edits preserve exact Unicode data and protect retries, bounds 
   assert.equal((await env.call(alice, 'load')).gameData.revision, 'splice-next')
 })
 
+
+test('closing a destroyed page releases its own in-flight renewal but never a replacement owner', async () => {
+ const env = environment(); const first = await env.call(alice, 'sessionAcquire');
+ await env.call(alice, 'sessionHeartbeat', {version:first.version});
+ assert.deepEqual(await env.call(alice, 'sessionRelease', {version:first.version,closing:true}), {released:true});
+ const replacement = await env.call(alice, 'sessionAcquire', {ownerId:ownerB});
+ assert.deepEqual(await env.call(alice, 'sessionRelease', {version:first.version,closing:true}), {released:false});
+ assert.equal((await env.store.inspect()).collections.sessions[alice.uid].ownerId, replacement.ownerId);
+});
+
 for (const { name, run } of tests) {
   await run()
   console.log(`PASS ${name}`)

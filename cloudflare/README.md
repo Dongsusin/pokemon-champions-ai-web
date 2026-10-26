@@ -18,7 +18,9 @@ Arena: https://pokemon-champions-area-web.co.kr
 - Digi polls session ownership every five minutes and stops in hidden tabs.
 - Arena reloads retry an occupied lease only briefly, allowing the previous
   page's keepalive release to finish. They never reuse owner IDs or take over
-  another live device. Ordinary navigation adds no retry traffic.
+  another live device. Ordinary navigation adds no retry traffic. Embedded games
+  also observe the parent window closing; closing releases are fenced by their
+  unique owner ID, so an in-flight renewal cannot strand the destroyed page.
 
 ## Data preservation and evidence
 
@@ -35,8 +37,8 @@ Both production builds passed. Google callback, persisted Google login, existing
 Digi continue slots and Arena teams/VP were checked in Chrome. Digi production
 Worker session claim and profile read returned HTTP 200. The actual Arena
 Worker passed all 16 account-service cases including two-player battle logic.
-Focused suites: Digi 92; Arena store/Worker 17; Arena session checks 24 on
-Cloudflare, 24 on Supabase and 21 on Firestore.
+Focused suites: Digi 92; Arena store/Worker 17; Arena session checks 25 on
+Cloudflare, 25 on Supabase and 21 on Firestore.
 
 ## Retired source and recovery
 

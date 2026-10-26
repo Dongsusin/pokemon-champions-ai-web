@@ -228,7 +228,7 @@ class AccountApiServer extends FirestoreServer {
         await pending.resume.promise
       }
       const current = this.documents.get(key)
-      const released = Boolean(current && current.updateTime === body.version && current.fields.ownerId.stringValue === body.ownerId)
+      const released = Boolean(current && (body.closing === true || current.updateTime === body.version) && current.fields.ownerId.stringValue === body.ownerId)
       if (released) this.documents.delete(key)
       return jsonResponse(200, { released })
     }
@@ -578,6 +578,15 @@ if (useAccountApi) await check('reload retries stay bounded and cannot take over
   await settle(); await test.timers.advance(4000); const result = await pending;
   assert.equal(result.error.code, ACCOUNT_SESSION_ERROR_CODES.occupied); assert.equal(owner.isActive(), true);
   assert.ok(test.server.requests.filter(r => JSON.parse(r.body).action === 'sessionAcquire').length <= 5);
+});
+
+
+if (useAccountApi) await check('top-level reload closes an embedded game before its frame is destroyed', async test => {
+ const browser = new Browser(); const parent = new EventTarget(); parent.location = {origin:'https://game.test'};
+ browser.window.top=parent; browser.window.location={origin:'https://game.test'};
+ const session=await test.acquire(test.user(), browser); parent.dispatchEvent(new Event('beforeunload')); await settle();
+ assert.equal(session.isActive(),false); assert.equal(test.server.documents.size,0);
+ assert.ok(test.server.requests.some(r=>{const b=JSON.parse(r.body);return b.action==='sessionRelease'&&b.closing===true&&r.keepalive===true}));
 });
 
 console.log(`Account session validation passed (${checks.length} checks, ${useCloudflare ? 'Cloudflare account API' : useAccountApi ? 'Supabase account API' : 'Firestore'}).`)

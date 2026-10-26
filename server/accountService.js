@@ -197,7 +197,10 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         }
         if (action === 'sessionRelease') {
           const previous = await tx.get('sessions', uid)
-          if (!previous || previous.ownerId !== ownerId || previous.version !== command.version) return { released: false }
+          // A destroyed page cannot receive an in-flight heartbeat's new version.
+          // Owner IDs are fresh per window, so a close can release that same owner
+          // while every delayed close remains unable to remove a replacement.
+          if (!previous || previous.ownerId !== ownerId || (command.closing !== true && previous.version !== command.version)) return { released: false }
           tx.delete('sessions', uid)
           return { released: true }
         }
