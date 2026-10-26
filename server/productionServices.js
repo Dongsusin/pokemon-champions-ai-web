@@ -53,6 +53,7 @@ const productionModules = {
   'firebase-admin/app': () => import('firebase-admin/app'),
   'firebase-admin/auth': () => import('firebase-admin/auth'),
   'firebase-admin/firestore': () => import('firebase-admin/firestore'),
+  './cloudflareStore.js': () => import('./cloudflareStore.js'),
   './postgresStore.js': () => import('./postgresStore.js'),
 }
 async function loadProductionModule(specifier) {
@@ -62,9 +63,10 @@ async function loadProductionModule(specifier) {
 
 export async function initializeProductionServices({ env = process.env, loadModule = loadProductionModule, now = Date.now } = {}) {
   const provider = env.GAME_STORAGE_PROVIDER || 'firestore'
-  if (!['firestore', 'supabase'].includes(provider) || !env.RANKED_FIREBASE_PROJECT_ID
+  if (!['firestore', 'supabase', 'cloudflare'].includes(provider) || !env.RANKED_FIREBASE_PROJECT_ID
     || (provider === 'firestore' && !env.RANKED_FIRESTORE_PREFIX)
-    || (provider === 'supabase' && !env.DATABASE_URL)) throw configurationError()
+    || (provider === 'supabase' && !env.DATABASE_URL)
+    || (provider === 'cloudflare' && (!env.CLOUDFLARE_STORE_URL || !env.CLOUDFLARE_STORE_TOKEN))) throw configurationError()
   const [{ initializeApp, getApps, applicationDefault, cert }, { getAuth }] = await Promise.all([
     startupModule('firebase-app', loadModule('firebase-admin/app')),
     startupModule('firebase-auth', loadModule('firebase-admin/auth')),
@@ -80,7 +82,12 @@ export async function initializeProductionServices({ env = process.env, loadModu
   const app = getApps().find(candidate => candidate.name === 'ranked-server') ?? initializeApp(options, 'ranked-server')
   const auth = getAuth(app)
   let rankedStore, accountStore = null, firestore = null, pool = null
-  if (provider === 'supabase') {
+  if (provider === 'cloudflare') {
+    const { createCloudflareStore } = await startupModule('cloudflare-store', loadModule('./cloudflareStore.js'))
+    const options = { url: env.CLOUDFLARE_STORE_URL, token: env.CLOUDFLARE_STORE_TOKEN }
+    rankedStore = createCloudflareStore({ ...options, namespace: env.RANKED_FIRESTORE_PREFIX || 'ranked' })
+    accountStore = createCloudflareStore({ ...options, namespace: 'account' })
+  } else if (provider === 'supabase') {
     const { createPostgresPool, createPostgresStore } = await startupModule('postgres-store', loadModule('./postgresStore.js'))
     pool = createPostgresPool({ connectionString: env.DATABASE_URL, sslCa: env.DATABASE_SSL_CA })
     rankedStore = createPostgresStore({ pool, namespace: env.RANKED_FIRESTORE_PREFIX || 'ranked' })

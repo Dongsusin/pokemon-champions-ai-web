@@ -96,7 +96,7 @@ export function createAccountHttpHandler({ service, authenticate, allowLocalOrig
 
 let productionHandler
 export async function handleProductionAccountRequest(request) {
-  if (process.env.GAME_STORAGE_PROVIDER !== 'supabase') return unavailable()
+  if (!['supabase', 'cloudflare'].includes(process.env.GAME_STORAGE_PROVIDER)) return unavailable()
   if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, rankedStore, guestRegistry, authenticate }) => {
     if (!accountStore) throw new Error('Account storage is unavailable')
     // Most account requests are saves or lease renewals. Only load the ranked

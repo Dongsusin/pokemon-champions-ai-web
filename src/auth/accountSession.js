@@ -77,7 +77,7 @@ export async function acquireAccountSession(user, options = {}) {
     storageProvider = gameStorageProvider,
     apiUrl = accountApiUrl,
   } = options
-  const serverStorage = storageProvider === 'supabase'
+  const serverStorage = ['supabase', 'cloudflare'].includes(storageProvider)
   if (!user?.uid || (!user.isLocalGuest && ((!serverStorage && !projectId) || !fetchImpl || !user.getIdToken))) {
     throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
   }
@@ -91,6 +91,14 @@ export async function acquireAccountSession(user, options = {}) {
       throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable, cause)
     }
   }
+
+  // A reload can overtake the previous page's keepalive release. Retry only
+  // this navigation, with fresh owner IDs and the same server ownership checks.
+  let reloading = false
+  try {
+    const navigationWindow = windowObject?.top ?? windowObject
+    reloading = navigationWindow?.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'reload'
+  } catch { /* Cross-origin embedders do not opt into reload recovery. */ }
 
   // Never persist this ID: duplicated tabs can inherit sessionStorage.
   const ownerId = globalThis.crypto?.randomUUID?.()
@@ -293,7 +301,13 @@ export async function acquireAccountSession(user, options = {}) {
       if (serverStorage) {
         // One atomic server operation decides ownership and expiry. A failed
         // account API request must never fall back to the former Firestore lease.
-        await writeLease(null)
+        for (let attempt = 0; ; attempt += 1) {
+          if (ended) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.lost)
+          try { await writeLease(null); break } catch (error) {
+            if (!reloading || ended || error?.code !== ACCOUNT_SESSION_ERROR_CODES.occupied || attempt >= 3) throw error
+            await new Promise(resolve => setTimeoutImpl(resolve, [300, 900, 1800][attempt]))
+          }
+        }
       } else {
         const { response, data } = await request(documentUrl, { method: 'GET' })
         if (!response.ok && response.status !== 404) throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)

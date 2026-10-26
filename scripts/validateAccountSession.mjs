@@ -12,7 +12,8 @@ import {
 // model. Separate browser objects model devices without shared client storage.
 const epoch = Date.parse('2026-01-01T00:00:00.000Z')
 const checks = []
-const useAccountApi = process.argv.includes('--supabase')
+const useCloudflare = process.argv.includes('--cloudflare')
+const useAccountApi = useCloudflare || process.argv.includes('--supabase')
 const isReleaseRequest = request => useAccountApi
   ? JSON.parse(request.body ?? '{}').action === 'sessionRelease' : request.method === 'DELETE'
 
@@ -274,7 +275,7 @@ function fixture() {
     now: () => timers.now,
     setTimeoutImpl: timers.setTimeout,
     clearTimeoutImpl: timers.clearTimeout,
-    storageProvider: useAccountApi ? 'supabase' : 'firestore',
+    storageProvider: useCloudflare ? 'cloudflare' : useAccountApi ? 'supabase' : 'firestore',
     apiUrl: 'http://127.0.0.1:9999/api/account',
     ...extra,
   })
@@ -559,4 +560,24 @@ await check('guest deletion pauses renewals after an in-flight heartbeat and ret
   assert.equal(handle.isActive(), true)
 })
 
-console.log(`Account session validation passed (${checks.length} checks, ${useAccountApi ? 'Supabase account API' : 'Firestore'}).`)
+
+if (useAccountApi) await check('reload waits for a delayed close without reusing the old owner identity', async test => {
+  const oldBrowser = new Browser(); const old = await test.acquire(test.user(), oldBrowser);
+  const delayed = { started: deferred(), resume: deferred() }; test.server.delayedDelete = delayed;
+  oldBrowser.close(); await delayed.started.promise;
+  const reload = new Browser(); reload.window.performance = { getEntriesByType: () => [{ type: 'reload' }] };
+  const pending = test.acquire(test.user(), reload).then(value => ({value}), error => ({error}));
+  await settle(); delayed.resume.resolve(); await settle(); await test.timers.advance(4000);
+  const result = await pending; assert.equal(result.error, undefined); assert.equal(result.value.isActive(), true);
+  assert.notEqual(result.value.ownerId, old.ownerId);
+});
+if (useAccountApi) await check('reload retries stay bounded and cannot take over an active other device', async test => {
+  const owner = await test.acquire(); const reload = new Browser();
+  reload.window.performance = { getEntriesByType: () => [{ type: 'reload' }] };
+  const pending = test.acquire(test.user(), reload).then(value => ({value}), error => ({error}));
+  await settle(); await test.timers.advance(4000); const result = await pending;
+  assert.equal(result.error.code, ACCOUNT_SESSION_ERROR_CODES.occupied); assert.equal(owner.isActive(), true);
+  assert.ok(test.server.requests.filter(r => JSON.parse(r.body).action === 'sessionAcquire').length <= 5);
+});
+
+console.log(`Account session validation passed (${checks.length} checks, ${useCloudflare ? 'Cloudflare account API' : useAccountApi ? 'Supabase account API' : 'Firestore'}).`)

@@ -1,0 +1,21 @@
+{
+  "name": "champions-store",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-25",
+  "account_id": "5e01cabdbda9df9798c53b1ef0e837f5",
+  "workers_dev": true,
+  "observability": {
+    "enabled": false
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "champions-store",
+      "database_id": "f3ccf2e9-daf2-4b41-9caf-18fe46764513",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "DATA_READY": "true"
+  }
+}

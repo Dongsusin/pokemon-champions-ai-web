@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import worker from '../cloudflare/worker.mjs';
+import {sqliteD1} from '../cloudflare/test/d1-sqlite.mjs';
+const token='s'.repeat(64),schema=await readFile(new URL('../cloudflare/migrations/0001_documents.sql',import.meta.url),'utf8');
+const req=(body,headers={})=>new Request('https://test.example/internal/store',{method:'POST',headers:{Authorization:'Bearer '+token,...headers},body:JSON.stringify(body)});
+test('private store rejects unauthenticated and browser access before touching D1',async()=>{const env={STORE_TOKEN:token,DATA_READY:'true',DB:null};assert.equal((await worker.fetch(req({}, {Authorization:'Bearer invalid'}),env)).status,401);assert.equal((await worker.fetch(req({}, {Origin:'https://game.example'}),env)).status,401);});
+test('import readiness blocks writes until data is checked',async()=>{const db=sqliteD1(schema);const response=await worker.fetch(req({action:'commit',namespace:'account',id:'x',reads:[],writes:[]}),{STORE_TOKEN:token,DATA_READY:'false',DB:db});assert.equal(response.status,503);assert.equal(db.sqlite.prepare('SELECT total_changes() AS n').get().n,0);});
+test('authorized reads are private, malformed requests reveal no internals',async()=>{const env={STORE_TOKEN:token,DATA_READY:'true',DB:sqliteD1(schema)};const response=await worker.fetch(req({action:'get',namespace:'account',collection:'profiles',key:'a'}),env);assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private,no-store');assert.equal(await response.json(),null);const bad=await worker.fetch(req({action:'sql',namespace:'account',query:'SELECT secrets'}),env);assert.equal(bad.status,400);assert.deepEqual(await bad.json(),{error:'unavailable'});});
