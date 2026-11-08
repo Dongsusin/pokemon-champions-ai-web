@@ -74,3 +74,85 @@ test('saving one account uses indexed document addresses and leaves other accoun
  assert.equal((await store.transaction(tx=>tx.get('gameData','u1'))).payload.box,'edited');
  assert.equal((await store.transaction(tx=>tx.get('gameData','u99'))).payload.box,'data-99');
 });
+
+const httpOptions = { url: 'https://test.example.workers.dev/internal/store', token: 'test-token-'.repeat(5), namespace: 'account', retryDelay: async () => {}, upstreamRetryDelay: async () => {} };
+
+test('a temporary upstream 503 retries one safe read and then returns its result', async () => {
+ let attempts=0;
+ const store=createCloudflareStore({...httpOptions,fetchImpl:async()=>++attempts===1?new Response('',{status:503}):Response.json(null)});
+ assert.equal(await store.transaction(tx=>tx.get('profiles','alice')),null);
+ assert.equal(attempts,2);
+});
+
+test('upstream read retries stop after two attempts and never expose private diagnostics', async () => {
+ let attempts=0;
+ const store=createCloudflareStore({...httpOptions,fetchImpl:async()=>{attempts++;return new Response('private upstream diagnostics',{status:503})}});
+ await assert.rejects(store.countActiveSessions(1000),error=>error.code==='STORE_UNAVAILABLE'&&!error.message.includes('private'));
+ assert.equal(attempts,2);
+});
+
+test('authentication and rate limits are not retried and an ambiguous commit is never replayed', async () => {
+ for(const status of [400,401,403,413,429]){
+  let attempts=0;const store=createCloudflareStore({...httpOptions,fetchImpl:async()=>{attempts++;return new Response('',{status})}});
+  await assert.rejects(store.countActiveSessions(1000));assert.equal(attempts,1);
+ }
+ const actions=[];const store=createCloudflareStore({...httpOptions,fetchImpl:async(_url,options)=>{const body=JSON.parse(options.body);actions.push(body.action);return body.action==='get'?Response.json(null):new Response('',{status:503})}});
+ await assert.rejects(store.transaction(tx=>tx.set('profiles','alice',{name:'Alice'})));
+ assert.equal(actions.filter(x=>x==='commit').length,1);
+});
+
+test('a lost lease reply recovers after a concurrent save without changing session ownership', async () => {
+ for(const scenario of ['saved','replaced','deleted']){
+  const replaced=scenario==='replaced',deleted=scenario==='deleted';
+  const {store:seed,api,db}=fixture();
+  await seed.transaction(tx=>tx.set('sessions','alice',{ownerId:'owner-a',version:'v1',expiresAt:5000,saveSequence:7}));
+  const actions=[],leaseBodies=[];let lost=false;
+  const store=createCloudflareStore({...httpOptions,fetchImpl:async(_url,options)=>{
+   const body=JSON.parse(options.body);actions.push(body.action);if(body.action==='renewLease')leaseBodies.push(body);const value=await api(body);
+   if(body.action==='renewLease'&&!lost){lost=true;
+    db.sqlite.prepare("UPDATE documents SET version='concurrent-save',payload=json_set(payload,'$.saveSequence',8) WHERE namespace='account' AND collection='sessions' AND key='alice'").run();
+    if(replaced)db.sqlite.prepare("UPDATE documents SET payload=json_set(payload,'$.ownerId','owner-b','$.version','v3') WHERE namespace='account' AND collection='sessions' AND key='alice'").run();
+    if(deleted)await seed.transaction(tx=>tx.set('guestDeletions','deleted-alice',{yes:true}));
+    throw new TypeError('fetch failed');
+   }
+   return Response.json(value);
+  }});
+  const result=await store.renewSessionLease({uid:'alice',ownerId:'owner-a',expectedVersion:'v1',nextVersion:'v2',nowMs:1000,expiresAt:10000,guestDeletionKey:deleted?'deleted-alice':null});
+  assert.equal(actions.filter(x=>x==='renewLease').length,2);
+  assert.deepEqual(leaseBodies[0],leaseBodies[1]);
+  assert.equal(result.guestDeleted,deleted);
+  assert.deepEqual(result.session,replaced||deleted?null:{ownerId:'owner-a',version:'v2',expiresAt:10000});
+  const saved=await seed.transaction(tx=>tx.get('sessions','alice'));
+  assert.equal(saved.ownerId,replaced?'owner-b':'owner-a');assert.equal(saved.saveSequence,8);
+ }
+});
+
+test('gateway errors recover but timeouts and malformed responses stop without extra requests', async () => {
+ for(const status of [502,504]){
+  let attempts=0;
+  const store=createCloudflareStore({...httpOptions,fetchImpl:async()=>++attempts===1?new Response('',{status}):Response.json({count:4})});
+  assert.equal(await store.countActiveSessions(1000),4);assert.equal(attempts,2);
+ }
+ for(const error of [new DOMException('private timeout','TimeoutError'),new SyntaxError('private response')]){
+  let attempts=0;const store=createCloudflareStore({...httpOptions,fetchImpl:async()=>{attempts++;throw error}});
+  await assert.rejects(store.countActiveSessions(1000),failure=>failure.code==='STORE_UNAVAILABLE'&&!failure.message.includes('private'));
+  assert.equal(attempts,1);
+ }
+});
+
+test('an errored response body cannot override HTTP rejection or a confirmed commit conflict', async () => {
+ const failedBody=status=>new Response(new ReadableStream({start(controller){controller.error(new TypeError('private stream failure'))}}),{status});
+ for(const status of [400,401,403,413,429,503]){
+  let attempts=0;const store=createCloudflareStore({...httpOptions,fetchImpl:async()=>{attempts++;return failedBody(status)}});
+  await assert.rejects(store.countActiveSessions(1000),error=>error.code==='STORE_UNAVAILABLE'&&error.upstreamStatus===status);
+  assert.equal(attempts,status===503?2:1);
+ }
+ const actions=[];let commits=0;
+ const store=createCloudflareStore({...httpOptions,fetchImpl:async(_url,options)=>{
+  const {action}=JSON.parse(options.body);actions.push(action);
+  if(action==='commit'&&++commits===1)return failedBody(409);
+  return Response.json(action==='get'?null:{ok:true});
+ }});
+ await store.transaction(tx=>tx.set('profiles','alice',{name:'Alice'}));
+ assert.deepEqual(actions,['get','commit','get','commit']);
+});

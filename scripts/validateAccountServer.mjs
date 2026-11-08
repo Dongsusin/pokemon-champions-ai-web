@@ -380,6 +380,31 @@ test('closing a destroyed page releases its own in-flight renewal but never a re
  assert.equal((await env.store.inspect()).collections.sessions[alice.uid].ownerId, replacement.ownerId);
 });
 
+test('storage failure diagnostics allow only operation and status labels without private error data', async () => {
+  const logged = [], original = console.error
+  console.error = (...args) => logged.push(args)
+  try {
+    for (const [storeAction, upstreamStatus, expected] of [
+      ['get', 503, { operation: 'get', status: 503 }],
+      ['renewLease', undefined, { operation: 'renewLease', status: 'network' }],
+      ['private-account-id', 'private-token', { operation: 'unknown', status: 'network' }],
+    ]) {
+      const handler = createAccountHttpHandler({ authenticate: async () => alice,
+        service: { execute: async () => { throw Object.assign(new Error('private SQL and credential'), {
+          code: 'STORE_UNAVAILABLE', storeAction, upstreamStatus, token: 'private-token',
+        }) } } })
+      const result = await handler(new Request('https://game.example/api/account', {
+        method: 'POST', headers: { Authorization: 'Bearer valid-google-token', 'Content-Type': 'application/json' }, body: '{}',
+      }))
+      assert.equal(result.status, 503)
+      assert(!JSON.stringify(await result.json()).includes('private'))
+      assert.deepEqual(logged.at(-1), ['Account storage request failed', { code: 'STORE_UNAVAILABLE', ...expected }])
+    }
+    assert.equal(logged.length, 3)
+    assert(!JSON.stringify(logged).includes('private'))
+  } finally { console.error = original }
+})
+
 for (const { name, run } of tests) {
   await run()
   console.log(`PASS ${name}`)

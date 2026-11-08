@@ -13,6 +13,7 @@ const authRejected = new Set(['auth/argument-error', 'auth/invalid-argument', 'a
 const unavailable = (headers = {}) => response({ error: { code: 'account-session/unavailable', message: '게임 저장 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.' } }, 503, headers)
 const startupCodes = new Set(['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND', 'ERR_REQUIRE_ESM', 'ERR_PACKAGE_PATH_NOT_EXPORTED', 'ERR_REQUIRE_ASYNC_MODULE', 'ranked/configuration-incomplete', 'ranked/project-mismatch', 'app/invalid-credential'])
 const startupSteps = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'postgres-store', 'credential-json'])
+const storageOperations = new Set(['get', 'list', 'select', 'countSessions', 'countQueue', 'renewLease', 'commit'])
 
 async function readPayload(request) {
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) throw new AccountError('INVALID_CONTENT_TYPE', 'JSON 형식의 요청이 필요합니다.', 415)
@@ -89,6 +90,11 @@ export function createAccountHttpHandler({ service, authenticate, allowLocalOrig
       }
       // SDK/SQL error messages can include credentials, queries or private save
       // data. Do not include them in a browser response or server logs.
+      if (error?.code === 'STORE_UNAVAILABLE') console.error('Account storage request failed', {
+        code: 'STORE_UNAVAILABLE',
+        operation: storageOperations.has(error.storeAction) ? error.storeAction : 'unknown',
+        status: Number.isInteger(error.upstreamStatus) && error.upstreamStatus >= 400 && error.upstreamStatus <= 599 ? error.upstreamStatus : 'network',
+      })
       return unavailable(headers)
     }
   }

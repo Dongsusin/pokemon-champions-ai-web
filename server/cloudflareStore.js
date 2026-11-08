@@ -5,13 +5,42 @@ import {applyAccountSaveSplices} from '../src/auth/accountSavePatch.js';
 const clone=x=>x===undefined?undefined:structuredClone(x);
 const valid=x=>typeof x==='string'&&/^[a-zA-Z0-9_-]{1,128}$/.test(x);
 const conflict=()=>Object.assign(new Error('Concurrent document change'),{code:'STORE_CONFLICT'});
-export function createCloudflareStore({url=process.env.CLOUDFLARE_STORE_URL,token=process.env.CLOUDFLARE_STORE_TOKEN,namespace='ranked',fetchImpl=fetch,maxAttempts=4,retryDelay=attempt=>new Promise(r=>setTimeout(r,20*(attempt+1))),request:injected}={}) {
+const retryableActions=new Set(['get','list','select','countSessions','countQueue','renewLease']);
+const storeActions=new Set([...retryableActions,'commit']);
+const unavailable=(action,status)=>Object.assign(new Error('Cloudflare storage unavailable'),{
+ code:'STORE_UNAVAILABLE',storeAction:storeActions.has(action)?action:'unknown',
+ ...(Number.isInteger(status)?{upstreamStatus:status}:{}),
+});
+export function createCloudflareStore({url=process.env.CLOUDFLARE_STORE_URL,token=process.env.CLOUDFLARE_STORE_TOKEN,namespace='ranked',fetchImpl=fetch,maxAttempts=4,retryDelay=attempt=>new Promise(r=>setTimeout(r,20*(attempt+1))),request:injected,upstreamRetryDelay=()=>new Promise(r=>setTimeout(r,150))}={}) {
  if(!valid(namespace))throw TypeError('Invalid namespace');
  if(!injected){const endpoint=new URL(url);if(endpoint.username||endpoint.password||endpoint.search||endpoint.hash||endpoint.pathname!=='/internal/store'||!(endpoint.protocol==='https:'&&/^[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(endpoint.hostname))||typeof token!=='string'||token.length<32)throw TypeError('Cloudflare storage is not configured');}
  let closed=false;
- const request=injected??(async body=>{
-  const response=await fetchImpl(url,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(10000),redirect:'error',cache:'no-store'});
-  if(response.status===409)throw conflict();if(!response.ok)throw Error('Cloudflare storage unavailable');return response.json();
+ const request=injected??(async(body,onRetry=()=>{})=>{
+  // Reuse the same serialized command (including the lease ID) on a replay.
+  // A commit may already have succeeded, so it must never be replayed here.
+  const serialized=JSON.stringify(body),deadline=Date.now()+10000;
+  for(let attempt=0;attempt<2;attempt++){
+   let failure,retryable=false;
+   const remaining=deadline-Date.now();
+   if(remaining<=0)throw unavailable(body.action);
+   try{
+    const response=await fetchImpl(url,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:serialized,signal:AbortSignal.timeout(remaining),redirect:'error',cache:'no-store'});
+    if(response.ok)return await response.json();
+    // An errored body can reject cancellation; the received HTTP status wins.
+    try{await response.body?.cancel();}catch{}
+    if(response.status===409)throw conflict();
+    failure=unavailable(body.action,response.status);
+    retryable=[502,503,504].includes(response.status);
+   }catch(error){
+    if(error?.code==='STORE_CONFLICT')throw error;
+    failure=unavailable(body.action);
+    retryable=error instanceof TypeError;
+   }
+   if(attempt>0||!retryableActions.has(body.action)||!retryable)throw failure;
+   await upstreamRetryDelay();
+   if(Date.now()>=deadline)throw failure;
+   onRetry();
+  }
  });
  const check=(c,k='list')=>{if(!valid(c)||!valid(k))throw TypeError('Invalid document address');};
  async function transaction(work){
@@ -60,7 +89,20 @@ export function createCloudflareStore({url=process.env.CLOUDFLARE_STORE_URL,toke
  return {transaction,
   async countActiveSessions(timestamp){return (await request({action:'countSessions',namespace,timestamp})).count;},
   async countRankedQueue(timestamp){return request({action:'countQueue',namespace,timestamp});},
-  async renewSessionLease(args){if(closed)throw Error('Store is closed');return request({action:'renewLease',namespace,id:randomUUID(),...args});},
+  async renewSessionLease(args){
+   if(closed)throw Error('Store is closed');
+   let replayed=false;
+   const result=await request({action:'renewLease',namespace,id:randomUUID(),...args},()=>{replayed=true;});
+   if(!replayed||result.session||result.guestDeleted)return result;
+   // A save can change the document revision after a successful lease update
+   // whose reply was lost. Recover only that exact lease, under read guards.
+   return transaction(async tx=>{
+    const session=await tx.get('sessions',args.uid);
+    const guestDeleted=args.guestDeletionKey?Boolean(await tx.get('guestDeletions',args.guestDeletionKey)):false;
+    const owned=!guestDeleted&&session?.ownerId===args.ownerId&&session.version===args.nextVersion&&session.expiresAt===args.expiresAt;
+    return {guestDeleted,session:owned?{ownerId:session.ownerId,version:session.version,expiresAt:session.expiresAt}:null};
+   });
+  },
   async close(){closed=true;}
  };
 }
