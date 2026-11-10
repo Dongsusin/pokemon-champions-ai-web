@@ -43,6 +43,37 @@ test('single reads and identical updates avoid validation requests and database 
  assert.equal(calls.length,1);assert.equal(calls[0].action,'get');assert.equal(db.sqlite.prepare('SELECT total_changes() AS n').get().n,before);
 });
 
+test('successful transactions spend writes only on durable documents and collection versions',async()=>{
+ const {store,db}=fixture();
+ const before=db.sqlite.prepare('SELECT total_changes() AS n').get().n;
+ for(const name of ['first','second','third'])await store.transaction(tx=>tx.set('profiles','alice',{name}));
+ // Three document updates plus three collection-version updates. The guard
+ // must validate every batch without inserting and then deleting a receipt.
+ assert.equal(db.sqlite.prepare('SELECT total_changes() AS n').get().n-before,6);
+ assert.equal((await store.transaction(tx=>tx.get('profiles','alice'))).name,'third');
+ assert.equal(db.sqlite.prepare('SELECT count(*) AS n FROM transaction_guard').get().n,0);
+});
+
+test('a stale document or collection witness aborts all writes with the zero-write guard',async()=>{
+ const {store,api,db}=fixture();
+ await store.transaction(tx=>tx.set('profiles','alice',{name:'original'}));
+ const snapshot=await api({action:'get',namespace:'account',collection:'profiles',key:'alice'});
+ const listed=await api({action:'list',namespace:'account',collection:'profiles'});
+ await store.transaction(tx=>tx.set('profiles','alice',{name:'newer'}));
+ for(const witness of [
+  {collection:'profiles',key:'alice',version:snapshot.version},
+  {collection:'profiles',key:'',version:listed.version,list:true},
+ ]){
+  await assert.rejects(api({action:'commit',namespace:'account',id:'stale-guard',reads:[witness],writes:[
+   {collection:'profiles',key:'alice',value:{name:'stale'}},
+   {collection:'profiles',key:'bob',value:{name:'must-not-appear'}},
+  ]}),{code:'STORE_CONFLICT'});
+  assert.equal((await store.transaction(tx=>tx.get('profiles','alice'))).name,'newer');
+  assert.equal(await store.transaction(tx=>tx.get('profiles','bob')),null);
+ }
+ assert.equal(db.sqlite.prepare('SELECT count(*) AS n FROM transaction_guard').get().n,0);
+});
+
 test('valid near-2MiB incompressible saves use bounded rows and smaller replacements remove overflow',async()=>{
  const {randomBytes}=await import('node:crypto');const {store,db}=fixture();const value=randomBytes(1560000).toString('base64');
  await store.transaction(tx=>tx.set('gameData','big',{revision:'one',payload:{box:value}}));

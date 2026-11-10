@@ -70,7 +70,9 @@ export function createD1DocumentApi(db){
   const addresses=JSON.stringify(flattened.map(({collection,key,slot})=>({collection,key,slot})));
   const headBatches=jsonBatches(heads),partBatches=jsonBatches(parts);
   const batch=[
-   q('INSERT INTO transaction_guard(id,valid) SELECT ?,CASE WHEN '+witnessesSql+' THEN 1 ELSE 0 END',body.id,witnesses,ns,ns),
+   // A stale witness still fails CHECK(valid=1) and rolls back the whole batch.
+   // Valid batches insert no guard row, avoiding an insert/delete on every save.
+   q('INSERT INTO transaction_guard(id,valid) SELECT ?,0 WHERE NOT ('+witnessesSql+')',body.id,witnesses,ns,ns),
    q("DELETE FROM document_slot_overflow WHERE namespace=? AND (collection,key) IN (SELECT json_extract(value,'$.collection'),json_extract(value,'$.key') FROM json_each(?)) AND (EXISTS(SELECT 1 FROM json_each(?) w WHERE json_extract(w.value,'$.collection')=document_slot_overflow.collection AND json_extract(w.value,'$.key')=document_slot_overflow.key AND (json_extract(w.value,'$.deleted')=1 OR json_extract(w.value,'$.replaceSlots')=1 OR document_slot_overflow.slot IN (SELECT value FROM json_each(w.value,'$.removedSlots')))) OR EXISTS(SELECT 1 FROM json_each(?) w WHERE json_extract(w.value,'$.collection')=document_slot_overflow.collection AND json_extract(w.value,'$.key')=document_slot_overflow.key AND json_extract(w.value,'$.slot')=document_slot_overflow.slot))",ns,changes,changes,addresses),
    q("DELETE FROM document_slots WHERE namespace=? AND (collection,key) IN (SELECT json_extract(value,'$.collection'),json_extract(value,'$.key') FROM json_each(?)) AND EXISTS(SELECT 1 FROM json_each(?) w WHERE json_extract(w.value,'$.collection')=document_slots.collection AND json_extract(w.value,'$.key')=document_slots.key AND (json_extract(w.value,'$.deleted')=1 OR json_extract(w.value,'$.replaceSlots')=1 OR document_slots.slot IN (SELECT value FROM json_each(w.value,'$.removedSlots'))))",ns,changes,changes),
    q("INSERT INTO documents(namespace,collection,key,version,payload) SELECT ?,json_extract(value,'$.collection'),json_extract(value,'$.key'),?,json_extract(value,'$.value') FROM json_each(?) WHERE COALESCE(json_extract(value,'$.deleted'),0)=0 ON CONFLICT(namespace,collection,key) DO UPDATE SET version=excluded.version,payload=excluded.payload",ns,body.id,changes),
@@ -78,7 +80,6 @@ export function createD1DocumentApi(db){
    ...headBatches.map(compressed=>q("INSERT INTO document_slots(namespace,collection,key,slot,data,hash,bytes) SELECT ?,json_extract(value,'$.collection'),json_extract(value,'$.key'),json_extract(value,'$.slot'),json_extract(value,'$.data'),json_extract(value,'$.hash'),json_extract(value,'$.bytes') FROM json_each(?) WHERE 1 ON CONFLICT(namespace,collection,key,slot) DO UPDATE SET data=excluded.data,hash=excluded.hash,bytes=excluded.bytes WHERE document_slots.hash<>excluded.hash",ns,compressed)),
    ...partBatches.map(partial=>q("INSERT INTO document_slot_overflow(namespace,collection,key,slot,part,data) SELECT ?,json_extract(value,'$.collection'),json_extract(value,'$.key'),json_extract(value,'$.slot'),json_extract(value,'$.part'),json_extract(value,'$.data') FROM json_each(?)",ns,partial)),
    q("INSERT INTO collection_versions(namespace,collection,version) SELECT ?,json_extract(value,'$.collection'),? FROM json_each(?) WHERE 1 GROUP BY json_extract(value,'$.collection') ON CONFLICT(namespace,collection) DO UPDATE SET version=excluded.version",ns,body.id,changes),
-   q('DELETE FROM transaction_guard WHERE id=?',body.id),
   ];
   try{await db.batch(batch);}catch(e){if(/CHECK constraint failed.*valid|CHECK constraint failed: valid=1/.test(e.message))error('STORE_CONFLICT');throw e;}
   return {ok:true};

@@ -138,10 +138,10 @@ function authErrorMessage(error) {
     return '다른 창이나 기기에서 이미 접속 중입니다. 접속 중인 창을 닫거나 로그아웃한 뒤 다시 시도해주세요.'
   }
   if (error?.code === ACCOUNT_SESSION_ERROR_CODES.lost) {
-    return '접속 상태를 확인할 수 없어 게임을 일시 중단했습니다. 인터넷 연결을 확인한 뒤 다시 로그인해주세요.'
+    return '로그인 세션이 만료되거나 다른 창에서 접속이 변경됐습니다. 저장 기록을 보호하기 위해 게임을 일시 중단했습니다. 다시 로그인해주세요.'
   }
   if (error?.code === ACCOUNT_SESSION_ERROR_CODES.unavailable) {
-    return '접속 상태를 확인하지 못했습니다. 인터넷 연결을 확인한 뒤 잠시 후 다시 시도해주세요.'
+    return '게임 서버에서 접속 상태를 확인하지 못했습니다. 서버 연결이 일시적으로 지연될 수 있습니다. 잠시 후 다시 시도해주세요.'
   }
   if (error?.code?.startsWith('guest/') || error?.code === 'GUEST_NAMES_EXHAUSTED') return error.message
   return AUTH_ERROR_MESSAGES[error?.code] ?? '로그인 중 오류가 발생했습니다. 연결을 확인한 뒤 다시 시도해주세요.'
