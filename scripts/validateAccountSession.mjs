@@ -334,6 +334,21 @@ await check('hiding a window keeps the owner and blocks concurrent login', async
   await assert.rejects(test.acquire(), { code: ACCOUNT_SESSION_ERROR_CODES.occupied })
 })
 
+await check('returning to a recently renewed tab does not send another heartbeat', async (test) => {
+  const browser = new Browser()
+  const session = await test.acquire(test.user(), browser)
+  const originalRequests = test.server.requests.length
+  for (let index = 0; index < 3; index += 1) {
+    browser.hide()
+    browser.show()
+    await settle()
+  }
+  assert.equal(test.server.requests.length, originalRequests)
+  await test.timers.advance(ACCOUNT_SESSION_HEARTBEAT_MS)
+  assert.equal(test.server.requests.length, originalRequests + 1)
+  assert.equal(session.isActive(), true)
+})
+
 await check('heartbeat extends ownership while the window remains active', async (test) => {
   const first = await test.acquire()
   await test.timers.advance(ACCOUNT_SESSION_HEARTBEAT_MS)
@@ -453,8 +468,7 @@ await check('closing during heartbeat cleans up its late updated document versio
   const owner = await test.acquire(test.user(), browser)
   const pending = { started: deferred(), resume: deferred() }
   test.server.delayedCommitResponse = pending
-  // Showing the visible page asks the client to verify its current lease.
-  browser.show()
+  await test.timers.advance(ACCOUNT_SESSION_HEARTBEAT_MS)
   await pending.started.promise
   browser.close()
   pending.resume.resolve()
@@ -543,7 +557,7 @@ await check('guest deletion pauses renewals after an in-flight heartbeat and ret
   const handle = await test.acquire(guest, browser)
   const pending = { started: deferred(), resume: deferred() }
   test.server.delayedCommitResponse = pending
-  browser.show()
+  await test.timers.advance(ACCOUNT_SESSION_HEARTBEAT_MS)
   await pending.started.promise
   let done = false
   const pausing = handle.pauseForGuestDeletion().then(result => { done = true; return result })

@@ -42,6 +42,38 @@ test('concurrent windows admit only one lease and an identical acquire retry is 
   assert.deepEqual(await env.store.inspect(), before)
 })
 
+test('a verified local save omits the payload after checking the active owner', async () => {
+  const env = environment()
+  await env.call(alice, 'sessionAcquire')
+  const payload = { 'champions-vp-v1': '45000' }
+  await env.call(alice, 'save', { revision: 'save-local-match', payload })
+  let projections = 0
+  const transaction = env.store.transaction.bind(env.store)
+  env.store.transaction = work => transaction(tx => work({
+    ...tx,
+    async readGameDataForLoad(uid, revision, fingerprint) {
+      projections += 1
+      assert.equal(uid, alice.uid)
+      assert.equal(revision, 'save-local-match')
+      const saved = await tx.get('gameData', uid)
+      if (fingerprint !== 'a'.repeat(64)) return { saved, matches: false }
+      const { payload, ...metadata } = saved
+      return { saved: metadata, matches: true }
+    },
+  }))
+  const cache = { knownRevision: 'save-local-match', knownPayloadHash: 'a'.repeat(64), patchVersion: 2 }
+  await rejectCode(env.call(alice, 'load', { ...cache, ownerId: ownerB }), 'account-session/lost')
+  assert.equal(projections, 0)
+  const unchanged = await env.call(alice, 'load', cache)
+  assert.equal(unchanged.localPayloadVerified, true)
+  assert.equal(unchanged.gameData.revision, cache.knownRevision)
+  assert.equal(Object.hasOwn(unchanged.gameData, 'payload'), false)
+  assert.equal(unchanged.savePatchVersion, 2)
+  const changed = await env.call(alice, 'load', { ...cache, knownPayloadHash: 'b'.repeat(64) })
+  assert.deepEqual(changed.gameData.payload, payload)
+  assert.equal(changed.localPayloadVerified, undefined)
+})
+
 test('heartbeat rotates version, stale release cannot remove a renewed or replacement session', async () => {
   const env = environment()
   const first = await env.call(alice, 'sessionAcquire')

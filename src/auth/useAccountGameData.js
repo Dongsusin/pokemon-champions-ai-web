@@ -149,7 +149,10 @@ export function useAccountGameData(user) {
         const migration = !pendingMigration?.targetUid || pendingMigration.targetUid === userId
           ? pendingMigration : null
         const localPayload = readLocalPlayerData()
-        const cloudData = await loadPlayerGameData(userId)
+        const localCopy = syncState?.ownerUid === userId && !syncState.dirty && syncState.revision
+          ? { revision: syncState.revision, payload: localPayload }
+          : undefined
+        const cloudData = await loadPlayerGameData(userId, localCopy)
         if (!isCurrent()) return
 
         if (cloudData) {

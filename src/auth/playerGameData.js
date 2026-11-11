@@ -8,7 +8,7 @@ import { firebaseAuth, firebaseDb } from './firebaseClient'
 import { getActiveAccountSessionOwnerId } from './accountSession'
 import { isServerGameStorage } from './gameStorageConfig.js'
 import { AccountRequestError, createAccountApiClient } from './accountApiClient.js'
-import { createAccountSavePatch } from './accountSavePatch.js'
+import { createAccountSavePatch, fingerprintAccountPayload } from './accountSavePatch.js'
 
 const GAME_DATA_SCHEMA_VERSION = 1
 const accountSaveSequences = new Map()
@@ -80,12 +80,24 @@ function validateServerGameData(data) {
   return data
 }
 
-export async function loadPlayerGameData(userId) {
+export async function loadPlayerGameData(userId, localCopy) {
   if (isServerGameStorage) {
     const ownerId = requireAccountSessionOwner(userId)
     saveBaseline = null
-    const result = await createPlayerAccountClient(userId).request('load', { ownerId, patchVersion: 2 })
-    const data = validateServerGameData(result.gameData)
+    const knownPayloadHash = localCopy?.revision
+      ? await fingerprintAccountPayload(localCopy.payload).catch(() => null) : null
+    const result = await createPlayerAccountClient(userId).request('load', {
+      ownerId, patchVersion: 2,
+      ...(knownPayloadHash ? { knownRevision: localCopy.revision, knownPayloadHash } : {}),
+    })
+    let remote = result.gameData
+    if (result.localPayloadVerified === true) {
+      if (!knownPayloadHash || remote?.revision !== localCopy.revision) {
+        throw new AccountRequestError('서버 저장 기록을 확인하지 못했습니다.', 'account/invalid-response')
+      }
+      remote = { ...remote, payload: localCopy.payload }
+    }
+    const data = validateServerGameData(remote)
     if ([1, 2].includes(result.savePatchVersion) && getActiveAccountSessionOwnerId(userId) === ownerId) {
       saveBaseline = { userId, ownerId, revision: data?.revision ?? null, patchVersion: result.savePatchVersion, payload: { ...data?.payload } }
     }

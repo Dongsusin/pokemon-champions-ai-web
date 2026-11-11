@@ -114,6 +114,7 @@ export async function acquireAccountSession(user, options = {}) {
   let token = ''
   let version = null
   let deadline = 0
+  let nextHeartbeatAt = 0
   let heartbeatTimer = null
   let expiryTimer = null
   let heartbeatPromise = null
@@ -212,11 +213,12 @@ export async function acquireAccountSession(user, options = {}) {
   function onVisibilityChange() {
     if (documentObject?.visibilityState !== 'visible' || ended || !admitted || user.isLocalGuest) return
     if (now() >= deadline) lose(ACCOUNT_SESSION_ERROR_CODES.lost)
-    else void heartbeat()
+    else if (now() >= nextHeartbeatAt) void heartbeat()
   }
 
   function scheduleLeaseChecks(requestStartedAt) {
     deadline = requestStartedAt + ACCOUNT_SESSION_LEASE_MS - LEASE_SAFETY_MS
+    nextHeartbeatAt = now() + ACCOUNT_SESSION_HEARTBEAT_MS
     clearTimeoutImpl(heartbeatTimer)
     clearTimeoutImpl(expiryTimer)
     expiryTimer = setTimeoutImpl(() => lose(ACCOUNT_SESSION_ERROR_CODES.lost), Math.max(0, deadline - now()))

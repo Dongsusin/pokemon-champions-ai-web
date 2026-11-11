@@ -157,6 +157,26 @@ export function createPostgresStore({
           [namespace, 'matches', key, uid, revision, timelineRevision, timestamp])
           return clone(result.rows[0]?.status_match ?? null)
         },
+        async readGameDataForLoad(key, revision, fingerprint) {
+          assertActive(); checkAddress('gameData', key)
+          // Match the exact UTF-8 bytes of each saved string without sending the
+          // collection back to Vercel when this device already has it.
+          const result = await client.query(`WITH checked AS MATERIALIZED (
+            SELECT payload, CASE WHEN payload->>'revision' = $4
+              AND jsonb_typeof(payload->'payload') = 'object' THEN (
+                SELECT COALESCE(bool_and(jsonb_typeof(value) = 'string'), true)
+                  AND encode(sha256(convert_to(COALESCE(string_agg(
+                    octet_length(key)::text || ':' || key ||
+                    octet_length(value #>> '{}')::text || ':' || (value #>> '{}'),
+                    '' ORDER BY key COLLATE "C"), ''), 'UTF8')), 'hex') = $5
+                FROM jsonb_each(payload->'payload')
+              ) ELSE false END AS matches
+            FROM ${TABLE} WHERE namespace = $1 AND collection = $2 AND key = $3
+          ) SELECT CASE WHEN matches THEN payload - 'payload' ELSE payload END AS saved, matches FROM checked`,
+          [namespace, 'gameData', key, revision, fingerprint])
+          const row = result.rows[0]
+          return { saved: row?.saved ?? null, matches: row?.matches === true }
+        },
         async readGameDataPatch(key, patch, removed, splices = {}) {
           assertActive(); checkAddress('gameData', key)
           if (writes.has(`gameData/${key}`)) throw new Error('Cannot patch a buffered game save')

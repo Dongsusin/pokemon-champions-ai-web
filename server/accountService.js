@@ -213,8 +213,16 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
         }
         if (action === 'onlinePlayers') return {}
         if (action === 'load') {
-          const saved = await tx.get('gameData', uid)
-          return { gameData: saved ? { schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs, payload: clone(saved.payload) } : null,
+          const known = validVersion(command.knownRevision)
+            && typeof command.knownPayloadHash === 'string' && /^[a-f0-9]{64}$/.test(command.knownPayloadHash)
+          const { saved, matches } = known && typeof tx.readGameDataForLoad === 'function'
+            ? await tx.readGameDataForLoad(uid, command.knownRevision, command.knownPayloadHash)
+            : { saved: await tx.get('gameData', uid), matches: false }
+          const gameData = saved ? {
+            schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs,
+            ...(matches ? {} : { payload: clone(saved.payload) }),
+          } : null
+          return { gameData, ...(matches ? { localPayloadVerified: true } : {}),
             ...([1, 2].includes(command.patchVersion) ? { savePatchVersion: command.patchVersion } : {}) }
         }
         if (action === 'save') {

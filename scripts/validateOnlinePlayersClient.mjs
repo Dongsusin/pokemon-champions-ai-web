@@ -64,15 +64,21 @@ function sessionFixture() {
       if (wait) await wait()
       return Response.json(body)
     } }
-  return { user, options, windowObject, documentObject, timers, setSample: value => { nextCount = value }, delay: wait => { afterResponse = wait }, releases: () => releaseCalls }
+  function runHeartbeat() {
+    const entry = [...timers].find(([, timer]) => timer.delay === 60_000)
+    assert.ok(entry, 'a scheduled heartbeat is required')
+    timers.delete(entry[0])
+    entry[1].fn()
+  }
+  return { user, options, windowObject, documentObject, timers, runHeartbeat, setSample: value => { nextCount = value }, delay: wait => { afterResponse = wait }, releases: () => releaseCalls }
 }
 await test('actual lease acquisition populates cache before UI mount; renewal and offline invalidate it', async () => {
   const fixture = sessionFixture(); const handle = await acquireAccountSession(fixture.user, fixture.options)
   try {
     assert.equal(getOnlinePlayersSnapshot().count, 12)
-    fixture.setSample(sample(22)); fixture.documentObject.dispatchEvent(new Event('visibilitychange')); await flush()
+    fixture.setSample(sample(22)); fixture.runHeartbeat(); await flush()
     assert.equal(getOnlinePlayersSnapshot().count, 22)
-    fixture.setSample(null); fixture.documentObject.dispatchEvent(new Event('visibilitychange')); await flush()
+    fixture.setSample(null); fixture.runHeartbeat(); await flush()
     assert.equal(handle.isActive(), true); assert.equal(getOnlinePlayersSnapshot().count, null)
     fixture.windowObject.dispatchEvent(new Event('offline'))
     assert.equal(getOnlinePlayersSnapshot(), null); assert.equal(handle.isActive(), false)
@@ -84,7 +90,7 @@ await test('late heartbeat after page close cannot republish old count', async (
   let resume
   const pending = new Promise(resolve => { resume = resolve })
   fixture.delay(() => pending); fixture.setSample(sample(99))
-  fixture.documentObject.dispatchEvent(new Event('visibilitychange')); await flush()
+  fixture.runHeartbeat(); await flush()
   fixture.windowObject.dispatchEvent(new Event('pagehide')); assert.equal(getOnlinePlayersSnapshot(), null)
   resume(); await flush(); assert.equal(getOnlinePlayersSnapshot(), null)
   assert.equal(handle.isActive(), false); await handle.release(); assert.equal(fixture.timers.size, 0)

@@ -32,3 +32,18 @@ export function applyAccountSaveSplices(payload, splices) {
   }
   return result
 }
+
+export async function fingerprintAccountPayload(payload) {
+  if (!globalThis.crypto?.subtle) return null
+  const encoder = new TextEncoder()
+  const parts = []
+  const unpairedSurrogate = /[\uD800-\uDFFF]/u
+  for (const key of Object.keys(payload).sort()) {
+    const value = payload[key]
+    if (typeof value !== 'string' || unpairedSurrogate.test(key) || unpairedSurrogate.test(value)) return null
+    parts.push(`${encoder.encode(key).length}:${key}${encoder.encode(value).length}:${value}`)
+  }
+  const text = parts.join('')
+  const bytes = await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(text))
+  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+}

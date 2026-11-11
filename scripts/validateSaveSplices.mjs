@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { gzipSync } from 'node:zlib'
-import { createAccountSavePatch } from '../src/auth/accountSavePatch.js'
+import { createAccountSavePatch, fingerprintAccountPayload } from '../src/auth/accountSavePatch.js'
 
 const tests = []
 const test = (name, run) => tests.push({ name, run })
@@ -62,6 +62,15 @@ test('a server negotiating version one continues receiving the complete changed 
   const delta = createAccountSavePatch(previous, next)
   assert.equal(delta.splices, undefined)
   assert.equal(delta.patch[key], next[key])
+})
+
+test('fingerprints preserve UTF-8 contents and decline malformed local strings', async () => {
+  const first = { 'champions-vp-v1': '15000', [key]: '피카츄😀' }
+  assert.equal(await fingerprintAccountPayload(first),
+    await fingerprintAccountPayload({ [key]: '피카츄😀', 'champions-vp-v1': '15000' }))
+  assert.notEqual(await fingerprintAccountPayload(first), await fingerprintAccountPayload({ ...first, [key]: '피카츄' }))
+  assert.equal(await fingerprintAccountPayload({ [key]: '\ud800' }), null)
+  assert.match(await fingerprintAccountPayload({ [key]: '\ufffd' }), /^[a-f0-9]{64}$/)
 })
 
 let failed = 0

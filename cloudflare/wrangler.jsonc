@@ -16,6 +16,6 @@
     }
   ],
   "vars": {
-    "DATA_READY": "true"
+    "DATA_READY": "false"
   }
 }

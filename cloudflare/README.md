@@ -4,7 +4,28 @@ Both games switched from Supabase to free Cloudflare Workers + D1 on 2026-10-26.
 DigiRogue: https://digirouge.co.kr
 Arena: https://pokemon-champions-area-web.co.kr
 
-## Active architecture
+## Current production storage (2026-11-11)
+
+Arena uses its dedicated Supabase Free PostgreSQL project through the existing
+Vercel account and ranked services. Production uses GAME_STORAGE_PROVIDER=supabase
+and VITE_GAME_STORAGE_PROVIDER=supabase. The dedicated server role is restricted
+to the private champions schema with forced row level security on documents.
+
+The last D1 export matched the verified copy byte for byte. All 27,955
+documents and 18,376 save slots were reconciled. The retired D1 Worker has
+DATA_READY=false and the database is write fenced. The October Supabase table
+remains a private archive. Restoring the retired D1 copy would require
+reconciling newer PostgreSQL writes first.
+
+DigiRogue has its own Cloudflare account and D1 database. Arena storage
+requests use PostgreSQL directly from the Vercel server.
+
+The client skips duplicate tab-return lease renewals. PostgreSQL returns save
+metadata alone when the active account session supplies the current revision
+and the exact fingerprint of its local save. A stale or incomplete local save
+uses the normal complete load.
+
+## October migration architecture
 
 - Digi Google progress is cloud-only; guests keep local saves. Firebase Auth,
   player presence and Hall remain separate. Game assets stay on Vercel.
