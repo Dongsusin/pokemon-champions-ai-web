@@ -77,7 +77,7 @@ export async function acquireAccountSession(user, options = {}) {
     storageProvider = gameStorageProvider,
     apiUrl = accountApiUrl,
   } = options
-  const serverStorage = ['supabase', 'cloudflare'].includes(storageProvider)
+  const serverStorage = ['supabase', 'cloudflare', 'turso'].includes(storageProvider)
   if (!user?.uid || (!user.isLocalGuest && ((!serverStorage && !projectId) || !fetchImpl || !user.getIdToken))) {
     throw sessionError(ACCOUNT_SESSION_ERROR_CODES.unavailable)
   }

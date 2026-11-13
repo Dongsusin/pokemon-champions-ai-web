@@ -6,9 +6,9 @@ import {
 } from 'firebase/firestore'
 import { firebaseAuth, firebaseDb } from './firebaseClient'
 import { getActiveAccountSessionOwnerId } from './accountSession'
-import { isServerGameStorage } from './gameStorageConfig.js'
+import { gameStorageProvider, isServerGameStorage } from './gameStorageConfig.js'
 import { AccountRequestError, createAccountApiClient } from './accountApiClient.js'
-import { createAccountSavePatch, fingerprintAccountPayload } from './accountSavePatch.js'
+import { createAccountSavePatch, fingerprintAccountPayload, fingerprintAccountSlots } from './accountSavePatch.js'
 
 const GAME_DATA_SCHEMA_VERSION = 1
 const accountSaveSequences = new Map()
@@ -84,11 +84,13 @@ export async function loadPlayerGameData(userId, localCopy) {
   if (isServerGameStorage) {
     const ownerId = requireAccountSessionOwner(userId)
     saveBaseline = null
+    const slotHash = gameStorageProvider === 'turso' || gameStorageProvider === 'cloudflare'
+    const fingerprint = slotHash ? fingerprintAccountSlots : fingerprintAccountPayload
     const knownPayloadHash = localCopy?.revision
-      ? await fingerprintAccountPayload(localCopy.payload).catch(() => null) : null
+      ? await fingerprint(localCopy.payload).catch(() => null) : null
     const result = await createPlayerAccountClient(userId).request('load', {
       ownerId, patchVersion: 2,
-      ...(knownPayloadHash ? { knownRevision: localCopy.revision, knownPayloadHash } : {}),
+      ...(knownPayloadHash ? { knownRevision: localCopy.revision, knownPayloadHash, ...(slotHash ? { knownHashMode: 'slots-v1' } : {}) } : {}),
     })
     let remote = result.gameData
     if (result.localPayloadVerified === true) {

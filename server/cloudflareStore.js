@@ -48,7 +48,7 @@ export function createCloudflareStore({url=process.env.CLOUDFLARE_STORE_URL,toke
   for(let attempt=0;attempt<maxAttempts;attempt++){
    const witnesses=new Map(),reads=new Map(),writes=new Map(),lists=new Map(),patches=new Map();let active=true;
    const assert=()=>{if(!active)throw Error('Document transaction has ended');};
-   const observe=(c,key,version,list=false)=>{const address=(list?'list:':'get:')+c+'/'+key;const old=witnesses.get(address);if(old&&old.version!==version)throw conflict();witnesses.set(address,{collection:c,key,version:version??'',list});};
+   const observe=(c,key,version,list=false)=>{const address=(list?'list:':'get:')+c+'/'+key;const expected=version??'';const old=witnesses.get(address);if(old&&old.version!==expected)throw conflict();witnesses.set(address,{collection:c,key,version:expected,list});};
    const read=async(c,key,options={})=>{assert();check(c,key);const row=await request({action:'get',namespace,collection:c,key,...options});observe(c,key,row?.version);return row;};
    const select=async(c,projection,owner)=>{
     assert();if([...writes.values()].some(w=>w.collection===c))return null;
@@ -63,6 +63,14 @@ export function createCloudflareStore({url=process.env.CLOUDFLARE_STORE_URL,toke
     set(c,key,value){assert();check(c,key);if(JSON.stringify(value)===undefined||Buffer.byteLength(JSON.stringify(value))>8*1024*1024)throw TypeError('Document size limit');writes.set(c+'/'+key,{collection:c,key,...packDocument(c,clone(value)),original:clone(value)});},
     delete(c,key){assert();check(c,key);writes.set(c+'/'+key,{collection:c,key,deleted:true});},
     async readUnchangedMatch(key,uid,revision,timelineRevision,timestamp){assert();check('matches',key);if(writes.has('matches/'+key))return null;const row=await read('matches',key,{projection:'unchangedMatch',uid,revision,timelineRevision,timestamp});return row?.value??null;},
+    async readGameDataForLoad(key, revision, fingerprint, mode) {
+      if (mode !== 'slots-v1' || writes.has('gameData/'+key)) return { saved: await view.get('gameData', key), matches: false };
+      const row = await read('gameData', key, { metadataOnly: true });
+      if (!row) return { saved: null, matches: false };
+      const slots = row.slots.map(({slot, hash}) => [slot, hash]).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+      const matches = row.value.revision === revision && hashValue(slots) === fingerprint;
+      return { saved: matches ? row.value : await view.get('gameData', key), matches };
+    },
     async compareGameData(key,payload){assert();if(writes.has('gameData/'+key)){const saved=await view.get('gameData',key);return saved?{revision:saved.revision,payloadMatches:isDeepStrictEqual(saved.payload,payload)}:null;}const row=await read('gameData',key,{metadataOnly:true});if(!row)return null;const matches=row.slots.length===Object.keys(payload).length&&row.slots.every(s=>Object.hasOwn(payload,s.slot)&&hashValue(payload[s.slot])===s.hash);return {revision:row.value.revision,payloadMatches:matches};},
     async readGameDataPatch(key,patch,removed,splices={}){assert();if(writes.has('gameData/'+key))throw Error('Cannot patch buffered save');const row=await read('gameData',key,{slotKeys:Object.keys(splices)});if(!row)return null;
      let validSplices=true,edited={...patch};try{const sources=Object.fromEntries(row.slots.filter(s=>Object.hasOwn(splices,s.slot)).map(s=>[s.slot,decodeSlot(s)]));edited={...patch,...applyAccountSaveSplices(sources,splices)};}catch{validSplices=false;}

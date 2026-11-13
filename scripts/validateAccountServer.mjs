@@ -330,6 +330,41 @@ test('Supabase startup shares one pool, retains Firebase revoked-token verificat
   assert(!loaded.includes('firebase-admin/firestore'))
 })
 
+
+test('Turso startup keeps both namespaces on a single private client and closes it', async () => {
+  const namespaces = []
+  let closes = 0
+  const client = { close() { closes++ } }
+  const env = { GAME_STORAGE_PROVIDER: 'turso', TURSO_DATABASE_URL: 'libsql://arena-test.turso.io',
+    TURSO_AUTH_TOKEN: 'test-server-token', RANKED_FIREBASE_PROJECT_ID: 'account-validation' }
+  const modules = {
+    'firebase-admin/app': { initializeApp: () => ({}), getApps: () => [], applicationDefault: () => ({}) },
+    'firebase-admin/auth': { getAuth: () => ({}) },
+    './tursoStore.js': {
+      createTursoClient(options) {
+        assert.equal(options.url, env.TURSO_DATABASE_URL)
+        assert.equal(options.authToken, env.TURSO_AUTH_TOKEN)
+        return client
+      },
+      createTursoStore(options) {
+        assert.equal(options.client, client)
+        namespaces.push(options.namespace)
+        return createMemoryRankedStore()
+      },
+    },
+  }
+  const loadModule = async name => {
+    assert.ok(Object.hasOwn(modules, name), 'Unexpected provider fallback: ' + name)
+    return modules[name]
+  }
+  const service = await initializeProductionServices({ env, loadModule })
+  assert.equal(service.provider, 'turso')
+  assert.deepEqual(namespaces, ['ranked', 'account'])
+  await service.close()
+  assert.equal(closes, 1)
+  await rejectCode(initializeProductionServices({ env: { ...env, TURSO_AUTH_TOKEN: '' }, loadModule }), 'ranked/configuration-incomplete')
+})
+
 test('real production module loader initializes Firebase and PostgreSQL adapters without network or account writes', async () => {
   // This is an ephemeral signing key for an intentionally nonexistent project.
   // No real credentials are read, and neither auth verification nor SQL is run.

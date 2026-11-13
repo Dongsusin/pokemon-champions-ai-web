@@ -12,7 +12,7 @@ const response = (body, status = 200, headers = {}) => Response.json(body, {
 const authRejected = new Set(['auth/argument-error', 'auth/invalid-argument', 'auth/invalid-id-token', 'auth/id-token-expired', 'auth/id-token-revoked', 'auth/user-disabled', 'auth/user-not-found'])
 const unavailable = (headers = {}) => response({ error: { code: 'account-session/unavailable', message: '게임 저장 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.' } }, 503, headers)
 const startupCodes = new Set(['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND', 'ERR_REQUIRE_ESM', 'ERR_PACKAGE_PATH_NOT_EXPORTED', 'ERR_REQUIRE_ASYNC_MODULE', 'ranked/configuration-incomplete', 'ranked/project-mismatch', 'app/invalid-credential'])
-const startupSteps = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'postgres-store', 'credential-json'])
+const startupSteps = new Set(['firebase-app', 'firebase-auth', 'firebase-firestore', 'postgres-store', 'turso-store', 'credential-json'])
 const storageOperations = new Set(['get', 'list', 'select', 'countSessions', 'countQueue', 'renewLease', 'commit'])
 
 async function readPayload(request) {
@@ -102,7 +102,7 @@ export function createAccountHttpHandler({ service, authenticate, allowLocalOrig
 
 let productionHandler
 export async function handleProductionAccountRequest(request) {
-  if (!['supabase', 'cloudflare'].includes(process.env.GAME_STORAGE_PROVIDER)) return unavailable()
+  if (!['supabase', 'cloudflare', 'turso'].includes(process.env.GAME_STORAGE_PROVIDER)) return unavailable()
   if (!productionHandler) productionHandler = getProductionServices().then(({ accountStore, rankedStore, guestRegistry, authenticate }) => {
     if (!accountStore) throw new Error('Account storage is unavailable')
     // Most account requests are saves or lease renewals. Only load the ranked

@@ -217,7 +217,7 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
           const known = validVersion(command.knownRevision)
             && typeof command.knownPayloadHash === 'string' && /^[a-f0-9]{64}$/.test(command.knownPayloadHash)
           const { saved, matches } = known && typeof tx.readGameDataForLoad === 'function'
-            ? await tx.readGameDataForLoad(uid, command.knownRevision, command.knownPayloadHash)
+            ? await tx.readGameDataForLoad(uid, command.knownRevision, command.knownPayloadHash, command.knownHashMode)
             : { saved: await tx.get('gameData', uid), matches: false }
           const gameData = saved ? {
             schemaVersion: saved.schemaVersion, revision: saved.revision, updatedAtMs: saved.updatedAtMs,

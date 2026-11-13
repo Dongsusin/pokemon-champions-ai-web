@@ -55,6 +55,7 @@ const productionModules = {
   'firebase-admin/firestore': () => import('firebase-admin/firestore'),
   './cloudflareStore.js': () => import('./cloudflareStore.js'),
   './postgresStore.js': () => import('./postgresStore.js'),
+  './tursoStore.js': () => import('./tursoStore.js'),
 }
 async function loadProductionModule(specifier) {
   if (!Object.hasOwn(productionModules, specifier)) throw Object.assign(new Error('Unsupported production module'), { code: 'MODULE_NOT_FOUND' })
@@ -63,9 +64,10 @@ async function loadProductionModule(specifier) {
 
 export async function initializeProductionServices({ env = process.env, loadModule = loadProductionModule, now = Date.now } = {}) {
   const provider = env.GAME_STORAGE_PROVIDER || 'firestore'
-  if (!['firestore', 'supabase', 'cloudflare'].includes(provider) || !env.RANKED_FIREBASE_PROJECT_ID
+  if (!['firestore', 'supabase', 'cloudflare', 'turso'].includes(provider) || !env.RANKED_FIREBASE_PROJECT_ID
     || (provider === 'firestore' && !env.RANKED_FIRESTORE_PREFIX)
     || (provider === 'supabase' && !env.DATABASE_URL)
+    || (provider === 'turso' && (!env.TURSO_DATABASE_URL || !env.TURSO_AUTH_TOKEN))
     || (provider === 'cloudflare' && (!env.CLOUDFLARE_STORE_URL || !env.CLOUDFLARE_STORE_TOKEN))) throw configurationError()
   const [{ initializeApp, getApps, applicationDefault, cert }, { getAuth }] = await Promise.all([
     startupModule('firebase-app', loadModule('firebase-admin/app')),
@@ -81,12 +83,17 @@ export async function initializeProductionServices({ env = process.env, loadModu
   } else options.credential = applicationDefault()
   const app = getApps().find(candidate => candidate.name === 'ranked-server') ?? initializeApp(options, 'ranked-server')
   const auth = getAuth(app)
-  let rankedStore, accountStore = null, firestore = null, pool = null
+  let rankedStore, accountStore = null, firestore = null, pool = null, turso = null
   if (provider === 'cloudflare') {
     const { createCloudflareStore } = await startupModule('cloudflare-store', loadModule('./cloudflareStore.js'))
     const options = { url: env.CLOUDFLARE_STORE_URL, token: env.CLOUDFLARE_STORE_TOKEN }
     rankedStore = createCloudflareStore({ ...options, namespace: env.RANKED_FIRESTORE_PREFIX || 'ranked' })
     accountStore = createCloudflareStore({ ...options, namespace: 'account' })
+  } else if (provider === 'turso') {
+    const { createTursoClient, createTursoStore } = await startupModule('turso-store', loadModule('./tursoStore.js'))
+    turso = createTursoClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN })
+    rankedStore = createTursoStore({ client: turso, namespace: env.RANKED_FIRESTORE_PREFIX || 'ranked' })
+    accountStore = createTursoStore({ client: turso, namespace: 'account' })
   } else if (provider === 'supabase') {
     const { createPostgresPool, createPostgresStore } = await startupModule('postgres-store', loadModule('./postgresStore.js'))
     pool = createPostgresPool({ connectionString: env.DATABASE_URL, sslCa: env.DATABASE_SSL_CA })
@@ -101,6 +108,11 @@ export async function initializeProductionServices({ env = process.env, loadModu
   const readNickname = createVerifiedNicknameReader({ accountStore, now })
   return {
     provider, rankedStore, accountStore, firestore, guestRegistry,
+    async pruneCompletedBattles() {
+      if (!turso) return 0
+      const { pruneTursoCompletedBattles } = await import('./tursoRetention.js')
+      return pruneTursoCompletedBattles(turso, env.RANKED_FIRESTORE_PREFIX || 'ranked', now())
+    },
     async authenticate(request, token, { freshNickname = false, skipNickname = false } = {}) {
       const verified = await auth.verifyIdToken(token, true)
       const identity = rankedIdentityFromVerifiedToken(verified)
@@ -119,6 +131,7 @@ export async function initializeProductionServices({ env = process.env, loadModu
     },
     async close() {
       if (pool) await pool.end()
+      if (turso) turso.close()
     },
   }
 }

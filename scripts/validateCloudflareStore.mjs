@@ -100,7 +100,7 @@ test('saving one account uses indexed document addresses and leaves other accoun
  const plans=[],batch=db.batch.bind(db);
  db.batch=async statements=>{for(const s of statements)if(/^DELETE FROM document/.test(s.sql)){const table=s.sql.split(' ')[2];plans.push({table,details:db.sqlite.prepare('EXPLAIN QUERY PLAN '+s.sql).all(...s.args).map(x=>x.detail)});}return batch(statements);};
  await store.transaction(async tx=>{await tx.readGameDataPatch('u1',{box:'edited'},[]);await tx.writeGameDataPatch('u1',{box:'edited'},[],{revision:'two'},'one');});
- assert.equal(plans.length,3);
+ assert.deepEqual(plans.map(p=>p.table),['document_slot_overflow']);
  for(const {table,details}of plans)assert.ok(details.some(d=>d.startsWith('SEARCH '+table+' ')&&d.includes('(namespace=? AND collection=? AND key=?)')),table+' must address a single account through the composite index');
  assert.equal((await store.transaction(tx=>tx.get('gameData','u1'))).payload.box,'edited');
  assert.equal((await store.transaction(tx=>tx.get('gameData','u99'))).payload.box,'data-99');

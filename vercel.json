@@ -10,6 +10,9 @@
       "codex/boss-achievements": false
     }
   },
+  "crons": [
+    { "path": "/api/prune-completed-battles", "schedule": "0 19 * * *" }
+  ],
   "headers": [
     {
       "source": "/assets/:path*",

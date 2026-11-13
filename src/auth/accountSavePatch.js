@@ -47,3 +47,16 @@ export async function fingerprintAccountPayload(payload) {
   const bytes = await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(text))
   return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
 }
+
+export async function fingerprintAccountSlots(payload) {
+  if (!globalThis.crypto?.subtle) return null
+  const encoder = new TextEncoder()
+  async function sha256(value) {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(value))
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  }
+  const entries = Object.entries(payload).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+  if (entries.some(([, value]) => typeof value !== 'string')) return null
+  const slots = await Promise.all(entries.map(async ([key, value]) => [key, await sha256(JSON.stringify(value))]))
+  return sha256(JSON.stringify(slots))
+}
