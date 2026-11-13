@@ -11,6 +11,7 @@ export const ACCOUNT_LEASE_MS = 90_000
 export const ACCOUNT_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024
 export const ONLINE_PLAYERS_CACHE_MS = 15_000
 export const ONLINE_PLAYERS_STALE_MS = 60_000
+export const PROFILE_SEEN_REFRESH_MS = 60 * 60_000
 const keys = new Set(PLAYER_STORAGE_KEYS)
 const clone = value => structuredClone(value)
 const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value)
@@ -291,7 +292,15 @@ export function createAccountService({ store, guestRegistry, deleteGuestData, no
               nickname: action === 'setNickname' ? nickname : containsNicknameProfanity(previousNickname) ? '' : previousNickname,
               title: action === 'setTitle' ? titleId : previousTitle,
             } : {}),
-            createdAtMs: Number.isSafeInteger(previous?.createdAtMs) ? previous.createdAtMs : now(), lastSeenAtMs: now(),
+            createdAtMs: Number.isSafeInteger(previous?.createdAtMs) ? previous.createdAtMs : timestamp,
+            lastSeenAtMs: timestamp,
+          }
+          // Last-seen is informational. Persist identity changes immediately,
+          // and coalesce reconnects that would only advance this timestamp.
+          if (action === 'ensureProfile' && Number.isSafeInteger(previous?.lastSeenAtMs)
+            && timestamp >= previous.lastSeenAtMs && timestamp - previous.lastSeenAtMs < PROFILE_SEEN_REFRESH_MS
+            && isDeepStrictEqual(previous, { ...profile, lastSeenAtMs: previous.lastSeenAtMs })) {
+            return { profile: previous }
           }
           if (!isDeepStrictEqual(previous, profile)) tx.set('profiles', uid, profile)
           return { profile }

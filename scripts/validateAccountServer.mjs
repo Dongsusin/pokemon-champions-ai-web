@@ -3,7 +3,7 @@ import { generateKeyPairSync } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 import { createMemoryRankedStore } from '../server/rankedStore.js'
 import { createGuestIdentityRegistry } from '../server/guestIdentity.js'
-import { ACCOUNT_LEASE_MS, ACCOUNT_PAYLOAD_MAX_BYTES, createAccountService, createAccountRankedTeamResolver } from '../server/accountService.js'
+import { ACCOUNT_LEASE_MS, ACCOUNT_PAYLOAD_MAX_BYTES, PROFILE_SEEN_REFRESH_MS, createAccountService, createAccountRankedTeamResolver } from '../server/accountService.js'
 import { ACCOUNT_HTTP_MAX_BYTES, createAccountHttpHandler } from '../server/accountHttp.js'
 import { initializeProductionServices } from '../server/productionServices.js'
 import { createRankedService } from '../server/rankedService.js'
@@ -173,7 +173,15 @@ test('profile metadata comes only from verified identity and canonical reserved 
   env.advance(1000)
   const again = (await env.call(alice, 'ensureProfile')).profile
   assert.equal(again.createdAtMs, profile.createdAtMs)
-  assert.equal(again.lastSeenAtMs, env.now())
+  assert.equal(again.lastSeenAtMs, profile.lastSeenAtMs, 'An unchanged reconnect within an hour does not write the profile')
+  const renamed = { ...alice, accountProfile: { ...alice.accountProfile, displayName: 'New Name' } }
+  const changed = (await env.call(renamed, 'ensureProfile')).profile
+  assert.equal(changed.displayName, 'New Name')
+  assert.equal(changed.lastSeenAtMs, env.now())
+  env.advance(PROFILE_SEEN_REFRESH_MS)
+  await env.call(renamed, 'sessionAcquire')
+  const refreshed = (await env.call(renamed, 'ensureProfile')).profile
+  assert.equal(refreshed.lastSeenAtMs, env.now())
   await env.guestRegistry.create(guest)
   await env.call(guest, 'sessionAcquire')
   const anonymous = (await env.call({ ...guest, accountProfile: { email: 'forged@example.test', displayName: 'admin', photoURL: 'https://evil.test/x', providerIds: ['google.com'] } }, 'ensureProfile')).profile

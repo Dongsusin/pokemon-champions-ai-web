@@ -106,7 +106,10 @@ test('production authentication takes nickname from server profile, skips accoun
     const identity = await services.authenticate(new Request('https://game.test/api/account'), 'google-token')
     assert.equal(identity.nickname, '')
   }
-  assert.equal(env.reads(), 0, 'Account session heartbeats add zero nickname queries')
+  const countsIdentity = await services.authenticate(new Request('https://game.test/api/ranked?action=queueCounts'), 'google-token', { skipNickname: true })
+  assert.equal(countsIdentity.uid, 'verified-google')
+  assert.equal(countsIdentity.nickname, '')
+  assert.equal(env.reads(), 0, 'Account heartbeats and queue counts add zero nickname queries')
   const first = await services.authenticate(new Request('https://game.test/api/ranked'), 'google-token')
   assert.equal(first.name, '김실제이름')
   assert.equal(first.nickname, '서버별명')
@@ -123,16 +126,16 @@ test('production authentication takes nickname from server profile, skips accoun
 
 test('HTTP alone decides freshness for public actions and ignores forged freshness fields', async () => {
   const calls = []
-  const authenticate = async (_request, _token, options) => { calls.push(options.freshNickname); return { uid: 'verified-google' } }
+  const authenticate = async (_request, _token, options) => { calls.push([options.freshNickname, options.skipNickname]); return { uid: 'verified-google' } }
   const service = { execute: async () => ({ revision: 0, latest: null }) }
   const ranked = createRankedHttpHandler({ service, authenticate, enabled: true })
   const request = (path, action, method = 'POST') => new Request(`https://game.test/api/${path}${method === 'GET' ? `?action=${action}` : ''}`, {
     method, headers: { authorization: 'Bearer verified-token', 'content-type': 'application/json' },
     ...(method === 'POST' ? { body: JSON.stringify({ action, freshNickname: false, nickname: 'forged-input' }) } : {}),
   })
-  for (const action of ['status', 'rooms', 'factoryLeaderboard', 'rankedLeaderboard']) assert.equal((await ranked(request('ranked', action, 'GET'))).status, 200)
+  for (const action of ['status', 'rooms', 'factoryLeaderboard', 'rankedLeaderboard', 'queueCounts']) assert.equal((await ranked(request('ranked', action, 'GET'))).status, 200)
   for (const action of ['join', 'roomCreate', 'roomJoin', 'reportFactoryRun', 'action']) assert.equal((await ranked(request('ranked', action))).status, 200)
-  assert.deepEqual(calls, [false, false, true, true, true, true, true, true, false])
+  assert.deepEqual(calls, [[false, false], [false, false], [true, false], [true, false], [false, true], [true, false], [true, false], [true, false], [true, false], [false, false]])
 })
 
 for (const { name, run } of tests) { await run(); console.log(`PASS ${name}`) }

@@ -101,7 +101,7 @@ export async function initializeProductionServices({ env = process.env, loadModu
   const readNickname = createVerifiedNicknameReader({ accountStore, now })
   return {
     provider, rankedStore, accountStore, firestore, guestRegistry,
-    async authenticate(request, token, { freshNickname = false } = {}) {
+    async authenticate(request, token, { freshNickname = false, skipNickname = false } = {}) {
       const verified = await auth.verifyIdToken(token, true)
       const identity = rankedIdentityFromVerifiedToken(verified)
       const providerId = verified.firebase?.sign_in_provider
@@ -109,7 +109,7 @@ export async function initializeProductionServices({ env = process.env, loadModu
       // particular, lease heartbeats and autosaves must add no nickname query.
       let accountRequest = false
       try { accountRequest = new URL(request?.url).pathname === '/api/account' } catch { /* Direct service tests have no URL. */ }
-      const labels = identity.isGuest || accountRequest
+      const labels = identity.isGuest || accountRequest || skipNickname
         ? { nickname: '', title: '' }
         : await readNickname(identity.uid, { fresh: freshNickname === true })
       return { ...identity, nickname: labels.nickname, title: labels.title, accountProfile: {
@@ -117,7 +117,9 @@ export async function initializeProductionServices({ env = process.env, loadModu
         providerIds: typeof providerId === 'string' ? [providerId] : [],
       } }
     },
-    async close() { if (pool) await pool.end() },
+    async close() {
+      if (pool) await pool.end()
+    },
   }
 }
 
